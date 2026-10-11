@@ -51,7 +51,7 @@ jobs:
           persist-credentials: false
       - name: Validate the timer and credential transport
         run: |
-          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh deploy/ai-filter-refresh/pause-remote.sh
+          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh deploy/ai-filter-refresh/pause-remote.sh deploy/ai-filter-refresh/pause-host.sh
           python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
           systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer
       - name: Install and activate the bounded HTTP timer over pinned SSH

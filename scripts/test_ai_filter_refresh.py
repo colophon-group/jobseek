@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -64,9 +66,10 @@ class RefreshTimerTests(unittest.TestCase):
     def test_pause_operation_is_bounded_and_activation_refuses_source_maintenance(self):
         pause = (ROOT.parent / "deploy/ai-filter-refresh/pause-remote.sh").read_text()
         self.assertIn("StrictHostKeyChecking=yes", pause)
-        self.assertIn("systemctl disable --now jobseek-ai-filter-refresh.timer", pause)
-        self.assertIn("systemctl stop jobseek-ai-filter-refresh.service", pause)
-        self.assertIn("systemctl reset-failed jobseek-ai-filter-refresh.service", pause)
+        host = (ROOT.parent / "deploy/ai-filter-refresh/pause-host.sh").read_text()
+        self.assertIn("systemctl disable --now jobseek-ai-filter-refresh.timer", host)
+        self.assertIn("systemctl stop jobseek-ai-filter-refresh.service", host)
+        self.assertIn("systemctl reset-failed jobseek-ai-filter-refresh.service", host)
         self.assertNotIn("AI_FILTER_REFRESH_SECRET", pause)
         self.assertNotIn("docker", pause)
         activate = (ROOT.parent / "deploy/ai-filter-refresh/deploy-remote.sh").read_text()
@@ -75,6 +78,60 @@ class RefreshTimerTests(unittest.TestCase):
         self.assertIn("default: pause", workflow)
         self.assertIn("if: inputs.action == 'activate'", workflow)
         self.assertIn("if: inputs.action == 'pause'", workflow)
+
+    def test_host_pause_handles_active_failed_and_unloaded_service_without_starting_units(self):
+        fake_systemctl = """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+path = Path(os.environ['PAUSE_FIXTURE_STATE'])
+state = json.loads(path.read_text())
+a = sys.argv[1:]
+state['calls'].append(a)
+code = 0
+if a[0] == 'show' and a[1] == 'jobseek-ai-filter-refresh.timer':
+    print('loaded')
+elif a == ['disable', '--now', 'jobseek-ai-filter-refresh.timer']:
+    state['enabled'] = False
+    state['timer'] = 'inactive'
+elif a == ['stop', 'jobseek-ai-filter-refresh.service']:
+    if state['service'] != 'failed': state['service'] = 'unloaded'
+elif a == ['is-failed', '--quiet', 'jobseek-ai-filter-refresh.service']:
+    code = 0 if state['service'] == 'failed' else 1
+elif a == ['reset-failed', 'jobseek-ai-filter-refresh.service']:
+    if state['service'] == 'unloaded': code = 1
+    else: state['service'] = 'unloaded'
+elif a == ['is-enabled', 'jobseek-ai-filter-refresh.timer']:
+    print('enabled' if state['enabled'] else 'disabled')
+    code = 0 if state['enabled'] else 1
+elif a[0] == 'is-active' and a[1] in ['jobseek-ai-filter-refresh.timer', 'jobseek-ai-filter-refresh.service']:
+    value = state['timer'] if a[1].endswith('.timer') else state['service']
+    print('inactive' if value == 'unloaded' else value)
+    code = 0 if value == 'active' else 3
+else:
+    code = 99
+path.write_text(json.dumps(state))
+sys.exit(code)
+"""
+        for initial in ('active', 'failed', 'unloaded'):
+            with self.subTest(initial=initial), tempfile.TemporaryDirectory() as directory:
+                folder = Path(directory)
+                binary = folder / 'systemctl'
+                binary.write_text(fake_systemctl)
+                binary.chmod(0o700)
+                state_file = folder / 'state.json'
+                state_file.write_text(json.dumps({'service': initial, 'timer': 'active', 'enabled': True, 'calls': []}))
+                environment = {**os.environ, 'PATH': str(folder) + os.pathsep + os.environ['PATH'], 'PAUSE_FIXTURE_STATE': str(state_file)}
+                for attempt in range(2):
+                    result = subprocess.run(['bash', str(ROOT.parent / 'deploy/ai-filter-refresh/pause-host.sh')], env=environment, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('ai_filter_refresh_paused', result.stdout)
+                state = json.loads(state_file.read_text())
+                self.assertFalse(state['enabled'])
+                self.assertEqual(state['timer'], 'inactive')
+                self.assertEqual(state['service'], 'unloaded')
+                resets = [call for call in state['calls'] if call[0] == 'reset-failed']
+                self.assertEqual(len(resets), 1 if initial == 'failed' else 0)
+                self.assertFalse(any(call[0] in ('start', 'restart', 'enable') for call in state['calls']))
 
     def test_timer_and_service_keep_credential_and_docker_boundaries(self):
         service = (ROOT.parent / "deploy/systemd/jobseek-ai-filter-refresh.service").read_text()
