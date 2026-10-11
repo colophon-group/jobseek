@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1010 deployed; full ordinary admission in progress
+## Current checkpoint — source1010 deployed; failed full activation recovered
 
 [PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
 `f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
@@ -11,17 +11,34 @@ and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs
 succeeded at attempt 1. Independent checks confirm the selected immutable images,
 incoming cold epoch 278 and successful exporter progress. The original supported
 B0 activation succeeded at **epoch 279**, with independently verified source-bound
-receipt and healthy services. Fresh all-enabled-board/all-actual-route admission
-is now running before full ordinary activation. This checkpoint does not yet
-establish the full ordinary owner.
+receipt and healthy services. Fresh admission reconciled **7,885 enabled boards /
+1,662,895 actual scheduled posting routes**, preserving every previous owner and
+admitting all four qualified additions: **7,763 monitors / 7,585 detail boards**.
+Full activation failed before restart arming: the B0 producer's Redis health
+check lost authority. The original supported `recover-pending` completed;
+independent verification confirms all base/B0 services healthy at epoch **279**,
+the failed plan retired, and no ordinary receipt or Redis projection remaining.
+The full ordinary owner is currently inactive.
+
+The incident slowlog identifies 86 exact claim-script executions consuming
+4.82 seconds in six seconds; the producer health budget is three seconds.
+Retained Python instances each start 20 discovery pollers. The combined
+**0.13.1011** candidate serializes their claims during native ownership and shares
+the existing two-second empty/error polling delay within each instance. Processing
+slots stay available; every real claim still takes the SQL barrier and validates
+the complete Redis projection. Full-size 7,763 / 7,585 private PostgreSQL/Redis
+regressions cover concurrent empty polls, fresh unowned work, retirement and
+projection loss. Renew exact-head gates, retire B0 through the original workflow,
+deploy the whole combined release, renew admission and retry supported activation.
+Do not weaken health or ownership checks, or retry the unchanged fleet blindly.
 
 Source1009 completed over 40 minutes of natural ordinary observation without
 a restart or kernel/cgroup OOM kill. Fleet backlog grew, so full-fleet freshness
 remains unresolved. Its original ordinary retirement, B0 rollback and selector
 clear succeeded. Independent outgoing verification confirms cold epoch **278**,
 no active plans or ownership receipts, cleared selectors and restored healthy
-base writers. Finish the incoming exact-source/image checks, fresh all-board
-and all-actual-route admission and supported activation. Preserve the complete
+base writers. Finish the polling correction and combined release, renew incoming
+exact-source/image checks and admission, then supported activation. Preserve the complete
 7,759 / 2,753 cohort and every qualified addition.
 
 ## Previous checkpoint — source1009 delivered and safely retired
