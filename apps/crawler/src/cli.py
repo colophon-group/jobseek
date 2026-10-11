@@ -31,7 +31,6 @@ from src.config import settings  # noqa: E402
 from src.db import (  # noqa: E402
     close_all_pools,
     create_local_pool,
-    create_web_pool,
 )
 from src.metrics import start_metrics_server  # noqa: E402
 from src.shared.constants import get_data_dir, is_source_checkout  # noqa: E402
@@ -781,6 +780,15 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+    if args.command == "refresh-currency-rates":
+        command = ["go-typesense-exporter", "--refresh-currency-rates"]
+        if args.dry_run:
+            command.append("--dry-run")
+        os.execvp(command[0], command)
+    if args.command == "repair-location-taxonomy-source":
+        os.execvp(
+            "go-typesense-exporter", ["go-typesense-exporter", "--repair-location-taxonomy-source"]
+        )
     if args.command == "sync":
         command = ["go-typesense-exporter", "--sync-registry"]
         if is_source_checkout():
@@ -968,15 +976,6 @@ async def run() -> None:
                 sys.stdout.flush()
             finally:
                 await close_redis()
-
-        elif args.command == "repair-location-taxonomy-source":
-            local_pool = await create_local_pool()
-            source_pool = await create_web_pool()
-            from src.location_taxonomy_repair import repair_location_taxonomy_source
-
-            summary = await repair_location_taxonomy_source(source_pool, local_pool)
-            sys.stdout.write(json.dumps(summary.to_dict(), sort_keys=True) + "\n")
-            sys.stdout.flush()
 
         elif args.command == "ats-inventory":
             from datetime import UTC, datetime, timedelta
@@ -1347,29 +1346,6 @@ async def run() -> None:
                 raise RuntimeError("purge-retired-watchlist-index: Typesense not configured")
             deleted = await asyncio.to_thread(purge_retired_watchlist_index, ts_client)
             log.info("purge-retired-watchlist-index: done", deleted=deleted)
-
-        elif args.command == "refresh-currency-rates":
-            from src.cron_metrics import cron_run
-            from src.scripts.refresh_currency_rates import refresh_currency_rates
-
-            async with cron_run("refresh-currency-rates"):
-                local_pool = None if args.dry_run else await create_local_pool()
-                http = create_http_client()
-                try:
-                    result = await refresh_currency_rates(
-                        local_pool,
-                        http,
-                        dry_run=args.dry_run,
-                    )
-                finally:
-                    await http.aclose()
-                log.info(
-                    "refresh-currency-rates.done",
-                    dry_run=result.dry_run,
-                    rate_date=result.rate_date.isoformat(),
-                    updated_at=result.updated_at.isoformat(),
-                    count=result.count,
-                )
 
         elif args.command == "notify-indexnow":
             start_metrics_server(settings.metrics_port)

@@ -243,7 +243,7 @@ jobs:
                 --label "jobseek.maintenance.revision=${EXPECTED_CRAWLER_REVISION}" \
                 --label jobseek.maintenance.budget-seconds=900 \
                 "$active_image_ref" \
-                uv run --no-sync crawler repair-location-taxonomy-source 2>&1
+                go-typesense-exporter --repair-location-taxonomy-source 2>&1
             )"
             operation_status=$?
             set -e

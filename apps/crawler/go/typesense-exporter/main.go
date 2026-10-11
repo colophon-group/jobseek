@@ -19,6 +19,29 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--refresh-currency-rates" {
+		if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[2] == "--dry-run") {
+			fmt.Fprintln(os.Stderr, "usage: --refresh-currency-rates [--dry-run]")
+			os.Exit(2)
+		}
+		if err := runCurrencyRefresh(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "--repair-location-taxonomy-source" {
+		if len(os.Args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: --repair-location-taxonomy-source")
+			os.Exit(2)
+		}
+		if err := runLocationTaxonomyRepair(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if len(os.Args) >= 2 && (os.Args[1] == "--repair-nw-provider-cutover" || os.Args[1] == "--repair-umantis-identity-cutover") {
 		kind, park := "nw", false
 		if os.Args[1] == "--repair-umantis-identity-cutover" {
@@ -207,7 +230,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--reap-leases|--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--sync-taxonomies [--rename-input]|--snapshot-taxonomy-names|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--refresh-currency-rates [--dry-run]|--repair-location-taxonomy-source|--reap-leases|--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--sync-taxonomies [--rename-input]|--snapshot-taxonomy-names|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

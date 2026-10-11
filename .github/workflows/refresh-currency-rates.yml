@@ -60,4 +60,4 @@ jobs:
               --env-file "$RUNTIME_ENV" \
               --network host \
               "${image_refs[0]}" \
-              uv run --no-sync crawler refresh-currency-rates
+              go-typesense-exporter --refresh-currency-rates

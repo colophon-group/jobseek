@@ -147,7 +147,7 @@ def test_repair_is_one_bounded_mutation_locked_transactional_command() -> None:
 
     lock = repair.index("exec 9>/run/lock/jobseek-crawler-mutation.lock")
     preflight = repair.index("postgresql-operational-preflight.py", lock)
-    operation = repair.index("crawler repair-location-taxonomy-source", preflight)
+    operation = repair.index("go-typesense-exporter --repair-location-taxonomy-source", preflight)
     evidence = repair.index("grep -Fq '\"source_local_equal\": true'", operation)
     assert lock < preflight < operation < evidence
     assert "timeout --foreground --signal=TERM --kill-after=30s 15m" in repair

@@ -36,18 +36,18 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err != nil {
 		return dom.ListingConfig{}, err
 	}
-	if md["browser_backend"] != nil || md["routing_revision"] != nil {
+	if md["browser_backend"] != nil || md["routing_revision"] != nil || md["bot_protection"] != nil {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
 	if raw := md["rich_rows"]; raw != nil {
 		options["rich_rows"] = raw // Preserve ordered replacement mappings.
 	}
-	keys := []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
+	keys := []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
 	keys = append(keys, dom.ListingProviderKeys...)
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
-			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
+			if (key == "url_filter" || key == "request_headers" || key == "retry_statuses") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
 				if _, err := profileMetadataFields(string(raw), nil); err != nil {
 					return dom.ListingConfig{}, ErrUnsupportedProfile
 				}

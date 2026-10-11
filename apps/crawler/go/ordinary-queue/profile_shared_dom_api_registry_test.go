@@ -27,6 +27,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 	explicitCount := 0
 	providerMarkerCount := 0
 	refreshCount := 0
+	identityRepairCount := 0
 	providerMarkerBoards := map[string]bool{"implenia-apprenticeships-ch": true, "ge-healthcare-icometrix": true, "ammann-abg": true}
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
@@ -65,6 +66,13 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 			config["monitor_needs_browser"] = "1"
 		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
+		if row[h["board_slug"]] == "t1-energy-factory" {
+			aliases, ok := md["url_template_fields"].(map[string]any)
+			if e != nil || browser || !ok || aliases["job_id"] != "customFieldGroup.stringFields[0].stringValue" {
+				t.Fatal("qualified T1 API identity repair lost registry coverage", e)
+			}
+			identityRepairCount++
+		}
 		if providerMarkerBoards[row[h["board_slug"]]] {
 			if e != nil {
 				t.Fatal("qualified provider marker configuration lost native coverage", row[h["board_slug"]])
@@ -104,7 +112,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || supported["api_sniffer"] != 33 || supported["dom"] != 22 || retained["api_sniffer"] != 3 || retained["dom"] != 1 {
+	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || identityRepairCount != 1 || supported["api_sniffer"] != 34 || supported["dom"] != 22 || retained["api_sniffer"] != 2 || retained["dom"] != 1 {
 		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)

@@ -1,6 +1,47 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1009 deployed and active
+## Current checkpoint — source1010 deployed; failed full activation recovered
+
+[PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
+`f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
+The Oracle proxy, Revolut, IIHF and explicit rich-skip group passed all exact-head
+required checks, installed-image parity, physical Lightpanda and ARM whole-lane
+qualification. The original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38107792937)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38107805696)
+succeeded at attempt 1. Independent checks confirm the selected immutable images,
+incoming cold epoch 278 and successful exporter progress. The original supported
+B0 activation succeeded at **epoch 279**, with independently verified source-bound
+receipt and healthy services. Fresh admission reconciled **7,885 enabled boards /
+1,662,895 actual scheduled posting routes**, preserving every previous owner and
+admitting all four qualified additions: **7,763 monitors / 7,585 detail boards**.
+Full activation failed before restart arming: the B0 producer's Redis health
+check lost authority. The original supported `recover-pending` completed;
+independent verification confirms all base/B0 services healthy at epoch **279**,
+the failed plan retired, and no ordinary receipt or Redis projection remaining.
+The full ordinary owner is currently inactive.
+
+The incident slowlog identifies 86 exact claim-script executions consuming
+4.82 seconds in six seconds; the producer health budget is three seconds.
+Retained Python instances each start 20 discovery pollers. The combined
+**0.13.1011** candidate serializes their claims during native ownership and shares
+the existing two-second empty/error polling delay within each instance. Processing
+slots stay available; every real claim still takes the SQL barrier and validates
+the complete Redis projection. Full-size 7,763 / 7,585 private PostgreSQL/Redis
+regressions cover concurrent empty polls, fresh unowned work, retirement and
+projection loss. Renew exact-head gates, retire B0 through the original workflow,
+deploy the whole combined release, renew admission and retry supported activation.
+Do not weaken health or ownership checks, or retry the unchanged fleet blindly.
+
+Source1009 completed over 40 minutes of natural ordinary observation without
+a restart or kernel/cgroup OOM kill. Fleet backlog grew, so full-fleet freshness
+remains unresolved. Its original ordinary retirement, B0 rollback and selector
+clear succeeded. Independent outgoing verification confirms cold epoch **278**,
+no active plans or ownership receipts, cleared selectors and restored healthy
+base writers. Finish the polling correction and combined release, renew incoming
+exact-source/image checks and admission, then supported activation. Preserve the complete
+7,759 / 2,753 cohort and every qualified addition.
+
+## Previous checkpoint — source1009 delivered and safely retired
 
 [PR #10407](https://github.com/colophon-group/jobseek/pull/10407) merged as
 `fac1f66fe9f20b1b06496a0634167364813b6adc`, version **0.13.1009 / 197 profiles**.
@@ -31,25 +72,26 @@ global queue conservation or successful output for every completed claim.
 
 Lightpanda **1.0.0** remains the latest official stable release, rechecked October
 11. Its immutable image/binary pins and 128 MiB per-child V8 limit remain in place.
-After activation, observe natural memory, queue conservation and fleet freshness
+For the incoming activation, observe natural memory, queue conservation and fleet freshness
 long enough to cover the previous ordinary OOM interval. Low current RSS or
 `OOMKilled=false` cannot exclude prior kernel kills. The protected five-way
 memory replay preserves output and lowers managed peak, but excludes SQL/location
 state and is not proof of a Linux cgroup cure.
 
-The full migration goal remains active. The following grouped candidate is undergoing
-fresh CI while this active release receives natural observation. Continue the remaining enabled types,
+The full migration goal remains active. Source1010 is in its original whole rollout,
+and the combined next release enters fresh CI. Continue the remaining enabled types,
 rich no-scrape schedule handling and operational consumers in grouped iterations.
 Python/Playwright/Chromium runtime retirement still requires full enabled-route
 and consumer coverage, comparable whole-lane CPU/RAM/density/cost, supported cold
 reversal and the rollback window. Preserve useful isolated offline Python tooling.
 
-## Following grouped candidate — Oracle, Revolut, IIHF and rich schedule drain
+## Merged source1010 group — Oracle, Revolut, IIHF and rich schedule drain
 
-The isolated following candidate reserves version **0.13.1010 / 201 profiles**
-on merged source1009 `fac1f66fe9f20b1b06496a0634167364813b6adc`. It has no
-production authority. Renew this group's exact-head checks while source1009
-is active; complete its natural observation before the next whole rollout.
+The merged group is **0.13.1010 / 201 profiles**, based on source1009.
+Head `b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220` passed fresh Required CI,
+Crawler Deploy Gate, installed-image parity, physical Lightpanda and the ARM
+whole-lane check before an expected-head merge. Complete its original rollout
+and independent full admission before claiming active authority.
 
 Oracle reuses its existing provider SDK with separately configured proxy monitor
 and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
@@ -84,7 +126,7 @@ that rejected any skip-detail owner. Those assertions now require the exact
 SQL-only skip profile, queue binding and wildcard ownership domain, and continue
 to reject JSON-LD, DOM and rendered fetch authority. The five complete affected
 profile tests pass under the race detector; renew all checks for the repaired
-head. The 201-profile executable startup and
+head; all renewed gates succeeded. The 201-profile executable startup and
 focused shared-renderer regression/race checks pass. Protected inventories remain
 outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
 for source identities, complete comparisons and immutable evidence hashes.
@@ -94,6 +136,117 @@ but clicked-detail completion is still unproved. Daiichi Life Vietnam returned
 zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
+
+## Current combined release — sixteen configurations, maintenance and polling
+
+One combined candidate reserves **0.13.1011 / 201 profiles** on merged source1010 `f66597e848856310bea2c3a59b766f29a3dc1305`.
+It delivers both maintenance operations, the retained polling correction and
+**sixteen configurations**: three retained DOM/API hints, six static DOM detail
+filters, T1 Energy API identity repair and six rendered DOM resource hints.
+All are in PR #10409 through one required-check, whole-deployment and cutover cycle.
+The consolidated working tree passes the combined mandatory PostgreSQL/Redis
+worker and cold suites, complete original/public comparisons, 185 Python
+pipeline/ownership/cutover/CSV tests and vet. No database case skipped. The first
+combined Python invocation used a nonexistent test filename and ran no tests;
+the corrected mandatory invocation is the qualification. Renew all exact-head
+gates for this combined commit. CI at `134cbc1` exposed two historical
+assertions: blanket rejection of monitor auto policy and the API registry count
+before T1 repair. Corrected checks assert the new monitor hash/transport binding,
+keep detail auto/lean/aggressive rejected, and require the exact repaired T1 alias.
+All 54 registry/resource contracts pass with race, mandatory PostgreSQL/Redis and
+zero skips. See [combined proof](evidence/go-native-sixteen-configuration-combined-candidate-2026-10-11.json).
+It replaces the two installed Python maintenance commands with direct
+`go-typesense-exporter` operations; the optional `crawler` aliases delegate
+before opening Python pools. Currency refresh preserves decimal inversion,
+12-place half-even quantization, sorted EUR-inclusive rates, atomic upsert and
+completion metrics. Thirty-four original parser cases include all 30 rates in
+the live October 9 ECB feed. Location repair preserves the fixed 37,526 rows,
+read-only source snapshot, locked serializable target, missing-only updates,
+exact equality proof and durable slug constraint. Original and native full-size
+Postgres runs agree; compiled-command and failure/rollback checks pass.
+
+The existing protected maintenance actor, revision/image, mutation-lock and
+credential contracts remain required. The candidate has no production authority
+and no maintenance operation was dispatched during qualification. Finish the
+source1010 group, then renew this candidate's required checks and whole rollout.
+See [maintenance qualification](evidence/go-native-maintenance-consumers-candidate-2026-10-11.json).
+Deployment Alembic execution and optional legacy fallback paths remain separate
+Python retirement work. Continue qualifying the 126 currently unowned monitor
+configurations in compatible groups; do not treat the skip-detail configuration
+screen as proof of scheduled-route admission or fleet freshness.
+
+### Included configuration group — retained DOM and HTTP API hints
+
+The same **0.13.1011 / 201-profile** candidate groups Patrimonium and Howden
+DOM monitors with GitHub's HTTP API monitor. Complete original captures match
+all **4 / 9 / 73 roles** and request sequences. DOM's scraper retry hint leaves
+the listing retry loop unchanged; the API paginator's nested browser hint
+leaves its original HTTP transport unchanged. Actual browser replay continues
+to require its separate inspected route. Configuration hashes retain both hints.
+
+Nineteen real Postgres/Redis worker cases preserve full writes, absence and
+publisher-policy behavior. Six cold retirement cases conserve the queues and
+canonical rows. The mandatory database rerun has zero skips; the first local
+attempt used the wrong fixture variables and is superseded. All four affected
+Go packages pass vet. This candidate has no production authority and follows
+source1010 as part of the combined maintenance/configuration release through fresh required checks,
+whole deployment and all-route admission.
+
+Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership
+prevents ordinary overlap and legacy scrape enqueue; retain that exclusion until
+the final ownership transition is qualified. See the [configuration qualification](evidence/go-native-retained-dom-api-options-candidate-2026-10-11.json).
+
+### Included six-configuration group — rendered DOM resource hints
+
+The same **0.13.1011 / 201-profile** candidate includes six rendered DOM
+resource-hint configurations alongside the detail/API group below. The
+complete original browser streams and pinned Lightpanda 1.0.0 documents agree
+on all canonical URLs: In3 **1**, Tyson Thailand **13**, Goldbeck Czech **78**,
+PSI **20**, Insel MyOda **20**, and Colisee Onela **603**. Captured publisher headers
+are retained in the native comparison. No failed, blocked, partial or instrumented
+capture with errors is admitted.
+
+`bot_protection` is a strictly typed original reconnaissance hint; `auto` uses the
+pinned engine default. Original metadata remains in the immutable ownership hash.
+The original lean route and physical Lightpanda both render the same local
+script/fetch-produced inventory without font/media requests. A new fixture is wired
+into both architectures' existing physical integration image to bind that assumption
+to engine upgrades. [Pinned physical CI](https://github.com/colophon-group/jobseek/actions/runs/38111722898)
+passed on Linux ARM64 and AMD64 for `cc0ea0062af601cd8d875e61af16a826c0e73049`;
+completed job logs independently confirm the new fixture executed and passed on
+both architectures. The macOS fixture skip is not qualification.
+
+Six mandatory real PostgreSQL/Redis worker cases prove complete settlement, atomic
+render failure and publisher precedence for both auto/none. Six cold cases prove
+interruption, committed-before-ack recovery and changed-config refusal. Full public
+inventory comparison passes with race enabled. Explicit lean/aggressive/unknown
+policies and malformed reconnaissance flags remain rejected. Both groups are
+consolidated into #10409 to avoid a second full gate/deployment/cutover cycle.
+Renew exact-head qualification and deliver one combined rollout; retain every enabled board.
+
+### Included seven-configuration group — DOM detail filters and T1 API repair
+
+The same **0.13.1011 / 201-profile** candidate includes this seven-configuration group.
+It adds shared static DOM inactive-detail and selector-exclusion behavior. Six
+complete original public inventories match **1 / 1 / 0 / 6 / 4 / 30 URLs** and
+all verification requests, including redirects and 404/410 removal. Unexpected
+selector text fails the complete cycle, and publisher reservation wins over
+partial results. Verification retains the exact parent/config/resource binding,
+500-detail cap, eight concurrent reads and bounded failure drain. The all-inactive
+case retains the original runtime's six-empty-check confirmation window.
+
+The same release repairs T1 Energy's URL template using its supported `job_id`
+JMESPath alias. Its old configuration emitted zero from ten raw API records;
+the original and Go implementations of the repaired configuration match all
+**ten canonical jobs / three requests**. The board remains enabled. Twenty-seven
+original reference cases, 16 mandatory Postgres/Redis worker cases, six cold
+retirement cases and the existing 18 verification regressions are checked, with
+zero skips in the mandatory checks. Public evidence stays protected outside Git.
+See [grouped qualification](evidence/go-native-dom-detail-filters-api-repair-candidate-2026-10-11.json).
+
+This combined candidate has no production authority. Renew all exact-head gates
+for #10409 and use the original whole rollout and fresh full admission. Rendered detail filters, APT's root 404, Persistent Systems'
+503 and Tesco's 403 remain unqualified; preserve their existing enabled boards.
 
 ## Historical checkpoint — source1007 ordinary OOM recovery
 

@@ -49,6 +49,7 @@ from src.ordinary_ownership import (
 from src.redis_queue import (
     BoardWork,
     ScrapeWork,
+    WorkItem,
     acquire_host_circuit_probe,
     acquire_provider_circuit_probe,
     claim_work,
@@ -923,6 +924,35 @@ async def _recycle_playwright_if_due(
     return replacement, pw_ctx, checked_at
 
 
+class _LegacyClaimGate:
+    """Share empty polling while the native owner holds most of the queue.
+
+    Serialize only claims, never processing. Every actual claim still takes the
+    SQL ownership barrier and validates the complete Redis projection. An empty
+    poll applies the existing idle delay to the entire retained instance.
+    """
+
+    def __init__(self, pool: asyncpg.Pool, ownership: LegacyOwnership, *, browser: bool):
+        self.pool = pool
+        self.ownership = ownership
+        self.browser = browser
+        self.lock = asyncio.Lock()
+        self.empty_until = 0.0
+
+    async def claim(self) -> WorkItem | None:
+        async with self.lock:
+            if time.monotonic() < self.empty_until:
+                return None
+            try:
+                async with legacy_ownership_barrier(self.pool, self.ownership):
+                    work = await claim_work(browser=self.browser, ownership=self.ownership)
+            except (Exception, asyncio.CancelledError):
+                self.empty_until = time.monotonic() + _IDLE_BACKOFF_S
+                raise
+            self.empty_until = time.monotonic() + _IDLE_BACKOFF_S if work is None else 0.0
+            return work
+
+
 async def _discovery_worker(
     worker_id: int,
     local_pool: asyncpg.Pool,
@@ -933,6 +963,7 @@ async def _discovery_worker(
     monitor_semaphore: asyncio.Semaphore | None = None,
     progress_callback: Callable[[], None] | None = None,
     ownership: LegacyOwnership | None = None,
+    claim_gate: _LegacyClaimGate | None = None,
 ) -> None:
     """Single discovery worker coroutine.
 
@@ -973,11 +1004,14 @@ async def _discovery_worker(
             if progress_callback is not None:
                 progress_callback()
             try:
-                async with legacy_ownership_barrier(local_pool, ownership):
-                    if ownership is None:
-                        work = await claim_work(browser=browser)
-                    else:
-                        work = await claim_work(browser=browser, ownership=ownership)
+                if claim_gate is not None:
+                    work = await claim_gate.claim()
+                else:
+                    async with legacy_ownership_barrier(local_pool, ownership):
+                        if ownership is None:
+                            work = await claim_work(browser=browser)
+                        else:
+                            work = await claim_work(browser=browser, ownership=ownership)
             except Exception:
                 worker_log.warning("pipeline.claim_error", exc_info=True)
                 with contextlib.suppress(TimeoutError):
@@ -1794,6 +1828,9 @@ async def run_pipeline(
     """
     seed_registered_runtime_capabilities()
     ownership = await prepare_legacy_ownership(local_pool)
+    claim_gate = (
+        _LegacyClaimGate(local_pool, ownership, browser=browser) if ownership is not None else None
+    )
     concurrency = settings.discovery_concurrency
     monitor_cap = settings.monitor_concurrency
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None
@@ -1835,6 +1872,7 @@ async def run_pipeline(
                     monitor_semaphore=monitor_sem,
                     progress_callback=record_progress,
                     ownership=ownership,
+                    claim_gate=claim_gate,
                 ),
                 name=f"discovery-{i}",
             )

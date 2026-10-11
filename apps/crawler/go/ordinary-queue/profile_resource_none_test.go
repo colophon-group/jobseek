@@ -25,7 +25,15 @@ func TestRenderedResourceNoneKeepsProfileAndCanonicalFence(t *testing.T) {
 	if e != nil || options["resource_policy"] != "none" {
 		t.Fatal("original navigation control lost", e)
 	}
-	for _, value := range []any{"auto", "lean", false, 1, map[string]any{}, []any{}, " none"} {
+	md["resource_policy"] = "auto"
+	encode()
+	auto, e := InspectRichMonitor(profileBoardID, c)
+	_, options, optionsErr := RenderedDOMMonitorOptions(c)
+	if e != nil || optionsErr != nil || auto.Profile != p.Profile ||
+		auto.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 || options["resource_policy"] != "none" {
+		t.Fatal("qualified auto normalization lost original policy binding", e, optionsErr)
+	}
+	for _, value := range []any{"lean", "aggressive", false, 1, map[string]any{}, []any{}, " none"} {
 		md["resource_policy"] = value
 		encode()
 		if _, e := InspectRichMonitor(profileBoardID, c); e == nil {
@@ -48,11 +56,13 @@ func TestRenderedResourceNoneKeepsProfileAndCanonicalFence(t *testing.T) {
 		if e != nil || got.Profile != original.Profile || got.EffectiveBoardSHA256 == original.EffectiveBoardSHA256 {
 			t.Fatal("detail canonical fence lost", scraper, e)
 		}
-		parser["resource_policy"] = "lean"
-		b, _ = json.Marshal(metadata)
-		detail["metadata"] = string(b)
-		if _, e := InspectRenderedDetail(jsonldBoardID, detail, original.SourceURL, Browser); e == nil {
-			t.Fatal("unimplemented detail resource controller accepted")
+		for _, policy := range []string{"auto", "lean", "aggressive"} {
+			parser["resource_policy"] = policy
+			b, _ = json.Marshal(metadata)
+			detail["metadata"] = string(b)
+			if _, e := InspectRenderedDetail(jsonldBoardID, detail, original.SourceURL, Browser); e == nil {
+				t.Fatal("unqualified detail resource policy accepted", policy)
+			}
 		}
 	}
 }

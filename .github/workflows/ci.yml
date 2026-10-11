@@ -617,7 +617,7 @@ jobs:
           for module in api-sniffer-monitor oracle-hcm ordinary-queue ordinary-worker; do
             (cd "apps/crawler/go/$module" && go test -race -timeout 20m ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
           done
-          (cd apps/crawler && uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_ordinary_go_cutover.py)
+          (cd apps/crawler && uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_pipeline_owned_claims.py tests/test_ordinary_go_cutover.py)
 
   test-go-r2-drain:
     name: Test Go R2 drain

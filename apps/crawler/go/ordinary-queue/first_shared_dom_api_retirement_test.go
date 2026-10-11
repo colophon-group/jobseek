@@ -69,6 +69,20 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 			md["url_allowlist"] = `^https://example\.com/jobs/[^/]+$`
 		}
 	}
+	if kind == "dom-inactive-detail" {
+		md["link_selector"] = "a.job"
+		md["inactive_detail_states"] = []any{map[string]any{"selector": ".inactive", "exact_text": "Closed"}}
+	}
+	if kind == "dom-exclude-detail" {
+		md["link_selector"] = "a.job"
+		md["exclude_detail_selector"] = ".inactive"
+	}
+	if kind == "dom-retry-hint" {
+		md["retry_statuses"] = map[string]int{"503": 2}
+	}
+	if kind == "api-pagination-browser-hint" {
+		md["pagination"] = map[string]any{"param_name": "page", "start_value": 1, "browser": true}
+	}
 	if kind == "api-root" {
 		md["json_path"] = "$"
 	}
@@ -163,4 +177,12 @@ func TestRealHTTPTokenRefreshAndJapaneseEncodingColdRetirement(t *testing.T) {
 
 func TestRealPublishedWebFormsColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"dom-webforms/rendered"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealLegacyMonitorHintsColdRetirementConservesQueues(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-retry-hint/direct", "api-pagination-browser-hint/direct"}, firstSharedDOMAPIFixture)
+}
+
+func TestFirstDOMDetailFiltersColdRetirementConservation(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-inactive-detail/direct", "dom-exclude-detail/direct"}, firstSharedDOMAPIFixture)
 }

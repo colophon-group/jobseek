@@ -1,0 +1,48 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "candidate_version": "0.13.1011",
+  "production_incident": {
+    "phase": "ordinary full activation before restart arming",
+    "producer_error": "producer authority lost: redis/health",
+    "routing_epoch": 279,
+    "cohort": {
+      "monitors": 7763,
+      "detail_boards": 7585
+    },
+    "slowlog": {
+      "first_utc": "2026-10-11T04:07:32Z",
+      "last_utc": "2026-10-11T04:07:37Z",
+      "claim_script_sha1": "ddf22dc0d3f9e6150bc88cb3773f456dbfa7b913",
+      "calls": 86,
+      "total_duration_us": 4820044,
+      "max_duration_us": 73717
+    },
+    "health_budget_seconds": 3,
+    "recovery": "original recover-pending succeeded; independently verified all base/B0 services healthy, failed plan retired, no ordinary receipt or projection"
+  },
+  "change": "serialize retained per-instance claims and share existing two-second empty/error polling delay only during native ownership; processing capacity and SQL/Redis authority checks preserved",
+  "qualification": {
+    "tests_passed": 173,
+    "mandatory_postgres": true,
+    "mandatory_redis": true,
+    "skipped": 0,
+    "full_size_private_cohort": {
+      "monitors": 7763,
+      "detail_boards": 7585
+    },
+    "contracts": [
+      "20 concurrent idle callers perform one real claim",
+      "available work reaches all 20 callers",
+      "failure and cancellation release gate",
+      "full-sized owned projection preserves native queued work",
+      "fresh unowned work remains claimable",
+      "SQL retirement and Redis projection loss reject new claims"
+    ],
+    "ruff": "passed"
+  },
+  "limits": [
+    "Local regression establishes bounded polling and authority, not production health or full-fleet freshness.",
+    "Candidate requires new exact-head CI, image parity, physical Lightpanda, ARM qualification and original whole deployment before activation retry."
+  ]
+}
