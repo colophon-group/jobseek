@@ -69,6 +69,12 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 			md["url_allowlist"] = `^https://example\.com/jobs/[^/]+$`
 		}
 	}
+	if kind == "dom-retry-hint" {
+		md["retry_statuses"] = map[string]int{"503": 2}
+	}
+	if kind == "api-pagination-browser-hint" {
+		md["pagination"] = map[string]any{"param_name": "page", "start_value": 1, "browser": true}
+	}
 	if kind == "api-root" {
 		md["json_path"] = "$"
 	}
@@ -163,4 +169,8 @@ func TestRealHTTPTokenRefreshAndJapaneseEncodingColdRetirement(t *testing.T) {
 
 func TestRealPublishedWebFormsColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"dom-webforms/rendered"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealLegacyMonitorHintsColdRetirementConservesQueues(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-retry-hint/direct", "api-pagination-browser-hint/direct"}, firstSharedDOMAPIFixture)
 }

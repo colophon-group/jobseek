@@ -1,0 +1,68 @@
+{
+  "schema": "jobseek.go-migration-retained-public-options/v1",
+  "candidate_version": "0.13.1012",
+  "compiled_profiles": 201,
+  "base_revision": "c0a95b2b571cbbc30ff432079cc24ac5b1b4d6f6",
+  "production_authority": false,
+  "original_reference_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "types": [
+    "dom",
+    "api_sniffer"
+  ],
+  "configurations": [
+    {
+      "slug": "patrimonium-careers",
+      "jobs": 4,
+      "requests": 1,
+      "original_capture_sha256": "bc8db8f3e41a0d324775a9caaa3be51ae38046a744c717920caa3fd37a210965",
+      "comparison": "all original canonical inventory fields and complete request sequence; query parameter ordering normalized"
+    },
+    {
+      "slug": "github-careers",
+      "jobs": 73,
+      "requests": 8,
+      "original_capture_sha256": "8bed276192520840b8ea5d813efa73a2f0534e6f2b0f5b30bd6d2d01ff34e88e",
+      "comparison": "all original canonical inventory fields and complete request sequence; query parameter ordering normalized"
+    },
+    {
+      "slug": "howden-denmark-elvium",
+      "jobs": 9,
+      "requests": 1,
+      "original_capture_sha256": "ed01f083c7a4b182239534aee8c75209fb4e2f45281bc478e7f219562db3afaf",
+      "comparison": "all original canonical inventory fields and complete request sequence; query parameter ordering normalized"
+    }
+  ],
+  "behavior": [
+    "DOM listing accepts the legacy retry_statuses hint while retaining its existing three-attempt listing loop; the scraper hint does not alter listing retries",
+    "HTTP API pagination accepts the unused nested browser boolean; top-level browser=true still requires separately inspected browser replay",
+    "All original canonical config fields remain in ownership hashes; foreign endpoints, malformed hints, duplicate status keys and changed configs remain rejected"
+  ],
+  "checks": {
+    "required_postgres_and_redis": true,
+    "skips": 0,
+    "queue_race_passed_seconds": 6.429,
+    "worker_race_passed_seconds": 9.291,
+    "real_worker_cases": 19,
+    "cold_retirement_cases": 6,
+    "public_inventory_cases": 3,
+    "go_vet_packages": [
+      "dom-detail",
+      "api-sniffer-monitor",
+      "ordinary-queue",
+      "ordinary-worker"
+    ]
+  },
+  "historical_failed_check": "First local integration attempt used unrelated Python fixture variables and skipped database cases; superseded by required PostgreSQL/Redis run with zero skips",
+  "b0_tail": {
+    "algorized_original_sitemap_urls": 64,
+    "original_capture_sha256": "38372e95f33475277ff783970a126ad7151806796cca17fb3412594a6b5cc4aa",
+    "admitted": false,
+    "reason": "Existing B0 board/detail ownership forbids ordinary monitor overlap and legacy scrape enqueue. Qualification of the final ownership transition remains required."
+  },
+  "required_before_serving": [
+    "Deliver source1010 and maintenance source1011, then rebase and renew all exact-head required gates",
+    "Original whole deployment and fresh all-enabled-board/all-actual-route admission",
+    "Preserve the complete prior monitor/detail cohort, all verified additions and explicit cache/route/publisher exclusions",
+    "Supported quiesced cutover, independent identities and natural resource/freshness/conservation observation"
+  ]
+}

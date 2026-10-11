@@ -22,6 +22,15 @@ func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 	for _, mode := range []string{"success", "retry429", "empty", "retry403", "gone404", "gone410", "challenge", "header", "meta", "redirect_header"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := proxyFixtureMetadata(t, sharedAnnotationFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, annotated), proxy)
+			if len(annotations) > 2 && annotations[2] {
+				var md map[string]any
+				if json.Unmarshal([]byte(metadata), &md) != nil {
+					t.Fatal("metadata")
+				}
+				md["retry_statuses"] = map[string]int{"503": 2}
+				raw, _ := json.Marshal(md)
+				metadata = string(raw)
+			}
 			if alternate {
 				var md map[string]any
 				if json.Unmarshal([]byte(metadata), &md) != nil {
@@ -139,4 +148,8 @@ func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 			assertRichDeadlineAndLease(t, f, "dom")
 		})
 	}
+}
+
+func TestRealDOMRetryHintRetainsCompleteInventoryAndPolicyContract(t *testing.T) {
+	realDOMTransportCases(t, false, false, false, true)
 }

@@ -118,6 +118,27 @@ Python retirement work. Continue qualifying the 126 currently unowned monitor
 configurations in compatible groups; do not treat the skip-detail configuration
 screen as proof of scheduled-route admission or fleet freshness.
 
+## Following configuration group — retained DOM and HTTP API hints
+
+The isolated **0.13.1012 / 201-profile** candidate groups Patrimonium and Howden
+DOM monitors with GitHub's HTTP API monitor. Complete original captures match
+all **4 / 9 / 73 roles** and request sequences. DOM's scraper retry hint leaves
+the listing retry loop unchanged; the API paginator's nested browser hint
+leaves its original HTTP transport unchanged. Actual browser replay continues
+to require its separate inspected route. Configuration hashes retain both hints.
+
+Nineteen real Postgres/Redis worker cases preserve full writes, absence and
+publisher-policy behavior. Six cold retirement cases conserve the queues and
+canonical rows. The mandatory database rerun has zero skips; the first local
+attempt used the wrong fixture variables and is superseded. All four affected
+Go packages pass vet. This candidate has no production authority and follows
+source1010 and the grouped maintenance release through fresh required checks,
+whole deployment and all-route admission.
+
+Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership
+prevents ordinary overlap and legacy scrape enqueue; retain that exclusion until
+the final ownership transition is qualified. See the [configuration qualification](evidence/go-native-retained-dom-api-options-candidate-2026-10-11.json).
+
 ## Historical checkpoint — source1007 ordinary OOM recovery
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
