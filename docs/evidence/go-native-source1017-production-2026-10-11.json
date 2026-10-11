@@ -52,7 +52,9 @@
     "native-source1017-full-conservation-independent-initial1-2026-10-11.json": "6ab1e9fa73fb52a6e76c8a9e4436e703c29c7fa5356d1ed2e1f0d9958062fa3f",
     "native-source1017-ordinary-kernel-independent-initial1-2026-10-11.json": "83fa150f1d1fa3034f75dcae8ee6823e1e620a333c1bb10177fe7d451be0a226",
     "native-source1017-fleet-freshness-independent-initial1-2026-10-11.json": "66b9f1b84535583f30601923ef06790d8616282431ffdfec37e3b276bec1a728",
-    "native1017-fresh-remaining-coverage-screen1-2026-10-11.json": "b27a082c544bf140dbb87716801a9d82777d7858db7dd4186e4bb10f0a4a0452"
+    "native1017-fresh-remaining-coverage-screen1-2026-10-11.json": "b27a082c544bf140dbb87716801a9d82777d7858db7dd4186e4bb10f0a4a0452",
+    "native-source1017-fleet-freshness-independent-measured2-2026-10-11.json": "90d98e2df68cc000630c24b96abd12de5607b2d5d1867f0a8b7622bfdbe0bef9",
+    "native-source1017-ordinary-kernel-independent-measured2-2026-10-11.json": "1f7f75c7d5dd778a27858b933f513d4fb392bdb1f1eae3362e624cc3c20f16ca"
   },
   "limitations": [
     "Initial active authority and natural queue settlement verified; sustained throughput, complete conservation, scheduled detail ages and full-fleet freshness remain unproved.",
@@ -183,5 +185,24 @@
     "single_allocated_bytes": 106421848,
     "batch_allocated_bytes": 3582264,
     "production_comparison": false
+  },
+  "short_natural_observation": {
+    "observed_at_utc": "2026-10-11T15:54:40.098035+00:00",
+    "sample_seconds": 138.90066,
+    "completed_monitors_start": 16,
+    "completed_monitors_end": 119,
+    "monitor_completions_per_minute": 44.492,
+    "completed_claims_include_failures": true,
+    "exact_recurring_schedules": 119,
+    "retained_completion_leases": 0,
+    "native_due_start": 4486,
+    "native_due_end": 4581,
+    "native_overdue_1h_start": 3199,
+    "native_overdue_1h_end": 3123,
+    "memory_sample": "181MiB / 1GiB",
+    "cpu_sample": "100.10%",
+    "restart_count": 0,
+    "OOMKilled": false,
+    "scope": "Short same-source production sample; not comparable before/after whole-lane cost or sustained freshness."
   }
 }

@@ -30,6 +30,13 @@ panic or kernel kill. There are still **4,486 due native monitors**, including
 3,199 overdue by an hour. This is an early baseline, not sustained freshness or
 complete conservation. See [the portable production checkpoint](evidence/go-native-source1017-production-2026-10-11.json).
 
+At 15:54 UTC, all **119 completed monitor receipts** match recurring schedules
+with no retained completion leases. The same-source 139-second sample completed
+103 monitor claims (44.5/minute, including failures), using **181 MiB and one
+CPU**, with no restart or OOM. Total due monitors rose from 4,486 to 4,581 while
+hour-overdue monitors fell from 3,199 to 3,123. This short sample is not sustained
+freshness or a comparable before/after cost result.
+
 The seven newly qualified monitors are RCI Mexico, Fribourg teaching, European
 Athletics, ISU, Cummins China, Mentiora and Signal Iduna Poland. Original public
 outputs, physical pinned Lightpanda where applicable and the native canonical
