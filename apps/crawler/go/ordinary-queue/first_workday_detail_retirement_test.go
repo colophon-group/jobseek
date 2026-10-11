@@ -66,11 +66,14 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	if requested == "seek" {
 		provider, boardURL, source, metadata = "seek", "https://au.seek.com/jobs?advertiserid=9094357", "https://au.seek.com/job/123", `{"scraper_type":"seek"}`
 	}
-	if requested == "oracle_hcm" {
+	if requested == "oracle_hcm" || requested == "oracle_hcm/proxy" {
 		provider = "oracle_hcm"
 		boardURL = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
 		source = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/123"
 		metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`
+		if requested == "oracle_hcm/proxy" {
+			metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"proxy":true,"enrich":["description"]}}`
+		}
 	}
 	if requested == "infor" {
 		provider, boardURL, source, metadata = "infor", "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1", "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&JobReq=42&JobPost=7", `{"scraper_type":"infor","scraper_config":{"enrich":["description"]}}`

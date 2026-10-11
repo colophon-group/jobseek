@@ -22,6 +22,7 @@ const workableDetailProfile = "workable.api-detail/v1"
 const workableProxyDetailProfile = "workable.proxy-api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
+const oracleProxyDetailProfile = "oracle_hcm.proxy-api-detail/v1"
 const adpDetailProfile = "adp.public-detail/v1"
 const paylocityDetailProfile = "paylocity.html-detail/v1"
 const paylocityProxyDetailProfile = "paylocity.proxy-html-detail/v1"
@@ -41,7 +42,7 @@ func independentDetailProfile(profile string) bool {
 	switch profile {
 	case jobStreetDetailProfile, notionDetailProfile, pdfDetailProfile, seekDetailProfile, linkedInDetailProfile, jazzHRDetailProfile, taleoEnterpriseDetailProfile, jobConvoDetailProfile:
 		return true
-	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, workableProxyDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, workableProxyDetailProfile, joinDetailProfile, oracleDetailProfile, oracleProxyDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -125,7 +126,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 	}
 	for _, key := range []string{"proxy", "render"} {
-		if (scraper == "paylocity" || scraper == "eightfold" || scraper == "workable") && key == "proxy" && string(options[key]) == "true" {
+		if (scraper == "paylocity" || scraper == "eightfold" || scraper == "workable" || scraper == "oracle_hcm") && key == "proxy" && string(options[key]) == "true" {
 			continue
 		}
 		if raw, ok := options[key]; ok && string(raw) != "false" && string(raw) != "null" {
@@ -274,6 +275,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 			return fail()
 		}
 		profile = oracleDetailProfile
+		if string(options["proxy"]) == "true" {
+			profile = oracleProxyDetailProfile
+		}
 		enrichmentFields, err = oracleMonitorEnrichment(config)
 		if err != nil {
 			return fail()
@@ -351,7 +355,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 			_ = json.Unmarshal(raw, &options)
 		}
 		if o, err := oracle.OptionsFromMetadata(config["board_url"], map[string]any{"host": options["host"], "site": options["site"]}); err == nil {
-			if p, err := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); err == nil && p.Profile == oracleDetailProfile {
+			if p, err := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); err == nil && (p.Profile == oracleDetailProfile || p.Profile == oracleProxyDetailProfile) {
 				p.Domain = "*"
 				return p, nil
 			}

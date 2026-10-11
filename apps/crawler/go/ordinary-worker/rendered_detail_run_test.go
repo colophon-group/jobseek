@@ -75,8 +75,10 @@ func heldRenderedResult(html, final string, status uint32) *runtimev1.BrowserRes
 	hash := sha256.Sum256(body)
 	digest := hex.EncodeToString(hash[:])
 	manifest := &runtimev1.ChunkManifest{Complete: true, TotalSizeBytes: uint64(len(body)), TotalSha256: digest}
-	if len(body) > 0 {
-		manifest.Chunks = []*runtimev1.DataChunk{{Sequence: 0, SizeBytes: uint64(len(body)), Sha256: digest, Storage: &runtimev1.DataChunk_InlineBody{InlineBody: body}}}
+	for start := 0; start < len(body); start += executor.HTMLChunkLimit {
+		chunk := body[start:min(start+executor.HTMLChunkLimit, len(body))]
+		sum := sha256.Sum256(chunk)
+		manifest.Chunks = append(manifest.Chunks, &runtimev1.DataChunk{Sequence: uint32(len(manifest.Chunks)), SizeBytes: uint64(len(chunk)), Sha256: hex.EncodeToString(sum[:]), Storage: &runtimev1.DataChunk_InlineBody{InlineBody: chunk}})
 	}
 	return &runtimev1.BrowserResult{ContractVersion: "crawler.runtime/v1", Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, Outcome: &runtimev1.BrowserResult_Success{Success: &runtimev1.BrowserSuccess{FinalUrl: final, Status: &status, Html: manifest, ResourcePolicy: &runtimev1.ResourcePolicySignals{}}}}
 }

@@ -125,6 +125,41 @@ comparable whole-service CPU/RAM/density/cost, supported cold reversal and the
 rollback window. Preserve useful isolated offline Python tooling. Do not shrink
 coverage to fit a timer or replace the documented deployment workflows.
 
+## Following grouped candidate — Oracle proxy/enrichment, Revolut and IIHF
+
+The isolated following candidate reserves version **0.13.1010 / 199 profiles**
+on current #10407 head `6c2da9673e59d30910e41daadefd135dfb189dd4`. It has no
+production authority. Deliver #10407 first; then rebase this group on its actual
+merged source and renew checks before the next whole rollout.
+
+Oracle reuses its existing provider SDK with separately configured proxy monitor
+and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
+monitor field and complete successful request sequence. Conduent retains its
+configured description/location detail enrichment. Thirty real Postgres/Redis
+worker cases cover plain and credentialed CONNECT transports without leaking a
+monitor proxy setting into detail transport.
+
+Revolut's original 369 jobs match URL, title, location and metadata through a
+physical Lightpanda 1.0.0 document. Its exact preset preserves the original config
+hash while using self-identifying Lightpanda and a strict document parser.
+The direct Go HTTP attempt returned 403 and was removed from the candidate.
+IIHF's single job matches every canonical field across all three physical
+Lightpanda regional mirrors. Canonical description comparison uses the unchanged
+original Python writer normalization. Ordered fallback stops for publisher
+reservations or uncertain evidence; alternate 404s cannot deactivate the board.
+
+The group passes 14 real rendered settlement/policy/config-binding cases and
+15 cold retirement/conservation cases. The 199-profile executable startup and
+focused shared-renderer regression/race checks pass. Protected inventories remain
+outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
+for source identities, complete comparisons and immutable evidence hashes.
+
+MediaMarkt has five original jobs and a physical initial Lightpanda document,
+but clicked-detail completion is still unproved. Daiichi Life Vietnam returned
+zero with missing-step warnings. Neither is admitted by this group. Continue
+those and the remaining enabled configurations in grouped iterations without
+delaying the verified Oracle/Nextdata/inline delivery.
+
 ## Historical checkpoint — source1005 served before supported retirement
 
 [PR #10403](https://github.com/colophon-group/jobseek/pull/10403) merged as
