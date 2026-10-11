@@ -32,7 +32,10 @@
       "head": "cc0ea0062af601cd8d875e61af16a826c0e73049",
       "amd64": "passed",
       "arm64": "passed"
-    }
+    },
+    "full_data_validator": "passed after regenerating deterministic census for repaired T1 CSV; structural records unchanged",
+    "census_registry_tests": 69,
+    "prior_ci_data_validation_failure": "00cfc head carried stale boards/manifest checksums in frozen census; no functional test failure; regenerated with repository-owned networkless command"
   },
   "consolidation": "Fold the formerly separate 1012 candidate into 1011 to avoid a second required-check/whole-deployment/cutover cycle. Historical individual capture names stay unchanged.",
   "limits": [
