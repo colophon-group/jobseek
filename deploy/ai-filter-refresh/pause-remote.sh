@@ -19,12 +19,5 @@ options=(
   -o KbdInteractiveAuthentication=no -o LogLevel=ERROR
 )
 timeout --foreground --signal=TERM --kill-after=10s 60s \
-  ssh "${options[@]}" "root@$TARGET_HOST" 'set -eu
-    test "$(systemctl show jobseek-ai-filter-refresh.timer -p LoadState --value)" = loaded
-    systemctl disable --now jobseek-ai-filter-refresh.timer
-    systemctl stop jobseek-ai-filter-refresh.service
-    systemctl reset-failed jobseek-ai-filter-refresh.service
-    test "$(systemctl is-enabled jobseek-ai-filter-refresh.timer || true)" = disabled
-    test "$(systemctl is-active jobseek-ai-filter-refresh.timer || true)" = inactive
-    test "$(systemctl is-active jobseek-ai-filter-refresh.service || true)" = inactive
-    printf "%s\n" ai_filter_refresh_paused'
+  ssh "${options[@]}" "root@$TARGET_HOST" 'bash -se' \
+    < deploy/ai-filter-refresh/pause-host.sh
