@@ -78,6 +78,44 @@ allocation from 106 MB to 3.6 MB; this does not establish fleet throughput.
    Preserve useful isolated offline Python tooling. The full migration goal
    remains incomplete until these conditions are met.
 
+## Next grouped candidate — API controls and shared claim accounting
+
+Candidate source1018 preserves canonical browser API URL transforms, the
+original inactive root `max_pages` annotation and inferred advertised totals
+for bounded multi-pass convergence. A new 14-case original Python oracle
+covers complete/empty inventories, identity and projection conflicts, total
+drift, invalid later pages and exhausted convergence; it regenerates exactly
+with mock HTTP. Real PostgreSQL/Redis checks preserve accepted prefixes,
+failure/absence decisions, exact deadlines and cold reversal.
+
+Public original and pinned Lightpanda1.0.0 inventories match all **649 Goldman
+Sachs jobs and 4,271 TikTok jobs**, including every URL and job field after the
+existing null-to-empty metadata/extra-map normalization. Goldman also passes
+the captured public inventory through the actual native worker and private
+canonical SQL/Redis pipeline. TikTok's complete native inventory initially
+exceeded the API relay's 8 MiB bound: its serialized inventory is 15,332,230
+bytes. The candidate raises only the API frame bound to **16 MiB**, with actual
+client/server tests preserving a complete 9 MiB description and refusing an
+over-bound result. HTML and child V8 bounds remain unchanged. IHG's original
+407-job inventory is complete, but physical Lightpanda hits the resource bound;
+that board remains held. No new board has production ownership from these tests.
+
+The source1017 freshness audit also found **275 completed native monitor
+receipts with null `last_checked_at`**. Original Python leasing writes this
+field at claim time; native authority omitted it. Source1018 records accepted
+monitor attempts inside the existing guarded claim transaction, across both
+worker lanes and all monitor types. Detail claims leave it untouched, rejected
+claims roll back, and receipt recovery preserves the prior timestamp. A null
+legacy claim timestamp alone does not establish that a native board was never
+processed; use completed receipts alongside due-age observations.
+
+Complete worker and queue race suites passed at predecessor `922ec910b` in
+1,039/1,053 seconds using separate migrated private databases. The later
+timestamp and API-frame fixes pass focused real database, protocol/framing and
+client/server tests. Renew full required CI, installed-image and Linux/ARM
+qualification at the final head before the supported whole rollout and fresh
+admission; preserve the current 7,786/7,683 ownership floor.
+
 ## Historical checkpoint — source1015 active across 7,779 / 7,683 boards
 
 [PR #10415](https://github.com/colophon-group/jobseek/pull/10415) merged as

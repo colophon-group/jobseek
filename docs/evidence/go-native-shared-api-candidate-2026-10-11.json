@@ -1,0 +1,99 @@
+{
+  "schema": "jobseek.go-native-grouped-candidate/v1",
+  "candidate_runtime_head": "238fd2f0bdba68c6dbd659d670207769fbbf7d1e",
+  "version": "0.13.1018",
+  "profiles": 204,
+  "base_source": "5a278333d1ea5c1f19f9066301785d735160f39f",
+  "base_production_epoch": 287,
+  "production_owner": false,
+  "preserved_floor_required": {
+    "monitors": 7786,
+    "detail_boards": 7683
+  },
+  "changes": [
+    "Preserve canonical URL transforms in browser API replay without delegating them to the network parser.",
+    "Retain the original inactive root max_pages annotation and inferred numeric advertised totals for convergence.",
+    "Record original monitor claim timestamps inside the existing fenced transaction; no detail or recovery timestamp change.",
+    "Raise only the API relay frame bound from8MiB to16MiB to carry the observed complete15,332,230-byte TikTok inventory."
+  ],
+  "original_inferred_convergence_cases": 14,
+  "public_field_parity": [
+    {
+      "slug": "goldman-sachs-careers",
+      "original_jobs": 649,
+      "native_jobs": 649,
+      "missing_urls": 0,
+      "additional_urls": 0,
+      "jobs_with_field_difference": 0,
+      "field_difference_counts": {},
+      "truncated": false,
+      "child_cleanup_proved": true,
+      "original_sha256": "6caa319fb658ac8046fbd3d96d767076992068f80060ac001a3ba72890972f2a",
+      "native_sha256": "3e0ed5e857b72db7611568b3d193655eaf16e1d1cb45eb6a9b55b34adbb4c25a",
+      "passed": true
+    },
+    {
+      "slug": "tiktok-careers",
+      "original_jobs": 4271,
+      "native_jobs": 4271,
+      "missing_urls": 0,
+      "additional_urls": 0,
+      "jobs_with_field_difference": 0,
+      "field_difference_counts": {},
+      "truncated": false,
+      "child_cleanup_proved": true,
+      "original_sha256": "af933690ba4fe28d17dc6e3e4e84330b863ccc1bf2dc9dc36802ead9620d5d8c",
+      "native_sha256": "cc2218ed87fc87a9cd209f6c48ee96d7bf9847e4e0d0363692982d336b33d464",
+      "passed": true
+    }
+  ],
+  "canonical_public_replay": {
+    "goldman-sachs-careers": {
+      "jobs": 649,
+      "passed": true,
+      "scope": "Captured typed public inventory through actual worker/private SQL/Redis; canonical source/title/deadline/lease parity."
+    },
+    "tiktok-careers": {
+      "jobs": 4271,
+      "passed": false,
+      "status": "Full race replay hit its5-minute timer during language prediction; bounded single-CPU normal execution/profile underway."
+    }
+  },
+  "held": {
+    "ihg-kimpton-americas": "Original407 jobs complete; physical pinned Lightpanda resource refusal; no ownership."
+  },
+  "predecessor_full_regression": {
+    "head": "922ec910bc4854688d6b9cd07466849a40497179",
+    "worker_race_seconds": 1039.083,
+    "queue_race_seconds": 1053.069,
+    "required_postgres": true,
+    "passed": true,
+    "later_changes_require_final_head_CI": true
+  },
+  "focused_final_runtime_checks": {
+    "claim_timestamp_monitor_detail_recovery_rejection": "passed real PG/Redis race",
+    "API_frame_client_server9MiB_and_over_bound": "passed race",
+    "protocol_API_client_framing": "passed race",
+    "physical_TLS_API_session_publisher_and_root_array": "passed pinned Lightpanda1.0.0 race"
+  },
+  "qualification_pending": [
+    "Final full Required CI, installed-image parity and Crawler Deploy Gate.",
+    "Final Linux/ARM whole-lane qualification and resource/cost measurements.",
+    "Complete TikTok public canonical processing within the production budget.",
+    "Supported whole deployment, preserved-floor fresh admission and source-bound active readback."
+  ],
+  "evidence_sha256": {
+    "native1018-shared-api-group-public-field-parity1-2026-10-11.json": "164a7accc190ffa61425a0837b7aa4af5998ea9e16917bd2405199b94bb3f734",
+    "native1018-shared-api-goldman-public-field-parity2-2026-10-11.json": "7d1bf5efbb5d453cb965076bb2c3cb6a4395ff2a07687e4f4da1433731d61de1",
+    "native1018-shared-api-full-worker-head922ec91-attempt1-2026-10-11.json": "be3cacdf7e974664851dfa62fa422dea5a0252eaf58c552ba22702a798c36811",
+    "native1018-shared-api-full-queue-head922ec91-attempt1-2026-10-11.json": "515413ba44efdf337f93f46a86b419327b236f6a2c94235362e2e213f13ec052",
+    "native1018-api-inferred-convergence-original-synthetic-oracle1-2026-10-11.json": "8c9c5747160f01cb7549de278c8804e758c86e53463eaca0e61260b50b9c8231",
+    "native-source1017-monitor-accounting-independent-accounting1-2026-10-11.json": "9efd2f254fd9e651e6c25846744daded9b7d1b1cd27a863aab1d8f2858e4a583",
+    "native1018-shared-api-physical-public3-2026-10-11/tiktok-careers-lightpanda.json": "7e0a698b33ae40cb5b4805a5a7a88f4a5db4a19a534417d5532246c2ebe73353"
+  },
+  "lightpanda": {
+    "release": "1.0.0",
+    "HTML_and_V8_bounds_changed": false
+  },
+  "full_migration_complete": false
+}
