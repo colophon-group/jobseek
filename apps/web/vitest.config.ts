@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   test: {
+    setupFiles: ["./src/test-utils/normal-service-availability.ts"],
     environment: "happy-dom",
     globals: true,
     fileParallelism: false,

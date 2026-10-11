@@ -1,4 +1,5 @@
 import "server-only";
+import { subscriptionPurchasesPaused } from "@/lib/service-availability";
 
 export function stripeEnvironment(): "sandbox" | "production" {
   const value = process.env.STRIPE_ENVIRONMENT;
@@ -37,6 +38,7 @@ export function billingOrigin() {
 
 /** Public launch state can be prerendered without write-only payment secrets. */
 export function stripeSignupOpen() {
+  if (subscriptionPurchasesPaused()) return false;
   if (process.env.STRIPE_CHECKOUT_ENABLED !== "true") return false;
   try {
     stripeEnvironment(); stripePriceId(); billingOrigin(); stripePortalConfigurationId();

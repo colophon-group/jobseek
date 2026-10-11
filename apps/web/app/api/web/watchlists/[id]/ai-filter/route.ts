@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertNarrowedAvailable } from "@/lib/service-availability";
 
 import {
   assertAiFilterEntitlement,
@@ -41,6 +42,7 @@ export async function PUT(request: Request, context: Context) {
   const owner = await ownerAndId(request, context);
   if (!owner) return aiFilterNotFoundResponse();
   try {
+    assertNarrowedAvailable();
     const body = await readSmallJson(request);
     if (Reflect.ownKeys(body).length !== 1 || !("query" in body)) {
       throw new TypeError("AI filter configuration contains unsupported fields");

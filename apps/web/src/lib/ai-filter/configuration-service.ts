@@ -1,4 +1,5 @@
 import "server-only";
+import { assertNarrowedAvailable, narrowedUnderMaintenance } from "@/lib/service-availability";
 
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -66,6 +67,7 @@ export type AiFilterOwnerState = Readonly<{
   queryRevision: number;
   queryVersionId: string;
   status:
+    | "maintenance"
     | "idle"
     | "processing"
     | "caught_up"
@@ -203,6 +205,7 @@ export async function putAiFilterConfiguration(input: {
   expectedEnabledQueryVersionId?: string;
   now?: Date;
 }): Promise<AiFilterOwnerState> {
+  assertNarrowedAvailable();
   const now = input.now ?? new Date();
   await db.transaction(async (tx) => {
     await lockConfiguration(tx, input.watchlistId);
@@ -459,6 +462,7 @@ function publicStatus(
   stopReason: string | null,
 ): AiFilterOwnerState["status"] {
   if (!enabled) return "disabled";
+  if (narrowedUnderMaintenance()) return "maintenance";
   switch (segmentStatus) {
     case "pending":
     case "processing":

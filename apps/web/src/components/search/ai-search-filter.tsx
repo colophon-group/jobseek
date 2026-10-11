@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { Eye, Crown, Funnel, LoaderCircle, Pencil, Trash2, X } from "lucide-react";
 import { Plural, useLingui } from "@lingui/react/macro";
 
+import { narrowedUnderMaintenance } from "@/lib/service-availability";
+import { NarrowedMaintenanceNotice } from "@/components/search/narrowed-maintenance-notice";
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -274,7 +276,8 @@ export function AiSearchFilter({
     candidateCount: isSearchPending ? undefined : candidateCount,
   });
   const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
-  const eligible = eligibility.status === "eligible";
+  const maintenance = narrowedUnderMaintenance();
+  const eligible = !maintenance && eligibility.status === "eligible";
   const [panelRequestedOpen, setOpen] = useState(
     resumeCanOpen || (defaultOpen && eligible),
   );
@@ -310,10 +313,10 @@ export function AiSearchFilter({
   useEffect(() => {
     if (isDrawer) {
       onDrawerOpenChange?.(
-        open && activeQuery !== null && eligibility.status !== "subscription_required",
+        !maintenance && open && activeQuery !== null && eligibility.status !== "subscription_required",
       );
     }
-  }, [activeQuery, eligibility.status, isDrawer, onDrawerOpenChange, open]);
+  }, [activeQuery, eligibility.status, isDrawer, maintenance, onDrawerOpenChange, open]);
 
   const clearResumeRequest = useCallback(() => {
     if (!resumeRequested) return;
@@ -619,6 +622,8 @@ export function AiSearchFilter({
       setIsApplying(false);
     }
   }
+
+  if (maintenance) return <NarrowedMaintenanceNotice />;
 
   if (activeQuery && !isDrawer && !isEditing) {
     return (

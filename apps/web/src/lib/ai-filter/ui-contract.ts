@@ -1,6 +1,7 @@
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 export type AiFilterUiStatus =
+  | "maintenance"
   | "idle"
   | "processing"
   | "caught_up"

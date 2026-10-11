@@ -61,6 +61,20 @@ class RefreshTimerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "response_invalid"):
                 runner.run(opener, folder)
 
+    def test_pause_operation_is_bounded_and_activation_refuses_source_maintenance(self):
+        pause = (ROOT.parent / "deploy/ai-filter-refresh/pause-remote.sh").read_text()
+        self.assertIn("StrictHostKeyChecking=yes", pause)
+        self.assertIn("systemctl disable --now jobseek-ai-filter-refresh.timer", pause)
+        self.assertIn("systemctl stop jobseek-ai-filter-refresh.service", pause)
+        self.assertNotIn("AI_FILTER_REFRESH_SECRET", pause)
+        self.assertNotIn("docker", pause)
+        activate = (ROOT.parent / "deploy/ai-filter-refresh/deploy-remote.sh").read_text()
+        self.assertIn('controls["narrowedMaintenance"] is False', activate)
+        workflow = (ROOT.parent / ".github/workflows/deploy-ai-filter-refresh.yml").read_text()
+        self.assertIn("default: pause", workflow)
+        self.assertIn("if: inputs.action == 'activate'", workflow)
+        self.assertIn("if: inputs.action == 'pause'", workflow)
+
     def test_timer_and_service_keep_credential_and_docker_boundaries(self):
         service = (ROOT.parent / "deploy/systemd/jobseek-ai-filter-refresh.service").read_text()
         timer = (ROOT.parent / "deploy/systemd/jobseek-ai-filter-refresh.timer").read_text()

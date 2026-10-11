@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { NarrowedMaintenanceError } from "@/lib/service-availability";
 
 import { AiFilterContractError } from "./contract";
 import { AiFilterCandidateLoadError } from "./candidate-loader";
@@ -24,6 +25,11 @@ export function aiFilterNotFoundResponse() {
 }
 
 export function aiFilterErrorResponse(error: unknown) {
+  if (error instanceof NarrowedMaintenanceError) {
+    return NextResponse.json({ error: "maintenance" }, {
+      status: 503, headers: AI_FILTER_PRIVATE_HEADERS,
+    });
+  }
   if (
     error instanceof AiFilterNotFoundError ||
     error instanceof AiFilterAuthorizationError ||

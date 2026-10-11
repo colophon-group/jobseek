@@ -1,5 +1,7 @@
 "use server";
 
+import { assertNarrowedAvailable, NarrowedMaintenanceError } from "@/lib/service-availability";
+
 import {
   assertAiFilterEntitlement,
   AiFilterEntitlementError,
@@ -15,6 +17,7 @@ import { logExternalError } from "@/lib/safe-external-error";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 
 type AiFilterMutationError =
+  | "maintenance"
   | "invalid_request"
   | "limit_reached"
   | "not_authenticated"
@@ -35,11 +38,13 @@ export async function configureAiFilter(
   if (!isWatchlistId(watchlistId)) return { error: "not_found" };
 
   try {
+    assertNarrowedAvailable();
     await assertAiFilterEntitlement({ ownerId, watchlistId });
     await assertAiFilterCandidateScope({ ownerId, watchlistId });
     const state = await putAiFilterConfiguration({ ownerId, watchlistId, query });
     return { ok: true, state };
   } catch (error) {
+    if (error instanceof NarrowedMaintenanceError) return { error: "maintenance" };
     if (error instanceof AiFilterEntitlementError) {
       return { error: "subscription_required" };
     }
@@ -82,8 +87,10 @@ export async function createAiFilteredWatchlist(input: {
   if (!ownerId) return { error: "not_authenticated" };
 
   try {
+    assertNarrowedAvailable();
     await assertAiFilterEntitlement({ ownerId });
   } catch (error) {
+    if (error instanceof NarrowedMaintenanceError) return { error: "maintenance" };
     if (error instanceof AiFilterEntitlementError) {
       return { error: "subscription_required" };
     }
@@ -123,6 +130,7 @@ export async function createAiFilteredWatchlist(input: {
       );
     }
 
+    if (error instanceof NarrowedMaintenanceError) return { error: "maintenance" };
     if (error instanceof AiFilterEntitlementError) {
       return { error: "subscription_required" };
     }

@@ -1,5 +1,11 @@
 # Jev narrow-results filter
 
+Current incident: Narrowed and new Pro purchases are under maintenance.
+See [maintenance controls](runbooks/narrowed-maintenance.md) and issues
+[#10417](https://github.com/colophon-group/jobseek/issues/10417)–#10420.
+Capacity restoration and alerts are out of scope; reopening needs an explicit
+operator decision after the fixed project-wide execution contract is verified.
+
 Status: implemented production reference. Activation is fail-closed behind the
 runtime switches and budget described below.
 

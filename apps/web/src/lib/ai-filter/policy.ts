@@ -1,4 +1,5 @@
 /** Production policy for the direct TypeSafe Jev route. */
+import { narrowedUnderMaintenance } from "@/lib/service-availability";
 
 export const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone" as const;
 export const JEV_MODEL = "jev-1.13.0" as const;
@@ -90,7 +91,7 @@ export function readAiFilterRuntimePolicy(
 export function canRunAiFilter(
   policy: AiFilterRuntimePolicy,
 ): boolean {
-  return policy.enabled && policy.routeEnabled;
+  return !narrowedUnderMaintenance() && policy.enabled && policy.routeEnabled;
 }
 
 export function jevCostNanodollars(inputTokens: number, outputTokens: number): number {

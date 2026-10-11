@@ -1,4 +1,5 @@
 import "server-only";
+import { assertNarrowedAvailable } from "@/lib/service-availability";
 
 import { randomUUID } from "node:crypto";
 import { start } from "workflow/api";
@@ -12,6 +13,7 @@ export async function startAiFilterCatchup(input: {
   kind?: "historical" | "freshness";
   queryVersionId?: string;
 }): Promise<{ runId: string }> {
+  assertNarrowedAvailable();
   const run = await start(aiFilterCatchupWorkflow, [{
     ...input,
     leaseOwner: randomUUID(),

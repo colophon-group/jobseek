@@ -8,10 +8,13 @@ import { sectionScrollMarginClass } from "@/lib/styles";
 import { Button } from "@/components/ui/Button";
 import { FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
 import { ProWaitlistForm } from "@/components/pro/ProWaitlistForm";
+import { subscriptionPurchasesPaused } from "@/lib/service-availability";
 import { narrowedMessages } from "@/content/narrowed";
 
 export function Pricing({ checkoutEnabled = false, showLearnMore = true, showPitch = true, compact = false }: { checkoutEnabled?: boolean; showLearnMore?: boolean; showPitch?: boolean; compact?: boolean }) {
   const { t, i18n } = useLingui();
+  const paused = subscriptionPurchasesPaused();
+  checkoutEnabled = checkoutEnabled && !paused;
   const lp = useLocalePath();
   return (
     <section id={siteConfig.pricing.anchorId} className={`mx-auto max-w-[1200px] px-4 ${compact ? "py-8 md:py-10" : "py-16 md:py-24"} ${sectionScrollMarginClass}`}>
@@ -23,11 +26,12 @@ export function Pricing({ checkoutEnabled = false, showLearnMore = true, showPit
             <p className="font-semibold"><Trans id="pro.discovery.trial" comment="Public Pro pricing offer">7 days to try Pro.</Trans></p>
             <p className="mt-1 text-sm text-muted"><Trans id="pro.discovery.price" comment="Public monthly price after trial">Then US$10 per month. Cancel anytime.</Trans></p>
             <p className="mt-2 text-xs text-muted"><Trans id="pro.offer.localCurrency" comment="Explains localized subscription pricing and payment method eligibility">Local-currency prices and available payment methods are shown at checkout.</Trans></p>
-            {!checkoutEnabled && <p className="mt-2 text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></p>}
+            {paused && <p role="status" className="mt-2 text-sm text-muted"><Trans id="pro.maintenance.purchases" comment="Notice while new Pro subscriptions are temporarily paused">New Pro subscriptions are temporarily paused.</Trans></p>}
+            {!checkoutEnabled && !paused && <p className="mt-2 text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></p>}
           </div>
           {checkoutEnabled ? <Button href={lp("/settings/billing")} className="max-w-full gap-2 self-start whitespace-normal! text-center sm:self-auto">
             {t({ id: "pro.discovery.cta", comment: "Link to the Pro explanation and subscription offer", message: "Learn about Pro" })}<ArrowRight size={16} aria-hidden="true" />
-          </Button> : <ProWaitlistForm />}
+          </Button> : paused ? null : <ProWaitlistForm />}
         </div>
         <FreeAccessNote />
       </div>

@@ -22,6 +22,8 @@ import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { LanguageStatsRow } from "@/components/search/language-stats-row";
+import { narrowedUnderMaintenance } from "@/lib/service-availability";
+import { NarrowedMaintenanceNotice } from "@/components/search/narrowed-maintenance-notice";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -529,7 +531,9 @@ function WatchlistJobListContent({
         }`}>
           {rows}
 
-          {showUnavailable ? (
+          {aiFilterActive && narrowedUnderMaintenance() ? (
+            <NarrowedMaintenanceNotice />
+          ) : showUnavailable ? (
             <SearchUnavailable />
           ) : aiFilterActive && postings.length === 0 &&
               (isLoading || aiResults.hasMore) ? (

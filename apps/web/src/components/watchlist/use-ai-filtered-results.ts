@@ -7,6 +7,7 @@ import {
   AI_FILTER_PREFETCH_CANDIDATES,
   AI_FILTER_RESULT_PAGE_SIZE,
 } from "@/lib/ai-filter/demand";
+import { narrowedUnderMaintenance } from "@/lib/service-availability";
 import { logExternalError } from "@/lib/safe-external-error";
 
 const BATCH = AI_FILTER_RESULT_PAGE_SIZE;
@@ -24,7 +25,7 @@ type AiDecisionPageResponse = {
 };
 
 function aiFilterResultsBlocked(state: AiFilterUiState): boolean {
-  return state.status === "paused_entitlement" ||
+  return state.status === "maintenance" || state.status === "paused_entitlement" ||
     state.status === "paused_budget" ||
     state.status === "provider_unavailable" ||
     state.status === "paused_kill" ||
@@ -34,7 +35,7 @@ function aiFilterResultsBlocked(state: AiFilterUiState): boolean {
 }
 
 function aiFilterDemandCannotStart(state: AiFilterUiState): boolean {
-  return state.status === "paused_entitlement" ||
+  return state.status === "maintenance" || state.status === "paused_entitlement" ||
     state.status === "paused_budget" ||
     state.status === "cancelled" ||
     state.status === "failed" ||
@@ -137,6 +138,7 @@ export function useAiFilteredResults(input: {
   readOnly: boolean;
   onStateChange?: (state: AiFilterUiState) => void;
 }) {
+  const active = input.active && !narrowedUnderMaintenance();
   const initialPage = input.initialPage?.queryVersionId &&
       input.initialPage.queryVersionId !== input.state?.queryVersionId
     ? null
@@ -161,7 +163,7 @@ export function useAiFilteredResults(input: {
   const pendingScrollTopRef = useRef<number | null>(null);
   const readAbortRef = useRef<AbortController | null>(null);
   const resumeReadRef = useRef<AbortController | null>(null);
-  const previouslyReadyRef = useRef(input.active && input.scopeReady);
+  const previouslyReadyRef = useRef(active && input.scopeReady);
   const totalRef = useRef(total);
   totalRef.current = total;
   postingsRef.current = postings;
@@ -176,7 +178,7 @@ export function useAiFilteredResults(input: {
 
   const loadMore = useCallback(async () => {
     const current = stateRef.current;
-    if (!input.active || !current?.enabled || !input.scopeReady || loadingRef.current) return;
+    if (!active || !current?.enabled || !input.scopeReady || loadingRef.current) return;
     resumeReadRef.current?.abort();
     resumeReadRef.current = null;
     const generation = generationRef.current;
@@ -349,7 +351,7 @@ export function useAiFilteredResults(input: {
       }
     }
   }, [
-    input.active,
+    active,
     input.jobLanguages,
     input.locale,
     input.onStateChange,
@@ -362,7 +364,7 @@ export function useAiFilteredResults(input: {
   const enabled = input.state?.enabled === true;
 
   const refreshPersistedPage = useCallback(async () => {
-    if (!input.active || !input.scopeReady || !stateRef.current?.enabled ||
+    if (!active || !input.scopeReady || !stateRef.current?.enabled ||
       document.hidden || loadingRef.current || resumeReadRef.current) return;
     const controller = new AbortController();
     resumeReadRef.current = controller;
@@ -396,7 +398,7 @@ export function useAiFilteredResults(input: {
     } finally {
       if (resumeReadRef.current === controller) resumeReadRef.current = null;
     }
-  }, [input.active, input.onStateChange, input.scopeReady, input.watchlistId]);
+  }, [active, input.onStateChange, input.scopeReady, input.watchlistId]);
 
   useEffect(() => () => readAbortRef.current?.abort(), []);
   useEffect(() => {
@@ -420,7 +422,7 @@ export function useAiFilteredResults(input: {
     // flips back to true, the effect below starts reconciliation against the
     // persisted scope. The initial page only belongs to the original key.
   }, [
-    input.active,
+    active,
     enabled,
     initialPage,
     input.scopeKey,
@@ -428,7 +430,7 @@ export function useAiFilteredResults(input: {
   ]);
 
   useEffect(() => {
-    const ready = input.active && input.scopeReady;
+    const ready = active && input.scopeReady;
     const reopening = ready && !previouslyReadyRef.current;
     previouslyReadyRef.current = ready;
     if (!ready) return;
@@ -458,11 +460,11 @@ export function useAiFilteredResults(input: {
       resumeReadRef.current?.abort();
       resumeReadRef.current = null;
     };
-  }, [input.active, refreshPersistedPage]);
+  }, [active, refreshPersistedPage]);
 
   useEffect(() => {
     if (
-      input.active &&
+      active &&
       enabled &&
       input.scopeReady &&
       postingsRef.current.length === 0 &&
@@ -470,7 +472,7 @@ export function useAiFilteredResults(input: {
     ) {
       void loadMore();
     }
-  }, [enabled, input.active, input.scopeReady, loadMore, queryVersionId]);
+  }, [enabled, active, input.scopeReady, loadMore, queryVersionId]);
 
   // Once any matches are visible, maintain the candidate runway in the
   // background. This covers both restored drawers and a fresh query whose
@@ -479,7 +481,7 @@ export function useAiFilteredResults(input: {
   // Counts update as durable segments land without keeping a spinner visible.
   useEffect(() => {
     if (
-      !input.active ||
+      !active ||
       !enabled ||
       input.readOnly ||
       !input.scopeReady ||
@@ -526,7 +528,7 @@ export function useAiFilteredResults(input: {
       cancelled = true;
     };
   }, [
-    input.active,
+    active,
     enabled,
     hasMore,
     input.onStateChange,
@@ -549,7 +551,7 @@ export function useAiFilteredResults(input: {
   // later segments have already committed in the background.
   useEffect(() => {
     if (
-      !input.active ||
+      !active ||
       input.readOnly ||
       !enabled ||
       !input.scopeReady ||
@@ -610,7 +612,7 @@ export function useAiFilteredResults(input: {
       if (timer) clearTimeout(timer);
     };
   }, [
-    input.active,
+    active,
     enabled,
     input.onStateChange,
     input.readOnly,
