@@ -385,7 +385,7 @@ func renderedListingURLs(source, finalURL, selector string) ([]string, error) {
 	if selector == "" {
 		selector = "a[href]"
 	}
-	match, err := cascadia.Parse(selector)
+	match, err := cascadia.ParseGroup(selector)
 	if err != nil {
 		return nil, err
 	}

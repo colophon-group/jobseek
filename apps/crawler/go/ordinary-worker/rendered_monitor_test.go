@@ -26,6 +26,21 @@ func TestRenderedListingBrowserURLIdentity(t *testing.T) {
 	}
 }
 
+func TestRenderedListingGroupedPDFSelectorsKeepBrowserOrder(t *testing.T) {
+	selector := `.title-pdf-home-section a[href*='.pdf'], section.jobfold a[href*='.pdf']`
+	source := `<base href="/documents/"><section class="jobfold title-pdf-home-section"><a href="first.pdf">First</a></section><div class="title-pdf-home-section"><a href="second.pdf">Second</a></div><section class="jobfold"><a href="third.pdf">Third</a></section><a href="outside.pdf">Outside</a>`
+	got, err := renderedListingURLs(source, "https://example.com/careers", selector)
+	want := []string{"https://example.com/documents/first.pdf", "https://example.com/documents/second.pdf", "https://example.com/documents/third.pdf"}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatal("browser selector group order or overlap changed", got, err)
+	}
+	for _, invalid := range []string{selector + ",", "a, section"} {
+		if _, err := renderedListingURLs(source, "https://example.com/careers", invalid); err == nil {
+			t.Fatal("invalid or non-link selector group accepted")
+		}
+	}
+}
+
 func TestRenderedListingExcludesTemplateContentsAndForeignBase(t *testing.T) {
 	// HTML template contents are a DocumentFragment, outside the document
 	// tree: https://html.spec.whatwg.org/multipage/scripting.html#the-template-element

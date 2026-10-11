@@ -125,6 +125,16 @@ rollout, preserved full ownership and measured natural throughput/freshness
 remain required. Production remains source1015, epoch285; no candidate changes
 have received production ownership from these local tests.
 
+Source1017 also fixes rendered selector lists to use the same group semantics
+as the static parser and browser `querySelectorAll`. The original ISU listing
+and physical pinned Lightpanda1.0.0 both return an explicit empty inventory;
+the complete captured document now passes the native listing/PDF/empty proof
+pipeline. A regression preserves DOM order, overlapping-selector uniqueness,
+base URL identity and rejection of malformed or non-link groups. The hockey
+listing is separately held: original Chromium verifies all PDFs expired, but
+Lightpanda's outerHTML exceeds the existing524,288-byte bound. Do not infer
+that board's admission from pure PDF tests or relax the generic resource cap.
+
 ## Historical checkpoint — source1014 active across 7,779 / 7,675 boards
 
 [PR #10413](https://github.com/colophon-group/jobseek/pull/10413) merged as
