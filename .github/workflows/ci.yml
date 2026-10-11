@@ -570,10 +570,18 @@ jobs:
             -test.count=1
 
   test-go-ordinary:
-    name: Native ordinary execution
+    name: Native ordinary execution (${{ matrix.lane }})
     needs: changes
     if: needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: queue
+            modules: api-sniffer-monitor oracle-hcm ordinary-queue
+          - lane: worker
+            modules: ordinary-worker
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -586,6 +594,7 @@ jobs:
           --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
           --health-interval 5s --health-timeout 5s --health-retries 12
     env:
+      NATIVE_GO_MODULES: ${{ matrix.modules }}
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
@@ -614,10 +623,13 @@ jobs:
       - name: Verify first ownership, queues and executable processing
         run: |
           set -euo pipefail
-          for module in api-sniffer-monitor oracle-hcm ordinary-queue ordinary-worker; do
+          for module in $NATIVE_GO_MODULES; do
             (cd "apps/crawler/go/$module" && go test -race -timeout 20m ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
           done
-          (cd apps/crawler && uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_pipeline_owned_claims.py tests/test_ordinary_go_cutover.py)
+      - name: Verify retained ownership and supported cutover contracts
+        if: matrix.lane == 'worker'
+        working-directory: apps/crawler
+        run: uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_pipeline_owned_claims.py tests/test_ordinary_go_cutover.py
 
   test-go-r2-drain:
     name: Test Go R2 drain
