@@ -790,21 +790,8 @@ activate_release_generation() {
     "$generation" == "$ACTIVE_RELEASE_ROOT/"* &&
     "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[a-zA-Z0-9._-]+$ &&
     -d "$generation" && ! -L "$generation" ]] || return 1
-  python3 - "$generation" "$ACTIVE_RELEASE_POINTER" "$DEPLOY_DIR" <<'PY'
-import os
-import secrets
-import sys
-
-generation, active, parent = sys.argv[1:]
-temporary = f"{active}.{secrets.token_hex(16)}"
-os.symlink(generation, temporary)
-os.replace(temporary, active)
-directory_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" release-activate \
+    "$generation" "$ACTIVE_RELEASE_POINTER" "$DEPLOY_DIR"
 }
 
 publish_legacy_success_marker() {
@@ -861,31 +848,7 @@ publish_active_deploy_release() {
     "$generation/environment.sha256" \
     "$generation/release.manifest"
 
-  python3 - "$generation" <<'PY'
-import os
-import sys
-
-generation = sys.argv[1]
-for directory, dirnames, filenames in os.walk(generation, topdown=False):
-    for name in filenames:
-        path = os.path.join(directory, name)
-        fd = os.open(path, os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-    directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
-release_root = os.path.dirname(generation)
-release_root_fd = os.open(release_root, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(release_root_fd)
-finally:
-    os.close(release_root_fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" release-fsync "$generation"
 
   activate_release_generation "$generation"
   load_active_release
@@ -1028,45 +991,8 @@ snapshot_active_deploy_specs() {
   chmod 0600 "$presence_file"
 
   temporary="$(mktemp "${DEPLOY_DIR}/.deploy-spec.rollback.XXXXXX.tar")"
-  if ! python3 - "$snapshot_dir" "$temporary" "${archive_entries[@]}" <<'PY'
-import io
-import os
-import pathlib
-import stat
-import sys
-import tarfile
-
-snapshot_path, archive_path, *entries = sys.argv[1:]
-snapshot = pathlib.Path(snapshot_path)
-with tarfile.open(archive_path, "w", format=tarfile.USTAR_FORMAT) as archive:
-    for relative in entries:
-        path_parts = pathlib.PurePosixPath(relative).parts
-        if not path_parts or relative.startswith("/") or any(
-            part in ("", ".", "..") for part in path_parts
-        ):
-            raise SystemExit("deploy-spec archive member path is unsafe")
-        source = snapshot.joinpath(*path_parts)
-        descriptor = os.open(
-            source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-        )
-        try:
-            source_stat = os.fstat(descriptor)
-            if not stat.S_ISREG(source_stat.st_mode):
-                raise SystemExit("deploy-spec archive member is not regular")
-            with os.fdopen(descriptor, "rb", closefd=False) as stream:
-                content = stream.read()
-        finally:
-            os.close(descriptor)
-        member = tarfile.TarInfo(relative)
-        member.size = len(content)
-        member.mode = stat.S_IMODE(source_stat.st_mode)
-        member.mtime = 0
-        member.uid = 0
-        member.gid = 0
-        member.uname = ""
-        member.gname = ""
-        archive.addfile(member, io.BytesIO(content))
-PY
+  if ! env -i "$NATIVE_DEPLOY_TOOLS" spec-pack \
+    "$snapshot_dir" "$temporary" "${archive_entries[@]}"
   then
     rm -rf "$snapshot_dir"
     rm -f "$temporary"
@@ -1082,96 +1008,9 @@ PY
 
 extract_verified_deploy_spec_snapshot() {
   local destination="$1"
-  python3 - \
+  env -i "$NATIVE_DEPLOY_TOOLS" spec-unpack \
     "$ROLLBACK_SPEC_ARCHIVE" "$destination" "$ROLLBACK_SPEC_PRESENCE_NAME" \
-    "${DEPLOY_SPEC_FILES[@]}" <<'PY'
-import hashlib
-import os
-import pathlib
-import re
-import stat
-import sys
-import tarfile
-
-archive_path, destination_path, presence_name, *specs = sys.argv[1:]
-destination = pathlib.Path(destination_path)
-with tarfile.open(archive_path, "r") as archive:
-    members = archive.getmembers()
-    names = [member.name for member in members]
-    if len(names) != len(set(names)) or presence_name not in names:
-        raise SystemExit("rollback deploy-spec archive has duplicate or missing members")
-    by_name = {member.name: member for member in members}
-    for member in members:
-        if not member.isfile() or member.issym() or member.islnk():
-            raise SystemExit("rollback deploy-spec archive contains an unsafe member")
-    presence_member = by_name[presence_name]
-    presence_stream = archive.extractfile(presence_member)
-    if presence_stream is None:
-        raise SystemExit("rollback deploy-spec presence manifest is unreadable")
-    presence_content = presence_stream.read()
-    try:
-        presence_text = presence_content.decode("utf-8")
-    except UnicodeDecodeError as error:
-        raise SystemExit(f"rollback deploy-spec presence manifest is not UTF-8: {error}")
-    if not presence_text.endswith("\n"):
-        raise SystemExit("rollback deploy-spec presence manifest is not canonical")
-    lines = presence_text.splitlines()
-    if not lines or lines[0] != "DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1":
-        raise SystemExit("rollback deploy-spec presence format is unsupported")
-    if len(lines[1:]) != len(specs):
-        raise SystemExit("rollback deploy-spec presence manifest is incomplete")
-    expected_members = {presence_name}
-    parsed = []
-    for spec, line in zip(specs, lines[1:], strict=True):
-        parts = line.split(" ", 3)
-        if len(parts) != 4 or parts[3] != spec:
-            raise SystemExit("rollback deploy-spec presence order is mismatched")
-        state, digest, mode_text, _ = parts
-        if state == "PRESENT":
-            if not re.fullmatch(r"[0-9a-f]{64}", digest) or not re.fullmatch(
-                r"[0-7]{3,4}", mode_text
-            ):
-                raise SystemExit("rollback deploy-spec presence identity is malformed")
-            expected_members.add(spec)
-        elif state == "ABSENT":
-            if digest != "-" or mode_text != "-":
-                raise SystemExit("rollback deploy-spec absence identity is malformed")
-        else:
-            raise SystemExit("rollback deploy-spec presence state is unsupported")
-        parsed.append((state, digest, mode_text, spec))
-    if set(names) != expected_members:
-        raise SystemExit("rollback deploy-spec archive member set is mismatched")
-
-    for state, digest, mode_text, spec in parsed:
-        if state != "PRESENT":
-            continue
-        member = by_name[spec]
-        stream = archive.extractfile(member)
-        if stream is None:
-            raise SystemExit(f"rollback deploy artifact is unreadable: {spec}")
-        content = stream.read()
-        if hashlib.sha256(content).hexdigest() != digest:
-            raise SystemExit(f"rollback deploy artifact digest is mismatched: {spec}")
-        mode = int(mode_text, 8)
-        if stat.S_IMODE(member.mode) != mode:
-            raise SystemExit(f"rollback deploy artifact mode is mismatched: {spec}")
-        target = destination / spec
-        target.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(
-            target,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
-            mode,
-        )
-        try:
-            with os.fdopen(descriptor, "wb", closefd=False) as output:
-                output.write(content)
-                output.flush()
-                os.fsync(output.fileno())
-        finally:
-            os.close(descriptor)
-        os.chmod(target, mode, follow_symlinks=False)
-    (destination / presence_name).write_bytes(presence_content)
-PY
+    "${DEPLOY_SPEC_FILES[@]}"
 }
 
 restore_previous_deploy_specs() {
