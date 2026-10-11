@@ -25,6 +25,7 @@ import (
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
@@ -893,6 +894,9 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 		}
 		defer closeHTTP()
 		copyTask.fallback = fetch
+		copyTask.fallbackFactory = func(options apisniffer.BrowserReplayOptions) (apisniffer.Fetch, func(), error) {
+			return newReplayHTTPFallback(options, executor.egressPolicy)
+		}
 		task.APIReplay = &copyTask
 	}
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)

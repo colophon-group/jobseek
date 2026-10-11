@@ -456,6 +456,13 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			discovery, fetchErr = enrichRSSDetailFields(ctx, http.client, profile, task.Config, discovery)
 		}
 	}
+	if profile.RSSResolveJobInviteIdentity {
+		if fetchErr != nil {
+			discovery.Jobs = nil
+		} else {
+			discovery, fetchErr = resolveRSSJobInviteIdentities(ctx, http.client, profile, discovery)
+		}
+	}
 	result.DiscoveryDuration = time.Since(started)
 	result.DiscoveryError = fetchErr != nil
 	result.DiscoveryCancelled = ctx.Err() != nil
@@ -532,7 +539,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "rss" && (queue.RSSRMKProfile(profile.Profile) || profile.Profile == "rss.successfactors-legacy-session-items/v1" || profile.RSSPagination != nil || profile.RSSDetailEnrichment) || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+			if profile.Provider == "rss" && (queue.RSSRMKProfile(profile.Profile) || profile.Profile == "rss.successfactors-legacy-session-items/v1" || profile.RSSPagination != nil || profile.RSSDetailEnrichment || profile.RSSResolveJobInviteIdentity) || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 				initial = response.endpoint
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {

@@ -1,125 +1,111 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1017 active across 7,786 / 7,683 boards
+## Current checkpoint — source1018 active across 7,788 / 7,683 boards
 
-Sources1016/1017 are merged in [PR #10421](https://github.com/colophon-group/jobseek/pull/10421)
-and [PR #10424](https://github.com/colophon-group/jobseek/pull/10424). Production
-is `5a278333d1ea5c1f19f9066301785d735160f39f`, **0.13.1017 / 204 profiles**.
-The original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38149482662)
-and [matching renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38149584506)
-succeeded. Exact-head Required CI, installed-image parity, Crawler Deploy Gate
-and [16-arm ARM qualification](https://github.com/colophon-group/jobseek/actions/runs/38146947401)
-passed at `436d24c693472fab378c6555af6052e13a4b4a56`. The merged crawler code is
-identical to that qualified head. Lightpanda **1.0.0** is the latest stable
-[upstream release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0)
-verified on 2026-10-11; both deployments use immutable image digests.
+[PR #10430](https://github.com/colophon-group/jobseek/pull/10430) merged as
+`0ee76dcba9d5efab6b77001ac8a55d24b4ac4cff`, **0.13.1018 / 204 profiles**.
+Original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38162329948)
+and [matching renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38162396482)
+succeeded at attempt1. Final Required CI, installed-image parity, Crawler Deploy
+Gate, pilot images and the [16-arm ARM whole lane](https://github.com/colophon-group/jobseek/actions/runs/38159098178)
+passed at exact reviewed head `8fc78783d1674646f1a6c5b1e216b9288648409b`.
+Lightpanda **1.0.0** remains the latest stable
+[upstream release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0),
+rechecked on 2026-10-11. All deployed images use immutable digests.
 
-Original source1015 retirement, B0 rollback and selector clear succeeded;
-independent verification proved cold epoch286. Source1017 B0 is active at
-**epoch287**. Its fresh complete census covers **7,885 enabled boards / 1,663,107
-scheduled routes**. Full ordinary staging preserves **7,779 monitors / 7,683
-detail boards** and adds **seven qualified monitors**, yielding **7,786 / 7,683
-boards and 1,539,720 owned scheduled routes**. Original full ordinary activation
-succeeded after natural legacy SQL lease expiry. Independent 15:52 UTC readback
-verifies active source, SQL plan, Redis projection, exact receipts, all ten
-restart-armed writer containers and all eight health endpoints. All **12 completed
-monitor receipts** match their exact recurring schedules, with **no retained
-completion leases**; ten detail claims also completed. Completed claims include
-failures. The initial worker sample is **160.2 MiB / 1 GiB**, with no OOM, restart,
-panic or kernel kill. There are still **4,486 due native monitors**, including
-3,199 overdue by an hour. This is an early baseline, not sustained freshness or
-complete conservation. See [the portable production checkpoint](evidence/go-native-source1017-production-2026-10-11.json).
+Original source1017 retirement, B0 rollback and selector clear succeeded;
+independent readback proved cold epoch288. Source1018 B0 and full ordinary
+ownership are now **active at epoch289**. The fresh census covers **7,885 enabled
+boards / 1,679,242 scheduled detail postings**. Admission preserves all
+**7,786 monitors / 7,683 detail boards** and adds **Goldman Sachs and TikTok**,
+yielding **7,788 / 7,683 boards and 1,555,848 owned scheduled routes**. Global
+route-cache mismatches remain held outside that preserved floor.
 
-At 15:54 UTC, all **119 completed monitor receipts** match recurring schedules
-with no retained completion leases. The same-source 139-second sample completed
-103 monitor claims (44.5/minute, including failures), using **181 MiB and one
-CPU**, with no restart or OOM. Total due monitors rose from 4,486 to 4,581 while
-hour-overdue monitors fell from 3,199 to 3,123. This short sample is not sustained
-freshness or a comparable before/after cost result.
+Ordinary activation attempt1 refused the mutation lock before quiescence while
+known bounded cross-store reconciliation ran. Attempt2 succeeded after maintenance
+finished, through the unchanged lock, natural SQL lease expiry and full writer
+restoration path. No lock or lease was bypassed. Independent readback confirms
+one active SQL plan, exact Redis projection and receipts, all ten restart-armed
+writer containers and eight healthy endpoints. At19:13 UTC, **87 completed
+monitor receipts** match exact recurring schedules with no retained completion
+leases. All **89 accepted monitor claims** have a non-null claim timestamp.
+Completed claims include failures. The early worker sample uses **174.2MiB /1GiB**
+with no restart, OOM or panic. At19:11 UTC, **4,740 native monitors are due**,
+including **3,068 over an hour late**. At19:21 UTC,205 completed monitor receipts still settle exactly, but due monitors
+grow to4,982 while the worker uses one CPU and501MiB without restart or OOM.
+The first bounded scheduled-detail aggregate at19:23 UTC finds1,541,861 native
+routes due, including1,484,870 over a day late. This is a substantial unresolved
+freshness gap. Sustained fleet freshness, global conservation and attributable
+production cost remain unproved.
+See [the portable production checkpoint](evidence/go-native-source1018-production-2026-10-11.json).
 
-The seven newly qualified monitors are RCI Mexico, Fribourg teaching, European
-Athletics, ISU, Cummins China, Mentiora and Signal Iduna Poland. Original public
-outputs, physical pinned Lightpanda where applicable and the native canonical
-pipeline agree. Source1017 also fixes comma-separated rendered selector groups
-and batches up to 64 detail publications within the existing write fence. A
-local 500-intent comparison reduced publication from 6,240 ms to 410 ms and
-allocation from 106 MB to 3.6 MB; this does not establish fleet throughput.
+Source1018 preserves shared API URL transforms and original root `max_pages`
+annotations, supports inferred advertised totals in bounded convergence, and
+records every accepted monitor attempt within its guarded claim transaction.
+Original and physical Lightpanda inventories match all **649 Goldman Sachs /
+4,271 TikTok** URLs and fields; actual native canonical replay also agrees.
+Only the API relay frame grows to16MiB for TikTok's complete15.3MB inventory;
+HTML and child V8 limits stay unchanged. IHG's407-job original inventory hits
+the Lightpanda resource limit and remains held. Original receipts and diagnostics
+are retained in the earlier checkpoint artifacts.
 
 ### Continue in grouped deliveries
 
-1. Verify active source/receipts/SQL/Redis authority and complete service health;
-   measure natural completed claims, exact recurring schedules, detail due ages,
-   backlog change and cgroup CPU/memory against source1015. Keep the existing
-   ownership, lease and publisher-policy contracts while addressing measured
-   bottlenecks. Source1015 still had 6,497 native monitors due at 13:20 UTC.
-2. Work from the source1017 merged-SDK census: **14 compiled unqualified monitor
-   configurations, 52 unowned compiled detail configurations (44 with route-cache
-   mismatches)**. Three of those detail boards retain B0 ownership. Group detail
-   output qualification and supported cache/retained-step repair across providers;
-   admit only current canonical routes with proven output, policy and reversal.
-3. Port remaining shared controls in batches across **53 DOM, 17 API-sniffer,
-   four inline, three RSS, one Njoyn and four BrassRing monitor configurations**.
-   These counts exclude compiled candidates and B0. Prioritize observed shared
-   pagination, transport and action requirements. Rotating `api_url_match` needs
-   actual bounded capture and URL binding. BrassRing's original public inventories
-   contain 44/127/553/313 jobs, but Lightpanda response capture fails; button
-   readiness, fetch versus XHR and forced HTTP/1.1 experiments have not resolved
-   it. Keep this prototype held and continue other families. Do not admit the
-   incomplete H3 inventory, blocked listings or ambiguous/oversized PDFs.
+1. Observe source1018 natural completed claims, exact recurring schedules,
+   accepted timestamps, monitor/detail due ages and cgroup CPU/memory. Address
+   measured bottlenecks while retaining existing ownership, lease and publisher
+   policy contracts. Early receipts and synthetic density do not prove fleet cost.
+2. Qualify compiled detail candidates in provider groups, including route-cache
+   and retained-step repairs through supported consumers. The predecessor census
+   held52 compiled detail boards,44 with route-cache mismatches and three B0-owned.
+   Refresh canonical configurations and every scheduled route before admission.
+3. Finish the **shared rotating API + RSS identity batch** below, then group the
+   remaining DOM, API, inline, RSS, Njoyn and BrassRing controls. Before this batch,
+   the uncompiled screen contains53 DOM,14 API,4 inline,3 RSS,1 Njoyn and4 BrassRing
+   configurations. These are coverage targets, not authorized owners. BrassRing
+   and Njoyn currently lack a complete qualifying native inventory; preserve them
+   while continuing other families. Browser control annotations must be implemented
+   or supported by discriminating evidence; removing them is not a port.
 4. Finish production consumers together: four legacy Python worker/browser
-   processes, Alembic schema execution, rollback `crawler sync` and Umantis
-   repair, deployment credential/preflight/manifest helpers. Forward registry
-   sync, Typesense export and drain already have Go consumers. Preserve the
-   documented full deployment and rollback contracts when replacing these.
-5. Retire production Python/Playwright/Chromium and runtime-only assets only
-   after all enabled routes have qualified replacement owners, global queue and
-   detail-age conservation, sustained freshness/resource evidence, comparable
-   attributable whole-lane cost and supported cold reversal/rollback window.
-   Preserve useful isolated offline Python tooling. The full migration goal
-   remains incomplete until these conditions are met.
+   processes, Alembic schema execution, rollback `crawler sync` and Umantis repair,
+   deployment credential/preflight/manifest helpers. Forward registry sync,
+   Typesense export and drain already have Go consumers. Preserve original full
+   deployment, maintenance and rollback contracts when replacing these.
+5. Retire production Python/Playwright/Chromium and runtime-only assets after all
+   enabled routes have replacement authority, full queue/detail-age conservation,
+   sustained freshness/resources, comparable attributable whole-lane cost and
+   supported cold reversal/rollback window. Keep useful isolated offline Python.
+   **The full migration goal remains active and incomplete.**
 
-## Next grouped candidate — API controls and shared claim accounting
+## Next grouped candidate — rotating API paths and RSS identities
 
-Candidate source1018 preserves canonical browser API URL transforms, the
-original inactive root `max_pages` annotation and inferred advertised totals
-for bounded multi-pass convergence. A new 14-case original Python oracle
-covers complete/empty inventories, identity and projection conflicts, total
-drift, invalid later pages and exhausted convergence; it regenerates exactly
-with mock HTTP. Real PostgreSQL/Redis checks preserve accepted prefixes,
-failure/absence decisions, exact deadlines and cold reversal.
+Candidate **0.13.1019** ports two existing profile families without changing board
+metadata. Browser API replay tries the stored endpoint first; after failure it
+rediscovers the first matching response on the same bounded Lightpanda target,
+binds its observed path to the original query/pagination and retains the canonical
+config fingerprint. Matching uses literal origins and qualified path globs.
+Capture credentials and rotating queries stay within the target. Publisher denial
+is terminal. A physical pinned Lightpanda fixture proves fresh-path pagination,
+later denial, and child cleanup; both Linux installed-image architectures run it.
 
-Public original and pinned Lightpanda1.0.0 inventories match all **649 Goldman
-Sachs jobs and 4,271 TikTok jobs**, including every URL and job field after the
-existing null-to-empty metadata/extra-map normalization. Both pass captured
-public inventories through the actual native worker and private canonical
-SQL/Redis pipeline, preserving all source URLs, original prepared titles,
-deadlines and settlement. TikTok's full normal replay takes 25.61 seconds on
-one CPU; the earlier five-minute race timeout does not establish a runtime
-failure. Its title oracle must apply original coercion before comparison: 71
-raw titles contain whitespace trimmed by both original and native preparation.
-TikTok's complete native inventory initially
-exceeded the API relay's 8 MiB bound: its serialized inventory is 15,332,230
-bytes. The candidate raises only the API frame bound to **16 MiB**, with actual
-client/server tests preserving a complete 9 MiB description and refusing an
-over-bound result. HTML and child V8 bounds remain unchanged. IHG's original
-407-job inventory is complete, but physical Lightpanda hits the resource bound;
-that board remains held. No new board has production ownership from these tests.
+SuccessFactors RSS resolves aliases with bounded same-origin HEAD requests before
+canonical URL transforms and preferred-locale selection. Admission requires the
+original whole-inventory collision buffer; unbuffered streamed prefixes retain
+their previous owner. It preserves feed IDs,
+stable requisition IDs and locales; malformed redirects, exhausted retries,
+missing responses, caps and incomplete inventories cannot publish a partial success.
+The original Python resolver supplies14 reproducible component cases. Real
+Postgres/Redis tests cover canonical writes, failed inventory absence, publisher
+reservations, exact deadlines and lease settlement. Both families pass supported
+cold retirement cases.
 
-The source1017 freshness audit also found **275 completed native monitor
-receipts with null `last_checked_at`**. Original Python leasing writes this
-field at claim time; native authority omitted it. Source1018 records accepted
-monitor attempts inside the existing guarded claim transaction, across both
-worker lanes and all monitor types. Detail claims leave it untouched, rejected
-claims roll back, and receipt recovery preserves the prior timestamp. A null
-legacy claim timestamp alone does not establish that a native board was never
-processed; use completed receipts alongside due-age observations.
-
-Complete worker and queue race suites passed at predecessor `922ec910b` in
-1,039/1,053 seconds using separate migrated private databases. The later
-timestamp and API-frame fixes pass focused real database, protocol/framing and
-client/server tests. Renew full required CI, installed-image and Linux/ARM
-qualification at the final head before the supported whole rollout and fresh
-admission; preserve the current 7,786/7,683 ownership floor.
+The first anonymous physical public comparison agrees on all **2,278 Hitachi
+Energy** URLs and fields and **Innosuisse's empty inventory**. Two later Hitachi
+captures reached the120-second timeout; retain those observations and require
+fresh canonical evidence before assigning ownership. Implenia's current original
+RSS identity probe fails; the port does not grant that board ownership. Renew all
+required exact-head and installed-image checks before merging/deploying this batch;
+preserve the active7,788/7,683 floor during its future fresh admission.
 
 ## Historical checkpoint — source1015 active across 7,779 / 7,683 boards
 

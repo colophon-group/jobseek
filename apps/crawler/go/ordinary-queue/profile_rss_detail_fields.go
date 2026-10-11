@@ -49,7 +49,7 @@ func RSSDetailFields(config map[string]string) (map[string]string, map[string]bo
 }
 
 func RSSDetailMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
-	if profile.Provider != "rss" || !profile.RSSDetailEnrichment || !validGreenhouseResponseResource(resource) {
+	if profile.Provider != "rss" || (!profile.RSSDetailEnrichment && !profile.RSSResolveJobInviteIdentity) || !validGreenhouseResponseResource(resource) {
 		return false
 	}
 	root, e1 := url.Parse(profile.Endpoint)

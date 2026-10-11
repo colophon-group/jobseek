@@ -1,0 +1,322 @@
+{
+  "reference": "actual original RSS _resolve_sf_job_invite_identities; mocked HTTP boundary only",
+  "cases": [
+    {
+      "name": "relative",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/123-de_DE/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": false,
+      "expected_url": "https://example.com/job/Engineer/123-de_DE/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main",
+        "feed_id": "feed-7",
+        "job_invite_id": "123",
+        "job_locale": "de_DE"
+      }
+    },
+    {
+      "name": "absolute",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        301
+      ],
+      "location": "https://example.com/job/Engineer/123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": false,
+      "expected_url": "https://example.com/job/Engineer/123-en_US/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main",
+        "feed_id": "feed-7",
+        "job_invite_id": "123",
+        "job_locale": "en_US"
+      }
+    },
+    {
+      "name": "retry",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        503,
+        403,
+        307
+      ],
+      "location": "/job/Engineer/123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": false,
+      "expected_url": "https://example.com/job/Engineer/123-en_US/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main",
+        "feed_id": "feed-7",
+        "job_invite_id": "123",
+        "job_locale": "en_US"
+      }
+    },
+    {
+      "name": "retry-timeout-early",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        408,
+        425,
+        307
+      ],
+      "location": "/job/Engineer/123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": false,
+      "expected_url": "https://example.com/job/Engineer/123-en_US/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main",
+        "feed_id": "feed-7",
+        "job_invite_id": "123",
+        "job_locale": "en_US"
+      }
+    },
+    {
+      "name": "foreign-source",
+      "source": "https://foreign.example/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/123-en_US/",
+      "calls": [],
+      "error": true,
+      "expected_url": "https://foreign.example/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "foreign-target",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "https://foreign.example/job/Engineer/123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "nonredirect",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        200
+      ],
+      "location": "/job/Engineer/123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "query",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/123-en_US/?x=1",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "fragment",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/123-en_US/#x",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "zero-id",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/0-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "long-id",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/1234567890123-en_US/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "wrong-locale",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        302
+      ],
+      "location": "/job/Engineer/123-en-us/",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "missing-location",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        308
+      ],
+      "location": "",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    },
+    {
+      "name": "exhausted",
+      "source": "https://example.com/job/Alias/7/",
+      "statuses": [
+        429,
+        429,
+        429
+      ],
+      "location": "",
+      "calls": [
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        },
+        {
+          "method": "HEAD",
+          "url": "https://example.com/job/Alias/7/"
+        }
+      ],
+      "error": true,
+      "expected_url": "https://example.com/job/Alias/7/",
+      "expected_metadata": {
+        "id": "feed-7",
+        "company": "Main"
+      }
+    }
+  ]
+}

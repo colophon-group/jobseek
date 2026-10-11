@@ -24,6 +24,7 @@ type apiReplayTask struct {
 	options                        api.BrowserReplayOptions
 	converse                       func(context.Context, api.Fetch, bool) error
 	fallback                       api.Fetch
+	fallbackFactory                func(api.BrowserReplayOptions) (api.Fetch, func(), error)
 	nativeProvider, nativeMetadata string
 }
 
@@ -101,13 +102,51 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 	if !matched {
 		headers = task.options.Inventory.Headers.Clone()
 	}
-	return converseAPIReplay(ctx, task, headers, first, func(call context.Context, request api.Request) (*api.Document, error) {
+	browserFetch := func(call context.Context, request api.Request) (*api.Document, error) {
 		target := chromedp.FromContext(ctx)
 		if target == nil || target.Target == nil {
 			return nil, errReplayCapture
 		}
 		return fetchReplayCommand(cdp.WithExecutor(call, target.Target), task.options, request)
-	}, task.fallback)
+	}
+	if task.options.LiveURLMatch == "" {
+		return converseAPIReplay(ctx, task, headers, first, browserFetch, task.fallback)
+	}
+	return converseLiveAPIReplay(ctx, task, headers, first, browserFetch, func(call context.Context) ([]api.BrowserReplayExchange, error) {
+		if err := capture.beginLivePass(); err != nil {
+			return nil, err
+		}
+		// Reuse the same affine target and existing navigation/status/policy
+		// checks. The original retries navigation only after stored replay fails.
+		wait := map[string]runtimev1.WaitCondition{"commit": runtimev1.WaitCondition_WAIT_CONDITION_COMMIT, "domcontentloaded": runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED, "load": runtimev1.WaitCondition_WAIT_CONDITION_LOAD, "networkidle": runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE}[task.options.Wait]
+		result, err := executeOnTarget(call, ctx, Task{URL: task.boardURL, Navigation: &navigationOptions{wait: wait, timeout: time.Duration(task.options.TimeoutMS) * time.Millisecond}})
+		if err != nil {
+			if replayTerminalError(err) {
+				return nil, err
+			}
+			return nil, errReplayCapture
+		}
+		if result.Status < 200 || result.Status >= 300 {
+			return nil, errReplayCapture
+		}
+		if err := policy.Check(result.ResourcePolicy, result.HTML, result.FinalURL); err != nil {
+			return nil, err
+		}
+		timer := time.NewTimer(time.Duration(task.options.SettleMS) * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-call.Done():
+			return nil, call.Err()
+		case <-timer.C:
+		}
+		return capture.exchanges(call, readReplayResponseBody)
+	}, func(call context.Context, options api.BrowserReplayOptions, request api.Request) (*api.Document, error) {
+		target := chromedp.FromContext(ctx)
+		if target == nil || target.Target == nil {
+			return nil, errReplayCapture
+		}
+		return fetchReplayCommand(cdp.WithExecutor(call, target.Target), options, request)
+	})
 }
 
 // Serial commands and a closed scope prevent retained callbacks from using

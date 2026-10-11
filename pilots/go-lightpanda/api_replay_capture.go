@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 
@@ -25,20 +26,23 @@ type replayPending struct {
 	headers        http.Header
 	signals        *runtimev1.ResourcePolicySignals
 	response       bool
+	sequence       int
 }
 
 // A capture belongs to one fresh browser target. CDP listeners only correlate
 // events; response bodies are read outside the listener so CDP cannot deadlock.
 // Request credentials never become task, result or diagnostic fields.
 type replayCapture struct {
-	mu        sync.Mutex
-	endpoint  *url.URL
-	method    string
-	bodyLimit int
-	pending   map[network.RequestID]replayPending
-	completed chan network.RequestID
-	failure   error
-	closed    bool
+	mu               sync.Mutex
+	endpoint         *url.URL
+	options          api.BrowserReplayOptions
+	method           string
+	bodyLimit        int
+	pending          map[network.RequestID]replayPending
+	completed        chan network.RequestID
+	failure          error
+	closed           bool
+	responseSequence int
 }
 
 func (*replayCapture) String() string               { return "private API browser capture" }
@@ -50,11 +54,11 @@ func newReplayCapture(o api.BrowserReplayOptions) (*replayCapture, error) {
 	if e != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.Scheme != "https" && endpoint.Scheme != "http" || o.Inventory.Method != "GET" && o.Inventory.Method != "POST" {
 		return nil, errReplayCapture
 	}
-	return &replayCapture{endpoint: endpoint, method: o.Inventory.Method, bodyLimit: replayBodyLimit(o), pending: map[network.RequestID]replayPending{}, completed: make(chan network.RequestID, replayCaptureLimit)}, nil
+	return &replayCapture{endpoint: endpoint, options: o, method: o.Inventory.Method, bodyLimit: replayBodyLimit(o), pending: map[network.RequestID]replayPending{}, completed: make(chan network.RequestID, replayCaptureLimit)}, nil
 }
 func (c *replayCapture) matches(source, method string) bool {
 	u, e := url.Parse(source)
-	return e == nil && u.User == nil && u.Scheme == c.endpoint.Scheme && u.Host == c.endpoint.Host && u.EscapedPath() == c.endpoint.EscapedPath() && method == c.method
+	return e == nil && u.User == nil && u.Scheme == c.endpoint.Scheme && u.Host == c.endpoint.Host && (u.EscapedPath() == c.endpoint.EscapedPath() && method == c.method || c.options.LiveURLMatches(source, method))
 }
 func (c *replayCapture) observe(event any) {
 	c.mu.Lock()
@@ -107,12 +111,14 @@ func (c *replayCapture) observe(event any) {
 			return
 		}
 		// Publisher denial is terminal and never falls through to another replay.
-		if err := policy.Check(signals, "", c.endpoint.String()); err != nil {
+		if err := policy.Check(signals, "", c.options.PublicCaptureResource(pending.source)); err != nil {
 			c.failure = err
 			return
 		}
 		pending.signals = signals
 		pending.response = true
+		c.responseSequence++
+		pending.sequence = c.responseSequence
 		c.pending[e.RequestID] = pending
 	case *network.EventLoadingFailed:
 		delete(c.pending, e.RequestID)
@@ -140,6 +146,7 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 		return nil, errReplayCapture
 	}
 	out := []api.BrowserReplayExchange{}
+	sequences := []int{}
 	bytes := 0
 	for {
 		if ctx.Err() != nil {
@@ -168,7 +175,7 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			if e != nil || len(body) < 2 {
+			if e != nil && c.options.LiveURLMatch == "" || len(body) < 2 && c.options.LiveURLMatch == "" {
 				continue
 			}
 			bytes += len(body)
@@ -183,18 +190,53 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 			if replayReflectsCredentials(pending.headers, string(body), reservation, policyURL) {
 				return nil, errReplayCredentialResponse
 			}
-			if e = policy.Check(pending.signals, string(body), c.endpoint.String()); e != nil {
+			if e = policy.Check(pending.signals, string(body), c.options.PublicCaptureResource(pending.source)); e != nil {
 				return nil, e
 			}
-			exchange, e := api.NewBrowserReplayExchange(pending.source, pending.method, pending.headers, body)
+			constructor := api.NewBrowserReplayExchange
+			if c.options.LiveURLMatch != "" {
+				constructor = api.NewLiveBrowserReplayExchange
+			}
+			exchange, e := constructor(pending.source, pending.method, pending.headers, body)
 			if e == nil {
-				out = append(out, exchange)
+				at := len(out)
+				if c.options.LiveURLMatch != "" {
+					for at > 0 && sequences[at-1] > pending.sequence {
+						at--
+					}
+				}
+				out = slices.Insert(out, at, exchange)
+				sequences = slices.Insert(sequences, at, pending.sequence)
 			}
 		default:
 			return out, nil
 		}
 	}
 }
+
+// A new live-discovery handler in Python starts after the failed injected
+// fetch. Clear that completed exchange before the same-target retry navigation;
+// it must not win the first-response choice over the page's own live request.
+func (c *replayCapture) beginLivePass() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return errReplayCapture
+	}
+	if c.failure != nil {
+		return c.failure
+	}
+	clear(c.pending)
+	c.responseSequence = 0
+	for {
+		select {
+		case <-c.completed:
+		default:
+			return nil
+		}
+	}
+}
+
 func (c *replayCapture) erase() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
