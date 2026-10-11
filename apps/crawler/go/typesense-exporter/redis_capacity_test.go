@@ -53,6 +53,20 @@ func TestCapacityBoundsAndOriginalReachabilityIdentity(t *testing.T) {
 		t.Fatal("budget exceeded original headroom")
 	}
 }
+
+func TestCapacityInformationDoesNotMaskMalformedCounters(t *testing.T) {
+	if value, err := capacityInfoNumber(nil, "used_memory"); err != nil || value != 0 {
+		t.Fatal("original absent-counter default changed")
+	}
+	for _, raw := range []string{"", "unknown", "1.5", "9223372036854775808"} {
+		if _, err := capacityInfoNumber(map[string]string{"used_memory": raw}, "used_memory"); err == nil {
+			t.Fatal("malformed counter became successful zero", raw)
+		}
+	}
+	if value, err := capacityInfoNumber(map[string]string{"used_memory": "1048576"}, "used_memory"); err != nil || value != 1048576 {
+		t.Fatal("valid Redis information changed")
+	}
+}
 func TestCapacityPruneRetainsEveryOwnershipRootAndCapsDeletion(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

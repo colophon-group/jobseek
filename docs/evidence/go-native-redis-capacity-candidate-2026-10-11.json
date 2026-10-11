@@ -29,6 +29,10 @@
   "remaining_python": "Schedule rebuild still uses Python to preserve producer-aware dispatch and fallback behavior; no runtime retirement claimed. Offline reference helpers remain useful.",
   "proof_sha256": {
     "native1013-capacity-original-native-parity2-2026-10-11.json": "93004434d1836d67fa224fc4371aba35e6b318aac995738388af21fe05036125",
-    "native1013-capacity-focused-real-redis-race2-2026-10-11.log": "900dd8045a2bd2fb3c40588c3563c3abf45da55c903bf1f08191a42b83e0cb5c"
-  }
+    "native1013-capacity-focused-real-redis-race2-2026-10-11.log": "900dd8045a2bd2fb3c40588c3563c3abf45da55c903bf1f08191a42b83e0cb5c",
+    "native1013-capacity-original-native-parity3-2026-10-11.json": "93004434d1836d67fa224fc4371aba35e6b318aac995738388af21fe05036125"
+  },
+  "native_candidate_binary_sha256": "1db7436e38ba72ad55f9531c819ae9a72b105e173403ce898e7a35c6a4f9940e",
+  "numeric_info_contract": "Absent counters keep the original zero default; malformed present numeric counters fail the command rather than becoming successful zero.",
+  "focused_race_result": "PASS five contracts, including original identity, four operational real Redis checks and malformed numeric information"
 }

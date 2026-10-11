@@ -362,7 +362,14 @@ func capacityInventory(ctx context.Context, c *redis.Client, exact bool, clock f
 			}
 		}
 	}
-	number := func(key string) int64 { v, _ := strconv.ParseInt(info[key], 10, 64); return v }
+	var infoError error
+	number := func(key string) int64 {
+		value, err := capacityInfoNumber(info, key)
+		if err != nil {
+			infoError = err
+		}
+		return value
+	}
 	text := func(key string) string {
 		if v, ok := info[key]; ok {
 			return v
@@ -370,11 +377,26 @@ func capacityInventory(ctx context.Context, c *redis.Client, exact bool, clock f
 		return "unknown"
 	}
 	s.Redis = map[string]any{"used_memory_bytes": number("used_memory"), "used_memory_rss_bytes": number("used_memory_rss"), "maxmemory_bytes": number("maxmemory"), "maxmemory_policy": text("maxmemory_policy"), "rdb_last_bgsave_status": text("rdb_last_bgsave_status"), "aof_enabled": number("aof_enabled"), "evicted_keys_total": number("evicted_keys"), "error_replies_total": number("total_error_replies")}
+	if infoError != nil {
+		return s, infoError
+	}
 	for _, count := range counts {
 		s.DBKeys += count
 	}
 	s.Duration = clock().Sub(start).Seconds()
 	return s, nil
+}
+
+func capacityInfoNumber(info map[string]string, key string) (int64, error) {
+	raw, exists := info[key]
+	if !exists {
+		return 0, nil
+	}
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, errors.New("invalid capacity Redis numeric information")
+	}
+	return value, nil
 }
 func capacityPrometheus(s capacitySnapshot) string {
 	var b strings.Builder
