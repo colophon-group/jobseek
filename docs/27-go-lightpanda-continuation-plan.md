@@ -149,7 +149,12 @@ worker and cold suites, complete original/public comparisons, 185 Python
 pipeline/ownership/cutover/CSV tests and vet. No database case skipped. The first
 combined Python invocation used a nonexistent test filename and ran no tests;
 the corrected mandatory invocation is the qualification. Renew all exact-head
-gates for this combined commit. See [combined proof](evidence/go-native-sixteen-configuration-combined-candidate-2026-10-11.json).
+gates for this combined commit. CI at `134cbc1` exposed two historical
+assertions: blanket rejection of monitor auto policy and the API registry count
+before T1 repair. Corrected checks assert the new monitor hash/transport binding,
+keep detail auto/lean/aggressive rejected, and require the exact repaired T1 alias.
+All 54 registry/resource contracts pass with race, mandatory PostgreSQL/Redis and
+zero skips. See [combined proof](evidence/go-native-sixteen-configuration-combined-candidate-2026-10-11.json).
 It replaces the two installed Python maintenance commands with direct
 `go-typesense-exporter` operations; the optional `crawler` aliases delegate
 before opening Python pools. Currency refresh preserves decimal inversion,

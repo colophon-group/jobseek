@@ -35,7 +35,23 @@
     },
     "full_data_validator": "passed after regenerating deterministic census for repaired T1 CSV; structural records unchanged",
     "census_registry_tests": 69,
-    "prior_ci_data_validation_failure": "00cfc head carried stale boards/manifest checksums in frozen census; no functional test failure; regenerated with repository-owned networkless command"
+    "prior_ci_data_validation_failure": "00cfc head carried stale boards/manifest checksums in frozen census; no functional test failure; regenerated with repository-owned networkless command",
+    "registry_resource_contracts": {
+      "top_level_passed": 54,
+      "race": true,
+      "mandatory_postgres": true,
+      "mandatory_redis": true,
+      "skips": 0
+    },
+    "prior_native_ci_failure": {
+      "head": "134cbc1c7740723568d27baeb5150ff2222074df",
+      "run": 38113070557,
+      "cause": [
+        "historical auto-policy rejection assertion superseded by physically qualified monitor normalization",
+        "historical API registry count superseded by T1 supported alias repair"
+      ],
+      "correction": "assert qualified monitor hash and transport, retain detail auto/lean/aggressive rejection, require T1 repaired alias and exact34/2 API supported/retained counts"
+    }
   },
   "consolidation": "Fold the formerly separate 1012 candidate into 1011 to avoid a second required-check/whole-deployment/cutover cycle. Historical individual capture names stay unchanged.",
   "limits": [
