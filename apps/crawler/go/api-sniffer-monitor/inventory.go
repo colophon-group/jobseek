@@ -216,6 +216,11 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	if err != nil {
 		return result, err
 	}
+	return discoverInitial(ctx, o, first, fetch, join)
+}
+
+func discoverInitial(ctx context.Context, o Options, first *Document, fetch Fetch, join JoinURL) (Inventory, error) {
+	result := Inventory{Jobs: []Job{}}
 	if first == nil {
 		result.URLOnly = o.HTML
 		if len(o.EmptyResponse) > 0 || o.AutoPath {
@@ -224,6 +229,9 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		return result, nil
 	}
 	first = decryptInitialResponse(first, o.ResponseDecrypt)
+	if o.Convergence != nil {
+		return discoverConverged(ctx, o, first, fetch, join)
+	}
 	if o.HTML {
 		return discoverHTML(ctx, o, first, fetch, join)
 	}
@@ -262,7 +270,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	add := func(d *Document, rows []map[string]any) error {
 		d.Root = root.Value
 		for _, row := range rows {
-			if o.ItemFilter != nil || o.AutoFields || o.AutoURLField {
+			if o.collectRows != nil || o.ItemFilter != nil || o.AutoFields || o.AutoURLField {
 				sourceRows = append(sourceRows, inventorySourceRow{d, row})
 				continue
 			}
@@ -409,6 +417,10 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 				value += increment
 			}
 		}
+	}
+	if o.collectRows != nil {
+		o.collectRows(sourceRows)
+		return result, nil
 	}
 	if o.ItemFilter != nil || o.AutoFields || o.AutoURLField {
 		rows := []map[string]any{}

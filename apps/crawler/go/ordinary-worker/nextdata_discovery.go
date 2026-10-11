@@ -182,7 +182,9 @@ func discoverNextdataWithPages(ctx context.Context, verified *http.Client, p que
 		}
 	}
 	first := nextdataPage{}
-	if rendered != nil {
+	if o.BrowserDocumentTransform == "yum-china-http" {
+		first = fetchYumChinaPage(ctx, &client)
+	} else if rendered != nil {
 		first = rendered(ctx, p.Endpoint)
 	} else {
 		first = fetchNextdataPage(ctx, &client, o, p.Endpoint, o.Pagination != nil, true)

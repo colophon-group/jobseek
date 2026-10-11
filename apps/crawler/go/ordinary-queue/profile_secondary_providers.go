@@ -7,6 +7,9 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
+	if provider == "amazon" {
+		return true
+	}
 	if LocalizedHTTPProvider(provider) {
 		return true
 	}
@@ -105,6 +108,22 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "amazon" {
+		if config["monitor_needs_browser"] != "0" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if _, err := monitorEnrichmentFields(config, map[string]bool{}); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		if err := feedRichDetailAssignment(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		o, err := api.AmazonOptionsFromMetadata(config["board_url"], config["metadata"])
+		if err != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "amazon", api.AmazonProfile, "amazon", o.InitialURL())
+	}
 	if LocalizedHTTPProvider(config["crawler_type"]) {
 		return inspectLocalizedHTTPMonitor(boardID, config, md)
 	}
@@ -344,6 +363,10 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, provider, endpoint)
 }
 func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if p.Provider == "amazon" {
+		o, err := api.AmazonOptionsFromMetadata(config["board_url"], config["metadata"])
+		return err == nil && config["crawler_type"] == p.Provider && p.Profile == api.AmazonProfile && p.Endpoint == o.InitialURL() && o.ResourceMatches(resource)
+	}
 	if LocalizedHTTPProvider(p.Provider) {
 		return localizedHTTPResourceMatches(p, config, resource)
 	}
@@ -474,6 +497,10 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 	return false
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
+	if config["crawler_type"] == "amazon" {
+		o, err := api.AmazonOptionsFromMetadata(config["board_url"], config["metadata"])
+		return err == nil && !disabled && status == 404 && resource == o.InitialURL()
+	}
 	if config["crawler_type"] == "kipt" {
 		o, e := api.KIPTOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && !disabled && (status == 404 || status == 410) && resource == o.AlternateURL()

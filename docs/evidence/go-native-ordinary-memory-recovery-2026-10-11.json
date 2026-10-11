@@ -1,0 +1,93 @@
+{
+  "schema": "jobseek.native-ordinary-memory-recovery/v1",
+  "date_utc": "2026-10-11",
+  "source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "version": "0.13.1007",
+  "kernel_oom_kills": 4,
+  "anonymous_rss_kib": [
+    1045064,
+    1044032,
+    1045260,
+    1045120
+  ],
+  "hard_container_limit_bytes": 1073741824,
+  "supported_recovery": {
+    "ordinary_owner": "retired",
+    "ordinary_receipt": "absent",
+    "ordinary_redis_projection": "absent",
+    "base_b0_services": 9,
+    "health": "independently verified",
+    "b0_epoch": 275,
+    "whole_original_wrapper_used": true
+  },
+  "candidate_version": "0.13.1009",
+  "go_memory_target": "512MiB",
+  "five_claim_budget_unchanged": true,
+  "baseline_replay": {
+    "elapsed_seconds": 41.739571875,
+    "go_memory_limit_bytes": 9223372036854775807,
+    "goroutines": 5,
+    "iterations_per_goroutine": 1,
+    "original_jobs": [
+      2493,
+      149,
+      1,
+      2725
+    ],
+    "output_sha256": "0abadbb9d668fd5e1c801d1a019c63cc447eaea82c500f6c0e4309267d47d3e3",
+    "peak_go_managed_bytes": 886598104,
+    "peak_heap_bytes": 808506048,
+    "post_gc_heap_bytes": 21919600,
+    "post_gc_managed_bytes": 519760344,
+    "prepared": 26840,
+    "scope": "original public inventory parse/normalize/native enrichment with five parallel tasks; no SQL persistence/location database or whole-lane claim"
+  },
+  "target_replay": {
+    "elapsed_seconds": 42.851563167,
+    "go_memory_limit_bytes": 536870912,
+    "goroutines": 5,
+    "iterations_per_goroutine": 1,
+    "original_jobs": [
+      2493,
+      149,
+      1,
+      2725
+    ],
+    "output_sha256": "0abadbb9d668fd5e1c801d1a019c63cc447eaea82c500f6c0e4309267d47d3e3",
+    "peak_go_managed_bytes": 536865160,
+    "peak_heap_bytes": 476933680,
+    "post_gc_heap_bytes": 20591816,
+    "post_gc_managed_bytes": 505960840,
+    "prepared": 26840,
+    "scope": "original public inventory parse/normalize/native enrichment with five parallel tasks; no SQL persistence/location database or whole-lane claim"
+  },
+  "kernel_evidence_sha256": "fa02fc85b80d71a68de1f6d4f836e482a88b59d78feddbd3fd1e9e98db1b9fb1",
+  "independent_recovery_evidence_sha256": "91a5768f926901d8ac770c5d0c8ebb6d4e50a59b91202b53de90235940909e78",
+  "original_inventory_captures": [
+    {
+      "slug": "anduril-industries-greenhouse",
+      "sha256": "00873825ca4aa95cd6fb05c3a6de8b824ad82887a1a034db7f428386c2027b8a",
+      "jobs": 2493
+    },
+    {
+      "slug": "cencora-oneoncology-greenhouse",
+      "sha256": "a7ba6fa3cd7ffec576926378150e7225354bf4fa030aabd2687c438fd57435a5",
+      "jobs": 149
+    },
+    {
+      "slug": "kiavi-greenhouse",
+      "sha256": "3b7dc01e8017c56bf2f782ff343718bf17077b30058fdfe1ed1ceeec5713bbf3",
+      "jobs": 1
+    },
+    {
+      "slug": "spacex-greenhouse",
+      "sha256": "2a6f48072111d4eb2bc3710231a51edfde7d532bb8d0e997ed8a587a4136132b",
+      "jobs": 2725
+    }
+  ],
+  "remaining": [
+    "Fresh exact-head CI and installed Compose/image contracts",
+    "Linux installed full-ownership natural resource/freshness/conservation observation",
+    "Comparable complete lane CPU/RAM/density and attributable cost; no whole-lane saving claim"
+  ]
+}

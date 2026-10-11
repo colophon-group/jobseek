@@ -59,10 +59,17 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	if raw, present := md["source"]; present && json.Unmarshal(raw, &source) != nil {
 		return fail()
 	}
-	florida := source == "browser"
-	if florida {
+	browserSource := source == "browser"
+	yum := false
+	florida := false
+	if browserSource {
 		var expression string
-		if json.Unmarshal(md["browser_expression"], &expression) != nil || expression != apisniffer.FloridaCourtsBrowserExpression {
+		if json.Unmarshal(md["browser_expression"], &expression) != nil {
+			return fail()
+		}
+		florida = expression == apisniffer.FloridaCourtsBrowserExpression
+		yum = expression == apisniffer.YumChinaBrowserExpression && config["board_url"] == apisniffer.YumChinaBoardURL
+		if !florida && !yum {
 			return fail()
 		}
 	}
@@ -75,7 +82,7 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 			options[key] = v
 		}
 	}
-	if florida {
+	if browserSource {
 		options["render"] = true // source=browser forces rendering in Python.
 	}
 	if validateRenderedNavigation(options) != nil {
@@ -89,7 +96,7 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		delete(cloneMD, key)
 	}
 	cloneMD["render"] = json.RawMessage(`false`)
-	if florida {
+	if browserSource {
 		cloneMD["source"] = json.RawMessage(`"nextdata"`)
 		delete(cloneMD, "browser_expression")
 	}
@@ -110,12 +117,19 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		o.BrowserDocumentTransform = "florida-courts"
 		o.Strict = true // Browser-expression failures never become an empty inventory.
 	}
+	if yum {
+		if o.ExpectedTitle != "" || o.Path != "jobs" || o.Template != "{link}" || len(o.Fields) == 0 {
+			return fail()
+		}
+		o.BrowserDocumentTransform = "yum-china-http"
+		o.Strict = true
+	}
 	return o, options, nil
 }
 
 func NextdataMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
 	o, err := NextdataMonitorOptions(config)
-	return err == nil && p.Provider == "nextdata" && p.Endpoint == o.BoardURL && (o.ResourceMatches(resource) || o.DetailWitnessMatches(resource))
+	return err == nil && p.Provider == "nextdata" && p.Endpoint == o.BoardURL && (o.ResourceMatches(resource) || o.DetailWitnessMatches(resource) || o.BrowserDocumentTransform == "yum-china-http" && (apisniffer.YumChinaResourceScope{}).ResourceMatches(resource))
 }
 
 func nextdataMonitorEnrichment(config map[string]string) ([]string, error) {

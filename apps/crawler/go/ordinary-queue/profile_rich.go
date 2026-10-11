@@ -27,6 +27,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "amazon":
+		for _, key := range []string{"country", "category", "business_category", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "talemetry":
 		for _, key := range []string{"proxy", "transport", "page_max_chars", "max_pages", "rescrape_policy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -190,6 +194,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
+		allowed["identity_migration"] = true
 		// A retained receipt without an active migration marker is inert in
 		// the original processor. Bind it without enabling identity retirement.
 		allowed["_identity_migration_receipt"] = true

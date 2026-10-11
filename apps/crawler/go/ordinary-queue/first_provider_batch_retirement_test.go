@@ -32,6 +32,8 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "amazon":
+		board, metadata = "https://www.amazon.jobs/en/search", `{"scraper_type":"skip"}`
 	case "workday":
 		board, metadata = "https://fixture.wd1.myworkdayjobs.com/Careers", `{"all_sites":false,"scraper_type":"workday"}`
 	case "talemetry":
@@ -306,6 +308,13 @@ func testProviderColdRetirement(t *testing.T, providers []string, fixture func(*
 						t.Fatal(e)
 					}
 					summary := GreenhouseInventorySummary{}
+					if provider == "rss/postfinance" {
+						summary.Discovered = 1
+						posting := richPosting(t, "https://jobs.postfinance.ch/job/_/42/", "Native PostFinance role", "<p>Build services in Go.</p>")
+						if _, err := cycle.WriteRichBatch(ctx, []GreenhouseRichPosting{posting}); err != nil {
+							t.Fatal("canonical write before cold migration failed", err)
+						}
+					}
 					if strings.Split(provider, "/")[0] == "unisante" {
 						summary.Discovered = 1
 						batch := []GreenhouseRichPosting{{URL: "https://emploi.unisante.ch/index.php/offre/42-clinical-role", SourceIdentity: "unisante:emploi:42", Content: &GreenhouseRichContent{Fields: GreenhouseRichFields{Titles: []string{"Native clinical role"}, Locales: []string{"fr"}}}}}
@@ -319,6 +328,12 @@ func testProviderColdRetirement(t *testing.T, providers []string, fixture func(*
 					result, e = cycle.FinishSuccess(ctx, summary)
 					if e != nil {
 						t.Fatal(e)
+					}
+					if provider == "rss/postfinance" {
+						var receipt json.RawMessage
+						if err := p.f.observer.QueryRow(ctx, "SELECT metadata->'_identity_migration_receipt' FROM job_board WHERE id=$1::uuid", p.f.task.ID).Scan(&receipt); err != nil || result.Gone != 1 || !validPostfinanceMigrationReceipt(receipt) {
+							t.Fatal("cold retirement fixture did not commit exact migration", err)
+						}
 					}
 					if strings.Split(provider, "/")[0] == "eightfold" && strings.Contains(p.f.client.redis.HGet(ctx, "board:"+claim.task.ID, "metadata").Val(), "max_ts") {
 						t.Fatal("watermark cache advanced before canonical settlement")

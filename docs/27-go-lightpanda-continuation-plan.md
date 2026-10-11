@@ -1,34 +1,129 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1006 deployed, native owners cold274
+## Current checkpoint — source1007 restored after native ordinary OOM recovery
 
-[PR #10404](https://github.com/colophon-group/jobseek/pull/10404) merged as
-`e81c5a488856113808fa60925fb069fcca128e47`, version0.13.1006 with195 profiles.
-Required CI38084533646, actual Crawler Deploy Gate38084532422, installed parity
-38084533668 and both physical Linux architectures38084533677 passed on reviewed
-head8ce8f01. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38087698034)
-and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38087725795)
-succeeded: crawler attempt1 and renderer attempt2. Independent readback binds
-the exact selected source/images; full cold274 verification confirms seven
-restored base writers, cleared receipts/selectors and no active native owner.
-Export progress shows419 successful documents, zero errors and healthy Typesense.
-These are readiness observations; the15 additions have not acquired serving authority.
+[PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
+`f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version 0.13.1007, with 196 profiles.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38092011667)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38092045413)
+both succeeded at attempt 1. Independent checks bind their exact immutable images,
+selected release, healthy export progress and complete cold epoch 274 state.
 
-The complete source1005 ordinary owner and B0 owner retired through their
-original wrappers. Selector clearing and independent cold epoch274 verification
-preceded the fresh head-bound merge. Last active native authority was the full
-7,736-monitor/2,751-detail cohort. Its last bounded natural sample has639 completed
-monitor receipts with639 exact recurring schedules, no retained completion
-leases and73 completed scrape receipts. Full-fleet freshness and cost remain open.
+The original B0 activation and full ordinary activation then succeeded at epoch
+275. Ordinary authority is plan
+`a678a0a1e605ea4be0f007a78778e0f6ff92752862bdac9ba44f85955d0e774b`, projection
+`d1859088d4272c32fe45885bc12136f2c2a2eeb5`, and active receipt
+`1dc895bab4d6dfa5477dc5bcd74d51ba32f17862217354556e47ef1dfa472193`.
+The full activation admitted 7,754 monitor boards and 2,753 detail boards: the previous full
+7,736/2,751 cohort and all 18 qualified source1006/source1007 monitor additions
+were preserved. At activation, SQL, Redis, HTTP health identity and all ten writer images agreed.
+The October 10 23:32 UTC natural sample contains 103 completed monitors, 103 exact
+recurring schedules, no retained completion leases and zero writer restarts.
+It also contains 129 completed scrape fences and one detail failure diagnostic;
+this sample does not establish global freshness, zero failures or fleet conservation.
 
-Keep native ownership cold across these adjacent releases while the following
-three-type source1007 candidate qualifies. Then perform one complete admission
-and original full activation preserving the entire last-active source1005 cohort
-plus all15 qualified source1006 and3 source1007 monitor additions. Reconcile every
-actual scheduled detail route; do not equate compiler support with ownership or
-shrink the cohort to fit a timer. Full Python/Playwright/Chromium retirement still
-requires all enabled profiles/consumers, freshness/conservation, comparable
-whole-service resources/cost and the supported reversal window.
+At October 11 00:24 UTC, the kernel confirmed four ordinary Go worker OOM
+kills, each at approximately 1,045,000 KiB anonymous RSS within its unchanged
+1 GiB container limit. Current-container `OOMKilled=false` and low memory did
+not describe earlier executions. The supported original ordinary retirement
+then succeeded. Independent 00:28 UTC verification confirms the plan is retired,
+ordinary receipts and Redis projection are absent, and all nine restored
+base/B0 services are running, restart-armed and healthy at unchanged epoch 275.
+B0 remains active; the full ordinary owner must stay closed until the fix passes
+fresh qualification and the complete cutover is repeated. Historical completed
+writes and fences remain retained.
+
+The candidate adds `GOMEMLIMIT=512MiB` to the five-claim ordinary service, keeping
+its 1 GiB hard limit. A protected replay of four original Greenhouse public
+inventories prepared 26,840 postings with five concurrent tasks: managed memory
+peaked at 886,598,104 bytes without a target and 536,865,160 bytes with it.
+Canonical prepared-output hashes agree; elapsed times were 41.74 and 42.85 seconds.
+This isolates parse/normalization/native enrichment; it excludes SQL/location
+state, a Linux cgroup run and whole-lane cost. The resumed fleet still requires
+natural memory/freshness/conservation observation. See
+[ordinary memory evidence](evidence/go-native-ordinary-memory-recovery-2026-10-11.json).
+
+The fresh admission inspected **all 7,885 enabled canonical boards** and all
+**1,664,550 actual scheduled posting routes**, rather than a compiler-selected
+subset. It owns 1,460,466 scheduled routes; 42 qualifying detail boards failed
+cache reconciliation and one failed route reconciliation. Preserve these explicit
+exclusions until corrected and freshly qualified. Compiled support alone grants
+no serving authority, and the remaining board count is not a count of active jobs.
+
+Lightpanda [1.0.0](https://github.com/lightpanda-io/browser/releases/tag/1.0.0)
+remains the latest official stable release, rechecked on the official releases API October 11 at 00:31 UTC.
+Its immutable pin remains in place. The renderer bounds each child V8 heap at
+128 MiB within the existing four-child/1 GiB service envelope. A source-bound
+23:25 UTC resource observation shows zero OOM events and restarts since deployment,
+44.68 MiB current container memory and a 161,447,936-byte peak. This observation
+is not a whole-lane comparison or proof that OOM cannot recur.
+
+[PR #10407](https://github.com/colophon-group/jobseek/pull/10407) is now one
+four-type batch, version 0.13.1009 with 197 profiles: API pagination convergence,
+PostFinance RSS identity migration, Amazon partitions and Yum China public data.
+The earlier 0.13.1008 candidate is superseded; it will not require a separate
+production rollout. Source1007 base/B0 serving continues while the ordinary owner is retired.
+Renewed checks, exact-head merge and the original complete deployment/cutover
+are required before the four-type candidate receives serving authority.
+
+The previous head's Required CI 38094256826 failed three older test assertions
+for unproved zero-result inventories (ADP invalid row and malformed encrypted
+responses with both transports). The guard correctly settled failure before
+empty accounting. Updated assertions prove existing rows, missing counters and
+empty counts remain unchanged; all affected original-reference worker cases pass
+locally. The earlier installed parity, Lightpanda and Deploy Gate results are
+historical and do not authorize the consolidated head. Consolidated head1987
+then exposed a stale installed-image profile list missing Amazon; append the
+197th profile to that exact-list assertion. Renew every required gate after the
+profile assertion and ordinary memory target change.
+
+Bupa matches 55 complete jobs; Publicis preserves the original 2,958-URL truncated
+prefix and withholds absence authority. PostFinance matches 277 raw RSS records
+and all 24 canonical jobs, including the original company-wide atomic retirement
+SQL and exact board/fingerprint/receipt safety gates. See
+[convergence/RSS evidence](evidence/go-native-convergence-rss-candidate-2026-10-10.json).
+
+Amazon's unchanged original stream produced 21,896 jobs and 465 physical exchanges.
+The native SDK replay matches every field and all 463 provider requests, including
+country/category partitions. Late request failure now withholds absence authority;
+a query still capped after both partitions remains partial. Yum's original browser
+expression produced nine jobs. Go reads its published first-party JavaScript
+literal through exactly the document and asset requests; complete replay and live
+verified Go HTTP match all nine records. It preserves the configured browser
+queue namespace. Only a plain data literal or the exact published control program
+is accepted; changed expressions, malformed literals or other control code fail.
+
+The Amazon/Yum group passes ten real PostgreSQL/Redis settlement cases, six cold
+retirement/conservation cases, the 197-profile executable startup check and the
+full shared API SDK race suite. All original public job inventories remain in
+protected evidence; repository fixtures are synthetic. See
+[Amazon/Yum candidate evidence](evidence/go-native-amazon-yum-candidate-2026-10-11.json).
+
+A 23:59 UTC readback shows why fleet freshness remains an explicit delivery gate:
+6,114 native-owned monitors are due, 2,925 are overdue by more than one hour and
+611 by more than six hours. These ages are not a before/after baseline. Of 443
+completed monitor fences, 442 have exact recurring schedules; one overlaps a
+retained/new claim and needs another read. Failed monitor/detail rows exist, so
+completion fences must not be reported as successful crawls. The full scheduled
+posting age aggregate exceeded its fixed 15-second read-only limit and remains
+unverified. The configured ordinary worker budget is five concurrent claims.
+Investigate throughput and queue fairness while the four-type candidate qualifies;
+make any capacity or runtime correction through a reviewed whole release.
+
+The full migration goal remains active. Finish #10407's exact-head gates, use the
+original full ordinary/B0 retirement and independent cold verification, merge with
+fresh authority, then deploy the whole four-type release through its original workflows.
+Fresh all-board/all-route admission must preserve the entire previously admitted 7,754/2,753
+cohort and add all five qualified candidate monitors. Continue grouped ports of
+remaining enabled profiles and runtime consumers while gates run. IHG automatic
+convergence, Implenia identity resolution and Njoyn remain unqualified; their
+failed probes do not authorize publisher or configured transport bypasses.
+
+Before retiring production Python, Playwright, Chromium and runtime-only assets,
+verify every enabled route and operational consumer, fleet freshness/conservation,
+comparable whole-service CPU/RAM/density/cost, supported cold reversal and the
+rollback window. Preserve useful isolated offline Python tooling. Do not shrink
+coverage to fit a timer or replace the documented deployment workflows.
 
 ## Historical checkpoint — source1005 served before supported retirement
 

@@ -256,7 +256,7 @@ func TestRealOwnedLifecycleRepeatedEmptyAndRecovery(t *testing.T) {
 			dueLifecycle(t, f)
 		}
 		c := beginLifecycle(t, a)
-		result, err := c.FinishSuccess(ctx, GreenhouseInventorySummary{Discovered: 2, ProcessingFiltered: 2, Truncated: true})
+		result, err := c.FinishSuccess(ctx, GreenhouseInventorySummary{Discovered: 2, ProcessingFiltered: 2})
 		if err != nil {
 			t.Fatal(err)
 		}

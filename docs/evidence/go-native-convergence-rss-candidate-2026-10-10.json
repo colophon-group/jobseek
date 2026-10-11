@@ -1,0 +1,80 @@
+{
+  "version": "0.13.1008",
+  "base_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "observed_at_utc": "2026-10-10T22:41:18.466105+00:00",
+  "status": "published candidate PR#10407; required gates pending; no deployment or serving authority",
+  "types": [
+    "API pagination convergence",
+    "RSS PostFinance canonical identity transition"
+  ],
+  "selected_monitor_additions": [
+    "bupa-saudi-arabia",
+    "publicis-main",
+    "postfinance-careers"
+  ],
+  "api": {
+    "original_synthetic_cases": 15,
+    "original_synthetic_sha256": "b5557dd1286d10bb67a2fbb854e05c8145b1c5aac971d152052517061038ff13",
+    "real_pg_redis_settlement_cases": 15,
+    "unproved_zero_and_publisher_cases": 4,
+    "cold_retirement_cases": 3,
+    "public_references": {
+      "bupa-saudi-arabia": {
+        "jobs": 55,
+        "requests": 18,
+        "truncated": false,
+        "sha256": "220e69d1800355fe8bea2c66f8b091cc16bab79fea1d3cfb1e171a48ca4771f7"
+      },
+      "publicis-main": {
+        "urls": 2958,
+        "requests": 32,
+        "truncated": true,
+        "sha256": "f70153553eba3cdfc3c6ff0ae77478f93c343e9d9f46ec5838e33cb0fde54616"
+      }
+    },
+    "scope": "explicit numeric total and object-array page/offset inventories; original first-observation union, stable identity/projection, two no-growth passes; truncated validated prefixes never authorize absence",
+    "correction": "capture2 retains URL-only MonitorResult URLs; capture1 was not an inventory authority",
+    "remaining": "automatic total convergence (IHG) unsupported; no live Go public convergence qualification yet",
+    "all_sdk_race_seconds": 13.609,
+    "projection_loss": "Original15th case proves that converged raw rows with lost URLs remain truncated; original unique-output one-record/1% tolerance retained.",
+    "original_and_public_race_seconds": 4.994,
+    "all_sdk_race_scope": "13.609s full SDK proof preceded added projected-URL-loss regression; revised15 original cases and two public replays pass4.994s"
+  },
+  "rss": {
+    "original_raw_feed_records": 277,
+    "original_requests": 1,
+    "original_public_sha256": "45097c1dbb539f7a48aaa389d3a0cdf19d11348923f5b5b02ad9cd8238c4e460",
+    "all_original_feed_fields_match": true,
+    "original_sql_port_sha256": "e731216785adde0db0eebaaaae19e59db05b5a964216b85c5d68224e4f11ccea",
+    "real_pg_safety_cases": 13,
+    "ordinary_worker_cases": 5,
+    "cold_retirement_cases": 3,
+    "contract": "exact postfinance-careers URL/type/fingerprint, company slug postfinance; complete unique fresh canonical rows, three healthy history counts, 2000-row cap, unknown URL rejection, permanent exact receipt, retirement and receipt atomic before ordinary gone guards",
+    "remaining": "Implenia original identity resolution failed; no authority assigned",
+    "original_postprocessed_canonical_jobs": 24,
+    "original_postprocessing_filtered": 253,
+    "all_original_canonical_fields_match": true,
+    "original_postprocessing_sha256": "a7f8f553c35ae604cfff84c514d3d8b255c5f52375aa2c9c997fdca4fe42888b",
+    "public_raw_and_canonical_race_seconds": 2.818
+  },
+  "lifecycle_repair": {
+    "policy": "Reject zero-processed truncated success before mutation; use original failure receipt/backoff/settlement",
+    "real_pg_redis_regression_passed": true,
+    "preserved": "active postings, empty counter, recurring schedule and lease conservation; confirmed complete-empty and nonempty-partial behavior"
+  },
+  "pending": [
+    "pass exact-head full required CI/Crawler Deploy Gate",
+    "original supported full deployment and all-route admission preserving previous cohort",
+    "natural freshness/conservation and whole-service resources/cost/reversal",
+    "remaining enabled profiles/consumers and eventual production Python retirement"
+  ],
+  "pr": "https://github.com/colophon-group/jobseek/pull/10407",
+  "ci_fixture_repair": {
+    "failed_head": "8e4046878ae28935aa13ba2b8f7d89f36ad37d08",
+    "failed_run": 38092875112,
+    "failed_job": 114332931318,
+    "reason": "PostFinance cold-retirement fixture left its newly inserted synthetic canonical posting; later migration fixtures collided with its unique URL.",
+    "change": "Delete only the cold fixture own-company additional postings during cleanup; independently require exact migration receipt/Gone count before cold retirement.",
+    "validation": "Both cold/safety test groups pass twice sequentially with required PostgreSQL/Redis and race detection,9.863s; no runtime changes."
+  }
+}

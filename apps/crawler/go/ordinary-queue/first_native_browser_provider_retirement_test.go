@@ -19,6 +19,10 @@ func firstNativeBrowserProviderFixture(t *testing.T, provider string) firstOwner
 	if provider == "candidatus" {
 		board = "https://carrieres.candidatus.com/site-emploi,ZmFrZQ"
 	}
+	if provider == "nextdata" {
+		board = "https://campus.51job.com/yumchina/project.html"
+		metadata = `{"source":"browser","browser_expression":"({jobs: jobList})","path":"jobs","url_template":"{link}","fields":{"title":"title","description":"desc","locations":"=Shanghai, China","employment_type":"=full_time","job_location_type":"=onsite"},"wait":"domcontentloaded","timeout":30000,"scraper_type":"skip"}`
+	}
 	ctx := context.Background()
 	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$2,board_url=$3,metadata=$4::jsonb WHERE id=$1::uuid", p.f.task.ID, provider, board, metadata); e != nil {
 		t.Fatal(e)

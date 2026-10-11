@@ -1,0 +1,73 @@
+{
+  "schema": "jobseek.native-amazon-yum-candidate/v1",
+  "date_utc": "2026-10-11",
+  "pr": 10407,
+  "candidate_version": "0.13.1009",
+  "profiles": 197,
+  "authority": "Candidate only; renewed exact-head CI, original whole deployment, complete all-board/all-route admission and full ownership activation are required.",
+  "original_source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "amazon": {
+    "original_jobs": 21896,
+    "physical_exchanges": 465,
+    "provider_requests": 463,
+    "capture_sha256": "8c2183270cd97de25dc17e4e6587b437bb6083d332cbf888c3840c707b8e1c10",
+    "complete_sdk_replay": "PASS 36.926s; every original job field and every provider request",
+    "synthetic_original_stream_cases": 6,
+    "synthetic_original_field_cases": 6,
+    "bounded_decoded_page_prefetch": 5,
+    "api_query_cap": 10000,
+    "total_inventory_cap": 50000,
+    "intentional_repairs": [
+      "A later request failure retains the committed prefix and supplies no absence authority.",
+      "A query still capped after country and category partitioning remains partial."
+    ]
+  },
+  "yum_china": {
+    "original_jobs": 9,
+    "capture_sha256": "8b68e927e81e3df0dad713ef0c6800ae224a221b6224d56932c02faca0e84b24",
+    "original_browser_expression": "({jobs: jobList})",
+    "http_requests": 2,
+    "complete_original_replay_and_live_verified_go_http": "PASS 6.533s combined with real worker cases after control-program guard",
+    "original_offline_chromium_cases": 5,
+    "control_tail_sha256": "a3831c7cebe35a17e0dd642b4646216340d9313d70fab69480f215dcbd9ed2c3",
+    "transport_contract": "Original browser queue/config binding is preserved; verified Go HTTP reads the published first-party document and asset. Unknown control programs, expressions, asset references and malformed literals fail before writes."
+  },
+  "validation": {
+    "mandatory_postgres_redis_worker_cases": 10,
+    "mandatory_worker_result": "PASS",
+    "cold_retirement_cases": 6,
+    "cold_result": "PASS 6.402s",
+    "executable_startup_197_profiles": "PASS 4.023s",
+    "full_shared_api_sdk_race": "PASS 9.494s",
+    "go_vet": "PASS API SDK, queue and worker",
+    "affected_previous_guard_worker_references": "PASS 22.917s; ADP invalid and encrypted malformed inventories preserve rows and counters",
+    "ruff": "PASS new offline fixture generators",
+    "ci": "Renewed consolidated head required",
+    "installed_image_parity_head1987": "Failed stale exact profile list missing Amazon; candidate assertion corrected and checks must renew"
+  },
+  "production_checkpoint": {
+    "source": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+    "version": "0.13.1007",
+    "routing_epoch": 275,
+    "all_enabled_boards_censused": 7885,
+    "all_actual_scheduled_routes_censused": 1664550,
+    "scheduled_owned_routes": 1460466,
+    "native_monitors_due_at_2026_10_10_2359_utc": 6114,
+    "native_monitors_overdue_1h": 2925,
+    "native_monitors_overdue_6h": 611,
+    "whole_fleet_freshness": "Not verified; throughput and failure follow-up remain required",
+    "ordinary_owner_status": "Retired after four kernel-confirmed OOM kills; full base/B0 restoration independently verified",
+    "formerly_admitted_monitors": 7754,
+    "formerly_admitted_detail_boards": 2753,
+    "ordinary_memory_evidence": "go-native-ordinary-memory-recovery-2026-10-11.json"
+  },
+  "still_required": [
+    "Renewed exact-head required CI, native execution, installed image parity, physical Lightpanda and actual Crawler Deploy Gate",
+    "Supported full source1007 retirement and independent cold verification before expected-head merge",
+    "Original whole crawler and renderer rollouts; immutable source/image identity and exporter readiness",
+    "Fresh all-board/all-route admission preserving 7754 monitors and2753 details plus allfive new monitors",
+    "Natural fleet freshness and queue conservation; resolve capacity/failure findings",
+    "Comparable whole-lane resources and attributable cost, supported cold reversal and rollback window",
+    "All remaining enabled profile/runtime consumers and production Python/Playwright/Chromium retirement"
+  ]
+}

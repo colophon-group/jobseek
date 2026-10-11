@@ -165,6 +165,12 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 	if c.done || c.failed || inventory.Discovered < c.processed || inventory.ProcessingFiltered < 0 || inventory.ProcessingFiltered > inventory.Discovered-c.processed {
 		return nil, ErrConfiguration
 	}
+	// An empty prefix without completeness evidence cannot confirm a vacant
+	// board. Leave ordinary failure accounting available without recording an
+	// empty check or pretending that a nonempty inventory succeeded.
+	if c.processed == 0 && inventory.Truncated {
+		return nil, ErrConfiguration
+	}
 	if c.claim.task.Config["crawler_type"] == "unisante" {
 		md, err := unisanteMigrationConfig(c.claim.task.Config)
 		if err != nil {
@@ -227,11 +233,16 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 				return err
 			}
 		} else {
+			retired, migrationErr := c.migratePostfinanceIdentities(ctx, tx, md, inventory)
+			if migrationErr != nil {
+				return migrationErr
+			}
 			complete := inventory.ProcessingFiltered == 0 && inventory.Discovered == c.processed && c.processed == len(c.identities)
 			result.Gone, result.GoneSkipped, err = c.markGone(ctx, tx, md, inventory.Discovered, complete)
 			if err != nil {
 				return err
 			}
+			result.Gone += retired
 		}
 		return tx.QueryRow(ctx, lifecycleQuery("success"), c.claim.task.ID, expected).Scan(&result.RecoveredFrom)
 	})

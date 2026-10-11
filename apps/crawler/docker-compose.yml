@@ -232,6 +232,9 @@ services:
       METRICS_PORT: "9104"
       DISCOVERY_CONCURRENCY: "20"
       MONITOR_CONCURRENCY: "5"
+      # Collect before the 1 GiB container limit; leave room for response
+      # buffers, native/SQLite memory and transient concurrent inventories.
+      GOMEMLIMIT: 512MiB
     depends_on:
       redis:
         condition: service_healthy
