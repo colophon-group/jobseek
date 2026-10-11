@@ -62,7 +62,7 @@ def native_deploy_tools_binary(tmp_path_factory: pytest.TempPathFactory) -> Path
     return binary
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def bind_native_deployment_fixture(
     native_deploy_tools_binary: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -216,6 +216,7 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert "GHCR_PULL_TOKEN" not in persisted_env
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_deploy_removes_transaction_scoped_ghcr_auth_on_success_and_failure(
     tmp_path: Path,
 ) -> None:
@@ -1456,6 +1457,7 @@ def test_csv_publication_rejects_tree_a_claiming_active_contract_b_before_noop(
     assert list(release_root.glob(f"data-{revision_a}.*")) == []
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_full_deploy_rejects_image_tree_a_claiming_git_contract_b(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     csv_helpers = script[
@@ -1996,6 +1998,7 @@ def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> Non
 
 
 @pytest.mark.timeout(90)
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
     tmp_path: Path,
 ) -> None:
@@ -2436,6 +2439,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "target: /home/deploy/\n" not in workflow
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
     tmp_path: Path,
 ) -> None:
@@ -2609,6 +2613,7 @@ def test_release_generation_root_is_durable_before_pointer_publication() -> None
     assert not MURMUR_DEPLOY_WORKFLOW.exists()
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[
@@ -2768,6 +2773,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             assert "retaining the last verified crawler snapshot" in result.stderr
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     configure = script[
@@ -2905,6 +2911,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
     tmp_path: Path,
 ) -> None:
@@ -3020,6 +3027,7 @@ def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
             assert "old stack restart skipped" in result.stderr
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     tmp_path: Path,
 ) -> None:
@@ -3253,6 +3261,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     ]
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
     tmp_path: Path,
 ) -> None:
@@ -3452,6 +3461,7 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
     assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_release_pointer_never_exposes_a_partially_prepared_generation(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     activation = script[
