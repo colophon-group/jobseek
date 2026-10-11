@@ -1,6 +1,85 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1007 restored after native ordinary OOM recovery
+## Current checkpoint — source1009 merged; original deployments running
+
+[PR #10407](https://github.com/colophon-group/jobseek/pull/10407) merged as
+`fac1f66fe9f20b1b06496a0634167364813b6adc`, version **0.13.1009 / 197 profiles**.
+It groups API pagination convergence, PostFinance RSS identity migration,
+Amazon partitions and Yum China public data. It also applies the ordinary
+worker's 512 MiB Go memory target inside the existing 1 GiB hard limit.
+Required CI, Crawler Deploy Gate, installed-image parity, physical Lightpanda
+builds and the ARM64 synthetic whole-lane check passed for the exact PR tree.
+The synthetic benchmark does not establish full-fleet cost or freshness.
+
+Production remains the restored source1007 base stack. The original full
+ordinary retirement and B0 reversal succeeded. Independent cold **epoch 276**
+verification confirms no active ordinary plans, ownership receipts, projections
+or B0 selectors; all seven base services are restored with exact source/images.
+The final merge bound the reviewed head after this fresh cold proof. A scheduled
+cross-store reconciliation temporarily held the mutation lock; it finished before
+B0 reversal. No operation bypassed that lock.
+
+The original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38101571049)
+and [whole renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38101585206)
+are running at attempt 1. Verify both exact source/image identities and incoming
+cold state before supported B0 and full ordinary activation. Fresh admission must
+inspect all enabled boards and actual scheduled posting routes, preserve the
+entire previous **7,754 monitor / 2,753 detail** cohort and add the five qualified
+monitors: Bupa Saudi Arabia, Publicis, PostFinance, Amazon and Yum China. Preserve
+explicit qualification/cache/route exclusions until separately corrected.
+
+Lightpanda **1.0.0** remains the latest official stable release, rechecked October
+11. Its immutable image/binary pins and 128 MiB per-child V8 limit remain in place.
+After activation, observe natural memory, queue conservation and fleet freshness
+long enough to cover the previous ordinary OOM interval. Low current RSS or
+`OOMKilled=false` cannot exclude prior kernel kills. The protected five-way
+memory replay preserves output and lowers managed peak, but excludes SQL/location
+state and is not proof of a Linux cgroup cure.
+
+The full migration goal remains active. The following three-type group is ready
+for fresh CI while this release deploys. Continue the remaining enabled types,
+rich no-scrape schedule handling and operational consumers in grouped iterations.
+Python/Playwright/Chromium runtime retirement still requires full enabled-route
+and consumer coverage, comparable whole-lane CPU/RAM/density/cost, supported cold
+reversal and the rollback window. Preserve useful isolated offline Python tooling.
+
+## Following grouped candidate — Oracle proxy/enrichment, Revolut and IIHF
+
+The isolated following candidate reserves version **0.13.1010 / 199 profiles**
+on merged source1009 `fac1f66fe9f20b1b06496a0634167364813b6adc`. It has no
+production authority. Renew this group's exact-head checks while source1009
+rolls out; complete its full activation and natural observation before the next
+whole rollout.
+
+Oracle reuses its existing provider SDK with separately configured proxy monitor
+and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
+monitor field and complete successful request sequence. Conduent retains its
+configured description/location detail enrichment. Thirty real Postgres/Redis
+worker cases cover plain and credentialed CONNECT transports without leaking a
+monitor proxy setting into detail transport.
+
+Revolut's original 369 jobs match URL, title, location and metadata through a
+physical Lightpanda 1.0.0 document. Its exact preset preserves the original config
+hash while using self-identifying Lightpanda and a strict document parser.
+The direct Go HTTP attempt returned 403 and was removed from the candidate.
+IIHF's single job matches every canonical field across all three physical
+Lightpanda regional mirrors. Canonical description comparison uses the unchanged
+original Python writer normalization. Ordered fallback stops for publisher
+reservations or uncertain evidence; alternate 404s cannot deactivate the board.
+
+The group passes 14 real rendered settlement/policy/config-binding cases and
+15 cold retirement/conservation cases. The 199-profile executable startup and
+focused shared-renderer regression/race checks pass. Protected inventories remain
+outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
+for source identities, complete comparisons and immutable evidence hashes.
+
+MediaMarkt has five original jobs and a physical initial Lightpanda document,
+but clicked-detail completion is still unproved. Daiichi Life Vietnam returned
+zero with missing-step warnings. Neither is admitted by this group. Continue
+those and the remaining enabled configurations in grouped iterations without
+delaying the verified Oracle/Nextdata/inline delivery.
+
+## Historical checkpoint — source1007 ordinary OOM recovery
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
 `f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version 0.13.1007, with 196 profiles.
@@ -124,41 +203,6 @@ verify every enabled route and operational consumer, fleet freshness/conservatio
 comparable whole-service CPU/RAM/density/cost, supported cold reversal and the
 rollback window. Preserve useful isolated offline Python tooling. Do not shrink
 coverage to fit a timer or replace the documented deployment workflows.
-
-## Following grouped candidate — Oracle proxy/enrichment, Revolut and IIHF
-
-The isolated following candidate reserves version **0.13.1010 / 199 profiles**
-on current #10407 head `6c2da9673e59d30910e41daadefd135dfb189dd4`. It has no
-production authority. Deliver #10407 first; then rebase this group on its actual
-merged source and renew checks before the next whole rollout.
-
-Oracle reuses its existing provider SDK with separately configured proxy monitor
-and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
-monitor field and complete successful request sequence. Conduent retains its
-configured description/location detail enrichment. Thirty real Postgres/Redis
-worker cases cover plain and credentialed CONNECT transports without leaking a
-monitor proxy setting into detail transport.
-
-Revolut's original 369 jobs match URL, title, location and metadata through a
-physical Lightpanda 1.0.0 document. Its exact preset preserves the original config
-hash while using self-identifying Lightpanda and a strict document parser.
-The direct Go HTTP attempt returned 403 and was removed from the candidate.
-IIHF's single job matches every canonical field across all three physical
-Lightpanda regional mirrors. Canonical description comparison uses the unchanged
-original Python writer normalization. Ordered fallback stops for publisher
-reservations or uncertain evidence; alternate 404s cannot deactivate the board.
-
-The group passes 14 real rendered settlement/policy/config-binding cases and
-15 cold retirement/conservation cases. The 199-profile executable startup and
-focused shared-renderer regression/race checks pass. Protected inventories remain
-outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
-for source identities, complete comparisons and immutable evidence hashes.
-
-MediaMarkt has five original jobs and a physical initial Lightpanda document,
-but clicked-detail completion is still unproved. Daiichi Life Vietnam returned
-zero with missing-step warnings. Neither is admitted by this group. Continue
-those and the remaining enabled configurations in grouped iterations without
-delaying the verified Oracle/Nextdata/inline delivery.
 
 ## Historical checkpoint — source1005 served before supported retirement
 

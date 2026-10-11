@@ -3,7 +3,7 @@
   "observed_at_utc": "2026-10-11T01:13:35.653895+00:00",
   "candidate_version": "0.13.1010",
   "compiled_profiles": 199,
-  "candidate_base": "6c2da9673e59d30910e41daadefd135dfb189dd4",
+  "candidate_base": "fac1f66fe9f20b1b06496a0634167364813b6adc",
   "production_authority": false,
   "preceding_pr": 10407,
   "types": {
@@ -104,7 +104,7 @@
     }
   ],
   "unqualified": {
-    "mediamarkt": "5 original jobs and physical initial Lightpanda document are observed; clicked detail completion remains unproved after four bounded probes; no interactive preset admitted",
+    "mediamarkt": "5 original jobs and physical initial Lightpanda document observed; clicked detail completion unproved after five bounded probes, including original locator.click; no interactive preset admitted",
     "daiichi_life_vietnam": "original stream returned zero with missing-step warnings; no positive or authoritative-empty evidence"
   },
   "required_before_serving": [
@@ -113,5 +113,8 @@
     "Original complete rollout and source-bound full all-board/all-route admission",
     "Preserve entire earlier full cohort and all qualified additions; exclude unproved configs",
     "Natural fleet freshness, queue conservation, memory and comparable whole-lane resource/cost observation"
-  ]
+  ],
+  "qualification_input_base": "6c2da9673e59d30910e41daadefd135dfb189dd4",
+  "qualification_runtime_tree_unchanged_after_squash_rebase": true,
+  "qualification_tree_before_checkpoint_refresh": "f737eb8c10d652b81b679855127d53eb1c86c729"
 }
