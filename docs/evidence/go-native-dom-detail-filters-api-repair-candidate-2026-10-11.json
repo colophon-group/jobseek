@@ -2,7 +2,7 @@
   "schema": "jobseek.go-migration-dom-detail-filters-api-repair/v1",
   "candidate_version": "0.13.1012",
   "compiled_profiles": 201,
-  "base_revision": "ccddde7475e84a762f6bab086360c805038da9df",
+  "base_revision": "1d0c76a8276b98720c3cf1c3bc1e2e026e2ff2bc",
   "preceding_pr": 10409,
   "production_authority": false,
   "original_reference_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
@@ -98,5 +98,6 @@
     "Deliver preceding grouped releases; rebase onto the actual merged source and renew all exact-head required gates",
     "Original whole deployment and fresh all-enabled-board/all-actual-route admission preserving the complete prior cohort and qualified additions",
     "Supported cutover, independent immutable identities, resource/kernel/freshness/conservation observation"
-  ]
+  ],
+  "prior_candidate_base_revision": "ccddde7475e84a762f6bab086360c805038da9df"
 }
