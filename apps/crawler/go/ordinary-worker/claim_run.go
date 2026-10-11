@@ -208,22 +208,28 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	var fetchErr error
 	var workdayReservation *workday.ReservationError
 	var streamed *queue.GreenhouseInventorySummary
-	if profile.Provider == "nextdata" {
+	if profile.Provider == "nextdata" || profile.Provider == "amazon" {
 		streamed = &queue.GreenhouseInventorySummary{}
 		streamedIdentities := map[string]bool{}
 		var renderedPage func(context.Context, string) nextdataPage
-		if task.Worker == queue.Browser {
-			provider, ok := renderer.(interface {
-				FetchNextdataPage(context.Context, queue.GreenhouseMonitorProfile, map[string]string, string) nextdataPage
-			})
-			if !ok {
-				return failure("configuration", queue.ErrUnsupportedProfile)
+		if profile.Provider == "nextdata" && task.Worker == queue.Browser {
+			nextOptions, optionErr := queue.NextdataMonitorOptions(task.Config)
+			if optionErr != nil {
+				return failure("configuration", optionErr)
 			}
-			renderedPage = func(ctx context.Context, endpoint string) nextdataPage {
-				return provider.FetchNextdataPage(ctx, profile, task.Config, endpoint)
+			if nextOptions.BrowserDocumentTransform != "yum-china-http" {
+				provider, ok := renderer.(interface {
+					FetchNextdataPage(context.Context, queue.GreenhouseMonitorProfile, map[string]string, string) nextdataPage
+				})
+				if !ok {
+					return failure("configuration", queue.ErrUnsupportedProfile)
+				}
+				renderedPage = func(ctx context.Context, endpoint string) nextdataPage {
+					return provider.FetchNextdataPage(ctx, profile, task.Config, endpoint)
+				}
 			}
 		}
-		discovery, fetchErr = discoverNextdataWithPages(ctx, http.client, profile, task.Config, func(jobs []RichMonitorJob) error {
+		emit := func(jobs []RichMonitorJob) error {
 			inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], jobs, false)
 			if err != nil {
 				return err
@@ -278,7 +284,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 				}
 			}
 			return nil
-		}, renderedPage)
+		}
+		if profile.Provider == "amazon" {
+			discovery, fetchErr = discoverAmazonInventory(ctx, http.client, profile, task.Config, emit)
+		} else {
+			discovery, fetchErr = discoverNextdataWithPages(ctx, http.client, profile, task.Config, emit, renderedPage)
+		}
 	} else if queue.PortalHTTPProvider(profile.Provider) {
 		var emit func([]RichMonitorJob) error
 		if profile.Provider == "pageup" {

@@ -1,85 +1,104 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1007 merged, original rollout underway
+## Current checkpoint — source1007 deployed and full ownership active
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
-`f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version0.13.1007, with196 profiles.
-Its exact reviewed head7dafe149 passed Required CI38089346647, actual Crawler
-Deploy Gate38089345115, installed parity38089346537, Linux physical Lightpanda
-38089346679, ARM whole-lane admission38089346639 and renderer qualification
-38089346579. Fresh independent source1006 cold274 verification preceded the
-expected-head merge. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38092011667)
-is underway. The original [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38092045413)
-succeeded at attempt1. Independent readback matches source1007 and renderer digest
-`sha256:99d6ccb52b6999514a00adff83a3d44e6219562481d48e78d7ae6bc9034c0091`,
-running without sticky OOM evidence. This is a bounded readiness observation;
-post-activation resources and the predecessor OOM recurrence remain to be measured.
+`f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version 0.13.1007, with 196 profiles.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38092011667)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38092045413)
+both succeeded at attempt 1. Independent checks bind their exact immutable images,
+selected release, healthy export progress and complete cold epoch 274 state.
 
-Lightpanda1.0.0 is still the latest official stable release, verified October10
-at22:35UTC, and remains pinned. The renderer now bounds each child V8 heap at128MiB;
-its existing four-child/1GiB service envelope remains in place. Pinned physical
-tests prove resource failure withholding and subsequent normal navigation.
+The original B0 activation and full ordinary activation then succeeded at epoch
+275. Ordinary authority is plan
+`a678a0a1e605ea4be0f007a78778e0f6ff92752862bdac9ba44f85955d0e774b`, projection
+`d1859088d4272c32fe45885bc12136f2c2a2eeb5`, and active receipt
+`1dc895bab4d6dfa5477dc5bcd74d51ba32f17862217354556e47ef1dfa472193`.
+All 7,754 monitor boards and 2,753 detail boards are active: the previous full
+7,736/2,751 cohort and all 18 qualified source1006/source1007 monitor additions
+were preserved. SQL, Redis, HTTP health identity and all ten writer images agree.
+The October 10 23:32 UTC natural sample contains 103 completed monitors, 103 exact
+recurring schedules, no retained completion leases and zero writer restarts.
+It also contains 129 completed scrape fences and one detail failure diagnostic;
+this sample does not establish global freshness, zero failures or fleet conservation.
 
-Keep native owners cold until the whole crawler deployment and independent
-identity/health/export/cold verification succeed. Reconcile a fresh complete
-canonical board census and every actual scheduled detail route. Stage and activate
-through the original wrappers, preserving all7,736 previous monitors and2,751
-detail boards plus all15 source1006 and3 source1007 qualified monitor additions.
-Do not shrink coverage to fit a timer or treat compiled support as serving authority.
+The fresh admission inspected **all 7,885 enabled canonical boards** and all
+**1,664,550 actual scheduled posting routes**, rather than a compiler-selected
+subset. It owns 1,460,466 scheduled routes; 42 qualifying detail boards failed
+cache reconciliation and one failed route reconciliation. Preserve these explicit
+exclusions until corrected and freshly qualified. Compiled support alone grants
+no serving authority, and the remaining board count is not a count of active jobs.
 
-[Candidate PR#10407](https://github.com/colophon-group/jobseek/pull/10407), version0.13.1008,
-groups API pagination convergence and PostFinance RSS canonical identity migration.
-Its local original-output, PostgreSQL/Redis settlement and cold-retirement proofs
-pass; it is published for CI and has no serving authority. Publicis preserves the
-original truncated2958-URL prefix and withholds absence authority; Bupa matches55
-complete jobs. PostFinance matches277 raw RSS records and all24 postprocessed canonical jobs, retaining the published
-filter/collision policy, and ports the original company-wide atomic retirement SQL
-with the exact code-owned board/fingerprint/receipt and healthy inventory gates.
-Converged raw rows that lose URLs during projection retain the original partial
-inventory guard. Zero processed results from an unproved truncated inventory fail before empty
-accounting; ordinary failure settlement retains existing postings and the empty
-counter. This deliberately repairs the original empty-before-truncation ordering.
-See [candidate evidence](evidence/go-native-convergence-rss-candidate-2026-10-10.json).
-IHG automatic-total convergence, Implenia identity resolution and Njoyn remain
-unqualified. Njoyn's unchanged original probe ended at its WAF error page; no
-publisher or configured transport bypass is authorized by that evidence.
+Lightpanda [1.0.0](https://github.com/lightpanda-io/browser/releases/tag/1.0.0)
+remains the latest official stable release, verified October 10 at 23:22 UTC.
+Its immutable pin remains in place. The renderer bounds each child V8 heap at
+128 MiB within the existing four-child/1 GiB service envelope. A source-bound
+23:25 UTC resource observation shows zero OOM events and restarts since deployment,
+44.68 MiB current container memory and a 161,447,936-byte peak. This observation
+is not a whole-lane comparison or proof that OOM cannot recur.
 
-The full migration goal remains active. Finish full-cohort activation and natural
-freshness/conservation, then continue grouped ports of the remaining enabled
-profiles and runtime consumers. Whole-service resources/cost and supported cold
-reversal precede production Python/Playwright/Chromium retirement; retain isolated
-offline Python tools and every enabled board.
+[PR #10407](https://github.com/colophon-group/jobseek/pull/10407) is now one
+four-type batch, version 0.13.1009 with 197 profiles: API pagination convergence,
+PostFinance RSS identity migration, Amazon partitions and Yum China public data.
+The earlier 0.13.1008 candidate is superseded; it will not require a separate
+production rollout. All serving authority remains with source1007 until renewed
+checks, exact-head merge and the original complete deployment/cutover succeed.
 
+The previous head's Required CI 38094256826 failed three older test assertions
+for unproved zero-result inventories (ADP invalid row and malformed encrypted
+responses with both transports). The guard correctly settled failure before
+empty accounting. Updated assertions prove existing rows, missing counters and
+empty counts remain unchanged; all affected original-reference worker cases pass
+locally. The earlier installed parity, Lightpanda and Deploy Gate results are
+historical and do not authorize the consolidated head. Renew every required gate.
 
-## Historical predecessor — source1006 deployed, native owners cold274
+Bupa matches 55 complete jobs; Publicis preserves the original 2,958-URL truncated
+prefix and withholds absence authority. PostFinance matches 277 raw RSS records
+and all 24 canonical jobs, including the original company-wide atomic retirement
+SQL and exact board/fingerprint/receipt safety gates. See
+[convergence/RSS evidence](evidence/go-native-convergence-rss-candidate-2026-10-10.json).
 
-[PR #10404](https://github.com/colophon-group/jobseek/pull/10404) merged as
-`e81c5a488856113808fa60925fb069fcca128e47`, version0.13.1006 with195 profiles.
-Required CI38084533646, actual Crawler Deploy Gate38084532422, installed parity
-38084533668 and both physical Linux architectures38084533677 passed on reviewed
-head8ce8f01. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38087698034)
-and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38087725795)
-succeeded: crawler attempt1 and renderer attempt2. Independent readback binds
-the exact selected source/images; full cold274 verification confirms seven
-restored base writers, cleared receipts/selectors and no active native owner.
-Export progress shows419 successful documents, zero errors and healthy Typesense.
-These are readiness observations; the15 additions have not acquired serving authority.
+Amazon's unchanged original stream produced 21,896 jobs and 465 physical exchanges.
+The native SDK replay matches every field and all 463 provider requests, including
+country/category partitions. Late request failure now withholds absence authority;
+a query still capped after both partitions remains partial. Yum's original browser
+expression produced nine jobs. Go reads its published first-party JavaScript
+literal through exactly the document and asset requests; complete replay and live
+verified Go HTTP match all nine records. It preserves the configured browser
+queue namespace. Only a plain data literal or the exact published control program
+is accepted; changed expressions, malformed literals or other control code fail.
 
-The complete source1005 ordinary owner and B0 owner retired through their
-original wrappers. Selector clearing and independent cold epoch274 verification
-preceded the fresh head-bound merge. Last active native authority was the full
-7,736-monitor/2,751-detail cohort. Its last bounded natural sample has639 completed
-monitor receipts with639 exact recurring schedules, no retained completion
-leases and73 completed scrape receipts. Full-fleet freshness and cost remain open.
+The Amazon/Yum group passes ten real PostgreSQL/Redis settlement cases, six cold
+retirement/conservation cases, the 197-profile executable startup check and the
+full shared API SDK race suite. All original public job inventories remain in
+protected evidence; repository fixtures are synthetic. See
+[Amazon/Yum candidate evidence](evidence/go-native-amazon-yum-candidate-2026-10-11.json).
 
-Keep native ownership cold across these adjacent releases while the following
-three-type source1007 candidate qualifies. Then perform one complete admission
-and original full activation preserving the entire last-active source1005 cohort
-plus all15 qualified source1006 and3 source1007 monitor additions. Reconcile every
-actual scheduled detail route; do not equate compiler support with ownership or
-shrink the cohort to fit a timer. Full Python/Playwright/Chromium retirement still
-requires all enabled profiles/consumers, freshness/conservation, comparable
-whole-service resources/cost and the supported reversal window.
+A 23:59 UTC readback shows why fleet freshness remains an explicit delivery gate:
+6,114 native-owned monitors are due, 2,925 are overdue by more than one hour and
+611 by more than six hours. These ages are not a before/after baseline. Of 443
+completed monitor fences, 442 have exact recurring schedules; one overlaps a
+retained/new claim and needs another read. Failed monitor/detail rows exist, so
+completion fences must not be reported as successful crawls. The full scheduled
+posting age aggregate exceeded its fixed 15-second read-only limit and remains
+unverified. The configured ordinary worker budget is five concurrent claims.
+Investigate throughput and queue fairness while the four-type candidate qualifies;
+make any capacity or runtime correction through a reviewed whole release.
+
+The full migration goal remains active. Finish #10407's exact-head gates, use the
+original full ordinary/B0 retirement and independent cold verification, merge with
+fresh authority, then deploy the whole four-type release through its original workflows.
+Fresh all-board/all-route admission must preserve the entire active 7,754/2,753
+cohort and add all five qualified candidate monitors. Continue grouped ports of
+remaining enabled profiles and runtime consumers while gates run. IHG automatic
+convergence, Implenia identity resolution and Njoyn remain unqualified; their
+failed probes do not authorize publisher or configured transport bypasses.
+
+Before retiring production Python, Playwright, Chromium and runtime-only assets,
+verify every enabled route and operational consumer, fleet freshness/conservation,
+comparable whole-service CPU/RAM/density/cost, supported cold reversal and the
+rollback window. Preserve useful isolated offline Python tooling. Do not shrink
+coverage to fit a timer or replace the documented deployment workflows.
 
 ## Historical checkpoint — source1005 served before supported retirement
 

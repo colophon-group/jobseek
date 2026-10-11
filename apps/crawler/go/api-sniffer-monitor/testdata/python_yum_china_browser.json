@@ -1,0 +1,180 @@
+{
+  "metadata": {
+    "source": "browser",
+    "browser_expression": "({jobs: jobList})",
+    "path": "jobs",
+    "url_template": "{link}",
+    "fields": {
+      "title": "title",
+      "description": "desc",
+      "locations": "=Shanghai, China",
+      "employment_type": "=full_time",
+      "job_location_type": "=onsite"
+    }
+  },
+  "cases": [
+    {
+      "name": "mixed-quotes",
+      "script": "let jobList = [{type:\"Track\",title:'Software Engineer',desc:'<p>Build \"reliable\" systems. It\\'s useful.</p>',link:\"https://example.test/jobs/42\",}];",
+      "browser_result": {
+        "jobs": [
+          {
+            "type": "Track",
+            "title": "Software Engineer",
+            "desc": "<p>Build \"reliable\" systems. It's useful.</p>",
+            "link": "https://example.test/jobs/42"
+          }
+        ]
+      },
+      "jobs": [
+        {
+          "url": "https://example.test/jobs/42",
+          "title": "Software Engineer",
+          "description": "<p>Build \"reliable\" systems. It's useful.</p>",
+          "locations": [
+            "Shanghai, China"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "empty",
+      "script": "let jobList = [];",
+      "browser_result": {
+        "jobs": []
+      },
+      "jobs": []
+    },
+    {
+      "name": "unicode",
+      "script": "let jobList = [{type:\"Track\",title:\"\\u5de5\\u7a0b\\u5e08\",desc:\"<p>\\uD83D\\uDE00</p>\",link:\"https://example.test/jobs/43\"}];",
+      "browser_result": {
+        "jobs": [
+          {
+            "type": "Track",
+            "title": "工程师",
+            "desc": "<p>😀</p>",
+            "link": "https://example.test/jobs/43"
+          }
+        ]
+      },
+      "jobs": [
+        {
+          "url": "https://example.test/jobs/43",
+          "title": "工程师",
+          "description": "<p>😀</p>",
+          "locations": [
+            "Shanghai, China"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "escaped",
+      "script": "let jobList = [{type:\"Track\",title:\"Line\\nTab\\t\",desc:\"<p>Backslash \\\\ and quote \\\"</p>\",link:\"https://example.test/jobs/44\"}];",
+      "browser_result": {
+        "jobs": [
+          {
+            "type": "Track",
+            "title": "Line\nTab\t",
+            "desc": "<p>Backslash \\ and quote \"</p>",
+            "link": "https://example.test/jobs/44"
+          }
+        ]
+      },
+      "jobs": [
+        {
+          "url": "https://example.test/jobs/44",
+          "title": "Line\nTab\t",
+          "description": "<p>Backslash \\ and quote \"</p>",
+          "locations": [
+            "Shanghai, China"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "multiple",
+      "script": "let jobList = [{type:\"Track\",title:'Software Engineer',desc:'<p>Build \"reliable\" systems. It\\'s useful.</p>',link:\"https://example.test/jobs/42\",},{type:\"Track\",title:'Software Engineer',desc:'<p>Build \"reliable\" systems. It\\'s useful.</p>',link:\"https://example.test/jobs/45\",}];",
+      "browser_result": {
+        "jobs": [
+          {
+            "type": "Track",
+            "title": "Software Engineer",
+            "desc": "<p>Build \"reliable\" systems. It's useful.</p>",
+            "link": "https://example.test/jobs/42"
+          },
+          {
+            "type": "Track",
+            "title": "Software Engineer",
+            "desc": "<p>Build \"reliable\" systems. It's useful.</p>",
+            "link": "https://example.test/jobs/45"
+          }
+        ]
+      },
+      "jobs": [
+        {
+          "url": "https://example.test/jobs/42",
+          "title": "Software Engineer",
+          "description": "<p>Build \"reliable\" systems. It's useful.</p>",
+          "locations": [
+            "Shanghai, China"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.test/jobs/45",
+          "title": "Software Engineer",
+          "description": "<p>Build \"reliable\" systems. It's useful.</p>",
+          "locations": [
+            "Shanghai, China"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    }
+  ]
+}
