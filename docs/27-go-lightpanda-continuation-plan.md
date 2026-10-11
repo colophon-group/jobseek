@@ -25,6 +25,7 @@ The qualified transport and enrichment groups are combined into one 91-board
 release before the next whole deployment and full activation. Renew fresh
 all-board/all-route admission and preserve every previously qualified owner.
 Then observe natural health, conservation, memory and fleet freshness.
+See [the deployed source1011 proof](evidence/go-native-source1011-production-2026-10-11.json).
 
 ## Historical source1010 checkpoint — failed full activation recovered
 
@@ -201,7 +202,10 @@ standalone structured salary masks preserve their original inert compatibility
 behavior; description-derived salary and location resolution keep their existing
 writer semantics. GE Vernova Menk USA remains held after original HTTP errors.
 The groups have no overlap: **91 qualified boards / 180 public samples** in one
-version1012 release. See [the enrichment proof](evidence/go-native-grouped-detail-enrichment-candidate-2026-10-11.json).
+version1012 release. The combined full mandatory local worker race suite
+also passed in **857.108 seconds** at final `3142a316`. Fresh installed-image
+parity and Crawler Deploy Gate pass; Required CI is still running.
+See [the enrichment proof](evidence/go-native-grouped-detail-enrichment-candidate-2026-10-11.json).
 
 The original source1011 rollout is complete and remains healthy with native
 ownership inactive. Renew required CI, installed-image proof and deployment
