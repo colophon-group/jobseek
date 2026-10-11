@@ -35,7 +35,7 @@ type RuntimeConfig struct {
 	rendered                                                                                      bool
 	databaseURL, redisURL, source, plan, projection, metricsAddress, dataDirectory                string
 	epoch                                                                                         int64
-	concurrency                                                                                   int
+	concurrency, monitorConcurrency                                                               int
 	leaseTTL, heartbeat, taskTimeout, shutdownGrace, cancellationGrace, idleBackoff, stallTimeout time.Duration
 	delay                                                                                         float64
 	maxDomains                                                                                    int
@@ -118,10 +118,10 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 	if err != nil {
 		return RuntimeConfig{}, err
 	}
-	if monitor == 0 {
-		monitor = discovery
-	}
-	c.concurrency = int(min(discovery, monitor))
+	// Python starts discovery workers and applies a separate monitor-only
+	// semaphore inside the live lease. Detail work retains discovery capacity.
+	c.concurrency = int(discovery)
+	c.monitorConcurrency = int(monitor)
 	for _, option := range []struct {
 		key                string
 		dest               *time.Duration

@@ -17,9 +17,10 @@ import (
 )
 
 type runtimeServices struct {
-	claim     func(context.Context) (*queue.Claim, error)
-	heartbeat func(context.Context, *queue.Claim) error
-	execute   func(context.Context, *queue.Claim) (*GreenhouseClaimResult, error)
+	monitorSlots chan struct{}
+	claim        func(context.Context) (*queue.Claim, error)
+	heartbeat    func(context.Context, *queue.Claim) error
+	execute      func(context.Context, *queue.Claim) (*GreenhouseClaimResult, error)
 }
 
 // A heartbeat must not race this runner's successful acknowledgement and
@@ -88,7 +89,12 @@ func runLeasedClaim(parent context.Context, c RuntimeConfig, s runtimeServices, 
 		err    error
 	}
 	executed := make(chan execution, 1)
-	go func() { result, err := s.execute(ctx, claim); executed <- execution{result, err} }()
+	go func() {
+		result, err := executeWithMonitorSlot(ctx, s.monitorSlots, claim.Descriptor().Kind, func() (*GreenhouseClaimResult, error) {
+			return s.execute(ctx, claim)
+		})
+		executed <- execution{result, err}
+	}()
 	var completed execution
 	select {
 	case completed = <-executed:
@@ -125,8 +131,11 @@ func runLeasedClaim(parent context.Context, c RuntimeConfig, s runtimeServices, 
 // first stops pops while task contexts and heartbeats remain live during drain.
 // On expiry, unfinished work retains leases/receipts for the guarded reaper.
 func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *runtimeMetrics) error {
-	if c.concurrency < 1 || c.heartbeat <= 0 || c.taskTimeout <= 0 || c.idleBackoff <= 0 || c.stallTimeout <= 0 || s.claim == nil || s.heartbeat == nil || s.execute == nil || m == nil {
+	if c.concurrency < 1 || c.monitorConcurrency < 0 || c.monitorConcurrency > 256 || c.heartbeat <= 0 || c.taskTimeout <= 0 || c.idleBackoff <= 0 || c.stallTimeout <= 0 || s.claim == nil || s.heartbeat == nil || s.execute == nil || m == nil {
 		return ErrStartup
+	}
+	if c.monitorConcurrency > 0 {
+		s.monitorSlots = make(chan struct{}, min(c.concurrency, c.monitorConcurrency))
 	}
 	claims, stopClaims := context.WithCancel(stop)
 	defer stopClaims()

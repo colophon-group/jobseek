@@ -163,7 +163,11 @@ DEPLOY_SPEC_FILES=(
   docker-compose.yml
   lightpanda-b0-enabled.override.yml
   alloy.river
-  scripts/postgresql-operational-preflight.py
+  scripts/native-deploy-tools.sh
+  scripts/crawler-deploy-tools-amd64
+  scripts/crawler-deploy-tools-arm64
+  scripts/crawler-deploy-tools.source
+  scripts/crawler-deploy-tools.sha256
   scripts/lightpanda-claimant-credentials.py
   scripts/lightpanda-b0-cutover.sh
   scripts/ordinary-go-cutover.sh
@@ -390,75 +394,12 @@ verify_exact_csv_tree() {
     echo "ERROR: crawler active CSV snapshot is unavailable or unsafe" >&2
     return 1
   }
-  python3 - "$data_dir" "$files_manifest" <<'PY'
-import hashlib
-import os
-import pathlib
-import re
-import stat
-import sys
-
-root = pathlib.Path(sys.argv[1])
-manifest = pathlib.Path(sys.argv[2])
-rows = []
-for directory, dirnames, filenames in os.walk(root, followlinks=False):
-    directory_path = pathlib.Path(directory)
-    for name in list(dirnames):
-        path = directory_path / name
-        if path.is_symlink():
-            raise SystemExit(f"unsafe symlink in CSV snapshot: {path}")
-    for name in filenames:
-        path = directory_path / name
-        mode = path.lstat().st_mode
-        if not stat.S_ISREG(mode) or path.is_symlink():
-            raise SystemExit(f"unsafe file in CSV snapshot: {path}")
-        relative = path.relative_to(root).as_posix()
-        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
-            raise SystemExit(f"unexpected file in CSV snapshot: {relative}")
-        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
-if not rows:
-    raise SystemExit("CSV snapshot is empty")
-actual = "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows))
-if manifest.read_text(encoding="utf-8") != actual:
-    raise SystemExit("CSV snapshot file manifest does not match exact tree")
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" csv-verify "$data_dir" "$files_manifest"
 }
 
 write_exact_csv_manifest() {
   local data_dir="$1" files_manifest="$2"
-  python3 - "$data_dir" "$files_manifest" <<'PY'
-import hashlib
-import os
-import pathlib
-import re
-import stat
-import sys
-
-root = pathlib.Path(sys.argv[1])
-output = pathlib.Path(sys.argv[2])
-rows = []
-for directory, dirnames, filenames in os.walk(root, followlinks=False):
-    directory_path = pathlib.Path(directory)
-    for name in list(dirnames):
-        path = directory_path / name
-        if path.is_symlink():
-            raise SystemExit(f"unsafe symlink in CSV candidate: {path}")
-    for name in filenames:
-        path = directory_path / name
-        mode = path.lstat().st_mode
-        if not stat.S_ISREG(mode) or path.is_symlink():
-            raise SystemExit(f"unsafe file in CSV candidate: {path}")
-        relative = path.relative_to(root).as_posix()
-        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
-            raise SystemExit(f"unexpected file in CSV candidate: {relative}")
-        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
-if not rows:
-    raise SystemExit("CSV candidate is empty")
-output.write_text(
-    "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows)),
-    encoding="utf-8",
-)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" csv-manifest "$data_dir" "$files_manifest"
   chmod 0644 "$files_manifest"
 }
 
@@ -1309,7 +1250,7 @@ activate_staged_deploy_specs() {
 
   for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     case "$spec" in
-      deploy.sh | deploy_helpers.sh | scripts/*.py | scripts/*.sh) mode=0755 ;;
+      deploy.sh | deploy_helpers.sh | scripts/*.py | scripts/*.sh | scripts/crawler-deploy-tools-amd64 | scripts/crawler-deploy-tools-arm64) mode=0755 ;;
       *) mode=0644 ;;
     esac
     install -d "$(dirname "$DEPLOY_DIR/$spec")"
@@ -2162,7 +2103,9 @@ EOF
 ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
 ensure_reconciliation_wrapper_compatible
-python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
+source "$INCOMING_DIR/scripts/native-deploy-tools.sh"
+initialize_native_deploy_tools
+run_native_postgresql_preflight
 initialize_ghcr_docker_config
 
 # Resolve and authenticate the exact pre-deploy release before any active

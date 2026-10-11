@@ -1,0 +1,57 @@
+{
+  "schema": "jobseek.go-native-candidate/v1",
+  "version": "0.13.1021",
+  "profiles": 204,
+  "base_candidate_revision": "934eacdefb04710dbdd264d88dedc3eed4f16811",
+  "production_ownership_granted": false,
+  "full_migration_complete": false,
+  "problem": "Go used min(discovery_concurrency,monitor_concurrency) as the capacity for every task; original Python starts discovery workers and limits only monitors inside their live lease",
+  "changed_behavior": {
+    "discovery_capacity_default": 20,
+    "monitor_execution_cap_default": 5,
+    "monitor_zero": "no additional monitor cap; discovery remains bounded",
+    "monitor_wait": "existing heartbeat remains live; task cancellation and token loss prevent execution; capacity released on exit",
+    "detail_execution": "uses discovery capacity without consuming a monitor slot",
+    "cpu_memory_limits_changed": false
+  },
+  "local_validation": {
+    "focused_runtime_race": "passed 3.200s",
+    "focused_capacity_private_postgresql_redis_race": "passed 3.927s",
+    "vet_tidy_format": "passed",
+    "complete_worker_race_suite": "passed 2031.507s with required private PostgreSQL/Redis"
+  },
+  "actual_private_cases": [
+    "two monitors plus four details run concurrently with a two-monitor cap",
+    "cancelled wait cannot execute or release another task slot",
+    "real monitor heartbeat renews while capacity is occupied",
+    "released real publisher-reserved monitor settles exact canonical and Redis deadline without origin request",
+    "cancelled or token-lost real wait retains active fence/recovery lease and unchanged canonical deadline without fake result"
+  ],
+  "production_freshness": {
+    "observed_at_utc": "2026-10-11T20:13:36.753889+00:00",
+    "native_monitor_due": 6819,
+    "native_monitor_overdue_1h": 4528,
+    "native_monitor_overdue_6h": 67,
+    "native_scheduled_details_due": 1541413,
+    "native_scheduled_details_overdue_24h": 1486120,
+    "freshness_gap_resolved": false
+  },
+  "source_hashes": {
+    "environment.go": "23e5f31f1f76a8a53d435bf6a1776ba36651924de655f356ac8ea6640a12c25e",
+    "runtime.go": "6e7b68c04c12e1a444a41cd794db955eb2ba4a7483315feed3918ffea1c3a8a5",
+    "monitor_capacity.go": "96b8e48c86bc63e0f2808b14246dfa5072772ff4667a53f870e922207dc78e9d",
+    "environment_test.go": "d76f2a3a0e182df74c91a09e3dfea76464de4f2693c89a94d04ea6cf62fa2380",
+    "monitor_capacity_test.go": "1a5e33932e49c274a4cacc70c85b3557174ca6ad1d4c7b27299c7ec2f71eb681"
+  },
+  "remaining_qualification": [
+    "exact-head installed CI",
+    "original quiesced whole rollout",
+    "observed production CPU/RAM and sustained monitor/detail freshness",
+    "remaining profiles and production Python consumers"
+  ],
+  "rebase_validation": {
+    "previous_head": "dba73d2436edb8636d848398cb9ec07abadd8308",
+    "worker_and_version_bytes_unchanged": true,
+    "new_exact_head_ci": "pending"
+  }
+}

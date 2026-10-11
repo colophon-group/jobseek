@@ -1,0 +1,66 @@
+{
+  "schema": "jobseek.go-native-candidate/v1",
+  "version": "0.13.1020",
+  "profiles": 204,
+  "production_ownership_granted": false,
+  "full_migration_complete": false,
+  "replaced_production_consumers": [
+    "PostgreSQL operational preflight",
+    "exact CSV manifest creation",
+    "exact CSV tree verification"
+  ],
+  "contracts": {
+    "postgresql": "same eight original queries and thresholds; bounded origin-only authenticated requests; incomplete/non-finite telemetry rejected",
+    "csv": "same sorted SHA-256 manifest bytes; complete regular-file CSV tree; symlinks and unexpected files rejected",
+    "artifact_identity": "both Linux architectures and digest manifest staged by original deployment; expected revision must match manifest and compiled identity before quiescence",
+    "rollback": "incoming executable remains bound during prior-generation verification; presence-aware archive retains old specs and removes newly absent specs after complete rollback",
+    "credential_scope": "env-i; only three Grafana variables enter preflight; no credentials enter CSV commands"
+  },
+  "local_validation": {
+    "go_race_vet_tidy_format": "passed",
+    "deployment_runtime_postgresql_tests": {
+      "passed": 87,
+      "seconds": 192.17
+    },
+    "artifact_admission_cases": 7,
+    "extended_first_rollout_failure_and_retry": "passed",
+    "linux_cross_build": {
+      "amd64": "ELF64 machine62 inspected",
+      "arm64": "ELF64 machine183 inspected",
+      "executed_on_linux": false
+    },
+    "installed_ci_and_production_deploy": "pending"
+  },
+  "remaining_production_python": [
+    "legacy worker/browser processes",
+    "Alembic execution",
+    "claimant credentials and release bridge helpers",
+    "other embedded host helpers",
+    "historical rollback sync and identity repair paths"
+  ],
+  "source1018_followup": {
+    "observed_at_utc": "2026-10-11T20:01:19.050633+00:00",
+    "completed_monitor_claims": 591,
+    "exact_recurring_monitor_schedules": 591,
+    "retained_completion_leases": 0,
+    "completed_detail_claims": 1326,
+    "healthy_endpoints": 8,
+    "kernel_cpu_percent": 99.4,
+    "kernel_memory_mib": 616.4,
+    "restarts": 0,
+    "freshness_gap_resolved": false
+  },
+  "source_hashes": {
+    "apps/crawler/go/deploy-tools/csv.go": "b4cd76a5f70ad9eb0c65c310ea8f277e7d8593630011c2aa5bbbf4ec1d04148d",
+    "apps/crawler/go/deploy-tools/main.go": "b73f76bff942886082c4962aa24b6eafc31b14f73e42ff3fb569f6962d0c4201",
+    "apps/crawler/go/deploy-tools/preflight.go": "5ea95373840c02d80259d33455c667b4d86917abe280d889997c0e49e17fa30c",
+    "apps/crawler/go/deploy-tools/tools_test.go": "2245b52a14d5fb6c78d1654c2c909822b7d2fb8bc9dab3f5582168921382b68a"
+  },
+  "base_revision": "d365467744d0f5acd7985fe93dd8d2d120903b66",
+  "api_rss_qualified_head": "7739b0ce80bbd8258bab3c4de967711a41976afd",
+  "rebase_validation": {
+    "previous_head": "2fa8cf84c1ac334ad74ee43625aff82836b12a80",
+    "crawler_pilot_renderer_and_workflow_bytes_unchanged": true,
+    "new_exact_head_ci": "pending"
+  }
+}

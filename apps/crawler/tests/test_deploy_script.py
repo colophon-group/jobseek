@@ -39,6 +39,36 @@ AGENTS_MD = Path(__file__).resolve().parent.parent / "AGENTS.md"
 DEPLOY_SPEC_PRESENCE_NAME = ".jobseek-deploy-spec-presence-v1"
 
 
+@pytest.fixture(scope="module")
+def native_deploy_tools_binary(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    binary = tmp_path_factory.mktemp("native-deploy-tools") / "crawler-deploy-tools"
+    result = subprocess.run(
+        [
+            "go",
+            "build",
+            "-trimpath",
+            "-ldflags",
+            "-X main.sourceRevision=" + "c" * 40,
+            "-o",
+            str(binary),
+            ".",
+        ],
+        cwd=REPO_ROOT / "apps/crawler/go/deploy-tools",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return binary
+
+
+@pytest.fixture
+def bind_native_deployment_fixture(
+    native_deploy_tools_binary: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NATIVE_DEPLOY_TOOLS", str(native_deploy_tools_binary))
+
+
 def _create_deploy_spec_rollback_archive(
     archive_path: Path,
     entries: dict[str, tuple[bytes, int] | None],
@@ -186,6 +216,7 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert "GHCR_PULL_TOKEN" not in persisted_env
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_deploy_removes_transaction_scoped_ghcr_auth_on_success_and_failure(
     tmp_path: Path,
 ) -> None:
@@ -1426,6 +1457,7 @@ def test_csv_publication_rejects_tree_a_claiming_active_contract_b_before_noop(
     assert list(release_root.glob(f"data-{revision_a}.*")) == []
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_full_deploy_rejects_image_tree_a_claiming_git_contract_b(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     csv_helpers = script[
@@ -1966,6 +1998,7 @@ def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> Non
 
 
 @pytest.mark.timeout(90)
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
     tmp_path: Path,
 ) -> None:
@@ -2016,6 +2049,11 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "alloy.river",
         "scripts/postgresql-operational-preflight.py",
         "scripts/verify-crawler-release-bridge.py",
+        "scripts/native-deploy-tools.sh",
+        "scripts/crawler-deploy-tools-amd64",
+        "scripts/crawler-deploy-tools-arm64",
+        "scripts/crawler-deploy-tools.source",
+        "scripts/crawler-deploy-tools.sha256",
     )
     base_specs = {
         "deploy.sh": (b"#!/bin/sh\n# old deploy\n", 0o755),
@@ -2209,8 +2247,10 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
             target = deploy_dir / relative
             assert target.read_bytes() == content, error
             assert stat.S_IMODE(target.stat().st_mode) == mode, error
-        verifier = deploy_dir / "scripts/verify-crawler-release-bridge.py"
-        assert not verifier.exists() and not verifier.is_symlink(), error
+        for relative in spec_files:
+            if relative not in base_specs:
+                target = deploy_dir / relative
+                assert not target.exists() and not target.is_symlink(), error
 
     def assert_no_spec_transaction_residue(error: str = "") -> None:
         assert not rollback_env.exists(), error
@@ -2303,9 +2343,7 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     oneoff_guard = script.index("\nensure_no_running_compose_oneoffs\n")
     typesense_guard = script.index("\nensure_no_running_typesense_maintenance\n")
     reconciliation_guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
-    postgres_guard = script.index(
-        'python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"'
-    )
+    postgres_guard = script.index("\nrun_native_postgresql_preflight\n")
     activation = script.index("\nactivate_staged_deploy_specs\n")
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
@@ -2401,6 +2439,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "target: /home/deploy/\n" not in workflow
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
     tmp_path: Path,
 ) -> None:
@@ -2574,6 +2613,7 @@ def test_release_generation_root_is_durable_before_pointer_publication() -> None
     assert not MURMUR_DEPLOY_WORKFLOW.exists()
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[
@@ -2733,6 +2773,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             assert "retaining the last verified crawler snapshot" in result.stderr
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     configure = script[
@@ -2870,6 +2911,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
     tmp_path: Path,
 ) -> None:
@@ -2985,6 +3027,7 @@ def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
             assert "old stack restart skipped" in result.stderr
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     tmp_path: Path,
 ) -> None:
@@ -3218,6 +3261,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     ]
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
     tmp_path: Path,
 ) -> None:
@@ -3417,6 +3461,7 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
     assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
 
 
+@pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_release_pointer_never_exposes_a_partially_prepared_generation(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     activation = script[
@@ -3488,11 +3533,145 @@ def test_operator_guidance_preserves_generation_and_credential_boundaries() -> N
     assert "complete" in agents and "rollback" in agents
 
 
-def test_deploy_copies_postgresql_operational_preflight() -> None:
+def test_deploy_copies_source_bound_native_operational_tools() -> None:
     workflow = DEPLOY_WORKFLOW.read_text()
+    script = DEPLOY_SH.read_text()
+    assert POSTGRES_PREFLIGHT.exists()  # Retain isolated historical tooling.
+    for name in (
+        "native-deploy-tools.sh",
+        "crawler-deploy-tools-amd64",
+        "crawler-deploy-tools-arm64",
+        "crawler-deploy-tools.source",
+        "crawler-deploy-tools.sha256",
+    ):
+        assert f"apps/crawler/scripts/{name}" in workflow
+        assert f"scripts/{name}" in script
+    assert 'build-deploy-tools.sh "$GITHUB_SHA"' in workflow
+    initialization = script.index("\ninitialize_native_deploy_tools\n")
+    preflight = script.index("\nrun_native_postgresql_preflight\n")
+    quiesce = script.index("docker compose stop --timeout 60")
+    assert initialization < preflight < quiesce
 
-    assert POSTGRES_PREFLIGHT.exists()
-    assert "apps/crawler/scripts/postgresql-operational-preflight.py" in workflow
+
+@pytest.mark.parametrize(
+    "fault", [None, "source", "compiled", "digest", "missing", "symlink", "extra-manifest"]
+)
+def test_native_deployment_artifact_admission(
+    tmp_path: Path,
+    native_deploy_tools_binary: Path,
+    fault: str | None,
+) -> None:
+    incoming = tmp_path / "incoming"
+    scripts = incoming / "scripts"
+    scripts.mkdir(parents=True)
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _write_executable(binaries / "uname", "#!/bin/sh\necho arm64\n")
+    # Portable test implementation of the Linux checksum utility. The two
+    # real host-architecture Go binaries below are executed without a shell.
+    _write_executable(
+        binaries / "sha256sum",
+        "#!/usr/bin/env python3\nfrom pathlib import Path\nimport hashlib, sys\n"
+        "assert sys.argv[1:] == ['--strict', '--status', '-c', 'crawler-deploy-tools.sha256']\n"
+        "for line in Path(sys.argv[-1]).read_text().splitlines():\n"
+        " digest, name = line.split('  ')\n"
+        " if hashlib.sha256(Path(name).read_bytes()).hexdigest() != digest: sys.exit(1)\n",
+    )
+    names = ["crawler-deploy-tools-amd64", "crawler-deploy-tools-arm64"]
+    for name in names:
+        shutil.copyfile(native_deploy_tools_binary, scripts / name)
+        (scripts / name).chmod(0o755)
+    revision = "c" * 40
+    (scripts / "crawler-deploy-tools.source").write_text(revision + "\n")
+    manifest = scripts / "crawler-deploy-tools.sha256"
+
+    def write_manifest() -> None:
+        manifest.write_text(
+            "".join(
+                f"{hashlib.sha256((scripts / name).read_bytes()).hexdigest()}  {name}\n"
+                for name in names
+            )
+        )
+
+    write_manifest()
+    if fault == "source":
+        revision = "d" * 40
+    elif fault == "compiled":
+        revision = "d" * 40
+        (scripts / "crawler-deploy-tools.source").write_text(revision + "\n")
+    elif fault == "digest":
+        with (scripts / names[0]).open("ab") as output:
+            output.write(b"changed")
+    elif fault == "missing":
+        (scripts / names[0]).unlink()
+    elif fault == "symlink":
+        (scripts / names[0]).unlink()
+        (scripts / names[0]).symlink_to(native_deploy_tools_binary)
+    elif fault == "extra-manifest":
+        with manifest.open("a") as output:
+            output.write("0" * 64 + "  unexpected\n")
+    launcher = REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh"
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            'set -euo pipefail; source "$TEST_LAUNCHER"; '
+            'initialize_native_deploy_tools; env -i "$NATIVE_DEPLOY_TOOLS" --build-info',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            **os.environ,
+            "PATH": f"{binaries}:{os.environ['PATH']}",
+            "INCOMING_DIR": str(incoming),
+            "JOBSEEK_DEPLOY_REVISION": revision,
+            "TEST_LAUNCHER": str(launcher),
+        },
+    )
+    if fault is None:
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == '{"source_revision":"' + revision + '"}\n'
+    else:
+        assert result.returncode != 0
+        assert "ERROR:" in result.stderr
+        assert result.stdout == ""
+
+
+def test_native_preflight_environment_is_scoped(tmp_path: Path) -> None:
+    binary = tmp_path / "preflight"
+    _write_executable(binary, "#!/bin/sh\n/usr/bin/env\n")
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            'set -euo pipefail; source "$TEST_LAUNCHER"; run_native_postgresql_preflight',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            **os.environ,
+            "TEST_LAUNCHER": str(REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh"),
+            "NATIVE_DEPLOY_TOOLS": str(binary),
+            "GRAFANA_PROM_URL": "fixture-url",
+            "GRAFANA_PROM_USERNAME": "fixture-user",
+            "GRAFANA_PROM_PASSWORD": "fixture-password",
+            "UNRELATED_TEST_SECRET": "must-not-reach-preflight",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    keys = {line.split("=", 1)[0] for line in result.stdout.splitlines()}
+    assert keys <= {
+        "GRAFANA_PROM_URL",
+        "GRAFANA_PROM_USERNAME",
+        "GRAFANA_PROM_PASSWORD",
+        "PWD",
+        "SHLVL",
+        "_",
+    }
+    assert "must-not-reach-preflight" not in result.stdout
+    assert "GRAFANA_PROM_PASSWORD=fixture-password" in result.stdout
 
 
 def test_postgresql_archive_push_uses_shared_repository_lock() -> None:

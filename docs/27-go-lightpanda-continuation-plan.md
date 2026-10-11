@@ -49,6 +49,12 @@ HTML and child V8 limits stay unchanged. IHG's407-job original inventory hits
 the Lightpanda resource limit and remains held. Original receipts and diagnostics
 are retained in the earlier checkpoint artifacts.
 
+At20:01 UTC, independent readback finds **591 completed monitor claims /591 exact
+recurring schedules**, zero retained completion leases and **1,326 completed
+detail claims**. All eight endpoints remain healthy. The ordinary worker uses
+99.40% of its one CPU and616.4MiB /1GiB, with no restart or OOM. These observations
+confirm continued processing; they do not resolve the measured freshness backlog.
+
 ### Continue in grouped deliveries
 
 1. Observe source1018 natural completed claims, exact recurring schedules,
@@ -2339,3 +2345,50 @@ original deploy workflows. Renderer Go/Debian mirrors match their unchanged
 digests; the observed cache serves the exact Lightpanda1.0.0 source digest, with
 original binary/architecture verification intact. Renew fresh head checks and
 physical renderer qualification; no production native-owner change has occurred.
+
+## Next production-consumer batch — Go deployment tools
+
+Candidate **0.13.1020** replaces PostgreSQL operational preflight and exact CSV
+manifest creation/verification with a small Go executable. It preserves all eight
+recovery queries and thresholds and the existing manifest bytes. The original
+workflow builds both Linux architectures, stages their source and SHA-256 evidence,
+and rejects missing, unsafe, wrong-source or wrong-digest artifacts before writer
+quiescence. Preflight receives only Grafana credentials; CSV operations receive an
+empty environment. The incoming executable remains available while rollback
+verifies the previous generation, and the existing presence-aware transaction
+restores or removes deployment artifacts after failure.
+
+Local Go race/vet/tidy/format checks and **87 deployment/runtime/preflight tests**
+pass. The extended first-rollout fixture exercises failed activation, failed
+bootstrap, later rollback, absent-artifact cleanup and successful retry. Both
+Linux binaries cross-compile and their architecture metadata is inspected; local
+macOS inspection does not establish Linux execution or production rollout.
+Installed CI and original whole deployment are still required. The API/RSS parent in PR#10431 merged as
+`d365467744d0f5acd7985fe93dd8d2d120903b66`; its registry transport expectation
+explicitly covers Innosuisse. This deployment-tool batch is rebased onto that
+merged result; crawler, pilot, renderer and workflow bytes match the previous
+qualified candidate, and new exact-head checks remain required. Original offline Python tooling remains useful.
+See [the deployment-tool candidate](evidence/go-native-deployment-tools-candidate-2026-10-11.json).
+
+## Scheduling follow-up — preserve separate discovery and monitor limits
+
+Candidate **0.13.1021** repairs a native scheduling mismatch found while measuring
+source1018 freshness. Python starts20 discovery workers and limits only monitor
+execution to5. Go used the smaller value as the capacity for every task, also
+limiting detail execution to5. The candidate restores20 discovery slots and a
+separate5-monitor semaphore inside the existing live lease. Waiting monitors keep
+heartbeats; cancellation and token loss prevent execution and retain recovery
+leases. `MONITOR_CONCURRENCY=0` retains bounded discovery without an additional
+monitor cap. CPU and memory limits stay unchanged.
+
+Focused race tests and actual private PostgreSQL/Redis cases pass, including
+concurrent detail progress, heartbeat renewal during capacity wait, exact schedule
+settlement and cancellation/token-loss without fabricated receipts. The complete
+worker race suite passes under the race detector with required private PostgreSQL/Redis
+(2,031.507s). Installed CI and whole rollout remain required. The capacity batch is rebased
+onto the updated deployment-tool parent; worker and VERSION bytes match the
+locally tested candidate, and new exact-head CI must pass.
+At20:13 UTC, the active fleet still has6,819 due native monitors /4,528 over an
+hour late and1,541,413 due native detail routes /1,486,120 over a day late. This
+candidate repairs a concrete contract mismatch; its production freshness and
+resource effect is unproved. See [the capacity candidate](evidence/go-native-worker-capacity-candidate-2026-10-11.json).
