@@ -110,12 +110,16 @@ func countKey(key string) bool {
 }
 
 func (d *Document) total(path, explicit string) (int, bool) {
+	return countNumber(d.totalValue(path, explicit))
+}
+
+func (d *Document) totalValue(path, explicit string) any {
 	if explicit != "" {
 		v, err := Search(d.Value, explicit)
 		if err != nil {
-			return 0, false
+			return nil
 		}
-		return countNumber(v)
+		return v
 	}
 	parent := ""
 	if at := strings.LastIndexByte(path, '.'); at >= 0 {
@@ -126,14 +130,14 @@ func (d *Document) total(path, explicit string) (int, bool) {
 		if m, ok := v.(map[string]any); ok {
 			for _, k := range d.order[reflect.ValueOf(m)] {
 				if countKey(k) {
-					if n, ok := countNumber(m[k]); ok {
-						return n, true
+					if _, ok := countNumber(m[k]); ok {
+						return m[k]
 					}
 				}
 			}
 		}
 	}
-	return 0, false
+	return nil
 }
 
 func requestAt(o Options, p *Pagination, value int) (Request, error) {

@@ -16,7 +16,8 @@ import (
 
 func (r *NativeRenderedDetails) fetchAPIReplay(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
 	empty := RichDiscovery{Jobs: []RichMonitorJob{}}
-	if _, err := queue.APISnifferBrowserMonitorOptions(config); err != nil || profile.Profile != "api_sniffer.browser-items/v1" || profile.Endpoint != config["board_url"] {
+	metadata, err := queue.APISnifferBrowserReplayMetadata(config)
+	if err != nil || profile.Profile != "api_sniffer.browser-items/v1" || profile.Endpoint != config["board_url"] {
 		return empty, queue.ErrConfiguration
 	}
 	select {
@@ -26,7 +27,7 @@ func (r *NativeRenderedDetails) fetchAPIReplay(ctx context.Context, profile queu
 		return empty, ctx.Err()
 	}
 	id := sha256.Sum256([]byte(profile.BoardID + "|" + profile.EffectiveConfigSHA256 + "|" + profile.Endpoint))
-	request := replay.Request{Protocol: replay.Protocol, RequestID: hex.EncodeToString(id[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, BoardURL: profile.Endpoint, Metadata: json.RawMessage(config["metadata"]), TimeoutMS: replay.MaxDurationMS}
+	request := replay.Request{Protocol: replay.Protocol, RequestID: hex.EncodeToString(id[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, BoardURL: profile.Endpoint, Metadata: metadata, TimeoutMS: replay.MaxDurationMS}
 	if !request.Valid() {
 		return empty, queue.ErrConfiguration
 	}

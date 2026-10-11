@@ -403,6 +403,15 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		if err != nil {
 			return err
 		}
+		// Original monitor leasing records an accepted attempt before network
+		// work, including attempts that later fail or encounter a reservation.
+		// Native fences replace the legacy lease, but preserve that timestamp
+		// in this same guarded transaction. Receipt recovery is not a new run.
+		if task.Kind == Monitor && !recovered {
+			if _, err := tx.Exec(ctx, "UPDATE public.job_board SET last_checked_at=now() WHERE id=$1::uuid", claim.boardID); err != nil {
+				return err
+			}
+		}
 		if recovered {
 			claim.recovered = &Receipt{claim: claim, nextDue: due, learnedHost: retainedHost, nextDetailStep: retainedStep, nextDetailAt: retainedStepAt, nextDetailHash: retainedHash}
 		}

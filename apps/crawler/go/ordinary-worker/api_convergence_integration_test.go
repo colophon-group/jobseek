@@ -11,7 +11,16 @@ import (
 )
 
 func TestRealOriginalAPIConvergenceCanonicalSettlement(t *testing.T) {
-	raw, err := os.ReadFile("../api-sniffer-monitor/testdata/python_pagination_convergence.json")
+	testRealAPIConvergenceCanonicalSettlement(t, "../api-sniffer-monitor/testdata/python_pagination_convergence.json", 15)
+}
+
+func TestRealOriginalInferredAPIConvergenceCanonicalSettlement(t *testing.T) {
+	testRealAPIConvergenceCanonicalSettlement(t, "../api-sniffer-monitor/testdata/python_inferred_pagination_convergence.json", 14)
+}
+
+func testRealAPIConvergenceCanonicalSettlement(t *testing.T, file string, count int) {
+	t.Helper()
+	raw, err := os.ReadFile(file)
 	var cases []struct {
 		Name      string
 		BoardURL  string `json:"board_url"`
@@ -21,7 +30,7 @@ func TestRealOriginalAPIConvergenceCanonicalSettlement(t *testing.T) {
 		Jobs      []map[string]any
 		Truncated bool
 	}
-	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 15 {
+	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != count {
 		t.Fatal("original convergence corpus unavailable")
 	}
 	for _, c := range cases {
