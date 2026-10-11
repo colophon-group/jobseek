@@ -66,6 +66,7 @@ class RefreshTimerTests(unittest.TestCase):
         self.assertIn("StrictHostKeyChecking=yes", pause)
         self.assertIn("systemctl disable --now jobseek-ai-filter-refresh.timer", pause)
         self.assertIn("systemctl stop jobseek-ai-filter-refresh.service", pause)
+        self.assertIn("systemctl reset-failed jobseek-ai-filter-refresh.service", pause)
         self.assertNotIn("AI_FILTER_REFRESH_SECRET", pause)
         self.assertNotIn("docker", pause)
         activate = (ROOT.parent / "deploy/ai-filter-refresh/deploy-remote.sh").read_text()
