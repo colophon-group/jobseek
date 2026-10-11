@@ -1,6 +1,47 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1011 deployed; next 91-board release qualified
+## Current checkpoint — source1012 active across 7,779 / 7,675 boards
+
+[PR #10411](https://github.com/colophon-group/jobseek/pull/10411) merged as
+`68ff4fd49bda61127a64cb166d8ef679033d7344`, **0.13.1012 / 202 profiles**.
+It delivers the combined 91-board Workday/DOM/JSON-LD transport and enrichment
+group: 180 original public samples, 42 mandatory worker cases and 42 cold
+reversal cases. Final Required CI, installed-image parity and Crawler Deploy
+Gate passed. The original whole crawler and renderer deployments succeeded at
+attempt 1; independent checks confirm immutable selected images, cold readiness
+and exporter progress. Lightpanda **1.0.0** remains the latest verified stable release.
+
+Original B0 and full ordinary activation succeeded at **epoch 281**. The ordinary
+activation waited for retained SQL leases to expire naturally. Fresh admission
+inspected all **7,885 enabled boards / 1,659,612 actual scheduled routes**, preserves
+the previous **7,763 / 7,585** owner cohort and adds 16 monitors plus 90 detail
+boards. Go now owns **7,779 monitors / 7,675 detail boards**, covering **1,535,656
+scheduled routes**. Rieter Global Solique's current posting identity/lane/step
+mismatch remains outside ownership; no admission predicate was weakened.
+
+Independent active readback confirms exact SQL plan, Redis projection, source,
+receipt identities and healthy services. At 08:15 UTC, all 238 completed monitor
+receipts have matching recurring schedules and zero retained completion leases.
+Completed claims include failures; these observations do not prove successful
+output for every claim, global conservation or full-fleet freshness. Resource
+readbacks show zero restarts, cgroup/kernel OOM kills or stalled-loop markers.
+Keep this release active for a sustained freshness/memory/throughput observation.
+See [the source1012 production checkpoint](evidence/go-native-source1012-production-2026-10-11.json).
+
+[PR #10413](https://github.com/colophon-group/jobseek/pull/10413) combines
+native capacity summary, inspection, orphan pruning and resumable schedule rebuild
+in **0.13.1014**, superseding the isolated #10412 candidate. Its required
+checks run separate queue and worker lanes with all original modules, real
+PostgreSQL/Redis, full race/vet/tidy/gofmt and Python ownership/cutover contracts.
+The worker suite's observed 20-minute limit now has a 30-minute budget; the queue
+lane retains 20 minutes. No check was removed. The same release moves resumable schedule rebuild to Go with the original no-scrape
+SQL, queue lanes, per-domain delays, authenticated producer decisions and durable
+authority guard. Its local actual PostgreSQL/Redis command tests and 17 Python
+compatibility tests pass; Linux socket execution and exact-head required checks
+remain to be verified in CI. Production runtime retirement remains unfinished.
+
+## Historical checkpoint — source1011 deployed before source1012
+
 
 [PR #10409](https://github.com/colophon-group/jobseek/pull/10409) merged as
 `5eec6ffcb0a095f4eec8ed86f9337815acb76da2`, version **0.13.1011 / 201 profiles**.
@@ -25,6 +66,7 @@ The qualified transport and enrichment groups are combined into one 91-board
 release before the next whole deployment and full activation. Renew fresh
 all-board/all-route admission and preserve every previously qualified owner.
 Then observe natural health, conservation, memory and fleet freshness.
+See [the deployed source1011 proof](evidence/go-native-source1011-production-2026-10-11.json).
 
 ## Historical source1010 checkpoint — failed full activation recovered
 
@@ -201,7 +243,10 @@ standalone structured salary masks preserve their original inert compatibility
 behavior; description-derived salary and location resolution keep their existing
 writer semantics. GE Vernova Menk USA remains held after original HTTP errors.
 The groups have no overlap: **91 qualified boards / 180 public samples** in one
-version1012 release. See [the enrichment proof](evidence/go-native-grouped-detail-enrichment-candidate-2026-10-11.json).
+version1012 release. The combined full mandatory local worker race suite
+also passed in **857.108 seconds** at final `3142a316`. Fresh installed-image
+parity and Crawler Deploy Gate pass; Required CI is still running.
+See [the enrichment proof](evidence/go-native-grouped-detail-enrichment-candidate-2026-10-11.json).
 
 The original source1011 rollout is complete and remains healthy with native
 ownership inactive. Renew required CI, installed-image proof and deployment
@@ -210,6 +255,24 @@ Fresh all-board/all-route admission must
 preserve the previous qualified cohort and reject remaining cache, lane, step or
 source mismatches. No new board has production detail authority from these local
 proofs. Full-fleet freshness, memory, cost and Python retirement remain unfinished.
+
+## Following operational consumer group — Redis capacity
+
+The isolated **0.13.1013** candidate moves capacity summary, exact inspection
+and dry-run/apply orphan pruning into the installed Go exporter executable.
+The CLI execs Go before opening Python pools. All 15 original family policies,
+budgets, metric labels and machine fields are preserved. The original atomic
+reachability Lua protects first/recurring queues, inflight, deadletters and the
+B0 legacy guard. Real Redis race tests verify all roots, read-only inspection,
+bounded deletion and corrupt-guard refusal. Fifteen Python contract tests,
+Ruff, CLI Pyright and Go vet pass. An independent original-source reference
+matches every stable snapshot field, pruning report and actual Redis DUMP.
+Changing timestamps/duration and Redis process/client RAM are excluded from
+that comparison. See [the capacity proof](evidence/go-native-redis-capacity-candidate-2026-10-11.json).
+
+Schedule rebuild stays in Python until producer-aware B0 dispatch and fallback
+semantics are qualified. This group follows the combined 91-board release;
+required checks and the original whole deployment remain mandatory.
 
 ## Current combined release — sixteen configurations, maintenance and polling
 

@@ -1,0 +1,137 @@
+[
+  {
+    "name": "scrape_config",
+    "owner": "scrape scheduler",
+    "lifecycle": "created atomically on enqueue; removed when the final queue/lease/deadletter drains",
+    "ttl": "persistent while reachable",
+    "budget_keys": 3000000,
+    "budget_items": 3000000,
+    "budget_bytes": 1610612736
+  },
+  {
+    "name": "board_config",
+    "owner": "crawler sync",
+    "lifecycle": "one hash per configured board; removed by sync when disabled/retired",
+    "ttl": "persistent",
+    "budget_keys": 10000,
+    "budget_items": 10000,
+    "budget_bytes": 16777216
+  },
+  {
+    "name": "scrape_queue_first",
+    "owner": "scrape scheduler",
+    "lifecycle": "first scrape; claim moves the item to inflight",
+    "ttl": "persistent until claimed",
+    "budget_keys": 5000,
+    "budget_items": 200000,
+    "budget_bytes": 67108864
+  },
+  {
+    "name": "scrape_queue_recurring",
+    "owner": "scrape scheduler",
+    "lifecycle": "recurring scrape; claim moves the item to inflight",
+    "ttl": "persistent until claimed/rescheduled",
+    "budget_keys": 5000,
+    "budget_items": 3000000,
+    "budget_bytes": 536870912
+  },
+  {
+    "name": "monitor_queue_first",
+    "owner": "monitor scheduler",
+    "lifecycle": "initial board monitor; claim moves the item to inflight",
+    "ttl": "persistent until claimed",
+    "budget_keys": 10000,
+    "budget_items": 10000,
+    "budget_bytes": 16777216
+  },
+  {
+    "name": "monitor_queue_recurring",
+    "owner": "monitor scheduler",
+    "lifecycle": "recurring board monitor; claim moves the item to inflight",
+    "ttl": "persistent until claimed/rescheduled",
+    "budget_keys": 10000,
+    "budget_items": 10000,
+    "budget_bytes": 16777216
+  },
+  {
+    "name": "ready_queue",
+    "owner": "queue Lua",
+    "lifecycle": "six fixed tier indexes plus two recurring-scrape rotation indexes",
+    "ttl": "persistent",
+    "budget_keys": 12,
+    "budget_items": 40000,
+    "budget_bytes": 16777216
+  },
+  {
+    "name": "inflight",
+    "owner": "lease reaper",
+    "lifecycle": "two fixed lease sets; heartbeat, completion, reschedule, or reaper removes entries",
+    "ttl": "logical lease TTL in score",
+    "budget_keys": 4,
+    "budget_items": 5000,
+    "budget_bytes": 8388608
+  },
+  {
+    "name": "inflight_strikes",
+    "owner": "lease reaper",
+    "lifecycle": "retry counter cleared on completion; poison tasks move to deadletter",
+    "ttl": "persistent until completion",
+    "budget_keys": 4,
+    "budget_items": 5000,
+    "budget_bytes": 4194304
+  },
+  {
+    "name": "deadletter",
+    "owner": "operator recovery",
+    "lifecycle": "poison leases retained until explicit retry/prune",
+    "ttl": "persistent",
+    "budget_keys": 4,
+    "budget_items": 1000,
+    "budget_bytes": 4194304
+  },
+  {
+    "name": "delay",
+    "owner": "crawler sync/enqueue",
+    "lifecycle": "one domain throttle value; overwritten whenever domain work is enqueued",
+    "ttl": "persistent",
+    "budget_keys": 20000,
+    "budget_items": 20000,
+    "budget_bytes": 4194304
+  },
+  {
+    "name": "rate_limit",
+    "owner": "claim Lua",
+    "lifecycle": "short per-domain claim throttle",
+    "ttl": "seconds",
+    "budget_keys": 20000,
+    "budget_items": 20000,
+    "budget_bytes": 4194304
+  },
+  {
+    "name": "host_circuit",
+    "owner": "upstream circuit breaker",
+    "lifecycle": "failure/open/probe state expires after the configured recovery window",
+    "ttl": "minutes",
+    "budget_keys": 30000,
+    "budget_items": 30000,
+    "budget_bytes": 8388608
+  },
+  {
+    "name": "provider_circuit",
+    "owner": "provider circuit breaker",
+    "lifecycle": "incident host/open/probe state expires after the configured recovery window",
+    "ttl": "minutes",
+    "budget_keys": 1000,
+    "budget_items": 20000,
+    "budget_bytes": 4194304
+  },
+  {
+    "name": "other",
+    "owner": "operator review",
+    "lifecycle": "unclassified keys must be assigned before becoming material",
+    "ttl": "unknown",
+    "budget_keys": 1000,
+    "budget_items": 10000,
+    "budget_bytes": 8388608
+  }
+]

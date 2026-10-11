@@ -1,0 +1,42 @@
+{
+  "schema": "jobseek.go.native-schedule-rebuild-candidate/v1",
+  "version": "0.13.1014",
+  "profiles": 202,
+  "base_pr": 10412,
+  "base_head": "81c702988f0dfe1f20f828b25e23edff22bbece2",
+  "operations": [
+    "bounded resumable PostgreSQL schedule selection",
+    "dry-run report",
+    "producer-authenticated apply and literal legacy fallback"
+  ],
+  "compatibility": {
+    "original_sql_sha256": "d2b8436186d30c971cb679740b8675520c8568ba9f9953b07d3277022dadfe91",
+    "original_atomic_enqueue": "existing byte-identical deadletter_enqueue.lua",
+    "selection": "original active/scheduled and no-scrape/enrichment predicate, including original SQL NULL semantics and disabled-board behavior",
+    "fallback": "original rebuild resets scrape_step to 0; ongoing ordered fallback execution is separate unfinished migration work",
+    "producer": "fixed authenticated Linux peer UID 10001, exact mounted socket/metadata, canonical framed JSON, three-second timeout, no error fallback, durable activation-marker refusal in off mode",
+    "report": "original fields/cursors/counts/idempotence, default dry run and maximum 50,000 rows",
+    "lanes": "first/recurring, simple/browser and original per-domain delays"
+  },
+  "local_validation": {
+    "full_exporter_race_with_postgres_and_redis": "ok  \tjobseek/typesense-exporter\t23.677s",
+    "private_log_sha256": "a31928f438cfe3d9b18f7a3d1118d49a26141a57bf277d63576f8ae8b39d765e",
+    "python_contracts_passed": 17,
+    "go_vet": "pass",
+    "ruff": "pass",
+    "cli_pyright": "0 errors",
+    "linux_amd64_test_compile": "pass",
+    "linux_authenticated_exchange_execution": "pending exact-head CI",
+    "notes": "Full suite has other optional installed-runtime cases; this does not claim all tests are skip-free.",
+    "linux_arm64_test_compile": "pass"
+  },
+  "production_dispatch": false,
+  "remaining": [
+    "Exact-head required checks and Linux socket tests",
+    "Supported cold reversal and original whole deployment",
+    "Fresh whole-route admission and activation",
+    "Full enabled-route/runtime coverage and sustained freshness/conservation/cost before final retirement"
+  ],
+  "combined_release_pr": 10413,
+  "base_pr_status": "superseded by combined main-targeted release"
+}

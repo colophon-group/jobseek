@@ -780,6 +780,27 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+    if args.command == "redis-capacity":
+        command = ["go-typesense-exporter", "--redis-capacity", args.action]
+        if args.action == "prune":
+            command.extend(
+                (
+                    f"--cursor={args.cursor}",
+                    f"--max-scanned={args.max_scanned}",
+                    f"--max-delete={args.max_delete}",
+                )
+            )
+            if args.apply:
+                command.append("--apply")
+        elif args.action == "rebuild":
+            command.append(f"--limit={args.limit}")
+            if args.after_id is not None:
+                command.append(f"--after-id={args.after_id}")
+            if args.apply:
+                command.append("--apply")
+        else:
+            command.append(f"--format={args.format}")
+        os.execvp(command[0], command)
     if args.command == "refresh-currency-rates":
         command = ["go-typesense-exporter", "--refresh-currency-rates"]
         if args.dry_run:
@@ -1435,47 +1456,6 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
-
-        elif args.command == "redis-capacity":
-            from src.redis_capacity import (
-                format_prometheus,
-                inventory,
-                prune_orphan_scrape_configs,
-                rebuild_scrape_schedules,
-                summary,
-            )
-
-            if args.action in {"summary", "inspect"}:
-                snapshot = await (summary() if args.action == "summary" else inventory())
-                output = (
-                    format_prometheus(snapshot)
-                    if args.format == "prometheus"
-                    else json.dumps(snapshot, indent=2, sort_keys=True)
-                )
-            elif args.action == "prune":
-                result = await prune_orphan_scrape_configs(
-                    cursor=args.cursor,
-                    max_scanned=args.max_scanned,
-                    max_delete=args.max_delete,
-                    apply=args.apply,
-                )
-                output = json.dumps(result, indent=2, sort_keys=True)
-            else:
-                local_pool = await create_local_pool()
-                result = await rebuild_scrape_schedules(
-                    local_pool,
-                    after_id=args.after_id,
-                    limit=args.limit,
-                    apply=args.apply,
-                )
-                output = json.dumps(result, indent=2, sort_keys=True)
-            # This command is also invoked non-interactively by the host
-            # metrics sampler and recovery runbooks; stdout is its stable
-            # machine interface, unlike tty_message's interactive-only path.
-            sys.stdout.write(output)
-            if not output.endswith("\n"):
-                sys.stdout.write("\n")
-            sys.stdout.flush()
 
         elif args.command == "retire-stale-boards":
             from src.retire_stale_boards import report_stale_boards

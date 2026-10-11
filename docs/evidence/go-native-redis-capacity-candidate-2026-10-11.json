@@ -1,0 +1,60 @@
+{
+  "status": "local candidate qualified; no production deployment",
+  "version": "0.13.1013",
+  "base_revision": "68ff4fd49bda61127a64cb166d8ef679033d7344",
+  "operations": [
+    "redis-capacity summary",
+    "redis-capacity inspect",
+    "redis-capacity prune (dry-run and apply)"
+  ],
+  "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "original_reference_scope": "Original capacity function bodies and Lua from immutable archive; only unrelated app imports and unused rebuild SQL constant omitted. Actual private Redis and installed native candidate command. Dynamic timestamp/duration and Redis process/client RAM excluded; every other snapshot field, prune report and Redis DUMP match.",
+  "real_redis_race_contracts": 3,
+  "python_contract_tests": 15,
+  "ruff": "PASS",
+  "pyright_cli": "0 errors",
+  "vet": "PASS",
+  "atomic_ownership_roots": [
+    "first and recurring scrape queues in both lanes",
+    "inflight and deadletter in both lanes",
+    "B0 legacy guard"
+  ],
+  "bounds": {
+    "scan_count": 2000,
+    "memory_samples_per_family": 128,
+    "pipeline_chunk": 500,
+    "maximum_prune_scan": 250000,
+    "maximum_prune_delete": 100000
+  },
+  "remaining_python": "Schedule rebuild still uses Python to preserve producer-aware dispatch and fallback behavior; no runtime retirement claimed. Offline reference helpers remain useful.",
+  "proof_sha256": {
+    "native1013-capacity-original-native-parity2-2026-10-11.json": "93004434d1836d67fa224fc4371aba35e6b318aac995738388af21fe05036125",
+    "native1013-capacity-focused-real-redis-race2-2026-10-11.log": "900dd8045a2bd2fb3c40588c3563c3abf45da55c903bf1f08191a42b83e0cb5c",
+    "native1013-capacity-original-native-parity3-2026-10-11.json": "93004434d1836d67fa224fc4371aba35e6b318aac995738388af21fe05036125"
+  },
+  "native_candidate_binary_sha256": "1db7436e38ba72ad55f9531c819ae9a72b105e173403ce898e7a35c6a4f9940e",
+  "numeric_info_contract": "Absent counters keep the original zero default; malformed present numeric counters fail the command rather than becoming successful zero.",
+  "focused_race_result": "PASS five contracts, including original identity, four operational real Redis checks and malformed numeric information",
+  "iteration_pacing": {
+    "change": "split existing native queue and worker suites into two CI matrix lanes with separate job-scoped PostgreSQL/Redis fixtures",
+    "coverage": "all four original modules retain full race, vet, tidy and gofmt; retained Python ownership/cutover contracts run in worker lane; Required CI depends on the entire matrix",
+    "validation": "actionlint passes and parsed workflow asserts original module union, mandatory databases and aggregate gate; runtime benefit awaits actual CI"
+  },
+  "qualified_rebase_from": "3142a3162f392597870a936557823f5b6d58e844",
+  "pure_boundary_identity_contracts": 2,
+  "historical_failed_ci": {
+    "run": 38121168017,
+    "head": "bf92a44d0be2db8439c0fbf86869278dec6bc4f7",
+    "job": 114416151146,
+    "cause": "New capacity integration fixtures require real Redis; the Go exporter image builder previously had no Redis executable. Go tests refused to skip and failed the build. Sampler artifact absence followed the failed build.",
+    "correction": "Install Redis only in the Go exporter build stage before the unchanged full go test command. Keep all capacity fixtures mandatory; Redis is not copied into the final runtime image."
+  },
+  "historical_worker_budget_failure": {
+    "run": 38121735624,
+    "job": 114417879804,
+    "head": "8430aebad26c89fe0f496014d521e1e1d0107dfa",
+    "result": "global go test timeout1200.260s near final TestRealWorkableProxyMonitorUsesCredentialedHopAndSeparateDetails/malformed, individual active test12s; no preceding assertion failure",
+    "queue_lane": "success",
+    "correction": "Keep original full tests; retain queue20m and allow worker30m. Parallel lane wall-clock benefit still awaits successful actual CI."
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "status": "original whole release deployed; native ownership inactive",
+  "source_revision": "5eec6ffcb0a095f4eec8ed86f9337815acb76da2",
+  "version": "0.13.1011",
+  "profiles": 201,
+  "crawler_original_run": 38116937869,
+  "renderer_original_run": 38116979406,
+  "workflow_attempts": 1,
+  "crawler_result": "success",
+  "renderer_result": "success",
+  "crawler_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:4ae9ed605f6218eb10815f9468f5f647dda589d35b2e3ba22a341a8f211536bc",
+  "browser_image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:822c9e1688dfaa70e95a0b6a3fe15fe1d0e78890d7794691b44b2c9f873edb77",
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:12effd5f7b987ebfba0db14fc57f6fbe63681b275c5697517396bf34d4a320b1",
+  "independent_cold_epoch": 280,
+  "cold_observed_at": "2026-10-11T06:25:31.459156+00:00",
+  "base_health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "active_native_plans": 0,
+  "native_receipts_absent": true,
+  "exporter_progress": {
+    "observed_at": "2026-10-11T06:29:21.279077+00:00",
+    "job_posting_rows": 671,
+    "successful_typesense_docs": 671,
+    "errors": 0,
+    "unknown_writers": 0
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "last_rechecked_date": "2026-10-11"
+  },
+  "proof_sha256": {
+    "native-source1011-original-deployed-identities-2026-10-11.json": "5f8bb005997347ce08bc2449dd960631e187ebe1d6078ffbb7dc7b38fc430e38",
+    "native-source1011-postdeploy-cold280-verified1-2026-10-11.json": "bd4778ccd3766c088463cfd0008bcc9cb17dd7675c1196ba4ee730a94822b0f6",
+    "native-source1011-renderer-independent-verified1-2026-10-11.json": "66823bc5b0e269873e398c4e37f8c1f1e06b187d966e2325865142f86d9734f5",
+    "native-source1011-exporter-progress-independent-verified1-2026-10-11.json": "e9ed267d1e726483fa2c96fb82e83c4c23ea0c1b6ee8af132386f6233085e639"
+  },
+  "remaining": [
+    "Fresh full admission and supported activation after grouped release1012",
+    "Natural fleet freshness, memory and queue conservation",
+    "Comparable full-lane cost",
+    "Remaining profiles, cache/fallback and operational consumers",
+    "Supported final reversal and rollback window before Python/Playwright/Chromium retirement"
+  ]
+}
