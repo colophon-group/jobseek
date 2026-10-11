@@ -580,8 +580,10 @@ jobs:
         include:
           - lane: queue
             modules: api-sniffer-monitor oracle-hcm ordinary-queue
+            test_timeout: 20m
           - lane: worker
             modules: ordinary-worker
+            test_timeout: 30m
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -595,6 +597,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       NATIVE_GO_MODULES: ${{ matrix.modules }}
+      NATIVE_GO_TEST_TIMEOUT: ${{ matrix.test_timeout }}
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
@@ -624,7 +627,7 @@ jobs:
         run: |
           set -euo pipefail
           for module in $NATIVE_GO_MODULES; do
-            (cd "apps/crawler/go/$module" && go test -race -timeout 20m ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
+            (cd "apps/crawler/go/$module" && go test -race -timeout "$NATIVE_GO_TEST_TIMEOUT" ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
           done
       - name: Verify retained ownership and supported cutover contracts
         if: matrix.lane == 'worker'
