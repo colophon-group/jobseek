@@ -89,7 +89,9 @@ is terminal. A physical pinned Lightpanda fixture proves fresh-path pagination,
 later denial, and child cleanup; both Linux installed-image architectures run it.
 
 SuccessFactors RSS resolves aliases with bounded same-origin HEAD requests before
-canonical URL transforms and preferred-locale selection. It preserves feed IDs,
+canonical URL transforms and preferred-locale selection. Admission requires the
+original whole-inventory collision buffer; unbuffered streamed prefixes retain
+their previous owner. It preserves feed IDs,
 stable requisition IDs and locales; malformed redirects, exhausted retries,
 missing responses, caps and incomplete inventories cannot publish a partial success.
 The original Python resolver supplies14 reproducible component cases. Real

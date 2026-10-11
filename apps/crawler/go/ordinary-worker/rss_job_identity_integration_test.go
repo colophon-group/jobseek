@@ -11,7 +11,7 @@ import (
 func TestRealRSSJobInviteIdentityPreservesWholeInventoryAndLease(t *testing.T) {
 	for _, mode := range []string{"resolved", "foreign", "nonredirect", "reserved", "late-invalid"} {
 		t.Run(mode, func(t *testing.T) {
-			metadata := `{"preset":"successfactors","resolve_job_invite_identity":true,"scraper_type":"skip"}`
+			metadata := `{"preset":"successfactors","resolve_job_invite_identity":true,"scraper_type":"skip","url_transform":{"find":"^https://example\\.com/job/[^/?#]+/([1-9]\\d{0,11})-[a-z]{2}_[A-Z]{2}/$","replace":"https://example.com/job-invite/\\1/","collision_policy":"prefer_source_pattern","collision_stream_buffer_limit":2000,"collision_identity_metadata_key":"job_invite_id","collision_canonical_identity_regex":"^https://example\\.com/job-invite/([1-9]\\d{0,11})/$","collision_preferred_source_patterns":["-de_DE/$","-en_US/$"]}}`
 			f := privateRichPipelineFixture(t, "rss", metadata)
 			ctx := context.Background()
 			claim, circuits := claimFixture(t, f)
@@ -68,7 +68,7 @@ func TestRealRSSJobInviteIdentityPreservesWholeInventoryAndLease(t *testing.T) {
 					t.Fatal("resolved canonical inventory lost", result, count, failures, calls.Load())
 				}
 				var identities int
-				if err = f.pg.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND source_url IN ('https://example.com/job/Engineer/123-de_DE/','https://example.com/job/Engineer/456-en_US/')", f.board).Scan(&identities); err != nil || identities != 2 {
+				if err = f.pg.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND source_url IN ('https://example.com/job-invite/123/','https://example.com/job-invite/456/')", f.board).Scan(&identities); err != nil || identities != 2 {
 					t.Fatal("resolved source identities lost", identities, err)
 				}
 			} else {

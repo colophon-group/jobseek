@@ -10,7 +10,7 @@
   ],
   "qualified_configuration_subset": {
     "api": "explicit GET/browser with literal same-origin host and star-only path globs; route_params and HTTP-only fallback configurations remain unsupported",
-    "rss": "explicit SuccessFactors feed identity resolution; RMK/legacy browser variants remain unsupported for this opt-in"
+    "rss": "explicit SuccessFactors feed identity resolution with validated prefer_source_pattern collision buffering; non-buffered streaming, RMK and legacy browser variants remain unsupported for this opt-in"
   },
   "validation": {
     "original_RSS_component_cases": 14,

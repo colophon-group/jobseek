@@ -123,8 +123,15 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err := feedRichDetailAssignment(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	if _, err := FeedMonitorURLRules(config); err != nil {
+	rules, err := FeedMonitorURLRules(config)
+	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	// The original streaming resolver emits 200-row batches. Collision policy
+	// buffers the entire inventory before publication, including on a late
+	// failure. Only that qualified contract uses this whole-inventory resolver.
+	if resolveIdentity && !rules.HasCollision() {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	profilePreset := preset
 	if variant == "legacy_xml" {

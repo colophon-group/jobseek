@@ -21,6 +21,9 @@ func firstLiveIdentityFixture(t *testing.T, variant string) firstOwnerFixture {
 	if variant == "api-live" {
 		md["api_url_match"] = "example.com/*"
 	} else {
+		if json.Unmarshal([]byte(sfRSSIdentityMetadata), &md) != nil {
+			t.Fatal("identity collision metadata")
+		}
 		md["preset"] = "successfactors"
 		md["feed_url"] = "https://example.com/googlefeed.xml"
 		md["resolve_job_invite_identity"] = true
