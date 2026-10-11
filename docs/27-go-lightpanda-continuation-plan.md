@@ -49,6 +49,12 @@ HTML and child V8 limits stay unchanged. IHG's407-job original inventory hits
 the Lightpanda resource limit and remains held. Original receipts and diagnostics
 are retained in the earlier checkpoint artifacts.
 
+At20:01 UTC, independent readback finds **591 completed monitor claims /591 exact
+recurring schedules**, zero retained completion leases and **1,326 completed
+detail claims**. All eight endpoints remain healthy. The ordinary worker uses
+99.40% of its one CPU and616.4MiB /1GiB, with no restart or OOM. These observations
+confirm continued processing; they do not resolve the measured freshness backlog.
+
 ### Continue in grouped deliveries
 
 1. Observe source1018 natural completed claims, exact recurring schedules,
@@ -2339,3 +2345,25 @@ original deploy workflows. Renderer Go/Debian mirrors match their unchanged
 digests; the observed cache serves the exact Lightpanda1.0.0 source digest, with
 original binary/architecture verification intact. Renew fresh head checks and
 physical renderer qualification; no production native-owner change has occurred.
+
+## Next production-consumer batch — Go deployment tools
+
+Candidate **0.13.1020** replaces PostgreSQL operational preflight and exact CSV
+manifest creation/verification with a small Go executable. It preserves all eight
+recovery queries and thresholds and the existing manifest bytes. The original
+workflow builds both Linux architectures, stages their source and SHA-256 evidence,
+and rejects missing, unsafe, wrong-source or wrong-digest artifacts before writer
+quiescence. Preflight receives only Grafana credentials; CSV operations receive an
+empty environment. The incoming executable remains available while rollback
+verifies the previous generation, and the existing presence-aware transaction
+restores or removes deployment artifacts after failure.
+
+Local Go race/vet/tidy/format checks and **87 deployment/runtime/preflight tests**
+pass. The extended first-rollout fixture exercises failed activation, failed
+bootstrap, later rollback, absent-artifact cleanup and successful retry. Both
+Linux binaries cross-compile and their architecture metadata is inspected; local
+macOS inspection does not establish Linux execution or production rollout.
+Installed CI and original whole deployment are still required. This batch depends
+on the corrected API/RSS candidate in PR#10431; its registry transport expectation
+now explicitly covers Innosuisse. Original offline Python tooling remains useful.
+See [the deployment-tool candidate](evidence/go-native-deployment-tools-candidate-2026-10-11.json).

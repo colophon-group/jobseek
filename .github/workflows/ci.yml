@@ -1748,6 +1748,14 @@ jobs:
       - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
+      - name: Test native host deployment tools
+        working-directory: apps/crawler/go/deploy-tools
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
       - name: Verify shared Go enrichment before Python bridge tests
         working-directory: apps/crawler/go/job-enrichment
         run: |
