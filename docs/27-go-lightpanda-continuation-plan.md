@@ -2363,7 +2363,9 @@ pass. The extended first-rollout fixture exercises failed activation, failed
 bootstrap, later rollback, absent-artifact cleanup and successful retry. Both
 Linux binaries cross-compile and their architecture metadata is inspected; local
 macOS inspection does not establish Linux execution or production rollout.
-Installed CI and original whole deployment are still required. This batch depends
-on the corrected API/RSS candidate in PR#10431; its registry transport expectation
-now explicitly covers Innosuisse. Original offline Python tooling remains useful.
+Installed CI and original whole deployment are still required. The API/RSS parent in PR#10431 merged as
+`d365467744d0f5acd7985fe93dd8d2d120903b66`; its registry transport expectation
+explicitly covers Innosuisse. This deployment-tool batch is rebased onto that
+merged result; crawler, pilot, renderer and workflow bytes match the previous
+qualified candidate, and new exact-head checks remain required. Original offline Python tooling remains useful.
 See [the deployment-tool candidate](evidence/go-native-deployment-tools-candidate-2026-10-11.json).

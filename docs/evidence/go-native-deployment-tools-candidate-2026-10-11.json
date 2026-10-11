@@ -2,7 +2,6 @@
   "schema": "jobseek.go-native-candidate/v1",
   "version": "0.13.1020",
   "profiles": 204,
-  "base_candidate_revision": "7739b0ce80bbd8258bab3c4de967711a41976afd",
   "production_ownership_granted": false,
   "full_migration_complete": false,
   "replaced_production_consumers": [
@@ -56,5 +55,12 @@
     "apps/crawler/go/deploy-tools/main.go": "b73f76bff942886082c4962aa24b6eafc31b14f73e42ff3fb569f6962d0c4201",
     "apps/crawler/go/deploy-tools/preflight.go": "5ea95373840c02d80259d33455c667b4d86917abe280d889997c0e49e17fa30c",
     "apps/crawler/go/deploy-tools/tools_test.go": "2245b52a14d5fb6c78d1654c2c909822b7d2fb8bc9dab3f5582168921382b68a"
+  },
+  "base_revision": "d365467744d0f5acd7985fe93dd8d2d120903b66",
+  "api_rss_qualified_head": "7739b0ce80bbd8258bab3c4de967711a41976afd",
+  "rebase_validation": {
+    "previous_head": "2fa8cf84c1ac334ad74ee43625aff82836b12a80",
+    "crawler_pilot_renderer_and_workflow_bytes_unchanged": true,
+    "new_exact_head_ci": "pending"
   }
 }
