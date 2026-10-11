@@ -193,6 +193,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "personio":
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
+		allowed["resolve_job_invite_identity"] = true
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["identity_migration"] = true
 		// A retained receipt without an active migration marker is inert in
@@ -255,6 +256,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "api_sniffer":
+		allowed["api_url_match"] = true
 		allowed["require_pdf_pattern"], allowed["require_unexpired_pdf"] = true, true
 		allowed["url_transform"] = true
 		for _, key := range apisniffer.ConfigKeys {

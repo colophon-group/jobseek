@@ -30,6 +30,12 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
+	resolveIdentity := false
+	if raw, present := md["resolve_job_invite_identity"]; present {
+		if string(raw) != "true" && string(raw) != "false" || json.Unmarshal(raw, &resolveIdentity) != nil || resolveIdentity && (preset != "successfactors" || variant == "legacy" || variant == "rmk") {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+	}
 	if preset == "successfactors" && variant == "legacy" {
 		return inspectLegacySFSessionMonitor(boardID, config, md)
 	}
@@ -155,6 +161,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 		return GreenhouseMonitorProfile{}, err
 	}
 	profile.RSSDetailEnrichment = len(fields) > 0
+	profile.RSSResolveJobInviteIdentity = resolveIdentity
 	profile.RSSPagination = pagination
 	return profile, nil
 }

@@ -65,6 +65,11 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		return o, err
 	}
 	allowed := map[string]bool{}
+	// Rotating URLs need the affine browser controller. HTTP-only discovery
+	// must never drop the fallback control or claim this configuration.
+	if _, present := m["api_url_match"]; present {
+		return o, ErrOptions
+	}
 	allowed["require_pdf_pattern"], allowed["require_unexpired_pdf"] = true, true
 	for _, k := range ConfigKeys {
 		allowed[k] = true

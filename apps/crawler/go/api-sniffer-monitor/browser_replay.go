@@ -6,6 +6,8 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -48,6 +50,7 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 // Admission must also require the affine capture/fetch controller; these options
 // alone never authorize a browser profile or replace its legacy owner.
 type BrowserReplayOptions struct {
+	LiveURLMatch        string
 	ResponseBodyLimit   int // Fixed native provider factory only; never metadata-controlled.
 	Inventory           Options
 	Wait                string
@@ -65,13 +68,23 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if !ok || m["browser"] != true {
 		return o, ErrOptions
 	}
+	if raw, present := m["api_url_match"]; present {
+		pattern, ok := raw.(string)
+		endpoint, _ := m["api_url"].(string)
+		if !ok || !validLiveURLPattern(endpoint, pattern) || m["method"] != nil && m["method"] != "GET" {
+			return o, ErrOptions
+		}
+		o.LiveURLMatch = pattern
+		delete(m, "api_url_match")
+		d.order[reflect.ValueOf(m)] = slices.DeleteFunc(d.order[reflect.ValueOf(m)], func(key string) bool { return key == "api_url_match" })
+	}
 	if _, present := m["post_data_refresh"]; present {
 		return o, ErrOptions
 	}
 	if _, present := m["response_decrypt"]; present {
 		return o, ErrOptions // Captured encrypted response ranking is not qualified.
 	}
-	// Explicit actions, interception, live token URLs, stealth and persistent
+	// Explicit actions, interception, stealth and persistent
 	// identities remain unsupported until the corresponding controller exists.
 	// OptionsFromMetadata rejects unknown keys instead of discarding controls.
 	m["browser"] = false

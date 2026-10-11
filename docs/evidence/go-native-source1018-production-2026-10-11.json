@@ -1,0 +1,245 @@
+{
+  "schema": "jobseek.go-native-production-checkpoint/v1",
+  "source_revision": "0ee76dcba9d5efab6b77001ac8a55d24b4ac4cff",
+  "version": "0.13.1018",
+  "profiles": 204,
+  "pr": 10430,
+  "qualified_head": "8fc78783d1674646f1a6c5b1e216b9288648409b",
+  "observed_at_utc": "2026-10-11T19:13:02.024962+00:00",
+  "crawler_run": 38162329948,
+  "renderer_run": 38162396482,
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "0ee76dcba9d5efab6b77001ac8a55d24b4ac4cff",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:d499f7650984b0a8579cb0ef1b8efa54b412ff4926aab81e0f2fce8a404c06e6",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3da1011beec7abd9908fe5e07bb03499e5b91fc67c05bf398e838f848ac5cefb"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:d3cadc1eb17cca89657882ea9595c7e4d9e99111d62cdc3f00d419929aa3c3a8",
+  "lightpanda_release": "1.0.0",
+  "upstream_release_checked_at": "2026-10-11",
+  "outgoing_cold_epoch": 288,
+  "b0": {
+    "active": true,
+    "epoch": 289,
+    "receipt_sha256": "bed0e4cac9107261d36b5b40fd7c5040c4df1f3e208d745c90320a99d0b82a5f"
+  },
+  "ordinary": {
+    "state": "active",
+    "epoch": 289,
+    "monitor_boards": 7788,
+    "detail_boards": 7683,
+    "plan_sha256": "79bfdb665296405c315e12a80ee69a0bafef4c60ed24e855699cab1e4bd98e97",
+    "projection_sha1": "d216bdc386f93bd09ce92485e392aa263bf2bc0f",
+    "receipt_sha256": "1399b45e00fd6b4c044a1fdbcd7afb62fce3433aa12c9bc5f1600430614e44ae",
+    "preserved_floor": {
+      "monitors": 7786,
+      "details": 7683
+    },
+    "new_monitor_slugs": [
+      "goldman-sachs-careers",
+      "tiktok-careers"
+    ],
+    "new_detail_boards": 0,
+    "owned_scheduled_routes": 1555848
+  },
+  "census": {
+    "enabled_boards": 7885,
+    "scheduled_detail_postings": 1679242,
+    "global_cache_mismatches": 6757,
+    "cache_mismatches_held_outside_preserved_floor": true
+  },
+  "activation": {
+    "attempt1": "refused maintenance lock before quiescence",
+    "maintenance_finished": "known bounded source1018 cross-store reconciliation container absent before retry",
+    "attempt2": "succeeded through original lock/lease/full-writer restoration path",
+    "lock_or_lease_bypass": false
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "writers_restored_and_restart_armed": 10,
+  "natural_receipts": {
+    "initial": {
+      "completed_monitors": 18,
+      "exact_recurring_schedules": 18,
+      "retained_completion_leases": 0,
+      "completed_details": 39
+    },
+    "measured": {
+      "completed_monitors": 87,
+      "exact_recurring_schedules": 87,
+      "retained_completion_leases": 0
+    },
+    "claim_timestamps": {
+      "observed_at": "2026-10-11T19:13:02.014684+00:00",
+      "claimed": 89,
+      "null_claim_timestamps": 0
+    },
+    "completed_claims_include_failures": true
+  },
+  "fleet_monitor_ages": [
+    {
+      "native_owned": false,
+      "enabled": 97,
+      "unscheduled": 0,
+      "never_checked": 87,
+      "due": 2,
+      "overdue_1h": 0,
+      "overdue_6h": 0,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 3131.893383
+    },
+    {
+      "native_owned": true,
+      "enabled": 7788,
+      "unscheduled": 0,
+      "never_checked": 3664,
+      "due": 4804,
+      "overdue_1h": 3097,
+      "overdue_6h": 10,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 40643.411338
+    }
+  ],
+  "initial_resources": {
+    "observed_at_utc": "2026-10-11T19:11:47.432973+00:00",
+    "stats": {
+      "CPUPerc": "18.27%",
+      "MemUsage": "174.2MiB / 1GiB",
+      "MemPerc": "17.01%",
+      "PIDs": "9"
+    },
+    "restart_count": 0,
+    "state": {
+      "Running": true,
+      "OOMKilled": false,
+      "ExitCode": 0,
+      "StartedAt": "2026-10-11T19:08:45.476631329Z",
+      "FinishedAt": "0001-01-01T00:00:00Z"
+    },
+    "panic_markers_tail6000": {
+      "nil_pointer": 0,
+      "index_out_of_range": 0,
+      "concurrent_map": 0,
+      "out_of_memory": 0,
+      "command_rejected": 0,
+      "drain_timeout": 0
+    },
+    "stalled_markers_tail6000": 0
+  },
+  "evidence_sha256": {
+    "native1018-final-head8fc787-qualification1-2026-10-11.json": "f3f758e428f6d2f5dde97593afdc957792c9b59ce998292bcc7e72b35933eedb",
+    "native1018-merge-authority-pr10430-attempt1-2026-10-11.json": "35ca41ad5e8a63e986c4b8022c0e827a7f083725c2ec29750fd9ca22b4e33231",
+    "native-source1018-original-deployed-identities-2026-10-11.json": "14615304bdb7e04fa56b27f08f3d53be09ac72c1d9c45da6a6b9282cca74e314",
+    "native-source1018-renderer-independent-verified1-2026-10-11.json": "a20fd9910a10201045d4199a41cdb463f75fe17b83246cdb2cbed044668bd802",
+    "native-source1018-postdeploy-cold288-independent-verified1-2026-10-11.json": "dd95c35ab54401ef93e09ecb5e2e5f7ea82fa121ef07db4ecadec0ed69e5517c",
+    "native1018-supported-b0-readback-verified1-2026-10-11.log": "574983e44d9761cbc9b99a544acf667db2d76fb83ff2650777ae496d2099eaaa",
+    "native-source1018-owner-stage-promoted-attempt1-2026-10-11.log": "8ce610146a065fe3f81fe2d7c7cb64a0c18fcbcc46ff4c431bd9d68b250a2094",
+    "native-source1018-owner-activate-promoted-attempt1-2026-10-11.log": "44abf5e760c96272b4c243ccd849503e4488d89ac7dc8a5a1e98e2f2591630a8",
+    "native-source1018-owner-activate-promoted-attempt2-2026-10-11.log": "132e13f95f9c5edb192a0307255a5658dd4d20662123ea6c4e6788d2b1b66b35",
+    "native-source1018-release-identity-readonly3-2026-10-11.json": "8602a7b436dbf7cc1b282bf22382ff37db40b7b0c4fd4c004698fd8d6df3261f",
+    "native-source1018-full-conservation-independent-initial1-2026-10-11.json": "9f14d0a6cecdbbfa70c719e2f2dad2d517d4ef409f3ac80c7d463c1d69e4c361",
+    "native-source1018-fleet-freshness-independent-measured2-2026-10-11.json": "b12db44e9c653574e6f7b63117642b716c05448b1528f49097d1d14713f92f40",
+    "native-source1018-ordinary-kernel-independent-initial1-2026-10-11.json": "0f670c32746c60e4bd0b17c8331009c2c3c3f5aa38bac34da820cd98215f19b9",
+    "native-ordinary-admission1018/admission-summary-source1018-verified1.json": "d058bd238a13cf5fad823e10c74739d24bc68c47848204ad02a7956447fd0161",
+    "native-source1018-fleet-freshness-independent-sustained3-2026-10-11.json": "1ba71973facc73b9b7351d970900b7296feda863ff3ed6439da0872723cb1856",
+    "native-source1018-ordinary-kernel-independent-sustained3-2026-10-11.json": "cf7068eda52bff66940b7668b030cf6219a884ee3446aacd9bb2edb2305f0ac7",
+    "native-source1018-detail-ages-independent-initial1-2026-10-11.json": "1ca16837e1abe7a812d483deadf2f3a369cd3ec93e8d7de8f7b8a5e6fd6a73e0"
+  },
+  "full_migration_complete": false,
+  "limitations": [
+    "Active authority, early naturally settled monitor receipts and one bounded scheduled-detail age aggregate are verified; complete global conservation, sustained fleet freshness and comparable fleet cost are not proved.",
+    "Synthetic ARM density and early cgroup samples do not establish comparable attributable fleet cost.",
+    "Uncovered enabled routes, production consumers and supported rollback still require Python/Playwright/Chromium; useful isolated offline Python is retained."
+  ],
+  "later_natural_sample": {
+    "observed_at_utc": "2026-10-11T19:21:12.141569+00:00",
+    "completed_monitors": 205,
+    "exact_recurring_schedules": 205,
+    "retained_completion_leases": 0,
+    "claim_timestamps": {
+      "observed_at": "2026-10-11T19:21:12.131063+00:00",
+      "claimed": 208,
+      "null_claim_timestamps": 0
+    },
+    "monitor_ages": [
+      {
+        "native_owned": false,
+        "enabled": 97,
+        "unscheduled": 0,
+        "never_checked": 87,
+        "due": 2,
+        "overdue_1h": 1,
+        "overdue_6h": 0,
+        "overdue_24h": 0,
+        "oldest_due_seconds": 3621.623224
+      },
+      {
+        "native_owned": true,
+        "enabled": 7788,
+        "unscheduled": 0,
+        "never_checked": 3622,
+        "due": 4982,
+        "overdue_1h": 3208,
+        "overdue_6h": 9,
+        "overdue_24h": 0,
+        "oldest_due_seconds": 41133.141179
+      }
+    ],
+    "resources": {
+      "observed_at_utc": "2026-10-11T19:21:10.297293+00:00",
+      "stats": {
+        "CPUPerc": "100.61%",
+        "MemUsage": "501.2MiB / 1GiB",
+        "MemPerc": "48.94%",
+        "PIDs": "10"
+      },
+      "restart_count": 0,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "StartedAt": "2026-10-11T19:08:45.476631329Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "stalled_markers_tail6000": 0,
+      "panic_markers_tail6000": {
+        "nil_pointer": 0,
+        "index_out_of_range": 0,
+        "concurrent_map": 0,
+        "out_of_memory": 0,
+        "command_rejected": 0,
+        "drain_timeout": 0
+      }
+    }
+  },
+  "scheduled_detail_ages": {
+    "observed_at": "2026-10-11T19:23:23.03336+00:00",
+    "ages": [
+      {
+        "native_owned": false,
+        "scheduled": 123399,
+        "due": 119896,
+        "overdue_1h": 119612,
+        "overdue_6h": 118792,
+        "overdue_24h": 114488,
+        "oldest_due_seconds": 17373493.225325
+      },
+      {
+        "native_owned": true,
+        "scheduled": 1555309,
+        "due": 1541861,
+        "overdue_1h": 1530802,
+        "overdue_6h": 1522161,
+        "overdue_24h": 1484870,
+        "oldest_due_seconds": 17359896.448176
+      }
+    ]
+  }
+}

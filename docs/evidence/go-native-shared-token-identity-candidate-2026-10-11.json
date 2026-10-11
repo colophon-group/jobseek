@@ -1,0 +1,85 @@
+{
+  "schema": "jobseek.go-native-candidate/v1",
+  "version": "0.13.1019",
+  "profiles": 204,
+  "base_revision": "0ee76dcba9d5efab6b77001ac8a55d24b4ac4cff",
+  "production_ownership_granted": false,
+  "families": [
+    "api_sniffer browser rotating endpoint path",
+    "SuccessFactors RSS alias identity resolution"
+  ],
+  "qualified_configuration_subset": {
+    "api": "explicit GET/browser with literal same-origin host and star-only path globs; route_params and HTTP-only fallback configurations remain unsupported",
+    "rss": "explicit SuccessFactors feed identity resolution; RMK/legacy browser variants remain unsupported for this opt-in"
+  },
+  "validation": {
+    "original_RSS_component_cases": 14,
+    "RSS_real_SQL_Redis_cases": [
+      "resolved",
+      "foreign redirect",
+      "nonredirect",
+      "publisher reserved",
+      "late invalid redirect"
+    ],
+    "supported_cold_retirement_families": 2,
+    "pinned_physical_fixture": {
+      "release": "1.0.0",
+      "platform": "darwin/arm64",
+      "cases": [
+        "rotating path and complete pagination",
+        "later publisher denial with no inventory"
+      ],
+      "child_cleanup_proved": true,
+      "installed_Linux_amd64_arm64_fixture_added": true
+    },
+    "first_anonymous_public_comparison": {
+      "Hitachi_Energy": {
+        "jobs": 2278,
+        "all_original_urls_and_fields_match": true
+      },
+      "Innosuisse": {
+        "jobs": 0,
+        "original_empty_inventory_matches": true,
+        "physical_inventory_private_capture": true,
+        "actual_canonical_SQL_Redis_replay_passed": true,
+        "exact_deadline_lease_settlement": true
+      }
+    },
+    "later_Hitachi_captures": {
+      "attempts": 2,
+      "outcome": "120-second timeout",
+      "held_from_new_ownership": true
+    },
+    "local_race_suites": [
+      "complete API SDK",
+      "complete pilot unit suite; Linux-specific integrations skipped locally",
+      "focused queue compilation and both real cold reversals",
+      "RSS resolver and existing detail-field real database tests"
+    ]
+  },
+  "unqualified": {
+    "Implenia": "original public RSS identity probe fails; no new owner",
+    "Hitachi": "fresh native public inventory/canonical capture not reproduced after first parity; no new owner"
+  },
+  "required_before_merge": [
+    "final exact-head Required CI",
+    "Crawler Deploy Gate",
+    "installed-image parity",
+    "Linux pilot image integration",
+    "exact ARM whole-lane report"
+  ],
+  "required_before_admission": [
+    "fresh selected source/digests and B0 receipt",
+    "canonical config and all scheduled route cache reconciliation",
+    "preserve full active7788 monitor/7683 detail floor",
+    "qualify actual candidate output, policy, canonical effects and cold reversal"
+  ],
+  "private_evidence_sha256": {
+    "native1019-live-api-original-public1.py": "45a9408f5eadf48585cd99147e6dd982e9fe804d9ceb6e35abc433e79d6a9f76",
+    "native1019-live-api-original-public1-2026-10-11/hitachi-energy-careers-original.json": "4f5bef4058e8c6ec18eb02f21c515e2f8bb6d9709db9b7533777c0699266f5bc",
+    "native1019-live-api-original-public1-2026-10-11/innosuisse-main-original.json": "a12127eab6ea52ea433f4af8bf7d2ca34e370e32aec78cdeb0cd5e8272e555c8",
+    "native1019-live-api-native-public2-2026-10-11/innosuisse-main-native-inventory.json": "d99a940cc2fa6ad86887bc476e47081afb9b76f7f39009520627e7ee775f0ae9"
+  },
+  "production_checkpoint": "go-native-source1018-production-2026-10-11.json",
+  "full_migration_complete": false
+}

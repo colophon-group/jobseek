@@ -26,6 +26,7 @@ var greenhouseToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 type GreenhouseMonitorProfile struct {
 	RSSPagination                               *RSSPagination
 	RSSDetailEnrichment                         bool
+	RSSResolveJobInviteIdentity                 bool
 	BoardID, CompanyID, Domain, Token, Endpoint string
 	Provider, Region, Profile                   string
 	Language                                    string
