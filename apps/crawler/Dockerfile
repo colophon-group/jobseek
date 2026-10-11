@@ -80,7 +80,8 @@ COPY go/dom-detail/ ../dom-detail/
 COPY go/sitemap-monitor/ ../sitemap-monitor/
 COPY go/workday-monitor/ ../workday-monitor/
 COPY src/lua/ /workspace/apps/crawler/src/lua/
-RUN go test ./... \
+RUN apk add --no-cache redis \
+    && go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-typesense-exporter .
 

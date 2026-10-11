@@ -41,5 +41,12 @@
     "validation": "actionlint passes and parsed workflow asserts original module union, mandatory databases and aggregate gate; runtime benefit awaits actual CI"
   },
   "qualified_rebase_from": "3142a3162f392597870a936557823f5b6d58e844",
-  "pure_boundary_identity_contracts": 2
+  "pure_boundary_identity_contracts": 2,
+  "historical_failed_ci": {
+    "run": 38121168017,
+    "head": "bf92a44d0be2db8439c0fbf86869278dec6bc4f7",
+    "job": 114416151146,
+    "cause": "New capacity integration fixtures require real Redis; the Go exporter image builder previously had no Redis executable. Go tests refused to skip and failed the build. Sampler artifact absence followed the failed build.",
+    "correction": "Install Redis only in the Go exporter build stage before the unchanged full go test command. Keep all capacity fixtures mandatory; Redis is not copied into the final runtime image."
+  }
 }
