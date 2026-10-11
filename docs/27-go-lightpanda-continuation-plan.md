@@ -1,6 +1,50 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1012 active across 7,779 / 7,675 boards
+## Current checkpoint — source1014 active across 7,779 / 7,675 boards
+
+[PR #10413](https://github.com/colophon-group/jobseek/pull/10413) merged as
+`7ad9aa3b7c539fcf07196d2cecf5a04ed0ee78d0`, **0.13.1014 / 202 profiles**.
+It delivers native Redis capacity summary, inspection, bounded orphan pruning
+and resumable schedule rebuild with the original SQL, lanes, throttle delays,
+idempotence and authenticated producer dispatch. Required CI, installed-image
+parity, Crawler Deploy Gate and ARM synthetic whole-lane qualification passed
+for the final `03a267d0` head. Linux socket tests also passed. The ARM report is
+synthetic evidence; full-fleet freshness and attributable cost remain unproved.
+
+The original source1012 ordinary retirement, B0 rollback and selector clear
+succeeded; independent readback proved cold epoch 282. The exact merged
+[crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38127272390)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38127541058)
+succeeded at attempt 1. Source-bound independent checks verify running immutable
+images, incoming cold readiness and successful Typesense export progress.
+Lightpanda **1.0.0** remains the latest verified stable release.
+
+Original B0 and full ordinary activation succeeded at **epoch 283**. Fresh
+admission inspected **7,885 enabled boards / 1,659,906 scheduled routes** and
+preserved all **7,779 monitors / 7,675 detail boards**, covering **1,535,945
+scheduled routes**. No new routing profiles were admitted in this maintenance
+release. Independent readback confirms matching active SQL plan, Redis
+projection, receipts, source and healthy services. At 09:49 UTC, all 55 completed
+monitor receipts have exact recurring schedules and no retained completion
+leases. Completed claims include failures; this early sample does not establish
+global conservation, sustained memory safety or full-fleet freshness.
+See [the source1014 production checkpoint](evidence/go-native-source1014-production-2026-10-11.json).
+
+Continue the next batch across **eight static ordered-detail fallback
+configurations**. Preserve separate attempts even after primary success,
+partial COALESCE writes, missing-title advancement without a failure budget,
+per-stage sealed transport, publisher policy and retained final step. Real
+Redis/PG focused execution, commit-before-ACK recovery and policy tests pass;
+34 stage outputs from 17 current public captures match original Python fields.
+L’Oréal has no scheduled public detail route; KPMG's mixed browser chain remains
+held. The full worker race suite and cold reversal checks are still pending.
+Before admission, also prove exact original hash/interval publication and
+preservation of an unpublished handoff during cold retirement. This candidate
+has no production ownership. Then finish remaining profiles and deployment
+consumers, observe sustained fleet throughput/freshness, and retire production
+Python/Playwright/Chromium after the supported rollback window.
+
+## Historical checkpoint — source1012 active across 7,779 / 7,675 boards
 
 [PR #10411](https://github.com/colophon-group/jobseek/pull/10411) merged as
 `68ff4fd49bda61127a64cb166d8ef679033d7344`, **0.13.1012 / 202 profiles**.
@@ -25,20 +69,8 @@ receipts have matching recurring schedules and zero retained completion leases.
 Completed claims include failures; these observations do not prove successful
 output for every claim, global conservation or full-fleet freshness. Resource
 readbacks show zero restarts, cgroup/kernel OOM kills or stalled-loop markers.
-Keep this release active for a sustained freshness/memory/throughput observation.
+These source1012 observations remain historical; sustain observation on the current source1014 release.
 See [the source1012 production checkpoint](evidence/go-native-source1012-production-2026-10-11.json).
-
-[PR #10413](https://github.com/colophon-group/jobseek/pull/10413) combines
-native capacity summary, inspection, orphan pruning and resumable schedule rebuild
-in **0.13.1014**, superseding the isolated #10412 candidate. Its required
-checks run separate queue and worker lanes with all original modules, real
-PostgreSQL/Redis, full race/vet/tidy/gofmt and Python ownership/cutover contracts.
-The worker suite's observed 20-minute limit now has a 30-minute budget; the queue
-lane retains 20 minutes. No check was removed. The same release moves resumable schedule rebuild to Go with the original no-scrape
-SQL, queue lanes, per-domain delays, authenticated producer decisions and durable
-authority guard. Its local actual PostgreSQL/Redis command tests and 17 Python
-compatibility tests pass; Linux socket execution and exact-head required checks
-remain to be verified in CI. Production runtime retirement remains unfinished.
 
 ## Historical checkpoint — source1011 deployed before source1012
 
