@@ -65,6 +65,29 @@ if learned_host ~= "" then
         return redis.error_reply("ordinary receipt board is unavailable")
     end
 end
+-- Optional native ordered-detail handoff: old step, next step, DB-owned
+-- timestamp, exact board and exact source. All writes are preflighted before
+-- retiring the old lease; legacy callers omit these arguments.
+local old_step, new_step, next_step_at = ARGV[10] or "", ARGV[11] or "", ARGV[12] or ""
+local handoff = old_step ~= "" or new_step ~= "" or next_step_at ~= "" or (ARGV[13] or "") ~= "" or (ARGV[14] or "") ~= ""
+if handoff then
+    local old, new, at = tonumber(old_step), tonumber(new_step), tonumber(next_step_at)
+    if wtype ~= "simple" or task_type ~= "scrape" or supplied_token == "" or
+       previous_metadata ~= "" or next_metadata ~= "" or learned_host ~= "" or
+       old == nil or old < 0 or old > 6 or old ~= math.floor(old) or tostring(old) ~= old_step or
+       new == nil or new ~= old + 1 or tostring(new) ~= new_step or
+       at == nil or at ~= at or at == math.huge or at == -math.huge or at < 0 or
+       (ARGV[15] or "") == "" or #ARGV[15] > 32 or tonumber(ARGV[15]) == nil or tonumber(ARGV[15]) <= 0 or tonumber(ARGV[15]) > 2562047 or
+       (ARGV[16] or "") ~= "" and (#ARGV[16] > 20 or string.match(ARGV[16], "^%-?%d+$") == nil) or
+       redis.call("TYPE", "scrape:" .. task_id)["ok"] ~= "hash" or
+       (redis.call("HGET", "scrape:" .. task_id, "scrape_step") or "0") ~= old_step or
+       (ARGV[13] or "") == "" or (ARGV[14] or "") == "" or
+       redis.call("HGET", "scrape:" .. task_id, "board_id") ~= ARGV[13] or
+       redis.call("HGET", "scrape:" .. task_id, "source_url") ~= ARGV[14] or
+       redis.call("HGET", "scrape:" .. task_id, "domain") ~= domain then
+        return redis.error_reply("ordinary ordered detail binding is invalid")
+    end
+end
 local current_token = redis.call("HGET", token_key, inflight_member)
 -- Legacy callers cannot mutate a tokenized lease; a tokenized caller cannot
 -- mutate an absent/new generation. Expiry revokes authority before the reaper.
@@ -154,6 +177,10 @@ else
     queue_key = "scrapes_" .. wtype .. ":" .. domain
 end
 redis.call("ZADD", queue_key, next_due, task_id)
+if handoff then
+    redis.call("HSET", "scrape:" .. task_id, "scrape_step", new_step, "scrape_interval_hours", ARGV[15], "description_r2_hash", ARGV[16])
+    redis.call("ZADD", "ft_scrapes_" .. wtype .. ":" .. domain, "NX", tonumber(next_step_at), task_id)
+end
 
 if task_type == "monitor" then
     redis.call("HDEL", monitor_repair_key, inflight_member)

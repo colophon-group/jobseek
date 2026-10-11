@@ -54,7 +54,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 		if !selected {
 			return nil
 		}
-		if cached["board_id"] != board || cached["source_url"] != source || cached["domain"] != domain || (cached["scrape_step"] != "" && cached["scrape_step"] != "0") {
+		if cached["board_id"] != board || cached["source_url"] != source || cached["domain"] != domain {
 			return nil
 		}
 		observed, ok := observations[board]
@@ -67,6 +67,17 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			observations[board] = observed
 		}
 		profile, boardConfig := observed.profile, observed.config
+		if profile.Profile == orderedHTTPDetailProfile || profile.Profile == orderedProxyHTTPDetailProfile {
+			chain, e := InspectOrderedDetail(board, boardConfig, source, worker)
+			if e != nil {
+				return nil
+			}
+			if _, e := orderedDetailStep(cached["scrape_step"], len(chain.Stages)); e != nil {
+				return nil
+			}
+		} else if cached["scrape_step"] != "" && cached["scrape_step"] != "0" {
+			return nil
+		}
 		member, err := a.ownership.detailContext(binding)
 		if err != nil {
 			return err

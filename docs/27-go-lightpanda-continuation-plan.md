@@ -37,9 +37,15 @@ per-stage sealed transport, publisher policy and retained final step. Real
 Redis/PG focused execution, commit-before-ACK recovery and policy tests pass;
 34 stage outputs from 17 current public captures match original Python fields.
 L’Oréal has no scheduled public detail route; KPMG's mixed browser chain remains
-held. The full worker race suite and cold reversal checks are still pending.
-Before admission, also prove exact original hash/interval publication and
-preservation of an unpublished handoff during cold retirement. This candidate
+held. The full mandatory queue race suite passed in 1,030 seconds. Focused worker
+checks preserve the original next-stage hash and interval, including an upload
+changing the canonical hash after commit. Cold checks cover all eight configs
+and preserve unpublished, published and active later-stage work. The first full
+worker run found a numeric-type regression in the new DOM config copy; the fix
+passed all affected groups, and the final full worker rerun is underway.
+Exact-head CI and whole-lane qualification remain pending.
+See [the grouped fallback candidate](evidence/go-native-ordered-detail-candidate-2026-10-11.json).
+This candidate
 has no production ownership. Then finish remaining profiles and deployment
 consumers, observe sustained fleet throughput/freshness, and retire production
 Python/Playwright/Chromium after the supported rollback window.

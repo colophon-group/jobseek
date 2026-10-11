@@ -1,0 +1,83 @@
+{
+  "schema": "Unreleased Alembic0040: nullable next step/time/description hash; final check installed only on dedicated private local PostgreSQL. Production remains0039.",
+  "version": "0.13.1015",
+  "profiles": 204,
+  "base_revision": "7ad9aa3b7c539fcf07196d2cecf5a04ed0ee78d0",
+  "status": "Implementation complete; exact-head CI, whole-lane qualification and final local worker rerun pending. No production fallback ownership.",
+  "coverage": {
+    "static_configurations": 8,
+    "actual_public_captures": 17,
+    "original_python_stage_outputs": 34,
+    "public_boards": 7,
+    "no_scheduled_routes": [
+      "loreal-careers"
+    ],
+    "mixed_browser_held": [
+      "kpmg-us"
+    ]
+  },
+  "behavior": [
+    "One scraper per independently fenced attempt; advance after primary success",
+    "Missing-primary-title advancement without content write or failure budget",
+    "Partial COALESCE writes and inert fallback.fields retained",
+    "Sealed proxy/direct transport selected separately per stage",
+    "Publisher reservations and HTTP failures do not advance the chain",
+    "Final cached stage retained across recurring cycles",
+    "DB-owned next timestamp and original pre-write description hash retained with completed receipt; original interval published atomically",
+    "Commit-before-ACK recovery does not repeat canonical effects; postcommit hash change cannot rewrite retained handoff",
+    "Cold reversal preserves unpublished, published and active later-stage work while revoking retired writer authority"
+  ],
+  "verification": {
+    "full_queue_race": {
+      "status": "passed",
+      "seconds": 1030.185,
+      "scope": "Complete mandatory PostgreSQL/Redis queue suite before final interval-bound alignment and detached-profile copy fix; affected pure/focused tests pass afterward; CI must verify final exact head."
+    },
+    "focused_cold": {
+      "config_cases": 48,
+      "seconds": 63.129,
+      "pending_stage_states": 3,
+      "pending_stage_seconds": 2.075
+    },
+    "focused_current_ordered_worker": {
+      "status": "passed",
+      "seconds": 5.175
+    },
+    "public_stage_field_parity": "34/34 pass",
+    "python_boundary": {
+      "passed": 95,
+      "skipped": 11
+    },
+    "vet": "queue/worker passed",
+    "go_mod_tidy_diff": "queue/worker/executor clean",
+    "first_full_worker": {
+      "status": "failed",
+      "seconds": 864.893,
+      "cause": "New DOM copy converted numeric extraction options to floats. Corrected with UseNumber; all failing groups passed focused12.561s.",
+      "final_rerun": "running; not yet qualified"
+    }
+  },
+  "lightpanda": {
+    "latest_verified_stable": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "published_at": "2026-10-02T10:12:01Z"
+  },
+  "source_sha256": {
+    "apps/crawler/go/lightpanda-b0-executor/prepare.go": "5ab973df22dc5d18ad4cbdc7cb88ae129c00c10c0be76e1b4349c5e5957bf474",
+    "apps/crawler/go/ordinary-queue/authority.go": "a1806ee2fc1eb0b1d48e0e5176ac57de788c63d5b96a11e9655ec2272b406989",
+    "apps/crawler/go/ordinary-queue/current_workday_detail.go": "5cd54e3e27a6b339c0bee4430cbf11c5442a2f5eb3af40597ed0e2705ae14cda",
+    "apps/crawler/go/ordinary-queue/profile_ordered_detail.go": "b2f264f412cee7e5692cfd261f2327d30f61041cf7c8978dd734365e4b8ecd7b",
+    "apps/crawler/go/ordinary-queue/reschedule_task.lua": "b6f0e5fb31b90428850266a7972555f08835cee23e3d0069ed4c9fbf4acdba9f",
+    "apps/crawler/go/ordinary-queue/first_retirement.go": "acbccc7edc92898b5fa26cc1dd3a9754bf4f12af027c618b2c295584fe23668c",
+    "apps/crawler/go/ordinary-queue/first_retirement.lua": "ddb516a92c14c42a76451c1e47a23f4bcc533f128b84eb16f0e9d09f39a8fb5b",
+    "apps/crawler/go/ordinary-worker/workday_detail_persistence.go": "51a50c55163d4226be5062a386f870d5b66ae057640300c0213eea3c1baaab58",
+    "apps/crawler/src/migrations/sql/ordinary_detail_handoff.sql": "363826a22dbbd4da22bd3d83c860f5ea7f064e8d281bf3a2227d5b1411528c03",
+    "apps/crawler/src/migrations/versions/0040_add_ordinary_detail_handoff.py": "0bf650efc9c71cdbf3843a8d267674bff39b52849332fdaf670e025f959bfc8c"
+  },
+  "private_evidence_sha256": {
+    "native1015-ordered-full-queue-race2-2026-10-11.log": "db69194f7509068d5633b17aa1e25fc285a296fcd57c578057fe93c963dcb425",
+    "native1015-ordered-cold48-race1-2026-10-11.log": "3d52bfdd1b2f214a27aff2b61c9e16782d6f09b1d4dca48fd97b2329232b4275",
+    "native1015-ordered-public-captures1/python-gold.json": "ed01e3d443e62dc8d36c6dfe46a90f58082685c1061a142b2dd201c89f9c1dd5",
+    "native1015-ordered-public-captures1/manifest.json": "d51f6d9c8e9033383aa66a98654b209da1bef52f683cdda24e76b1ea0362e45b"
+  }
+}
