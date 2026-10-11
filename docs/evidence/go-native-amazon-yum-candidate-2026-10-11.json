@@ -42,21 +42,24 @@
     "go_vet": "PASS API SDK, queue and worker",
     "affected_previous_guard_worker_references": "PASS 22.917s; ADP invalid and encrypted malformed inventories preserve rows and counters",
     "ruff": "PASS new offline fixture generators",
-    "ci": "Renewed consolidated head required"
+    "ci": "Renewed consolidated head required",
+    "installed_image_parity_head1987": "Failed stale exact profile list missing Amazon; candidate assertion corrected and checks must renew"
   },
   "production_checkpoint": {
     "source": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
     "version": "0.13.1007",
     "routing_epoch": 275,
-    "active_monitors": 7754,
-    "active_detail_boards": 2753,
     "all_enabled_boards_censused": 7885,
     "all_actual_scheduled_routes_censused": 1664550,
     "scheduled_owned_routes": 1460466,
     "native_monitors_due_at_2026_10_10_2359_utc": 6114,
     "native_monitors_overdue_1h": 2925,
     "native_monitors_overdue_6h": 611,
-    "whole_fleet_freshness": "Not verified; throughput and failure follow-up remain required"
+    "whole_fleet_freshness": "Not verified; throughput and failure follow-up remain required",
+    "ordinary_owner_status": "Retired after four kernel-confirmed OOM kills; full base/B0 restoration independently verified",
+    "formerly_admitted_monitors": 7754,
+    "formerly_admitted_detail_boards": 2753,
+    "ordinary_memory_evidence": "go-native-ordinary-memory-recovery-2026-10-11.json"
   },
   "still_required": [
     "Renewed exact-head required CI, native execution, installed image parity, physical Lightpanda and actual Crawler Deploy Gate",
