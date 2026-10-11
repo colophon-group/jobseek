@@ -249,6 +249,10 @@ func (c *Client) rescheduleHost(ctx context.Context, task *Task, nextDue float64
 }
 
 func (c *Client) rescheduleMetadata(ctx context.Context, task *Task, nextDue float64, learned, metadata *string) (bool, error) {
+	return c.rescheduleDetailHandoff(ctx, task, nextDue, learned, metadata, nil, nil, nil)
+}
+
+func (c *Client) rescheduleDetailHandoff(ctx context.Context, task *Task, nextDue float64, learned, metadata *string, step *int16, at *time.Time, descriptionHash *int64) (bool, error) {
 	if !validTask(task) || !validTime(nextDue) {
 		return false, ErrConfiguration
 	}
@@ -268,7 +272,32 @@ func (c *Client) rescheduleMetadata(ctx context.Context, task *Task, nextDue flo
 		}
 		expected, next = task.Config["metadata"], *metadata
 	}
-	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host, expected, next)
+	args := []any{string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host, expected, next}
+	if step != nil || at != nil {
+		if step == nil || at == nil || task.Kind != Scrape || task.Worker != Simple || !task.Fenced() || *step < 1 || *step > 7 || learned != nil || metadata != nil || !validTime(seconds(*at)) {
+			return false, ErrConfiguration
+		}
+		previous := task.Config["scrape_step"]
+		if previous == "" {
+			previous = "0"
+		}
+		if previous != strconv.Itoa(int(*step)-1) || !canonicalUUID.MatchString(task.Config["board_id"]) || task.Config["source_url"] == "" {
+			return false, ErrConfiguration
+		}
+		interval := task.Config["scrape_interval_hours"]
+		if interval == "" {
+			interval = "24"
+		}
+		if _, ok := profileInterval(interval, time.Hour); !ok {
+			return false, ErrConfiguration
+		}
+		hash := ""
+		if descriptionHash != nil && *descriptionHash != 0 {
+			hash = strconv.FormatInt(*descriptionHash, 10)
+		}
+		args = append(args, previous, strconv.Itoa(int(*step)), number(seconds(*at)), task.Config["board_id"], task.Config["source_url"], interval, hash)
+	}
+	return c.transition(ctx, c.reschedule, args...)
 }
 func (c *Client) transition(ctx context.Context, script *redis.Script, args ...any) (bool, error) {
 	raw, err := script.Run(ctx, c.redis, nil, args...).Result()

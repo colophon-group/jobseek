@@ -1,0 +1,93 @@
+{
+  "schema": "jobseek.go.production-checkpoint/v1",
+  "source_revision": "7ad9aa3b7c539fcf07196d2cecf5a04ed0ee78d0",
+  "version": "0.13.1014",
+  "profiles": 202,
+  "pull_request": 10413,
+  "whole_deployment_runs": {
+    "crawler": 38127272390,
+    "renderer": 38127541058
+  },
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "7ad9aa3b7c539fcf07196d2cecf5a04ed0ee78d0",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:f18fb223878931de740ccc47e7828fe13b15ee0046c73bc3d46ad89f99da3401",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:2c1a8585a4a2c88f58d80ca35c8c624832865f6d73d5934366c62c6466d98fe0",
+    "RENDERER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:7b955e561fd1ab68a7ec9932bdb2f7c1b03519cef0e5a707cbeda23084c5182b"
+  },
+  "lightpanda_version": "1.0.0",
+  "ordinary_owner": {
+    "epoch": 283,
+    "plan_sha256": "5728308c38364be949f00658367b6fffc7deff7e0387635f07d4a178d402feb8",
+    "projection_sha1": "2ef8f3588719b2019bcec1e6269d6d9a70828a1d",
+    "receipt_sha256": "2df4a40818552a070135f9bc79c4c3dcff4a145777e45bc8acd85c7fef006bf6",
+    "b0_receipt_sha256": "c3ae99f617a6234249784271d4c049f54a890f90b8484a87e2f2cb7aa4dd2fe2",
+    "monitors": 7779,
+    "detail_boards": 7675,
+    "owned_scheduled_routes": 1535945,
+    "actual_routes_inspected": 1659906,
+    "enabled_boards": 7885,
+    "prior_cohort_preserved": true,
+    "monitor_additions": 0,
+    "detail_additions": 0
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "natural_observation": {
+    "at": "2026-10-11T09:49:28.471883+00:00",
+    "fences": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 5
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 55
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 89
+      }
+    ],
+    "completed_monitor_receipts": 55,
+    "exact_recurring_schedules": 55,
+    "retained_completion_leases": 0,
+    "scope": "Completed claims include failures. Early exact schedules do not establish global conservation, full-fleet freshness or attributable cost."
+  },
+  "delivered": [
+    "Native Redis capacity summary, inspection and bounded orphan pruning",
+    "Resumable native schedule rebuild using original SQL/lane/throttle/idempotence and authenticated producer dispatch",
+    "Original source1012 ordinary retirement, B0 rollback and selector clear; independent cold282; exact-head merge and whole immutable deployments; new full epoch283 activation"
+  ],
+  "verification": [
+    "Required CI, runtime/image parity, Crawler Deploy Gate and ARM synthetic whole-lane qualification green at final03a267 head",
+    "Linux producer socket tests passed in CI",
+    "Local actual PG/Redis installed command tests, exporter race suite and17Python compatibility tests passed"
+  ],
+  "pending": [
+    "Sustained natural freshness, conservation, memory and cost evidence",
+    "Ordered detail fallback batch remains an unqualified working candidate; full tests, original hash/interval publication and cold handoff conservation pending",
+    "Production Python retirement and remaining board coverage"
+  ],
+  "private_evidence_sha256": {
+    "native-source1014-original-deployed-identities-2026-10-11.json": "c250dbe144ce101cfa69e2d92500d9f9c207b6e74bcb9942a546a58aae67f9bf",
+    "native-source1014-renderer-independent-verified1-2026-10-11.json": "2e45673c2a49f66e217a543d27847995e0443f279727fa6ebe716f7b97fe1ebc",
+    "native-source1014-postdeploy-cold282-verified1-2026-10-11.json": "a837e45575af3bfaa0a726caf2512482d88e44b276cde54a43cb2815a6e28a90",
+    "native-source1014-exporter-progress-independent-verified1-2026-10-11.json": "e9361d18e06b49892afe074a2668c03a9e91b14b1f6a5abfa93591ae67b84a5f",
+    "native1014-supported-b0-readback-initial-2026-10-11.log": "1fea2a08e7eff705f2acccf1b081446ffeaa188e79fb3ff9b0d9ec4319710b79",
+    "native-source1014-owner-stage-promoted-attempt1-2026-10-11.log": "89e278c99f47dcb326c7b044cbda6fe7cbbaf3b3b48d3993ae848bb5262ae3ab",
+    "native-source1014-owner-activate-promoted-attempt1-2026-10-11.log": "870776bff3673799fd0bb688181006e659f63c1e40f27b2060822caaee6e86f3",
+    "native-source1014-full-conservation-independent-verified3-2026-10-11.json": "8e2ab34d8aeaa2c9f16eb8c9ca9baf7c173741c0baba0de2b327430aa162c763",
+    "native-ordinary-admission1014/admission-summary-source1014-verified1.json": "dca0cd42f365449b92f81646bf860a6a7e1215a935023fdb713d70296a645f96"
+  }
+}

@@ -47,6 +47,14 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
             or (row.learned_host ~= "" and not row.completed) then return nil end
         local worker = member.worker
         if worker ~= "simple" and worker ~= "browser" then return nil end
+        if row.next_step ~= nil or row.next_at ~= nil or row.next_hash ~= nil or row.next_interval ~= nil then
+            if adopting or kind ~= "scrape" or worker ~= "simple" or
+                (member.profile ~= "detail.ordered-http/v1" and member.profile ~= "detail.ordered-proxy-http/v1") or
+                type(row.next_step) ~= "string" or not string.match(row.next_step,"^[1-7]$") or
+                type(row.next_at) ~= "string" or not retirement_finite(tonumber(row.next_at)) or tonumber(row.next_at) < 0 or
+                type(row.next_hash) ~= "string" or (#row.next_hash > 20) or (row.next_hash ~= "" and not string.match(row.next_hash,"^%-?%d+$")) or
+                type(row.next_interval) ~= "string" or not retirement_finite(tonumber(row.next_interval)) or tonumber(row.next_interval) <= 0 or tonumber(row.next_interval) > 2562047 then return nil end
+        end
         -- Adoption grants no current attempt receipt. A monitor in the wrong
         -- queue namespace or a completed/current native attempt is a refusal.
         if adopting then
@@ -149,6 +157,10 @@ local function apply_first_retirement(changes, domains)
         redis.call("ZREM", change.recurring_key, change.id)
         if change.due ~= nil then
             redis.call("ZADD", change.recurring_key, change.due, change.id)
+        end
+        if row.next_step ~= nil then
+            redis.call("HSET", change.config_key, "scrape_step", row.next_step, "description_r2_hash", row.next_hash, "scrape_interval_hours", row.next_interval)
+            redis.call("ZADD", change.first_key, tonumber(row.next_at), change.id)
         end
         redis.call("ZREM", "inflight:" .. worker, task)
         redis.call("HDEL", "inflight_tokens:" .. worker, task)

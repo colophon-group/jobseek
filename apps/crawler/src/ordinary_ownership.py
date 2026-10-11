@@ -216,6 +216,8 @@ def ownership_projection(payload: str) -> str:
                     "headhunter.proxy-api-detail/v1",
                     "infor.session-detail/v1",
                     "peoplesoft.session-detail/v1",
+                    "detail.ordered-http/v1",
+                    "detail.ordered-proxy-http/v1",
                 )
                 or (
                     d["profile"] in ("workday.cxs-detail/v1", "workday.proxy-cxs-detail/v1")

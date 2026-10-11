@@ -126,7 +126,9 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 			if err != nil {
 				return err
 			}
-			if !detailDomainMatches(bound.Domain, detail.profile) || detail.profile.EffectiveBoardSHA256 != context.EffectiveConfigHash || detail.profile.Profile != bound.Profile {
+			ownershipProfile := detail.profile
+			ownershipProfile.Profile = detail.ownershipProfile
+			if !detailDomainMatches(bound.Domain, ownershipProfile) || detail.profile.EffectiveBoardSHA256 != context.EffectiveConfigHash || detail.ownershipProfile != bound.Profile {
 				return ErrAuthorityLost
 			}
 			return nil

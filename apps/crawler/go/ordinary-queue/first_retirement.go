@@ -20,15 +20,19 @@ import (
 var firstRetirementLua string
 
 type firstRetirementMember struct {
-	BoardID     string            `json:"board_id"`
-	Domain      string            `json:"domain"`
-	Due         *string           `json:"due"`
-	Completed   bool              `json:"completed"`
-	LearnedHost string            `json:"learned_host"`
-	Config      map[string]string `json:"config"`
-	Metadata    *string           `json:"metadata,omitempty"`
-	Kind        Kind              `json:"kind,omitempty"`
-	TaskID      string            `json:"task_id,omitempty"`
+	BoardID      string            `json:"board_id"`
+	Domain       string            `json:"domain"`
+	Due          *string           `json:"due"`
+	Completed    bool              `json:"completed"`
+	LearnedHost  string            `json:"learned_host"`
+	Config       map[string]string `json:"config"`
+	Metadata     *string           `json:"metadata,omitempty"`
+	Kind         Kind              `json:"kind,omitempty"`
+	TaskID       string            `json:"task_id,omitempty"`
+	NextStep     *string           `json:"next_step,omitempty"`
+	NextAt       *string           `json:"next_at,omitempty"`
+	NextHash     *string           `json:"next_hash,omitempty"`
+	NextInterval *string           `json:"next_interval,omitempty"`
 }
 
 // Capture authoritative deadlines while the host's original exclusive SQL
@@ -175,11 +179,14 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		id, board, source, state, digest, host string
 		domain                                 string
 		due                                    *time.Time
+		nextStep                               *int16
+		nextAt                                 *time.Time
+		nextHash                               *int64
 	}
 	items := map[string]observation{}
 	rows, err := tx.Query(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,
  CASE WHEN p.is_active AND b.is_enabled THEN p.next_scrape_at END,
- f.state,f.config_sha256,COALESCE(f.learned_egress_host,'')
+ f.state,f.config_sha256,COALESCE(f.learned_egress_host,''),f.next_detail_step,f.next_detail_at,f.next_detail_description_hash
  FROM ordinary_worker_write_fence f JOIN job_posting p ON p.id=f.task_id AND p.board_id=f.board_id
  JOIN job_board b ON b.id=p.board_id
  WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])`, plan.Epoch(), boards)
@@ -188,7 +195,7 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 	}
 	for rows.Next() {
 		var item observation
-		if err := rows.Scan(&item.id, &item.board, &item.source, &item.due, &item.state, &item.digest, &item.host); err != nil {
+		if err := rows.Scan(&item.id, &item.board, &item.source, &item.due, &item.state, &item.digest, &item.host, &item.nextStep, &item.nextAt, &item.nextHash); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -316,6 +323,56 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 				return nil, ErrAuthorityLost
 			}
 			row := firstRetirementMember{BoardID: item.board, Domain: item.domain, Completed: completed, Config: config, Kind: Scrape, TaskID: id}
+			if item.due != nil && (bindings[item.board].Profile == orderedHTTPDetailProfile || bindings[item.board].Profile == orderedProxyHTTPDetailProfile) {
+				chain, err := InspectOrderedDetail(item.board, snapshots[item.board].canonical, item.source, bindings[item.board].Worker)
+				if err != nil {
+					return nil, ErrAuthorityLost
+				}
+				stage, err := orderedDetailStep(config["scrape_step"], len(chain.Stages))
+				if err != nil {
+					return nil, ErrAuthorityLost
+				}
+				var nextStage int
+				var publishAt *time.Time
+				var hash string
+				if completed && item.nextStep != nil {
+					if item.nextAt == nil || int(*item.nextStep) >= len(chain.Stages) || (stage != int(*item.nextStep) && (stage+1 != int(*item.nextStep) || item.digest != configDigest(config))) {
+						return nil, ErrAuthorityLost
+					}
+					nextStage, publishAt = int(*item.nextStep), item.nextAt
+					if item.nextHash != nil && *item.nextHash != 0 {
+						hash = strconv.FormatInt(*item.nextHash, 10)
+					}
+				} else if !completed && stage > 0 {
+					// An aborted later stage retains the primary's future SQL
+					// cycle deadline. Restore its pending independent attempt
+					// from the cold transaction's clock, without a content write.
+					var at time.Time
+					if err := tx.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&at); err != nil {
+						return nil, err
+					}
+					nextStage, publishAt, hash = stage, &at, config["description_r2_hash"]
+					if hash != "" {
+						if _, err := strconv.ParseInt(hash, 10, 64); err != nil {
+							return nil, ErrAuthorityLost
+						}
+					}
+				}
+				if publishAt != nil {
+					at := seconds(*publishAt)
+					if !validTime(at) {
+						return nil, ErrAuthorityLost
+					}
+					step, timestamp, interval := strconv.Itoa(nextStage), number(at), config["scrape_interval_hours"]
+					if interval == "" {
+						interval = "24"
+					}
+					if _, ok := profileInterval(interval, time.Hour); !ok {
+						return nil, ErrAuthorityLost
+					}
+					row.NextStep, row.NextAt, row.NextHash, row.NextInterval = &step, &timestamp, &hash, &interval
+				}
+			}
 			if item.due != nil {
 				due := seconds(*item.due)
 				if !validTime(due) {

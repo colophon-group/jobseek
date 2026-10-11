@@ -136,6 +136,9 @@ type Receipt struct {
 	nextDue         *time.Time
 	learnedHost     *string
 	terminalOutcome string
+	nextDetailStep  *int16
+	nextDetailAt    *time.Time
+	nextDetailHash  *int64
 }
 
 func (r *Receipt) NextDue() *time.Time {
@@ -356,8 +359,11 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		var oldEpoch int64
 		var oldDue *time.Time
 		var oldHost *string
-		err = tx.QueryRow(ctx, `SELECT state,claim_token,config_sha256,board_id::text,routing_epoch,next_due_at,learned_egress_host
-   FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid FOR UPDATE`, string(task.Kind), task.ID).Scan(&state, &oldToken, &oldDigest, &oldBoard, &oldEpoch, &oldDue, &oldHost)
+		var oldStep *int16
+		var oldStepAt *time.Time
+		var oldHash *int64
+		err = tx.QueryRow(ctx, `SELECT state,claim_token,config_sha256,board_id::text,routing_epoch,next_due_at,learned_egress_host,next_detail_step,next_detail_at,next_detail_description_hash
+	   FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid FOR UPDATE`, string(task.Kind), task.ID).Scan(&state, &oldToken, &oldDigest, &oldBoard, &oldEpoch, &oldDue, &oldHost, &oldStep, &oldStepAt, &oldHash)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -365,26 +371,40 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		if err := tx.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&now); err != nil {
 			return err
 		}
-		recovered := state == "completed" && oldEpoch <= a.epoch && oldDigest == claim.configDigest && oldBoard == claim.boardID && ((oldDue == nil && due == nil) || (oldDue != nil && due != nil && oldDue.Equal(*due) && due.After(now)))
+		recovered := state == "completed" && oldEpoch <= a.epoch && oldDigest == claim.configDigest && oldBoard == claim.boardID && ((oldDue == nil && due == nil) || (oldDue != nil && due != nil && oldDue.Equal(*due) && (due.After(now) || oldStep != nil)))
+		if recovered && oldStep != nil {
+			current, err := a.currentWorkdayDetail(ctx, tx, claim)
+			if err != nil {
+				return err
+			}
+			if oldStepAt == nil || current.orderedCount < 2 || int(*oldStep) != current.orderedStep+1 || int(*oldStep) >= current.orderedCount {
+				return ErrAuthorityLost
+			}
+		}
 		nextState := "active"
 		var retainedDue *time.Time
 		var retainedHost *string
+		var retainedStep *int16
+		var retainedStepAt *time.Time
+		var retainedHash *int64
 		if recovered {
 			nextState = "completed"
 			retainedDue = due
 			retainedHost = oldHost
+			retainedStep, retainedStepAt = oldStep, oldStepAt
+			retainedHash = oldHash
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO public.ordinary_worker_write_fence
-   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host)
-   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9)
+   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host,next_detail_step,next_detail_at,next_detail_description_hash)
+   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12)
    ON CONFLICT(task_kind,task_id) DO UPDATE SET board_id=EXCLUDED.board_id,
    routing_epoch=EXCLUDED.routing_epoch,claim_token=EXCLUDED.claim_token,
-   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,learned_egress_host=EXCLUDED.learned_egress_host,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue, retainedHost)
+   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,learned_egress_host=EXCLUDED.learned_egress_host,next_detail_step=EXCLUDED.next_detail_step,next_detail_at=EXCLUDED.next_detail_at,next_detail_description_hash=EXCLUDED.next_detail_description_hash,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue, retainedHost, retainedStep, retainedStepAt, retainedHash)
 		if err != nil {
 			return err
 		}
 		if recovered {
-			claim.recovered = &Receipt{claim: claim, nextDue: due, learnedHost: retainedHost}
+			claim.recovered = &Receipt{claim: claim, nextDue: due, learnedHost: retainedHost, nextDetailStep: retainedStep, nextDetailAt: retainedStepAt, nextDetailHash: retainedHash}
 		}
 		return a.current(ctx, claim)
 	})
@@ -434,6 +454,17 @@ func (a *Authority) Write(ctx context.Context, claim *Claim, terminal bool, fn f
 
 // learned is private terminal evidence, frozen with the due time after callback.
 func (a *Authority) write(ctx context.Context, claim *Claim, terminal bool, learned **string, fn func(context.Context, pgx.Tx) error) (*Receipt, error) {
+	return a.writeWithDetailHandoff(ctx, claim, terminal, learned, nil, fn)
+}
+
+type detailHandoff struct {
+	step int16
+	hash *int64
+}
+
+// The private handoff is derived from a freshly revalidated ordered detail.
+// Its publication timestamp is database-owned and retained with the receipt.
+func (a *Authority) writeWithDetailHandoff(ctx context.Context, claim *Claim, terminal bool, learned **string, next *detailHandoff, fn func(context.Context, pgx.Tx) error) (*Receipt, error) {
 	if !a.valid(claim) || claim.configDigest == "" || fn == nil {
 		return nil, ErrConfiguration
 	}
@@ -461,12 +492,27 @@ func (a *Authority) write(ctx context.Context, claim *Claim, terminal bool, lear
 				value := **learned
 				host = &value
 			}
-			_, err = tx.Exec(ctx, `UPDATE public.ordinary_worker_write_fence SET state='completed',next_due_at=$3,learned_egress_host=$4,updated_at=clock_timestamp()
-    WHERE task_kind=$1 AND task_id=$2::uuid`, string(claim.task.Kind), claim.task.ID, due, host)
+			var nextStep *int16
+			var nextAt *time.Time
+			var nextHash *int64
+			if next != nil {
+				if claim.task.Kind != Scrape || next.step < 1 || next.step > 7 || due == nil {
+					return ErrConfiguration
+				}
+				nextStep = &next.step
+				nextHash = next.hash
+				var at time.Time
+				if err := tx.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&at); err != nil {
+					return err
+				}
+				nextAt = &at
+			}
+			_, err = tx.Exec(ctx, `UPDATE public.ordinary_worker_write_fence SET state='completed',next_due_at=$3,learned_egress_host=$4,next_detail_step=$5,next_detail_at=$6,next_detail_description_hash=$7,updated_at=clock_timestamp()
+    WHERE task_kind=$1 AND task_id=$2::uuid`, string(claim.task.Kind), claim.task.ID, due, host, nextStep, nextAt, nextHash)
 			if err != nil {
 				return err
 			}
-			receipt = &Receipt{claim: claim, nextDue: due, learnedHost: host}
+			receipt = &Receipt{claim: claim, nextDue: due, learnedHost: host, nextDetailStep: nextStep, nextDetailAt: nextAt, nextDetailHash: nextHash}
 		}
 		return a.current(ctx, claim)
 	})
@@ -502,11 +548,29 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 			return ErrAuthorityLost
 		}
 		var retainedHost *string
-		if err := tx.QueryRow(ctx, "SELECT learned_egress_host FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid", string(claim.task.Kind), claim.task.ID).Scan(&retainedHost); err != nil {
+		var retainedStep *int16
+		var retainedAt *time.Time
+		var retainedHash *int64
+		if err := tx.QueryRow(ctx, "SELECT learned_egress_host,next_detail_step,next_detail_at,next_detail_description_hash FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid", string(claim.task.Kind), claim.task.ID).Scan(&retainedHost, &retainedStep, &retainedAt, &retainedHash); err != nil {
 			return err
 		}
 		if (retainedHost == nil) != (receipt.learnedHost == nil) || retainedHost != nil && *retainedHost != *receipt.learnedHost {
 			return ErrAuthorityLost
+		}
+		if (retainedStep == nil) != (receipt.nextDetailStep == nil) || retainedStep != nil && *retainedStep != *receipt.nextDetailStep || !equal(retainedAt, receipt.nextDetailAt) {
+			return ErrAuthorityLost
+		}
+		if (retainedHash == nil) != (receipt.nextDetailHash == nil) || retainedHash != nil && *retainedHash != *receipt.nextDetailHash {
+			return ErrAuthorityLost
+		}
+		if retainedStep != nil {
+			current, err := a.currentWorkdayDetail(ctx, tx, claim)
+			if err != nil {
+				return err
+			}
+			if current.orderedCount < 2 || int(*retainedStep) != current.orderedStep+1 || int(*retainedStep) >= current.orderedCount {
+				return ErrAuthorityLost
+			}
 		}
 		var accepted bool
 		var metadata *string
@@ -523,7 +587,7 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		if receipt.nextDue == nil {
 			accepted, err = a.queue.Complete(ctx, &claim.task)
 		} else {
-			accepted, err = a.queue.rescheduleMetadata(ctx, &claim.task, seconds(*receipt.nextDue), receipt.learnedHost, metadata)
+			accepted, err = a.queue.rescheduleDetailHandoff(ctx, &claim.task, seconds(*receipt.nextDue), receipt.learnedHost, metadata, receipt.nextDetailStep, receipt.nextDetailAt, receipt.nextDetailHash)
 		}
 		if err != nil {
 			return err

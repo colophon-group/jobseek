@@ -108,6 +108,9 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if p, e := InspectOrderedDetail(boardID, config, config["board_url"], Simple); e == nil {
+		return orderedDetailOwnership(p), nil
+	}
 	if p, e := inspectNoScrapeDetailOwnership(boardID, config); e == nil {
 		return p, nil
 	}
@@ -163,6 +166,11 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if p, e := InspectOrderedDetail(boardID, config, source, worker); e == nil {
+		r := orderedDetailOwnership(p)
+		r.Domain = p.Stages[0].Domain
+		return r, nil
+	}
 	if p, e := InspectNoScrapeDetail(boardID, config, source, worker); e == nil {
 		return p, nil
 	}

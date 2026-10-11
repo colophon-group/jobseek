@@ -1,0 +1,278 @@
+[
+  {
+    "slug": "hes-so-rectorat",
+    "crawler_type": "breezy",
+    "board_url": "https://hes-so-rectorat.breezy.hr/",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "li",
+              "attr": "class=location",
+              "field": "locations",
+              "regex": "([^,]+,\\s*[A-Z]{2})"
+            },
+            {
+              "tag": "p",
+              "html": true,
+              "stop": "%BUTTON_APPLY_TO_POSITION%",
+              "field": "description"
+            }
+          ],
+          "render": false
+        }
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "kpmg-us",
+    "crawler_type": "api_sniffer",
+    "board_url": "https://www.kpmguscareers.com/job-search/",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "wait": "networkidle",
+          "render": true
+        }
+      }
+    },
+    "browser": "1",
+    "expected": false
+  },
+  {
+    "slug": "loreal-careers",
+    "crawler_type": "sitemap",
+    "board_url": "https://careers.loreal.com/en_US/jobs",
+    "scraper_type": "dom",
+    "scraper_config": {
+      "proxy": true,
+      "steps": [
+        {
+          "tag": "h2",
+          "attr": "class=banner__text__title",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=banner__text__subtitle",
+          "field": "locations"
+        },
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description",
+          "stop_attr": "class=button-container"
+        }
+      ],
+      "fallback": {
+        "type": "json-ld",
+        "fields": [
+          "date_posted"
+        ]
+      },
+      "gone_url_pattern": "/jobs/Error(?:[/?]|$)"
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "vyntra-careers",
+    "crawler_type": "breezy",
+    "board_url": "https://vyntra.breezy.hr/",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "li",
+              "attr": "class=location",
+              "field": "locations",
+              "regex": "([A-Za-z .-]+,\\s*[A-Z]{2})"
+            },
+            {
+              "tag": "p",
+              "html": true,
+              "stop": "%BUTTON_APPLY_TO_POSITION%",
+              "field": "description"
+            }
+          ],
+          "render": false
+        }
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "thirdchannel-careers",
+    "crawler_type": "breezy",
+    "board_url": "https://thirdchannel-inc.breezy.hr/",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "li",
+              "attr": "class=location",
+              "field": "locations",
+              "regex": "([A-Za-z .-]+,\\s*[A-Z]{2})"
+            },
+            {
+              "tag": "p",
+              "html": true,
+              "stop": "%BUTTON_APPLY_TO_POSITION%",
+              "field": "description"
+            }
+          ],
+          "render": false
+        }
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "migros-careers",
+    "crawler_type": "sitemap",
+    "board_url": "https://jobs.migros.ch/de/unsere-unternehmen/migros-gruppe/offene-stellen",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h3",
+              "html": true,
+              "stop": "Bewerbung & Kontakt",
+              "text": "beweg",
+              "field": "description"
+            }
+          ]
+        },
+        "fields": [
+          "description"
+        ]
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "nexthire-careers",
+    "crawler_type": "breezy",
+    "board_url": "https://nexthire.breezy.hr/",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "text": "Nexthire"
+            },
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "li",
+              "attr": "class=location",
+              "field": "locations",
+              "regex": "^(.+?)(?:\\s+-\\s+%[^%]+%)?$",
+              "match_regex": "^(?!%).+$"
+            },
+            {
+              "tag": "p",
+              "html": true,
+              "stop": "%BUTTON_APPLY_TO_POSITION%",
+              "field": "description"
+            }
+          ],
+          "render": false
+        }
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "galaxus-careers",
+    "crawler_type": "sitemap",
+    "board_url": "https://jobs.migros.ch/en/our-companies/galaxus/vacancies",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "tag": "h3",
+              "html": true,
+              "stop": "Bewerbung & Kontakt",
+              "text": "beweg",
+              "field": "description"
+            }
+          ]
+        },
+        "fields": [
+          "description"
+        ]
+      }
+    },
+    "browser": "0",
+    "expected": true
+  },
+  {
+    "slug": "sygnum-bank-salesforce",
+    "crawler_type": "dom",
+    "board_url": "https://sygnumpeopleportal.my.salesforce-sites.com/recruit/fRecruit__ApplyJobList",
+    "scraper_type": "json-ld",
+    "scraper_config": {
+      "fallback": {
+        "type": "dom",
+        "config": {
+          "steps": [
+            {
+              "from": 0,
+              "html": true,
+              "stop": "Employment Type",
+              "text": "About Sygnum",
+              "field": "description",
+              "offset": 1
+            }
+          ]
+        },
+        "fields": [
+          "description"
+        ]
+      }
+    },
+    "browser": "0",
+    "expected": true
+  }
+]

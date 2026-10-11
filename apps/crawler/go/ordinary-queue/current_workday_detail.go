@@ -21,6 +21,21 @@ type CurrentWorkdayDetail struct {
 	EmploymentType    *string
 	Schedulable       bool
 	PublisherReserved bool
+	orderedStep       int
+	orderedCount      int
+	ownershipProfile  string
+}
+
+// OrderedStage reports the canonical, cached stage already bound to this claim.
+func (d *CurrentWorkdayDetail) OrderedStage() (int, bool) {
+	if d == nil {
+		return 0, false
+	}
+	return d.orderedStep, d.orderedCount > 1
+}
+
+func (d *CurrentWorkdayDetail) HasNextOrderedStage() bool {
+	return d != nil && d.orderedCount > 1 && d.orderedStep+1 < d.orderedCount
 }
 
 // PostingID returns the canonical posting bound to the opaque attempt.
@@ -56,11 +71,18 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 		body, _ := json.Marshal(p.JSONLDConfig)
 		json.Unmarshal(body, &p.JSONLDConfig)
 	}
+	if p.DOMConfig != nil {
+		body, _ := json.Marshal(p.DOMConfig)
+		p.DOMConfig = nil
+		decoder := json.NewDecoder(bytes.NewReader(body))
+		decoder.UseNumber()
+		decoder.Decode(&p.DOMConfig)
+	}
 	return p
 }
 
 func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *Claim) (*CurrentWorkdayDetail, error) {
-	if !a.valid(claim) || claim.task.Kind != Scrape || (claim.task.Worker != Simple && claim.task.Worker != Browser) || (claim.task.Config["scrape_step"] != "" && claim.task.Config["scrape_step"] != "0") {
+	if !a.valid(claim) || claim.task.Kind != Scrape || (claim.task.Worker != Simple && claim.task.Worker != Browser) {
 		return nil, ErrUnsupportedProfile
 	}
 	_, boardConfig, err := a.observeDetailOwnershipState(ctx, tx, claim.boardID, false)
@@ -87,6 +109,20 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, claim.task.Worker)
 	if err != nil {
 		return nil, err
+	}
+	d.ownershipProfile = d.profile.Profile
+	if d.profile.Profile == orderedHTTPDetailProfile || d.profile.Profile == orderedProxyHTTPDetailProfile {
+		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, claim.task.Worker)
+		if e != nil {
+			return nil, e
+		}
+		step, e := orderedDetailStep(claim.task.Config["scrape_step"], len(chain.Stages))
+		if e != nil {
+			return nil, e
+		}
+		d.orderedStep, d.orderedCount, d.profile = step, len(chain.Stages), chain.Stages[step]
+	} else if claim.task.Config["scrape_step"] != "" && claim.task.Config["scrape_step"] != "0" {
+		return nil, ErrUnsupportedProfile
 	}
 	if claim.task.Domain != d.profile.Domain {
 		return nil, ErrAuthorityLost
@@ -131,7 +167,11 @@ func (a *Authority) WriteWorkdayDetail(ctx context.Context, detail *CurrentWorkd
 	if a == nil || detail == nil || !a.valid(detail.claim) || fn == nil {
 		return nil, ErrConfiguration
 	}
-	receipt, err := a.Write(ctx, detail.claim, true, func(ctx context.Context, tx pgx.Tx) error {
+	var next *detailHandoff
+	if detail.orderedCount > 1 && detail.orderedStep+1 < detail.orderedCount {
+		next = &detailHandoff{step: int16(detail.orderedStep + 1)}
+	}
+	receipt, err := a.writeWithDetailHandoff(ctx, detail.claim, true, nil, next, func(ctx context.Context, tx pgx.Tx) error {
 		current, err := a.currentWorkdayDetail(ctx, tx, detail.claim)
 		if err != nil {
 			return err
@@ -139,8 +179,11 @@ func (a *Authority) WriteWorkdayDetail(ctx context.Context, detail *CurrentWorkd
 		if current.PublisherReserved {
 			return ErrPublisherReserved
 		}
-		if !current.Schedulable || current.profile.EffectiveBoardSHA256 != detail.profile.EffectiveBoardSHA256 || current.profile.SourceURL != detail.profile.SourceURL {
+		if !current.Schedulable || current.orderedStep != detail.orderedStep || current.orderedCount != detail.orderedCount || current.profile.EffectiveBoardSHA256 != detail.profile.EffectiveBoardSHA256 || current.profile.SourceURL != detail.profile.SourceURL {
 			return ErrAuthorityLost
+		}
+		if next != nil {
+			next.hash = current.DescriptionHash
 		}
 		return fn(ctx, tx)
 	})

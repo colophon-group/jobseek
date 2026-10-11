@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -51,7 +52,17 @@ func PersistDetailContent(ctx context.Context, authority *queue.Authority, detai
 		config = map[string]any{"enrich": selected}
 		existing = &executor.EnrichSnapshot{Titles: detail.Titles, LocationIDs: detail.LocationIDs, EmploymentType: detail.EmploymentType}
 	}
-	prepared, err := processor.Prepare(ctx, values, config, existing)
+	var prepared *executor.PreparedContent
+	if step, ordered := detail.OrderedStage(); ordered {
+		prepared, err = processor.PrepareOrderedDetail(ctx, values, step)
+		// The original primary missing-title path queues the next scraper
+		// without writing content or consuming a failure budget.
+		if errors.Is(err, executor.ErrEmptyResult) && step == 0 && detail.HasNextOrderedStage() {
+			return authority.WriteWorkdayDetail(ctx, detail, func(context.Context, pgx.Tx) error { return nil })
+		}
+	} else {
+		prepared, err = processor.Prepare(ctx, values, config, existing)
+	}
 	if err != nil {
 		return nil, claimRunError("detail_preparation", err)
 	}

@@ -57,11 +57,26 @@ func selectedEnrichment(config map[string]any) (map[string]bool, bool) {
 // one fenced persistence transaction. Missing columns stay SQL NULL. Location
 // backfill is the sole database read in this assembly and uses its existing pool.
 func (p *Processor) Prepare(ctx context.Context, content, config map[string]any, existing *EnrichSnapshot) (*PreparedContent, error) {
+	return p.prepare(ctx, content, config, existing, false, 0)
+}
+
+// PrepareOrderedDetail retains the single-item fallback writer's COALESCE
+// behavior. Only step zero requires a title; later empty or description-only
+// stages preserve existing titles/locales and still record their normal cycle.
+// The caller must separately obtain the step from its opaque canonical attempt.
+func (p *Processor) PrepareOrderedDetail(ctx context.Context, content map[string]any, step int) (*PreparedContent, error) {
+	if step < 0 || step > 7 {
+		return nil, errors.New("invalid ordered detail stage")
+	}
+	return p.prepare(ctx, content, nil, nil, true, step)
+}
+
+func (p *Processor) prepare(ctx context.Context, content, config map[string]any, existing *EnrichSnapshot, partial bool, step int) (*PreparedContent, error) {
 	if p == nil || p.Matcher == nil || p.Lookups == nil || p.Locations == nil {
 		return nil, errors.New("native enrichment unavailable")
 	}
 	fields, enrich := selectedEnrichment(config)
-	if !enrich {
+	if !enrich && (!partial || step == 0) {
 		title, ok := content["title"].(string)
 		// Python's step-zero garbage check runs before scalar coercion. A
 		// non-string title cannot pass its .strip() call or missing-title gate.
@@ -144,7 +159,7 @@ func (p *Processor) Prepare(ctx context.Context, content, config map[string]any,
 		}
 		detected = result.Languages
 	}
-	prepared := &PreparedContent{Enrich: enrich}
+	prepared := &PreparedContent{Enrich: enrich || partial}
 	var rawEmployment *string
 	if !enrich || fields["employment_type"] {
 		rawEmployment, err = CoerceText(content["employment_type"])
@@ -159,6 +174,9 @@ func (p *Processor) Prepare(ctx context.Context, content, config map[string]any,
 			return nil, err
 		}
 		prepared.Fields.Titles = BuildTitles(title)
+		if partial && len(prepared.Fields.Titles) == 0 {
+			prepared.Fields.Titles = nil
+		}
 		var matchingTitles []string
 		if enrich {
 			matchingTitles = prepared.Fields.Titles

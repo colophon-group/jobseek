@@ -107,6 +107,9 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
+	if profile == orderedProxyHTTPDetailProfile {
+		return true
+	}
 	if profile == "workday.proxy-cxs-detail/v1" {
 		return true
 	}
