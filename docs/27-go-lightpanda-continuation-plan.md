@@ -95,6 +95,29 @@ zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
 
+## Following operational group — currency and location taxonomy maintenance
+
+An isolated candidate reserves **0.13.1011** on source1010's repaired candidate.
+It replaces the two installed Python maintenance commands with direct
+`go-typesense-exporter` operations; the optional `crawler` aliases delegate
+before opening Python pools. Currency refresh preserves decimal inversion,
+12-place half-even quantization, sorted EUR-inclusive rates, atomic upsert and
+completion metrics. Thirty-four original parser cases include all 30 rates in
+the live October 9 ECB feed. Location repair preserves the fixed 37,526 rows,
+read-only source snapshot, locked serializable target, missing-only updates,
+exact equality proof and durable slug constraint. Original and native full-size
+Postgres runs agree; compiled-command and failure/rollback checks pass.
+
+The existing protected maintenance actor, revision/image, mutation-lock and
+credential contracts remain required. The candidate has no production authority
+and no maintenance operation was dispatched during qualification. Finish the
+source1010 group, then renew this candidate's required checks and whole rollout.
+See [maintenance qualification](evidence/go-native-maintenance-consumers-candidate-2026-10-11.json).
+Deployment Alembic execution and optional legacy fallback paths remain separate
+Python retirement work. Continue qualifying the 126 currently unowned monitor
+configurations in compatible groups; do not treat the skip-detail configuration
+screen as proof of scheduled-route admission or fleet freshness.
+
 ## Historical checkpoint — source1007 ordinary OOM recovery
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as

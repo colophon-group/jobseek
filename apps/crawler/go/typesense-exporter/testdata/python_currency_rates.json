@@ -1,0 +1,570 @@
+{
+  "source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "cases": [
+    {
+      "name": "rate-0",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"1.25\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.800000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-1",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"4\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.250000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-2",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"200\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.005000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-3",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"0.3333333333333333333333333333\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "3.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-4",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"0.9999999999999999999999999999\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "1.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-5",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"7\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.142857142857"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-6",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"800000000000\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-7",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"2000000000000\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-8",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"3e-15\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "333333333333333.333333333333"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-9",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"2e-16\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "5000000000000000.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-10",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"2e-17\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "rate-11",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"1e30\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-12",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"0\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "rate-13",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"-1\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "rate-14",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"NaN\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "rate-15",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"abc\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "rate-16",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"+1.25\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.800000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-17",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"1.25e+2\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.008000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-18",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"1e-2\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "100.000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rate-19",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\" 1.25 \"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.800000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "sorted",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"1.25\"/><Cube currency=\"JPY\" rate=\"200\"/><Cube currency=\"PLN\" rate=\"4\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "JPY",
+            "to_eur": "0.005000000000"
+          },
+          {
+            "currency": "PLN",
+            "to_eur": "0.250000000000"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.800000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-overwrite",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"2\"/><Cube currency=\"USD\" rate=\"4\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.250000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "eur-overwrite",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"EUR\" rate=\"2\"/><Cube currency=\"USD\" rate=\"4\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "0.500000000000"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.250000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ignored-empty",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube/><Cube currency=\"USD\" rate=\"2\"/></Cube></Cube></Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-07-06",
+        "rates": [
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.500000000000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "missing-rate",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "missing-currency",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube rate=\"2\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "lower-case",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"usd\" rate=\"2\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "missing-date",
+      "xml": "<Envelope><Cube/></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "multiple-dates",
+      "xml": "<Envelope><Cube time=\"2026-07-06\"/><Cube time=\"2026-07-07\"/></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "invalid-date",
+      "xml": "<Envelope><Cube><Cube time=\"2026-02-30\"><Cube currency=\"USD\" rate=\"2\"/></Cube></Cube></Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "multiple-roots",
+      "xml": "<Envelope><Cube><Cube time=\"2026-07-06\"><Cube currency=\"USD\" rate=\"2\"/></Cube></Cube></Envelope><Envelope/>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "malformed",
+      "xml": "<Envelope>",
+      "accepted": false,
+      "snapshot": null
+    },
+    {
+      "name": "ecb-live-2026-10-11",
+      "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gesmes:Envelope xmlns:gesmes=\"http://www.gesmes.org/xml/2002-08-01\" xmlns=\"http://www.ecb.int/vocabulary/2002-08-01/eurofxref\">\n\t<gesmes:subject>Reference rates</gesmes:subject>\n\t<gesmes:Sender>\n\t\t<gesmes:name>European Central Bank</gesmes:name>\n\t</gesmes:Sender>\n\t<Cube>\n\t\t<Cube time='2026-10-09'>\n\t\t\t<Cube currency='USD' rate='1.1206'/>\n\t\t\t<Cube currency='JPY' rate='177.34'/>\n\t\t\t<Cube currency='CZK' rate='24.369'/>\n\t\t\t<Cube currency='DKK' rate='7.4751'/>\n\t\t\t<Cube currency='GBP' rate='0.84763'/>\n\t\t\t<Cube currency='HUF' rate='365.08'/>\n\t\t\t<Cube currency='PLN' rate='4.3835'/>\n\t\t\t<Cube currency='RON' rate='5.3406'/>\n\t\t\t<Cube currency='SEK' rate='11.1675'/>\n\t\t\t<Cube currency='CHF' rate='0.9313'/>\n\t\t\t<Cube currency='ISK' rate='136.80'/>\n\t\t\t<Cube currency='NOK' rate='10.7155'/>\n\t\t\t<Cube currency='TRY' rate='55.1033'/>\n\t\t\t<Cube currency='AUD' rate='1.6052'/>\n\t\t\t<Cube currency='BRL' rate='5.6086'/>\n\t\t\t<Cube currency='CAD' rate='1.5942'/>\n\t\t\t<Cube currency='CNY' rate='7.4992'/>\n\t\t\t<Cube currency='HKD' rate='8.7940'/>\n\t\t\t<Cube currency='IDR' rate='20036.94'/>\n\t\t\t<Cube currency='ILS' rate='3.4260'/>\n\t\t\t<Cube currency='INR' rate='108.3965'/>\n\t\t\t<Cube currency='KRW' rate='1503.27'/>\n\t\t\t<Cube currency='MXN' rate='20.3950'/>\n\t\t\t<Cube currency='MYR' rate='4.5777'/>\n\t\t\t<Cube currency='NZD' rate='1.9961'/>\n\t\t\t<Cube currency='PHP' rate='70.397'/>\n\t\t\t<Cube currency='SGD' rate='1.4348'/>\n\t\t\t<Cube currency='THB' rate='37.574'/>\n\t\t\t<Cube currency='ZAR' rate='18.5270'/>\n\t\t</Cube>\n\t</Cube>\n</gesmes:Envelope>",
+      "accepted": true,
+      "snapshot": {
+        "rate_date": "2026-10-09",
+        "rates": [
+          {
+            "currency": "AUD",
+            "to_eur": "0.622975330177"
+          },
+          {
+            "currency": "BRL",
+            "to_eur": "0.178297614378"
+          },
+          {
+            "currency": "CAD",
+            "to_eur": "0.627273867771"
+          },
+          {
+            "currency": "CHF",
+            "to_eur": "1.073767851391"
+          },
+          {
+            "currency": "CNY",
+            "to_eur": "0.133347557073"
+          },
+          {
+            "currency": "CZK",
+            "to_eur": "0.041035742131"
+          },
+          {
+            "currency": "DKK",
+            "to_eur": "0.133777474549"
+          },
+          {
+            "currency": "EUR",
+            "to_eur": "1"
+          },
+          {
+            "currency": "GBP",
+            "to_eur": "1.179760036809"
+          },
+          {
+            "currency": "HKD",
+            "to_eur": "0.113713895838"
+          },
+          {
+            "currency": "HUF",
+            "to_eur": "0.002739125671"
+          },
+          {
+            "currency": "IDR",
+            "to_eur": "0.000049907820"
+          },
+          {
+            "currency": "ILS",
+            "to_eur": "0.291885580852"
+          },
+          {
+            "currency": "INR",
+            "to_eur": "0.009225390119"
+          },
+          {
+            "currency": "ISK",
+            "to_eur": "0.007309941520"
+          },
+          {
+            "currency": "JPY",
+            "to_eur": "0.005638885756"
+          },
+          {
+            "currency": "KRW",
+            "to_eur": "0.000665216495"
+          },
+          {
+            "currency": "MXN",
+            "to_eur": "0.049031625398"
+          },
+          {
+            "currency": "MYR",
+            "to_eur": "0.218450313476"
+          },
+          {
+            "currency": "NOK",
+            "to_eur": "0.093322756754"
+          },
+          {
+            "currency": "NZD",
+            "to_eur": "0.500976904965"
+          },
+          {
+            "currency": "PHP",
+            "to_eur": "0.014205150788"
+          },
+          {
+            "currency": "PLN",
+            "to_eur": "0.228128208053"
+          },
+          {
+            "currency": "RON",
+            "to_eur": "0.187244878853"
+          },
+          {
+            "currency": "SEK",
+            "to_eur": "0.089545556302"
+          },
+          {
+            "currency": "SGD",
+            "to_eur": "0.696961248955"
+          },
+          {
+            "currency": "THB",
+            "to_eur": "0.026614148081"
+          },
+          {
+            "currency": "TRY",
+            "to_eur": "0.018147733439"
+          },
+          {
+            "currency": "USD",
+            "to_eur": "0.892379082634"
+          },
+          {
+            "currency": "ZAR",
+            "to_eur": "0.053975279322"
+          }
+        ]
+      }
+    }
+  ],
+  "decimal_rendering": "fixed point; original Decimal values unchanged"
+}

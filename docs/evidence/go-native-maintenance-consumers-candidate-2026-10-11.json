@@ -1,0 +1,70 @@
+{
+  "schema": "jobseek.go-migration-maintenance-candidate/v1",
+  "candidate_version": "0.13.1011",
+  "base_revision": "b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220",
+  "production_authority": false,
+  "operations": [
+    "refresh-currency-rates",
+    "repair-location-taxonomy-source"
+  ],
+  "original_reference_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "currency": {
+    "reference_cases": 34,
+    "live_feed_rate_date": "2026-10-09",
+    "live_feed_rate_count": 30,
+    "original_live_xml_sha256": "cf79007a1de55aea7158681ed3731e72ae15f80a92a916d7e0eb32f5640142cd",
+    "reference_fixture_sha256": "0ddfb64a6b0ee22fb9e0fbcbacd4bff4059816a85855eb8fdea8e863039ff1a4",
+    "behavior": "28-significant-digit decimal inverse, half-even quantization to 12 places, sorted currencies and EUR, atomic upsert, unchanged optional completion gauges",
+    "unqualified_inputs": [
+      "nonfinite and nonstandard decimal tokens",
+      "oversized feed and unbounded exponent",
+      "nonstandard ISO date spelling"
+    ]
+  },
+  "location_repair": {
+    "original_full_postgres_first": {
+      "expected_rows": 37526,
+      "source_rows": 37526,
+      "local_rows": 37526,
+      "source_coordinate_pairs": 37526,
+      "missing_slugs_before": 37526,
+      "missing_coordinate_values_before": 75052,
+      "updated_rows": 37526,
+      "source_local_equal": true,
+      "constraint_validated": true
+    },
+    "original_full_postgres_idempotent": {
+      "expected_rows": 37526,
+      "source_rows": 37526,
+      "local_rows": 37526,
+      "source_coordinate_pairs": 37526,
+      "missing_slugs_before": 0,
+      "missing_coordinate_values_before": 0,
+      "updated_rows": 0,
+      "source_local_equal": true,
+      "constraint_validated": true
+    },
+    "native_cases": [
+      "complete 37526-row repair and compiled idempotent command",
+      "populated slug or coordinate conflicts",
+      "source blank or duplicate slug or partial coordinates",
+      "ID drift",
+      "missing durable constraint",
+      "trigger-induced postflight drift",
+      "cancellation rollback",
+      "fixed cardinality and bounded nonsecret workflow evidence"
+    ],
+    "transaction_contract": "repeatable-read read-only source; serializable locked local target; missing-only update; exact postflight and constraint validation before commit"
+  },
+  "checks": {
+    "focused_go_race_passed_seconds": 4.047,
+    "python_cli_and_protected_workflow_tests_passed": 20,
+    "go_vet_passed": true
+  },
+  "delivery_constraints": [
+    "Renew all checks at final head after source1010 is delivered",
+    "Keep original maintenance locks, revision/image binding, protected actor authorization and credential scoping",
+    "Use direct native operation in installed workflow; retain optional Python CLI delegation and offline original references",
+    "No production repair or currency refresh was dispatched by this qualification"
+  ]
+}
