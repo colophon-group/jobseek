@@ -1,6 +1,6 @@
 {
-  "narrowedMaintenance": true,
-  "subscriptionPurchasesPaused": true,
-  "subscriptionBillingPaused": true,
+  "narrowedMaintenance": false,
+  "subscriptionPurchasesPaused": false,
+  "subscriptionBillingPaused": false,
   "narrowedWorkerPaused": false
 }
