@@ -28,6 +28,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 	providerMarkerCount := 0
 	refreshCount := 0
 	identityRepairCount := 0
+	rotatingPathCount := 0
 	providerMarkerBoards := map[string]bool{"implenia-apprenticeships-ch": true, "ge-healthcare-icometrix": true, "ammann-abg": true}
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
@@ -66,6 +67,13 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 			config["monitor_needs_browser"] = "1"
 		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
+		if row[h["board_slug"]] == "innosuisse-main" {
+			options, optionErr := APISnifferBrowserMonitorOptions(config)
+			if e != nil || optionErr != nil || !browser || options.LiveURLMatch != "api.jobportal.abaservices.ch/api/publication/publications/job-portal/*/static-button" {
+				t.Fatal("rotating API path lost original transport/config binding", e, optionErr)
+			}
+			rotatingPathCount++
+		}
 		if row[h["board_slug"]] == "t1-energy-factory" {
 			aliases, ok := md["url_template_fields"].(map[string]any)
 			if e != nil || browser || !ok || aliases["job_id"] != "customFieldGroup.stringFields[0].stringValue" {
@@ -112,7 +120,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || identityRepairCount != 1 || supported["api_sniffer"] != 34 || supported["dom"] != 22 || retained["api_sniffer"] != 2 || retained["dom"] != 1 {
+	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || identityRepairCount != 1 || rotatingPathCount != 1 || supported["api_sniffer"] != 35 || supported["dom"] != 22 || retained["api_sniffer"] != 1 || retained["dom"] != 1 {
 		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)
