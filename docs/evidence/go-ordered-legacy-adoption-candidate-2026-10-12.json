@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "local-qualified candidate; no production adoption granted",
+  "version": "0.13.1023",
+  "profiles": 204,
+  "parent_revision": "ab32fe6a7914718ea8deb351487682d10a64e746",
+  "fix": "First adoption restores the exact pending later ordered legacy detail step, preserving hash, interval, canonical future cycle, failure strikes and no attempt/content write.",
+  "covered_actual_configurations": [
+    "hes-so-rectorat",
+    "loreal-careers",
+    "vyntra-careers",
+    "thirdchannel-careers",
+    "migros-careers",
+    "nexthire-careers",
+    "galaxus-careers",
+    "sygnum-bank-salesforce"
+  ],
+  "validation": {
+    "original_code_regression": "same phase=projection reason=authority reproduced on actual local PG/Redis",
+    "focused_adoption_retirement_race_suite": "pass87.727s",
+    "final_pending_stage_race_suite": "ok  \tgithub.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue\t12.100s",
+    "go_vet": "pass",
+    "runtime_contracts": "16 passed",
+    "pending_stage_durable_after_redis_restart": true,
+    "supported_cold_reversal": true,
+    "rejects": [
+      "advanced stage",
+      "replacement content hash",
+      "changed interval",
+      "live Redis lease"
+    ]
+  },
+  "test_log_sha256": {
+    "adoption_retirement": "12d28d769ec7b0546364ea014f1a78b5e6734525747bc9674deee434c684632f",
+    "pending_stage": "74f6069872e224916bb690d1099017aaa2a2c504cc9759ff29f0e9414415efae"
+  },
+  "limits": [
+    "Exact incident rejected row was not captured; reproduced defect is consistent with the categorical failure.",
+    "Required CI, installed images, ARM admission, original rollout and fresh source-bound production ownership remain required.",
+    "No new profiles or owners admitted; complete7,788/7,683 preserved floor remains required."
+  ],
+  "full_migration_complete": false
+}

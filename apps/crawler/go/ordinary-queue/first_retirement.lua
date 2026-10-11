@@ -48,12 +48,18 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         local worker = member.worker
         if worker ~= "simple" and worker ~= "browser" then return nil end
         if row.next_step ~= nil or row.next_at ~= nil or row.next_hash ~= nil or row.next_interval ~= nil then
-            if adopting or kind ~= "scrape" or worker ~= "simple" or
+            if kind ~= "scrape" or worker ~= "simple" or
                 (member.profile ~= "detail.ordered-http/v1" and member.profile ~= "detail.ordered-proxy-http/v1") or
                 type(row.next_step) ~= "string" or not string.match(row.next_step,"^[1-7]$") or
                 type(row.next_at) ~= "string" or not retirement_finite(tonumber(row.next_at)) or tonumber(row.next_at) < 0 or
                 type(row.next_hash) ~= "string" or (#row.next_hash > 20) or (row.next_hash ~= "" and not string.match(row.next_hash,"^%-?%d+$")) or
                 type(row.next_interval) ~= "string" or not retirement_finite(tonumber(row.next_interval)) or tonumber(row.next_interval) <= 0 or tonumber(row.next_interval) > 2562047 then return nil end
+            -- A stopped legacy fetch can already be on an independent later
+            -- step. Adoption preserves that exact pending step; it cannot
+            -- advance it, invent a primary result, or change its interval.
+            if adopting and (row.next_step ~= row.config.scrape_step
+                or row.next_hash ~= (row.config.description_r2_hash or "")
+                or row.next_interval ~= (row.config.scrape_interval_hours and row.config.scrape_interval_hours ~= "" and row.config.scrape_interval_hours or "24")) then return nil end
         end
         -- Adoption grants no current attempt receipt. A monitor in the wrong
         -- queue namespace or a completed/current native attempt is a refusal.
