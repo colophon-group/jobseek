@@ -68,6 +68,12 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 	if err != nil {
 		return fail()
 	}
+	enrichmentFields, err := monitorEnrichmentFields(config, detailEnrichmentFields)
+	if err != nil {
+		return fail()
+	}
+	// Enrichment selects canonical writer fields; it is not a parser option.
+	delete(options, "enrich")
 	if dom.ValidateDirectConfig(options) != nil {
 		return fail()
 	}
@@ -87,5 +93,5 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 	if proxy {
 		profile = domProxyDetailProfile
 	}
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), DOMConfig: options, SkipSSL: skipSSL}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), DOMConfig: options, SkipSSL: skipSSL, EnrichmentFields: enrichmentFields}, nil
 }

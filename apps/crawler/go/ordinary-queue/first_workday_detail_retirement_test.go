@@ -156,9 +156,13 @@ func TestRealFirstProviderBatchDetailRetirementConservesInterruptedAndCompletedA
 	}
 }
 func testFirstAPIDetailRetirement(t *testing.T, provider string) {
+	testDetailFixtureRetirement(t, func(t *testing.T) firstOwnerFixture { return firstAPIDetailFixture(t, provider) })
+}
+
+func testDetailFixtureRetirement(t *testing.T, fixture func(*testing.T) firstOwnerFixture) {
 	for _, mode := range []string{"active", "claim-before-sql", "committed-before-ack", "reaped-before-ack", "inactive", "save-failure"} {
 		t.Run(mode, func(t *testing.T) {
-			p := firstAPIDetailFixture(t, provider)
+			p := fixture(t)
 			a, claim := firstRetirementClaim(t, p)
 			ctx := context.Background()
 			switch mode {

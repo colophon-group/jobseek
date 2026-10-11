@@ -64,7 +64,7 @@ func TestJSONLDDetailRefusesUnimplementedTransportAndPipeline(t *testing.T) {
 			c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"fallback":["dom"]}}`
 		},
 		"enrich": func(c map[string]string) {
-			c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"enrich":["title"]}}`
+			c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"enrich":["unknown"]}}`
 		},
 		"duplicates": func(c map[string]string) {
 			c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"proxy":true,"proxy":false}}`
