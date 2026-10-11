@@ -26,3 +26,7 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictSUIDSGID=true
 LockPersonality=true
 CapabilityBoundingSet=
+
+CPUQuota=10%
+MemoryMax=64M
+TasksMax=8

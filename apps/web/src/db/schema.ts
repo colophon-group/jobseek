@@ -1200,6 +1200,35 @@ export const aiFilterSegment = pgTable(
   ],
 );
 
+/** Coalesced demand; execution belongs to one shared project slot. */
+export const aiFilterWork = pgTable("ai_filter_work", {
+  queryVersionId: uuid("query_version_id").notNull().references(() => aiFilterQueryVersion.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["historical", "freshness"] }).notNull(),
+  watchlistId: uuid("watchlist_id").notNull().references(() => watchlist.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  targetOffset: integer("target_offset").notNull(),
+  generation: bigint("generation", { mode: "bigint" }).default(sql`1`).notNull(),
+  status: text("status", { enum: ["queued", "processing", "idle", "paused"] }).default("queued").notNull(),
+  availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+  leaseOwner: text("lease_owner"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  reason: text("reason"),
+  attempts: integer("attempts").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [primaryKey({ columns: [table.queryVersionId, table.kind] }),
+  index("ai_filter_work_ready_idx").on(table.availableAt, table.kind).where(sql`status <> 'idle'`)]);
+
+export const aiFilterWorker = pgTable("ai_filter_worker", {
+  id: integer("id").primaryKey(),
+  leaseOwner: text("lease_owner"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  nextTickAt: timestamp("next_tick_at", { withTimezone: true }).defaultNow().notNull(),
+  blockedUntil: timestamp("blocked_until", { withTimezone: true }),
+  reason: text("reason"),
+  failures: integer("failures").default(0).notNull(),
+  nextLane: text("next_lane", { enum: ["historical", "freshness"] }).default("historical").notNull(),
+}, table => [check("ai_filter_worker_id_check", sql`${table.id} = 1`)]);
+
 export const aiFilterGlobalCache = pgTable(
   "ai_filter_global_cache",
   {

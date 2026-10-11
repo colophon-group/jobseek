@@ -1,17 +1,32 @@
 import "server-only";
-
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { aiFilterConfiguration, aiFilterQueryVersion, aiFilterSegment } from "@/db/schema";
+import { aiFilterConfiguration, aiFilterQueryVersion } from "@/db/schema";
+import { narrowedWorkerPaused } from "@/lib/service-availability";
 import { paidEntitlementCondition } from "@/lib/paid-entitlement";
-import { assertAiFilterCandidateScope } from "./candidate-loader";
-import { AiFilterEntitlementError, AiFilterNotFoundError, putAiFilterConfiguration } from "./configuration-service";
-import { AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT, canRunAiFilter, readAiFilterRuntimePolicy } from "./policy";
-import { startAiFilterCatchup } from "./workflow-trigger";
+import {
+  loadAiFilterCandidatePage,
+  countAiFilterCandidates,
+} from "./candidate-loader";
+import {
+  AiFilterNotFoundError,
+  AiFilterEntitlementError,
+  putAiFilterConfiguration,
+} from "./configuration-service";
+import { readAiFilterRuntimePolicy } from "./policy";
+import { runAiFilterCatchupStep } from "./catchup-service";
+import { aiFilterHistoricalHorizonStart, aiFilterHorizonEnd } from "./horizon";
+import {
+  claimAiFilterWorker,
+  claimAiFilterWork,
+  enqueueAiFilterWork,
+  finishAiFilterWork,
+  releaseAiFilterWorker,
+  markAiFilterRepairCaughtUp,
+} from "./work-queue";
 
-const REFRESH_PAGE_SIZE = 20;
-const DISPATCH_INTERVAL_MS = 45_000;
-const SWEEP_WORK_BUDGET_MS = 45_000;
+const REPAIR_INTERVAL_MS = 5 * 60_000;
+const MAX_WORK_ITEMS = 5;
 
 type RefreshTarget = {
   configurationId: string;
@@ -22,92 +37,200 @@ type RefreshTarget = {
   candidateLanguages: string[];
 };
 
-/** Claim oldest dispatches first; a crash before Workflow start retries next minute. */
-export async function claimAiFilterRefreshTargets(now: Date, limit = REFRESH_PAGE_SIZE): Promise<RefreshTarget[]> {
-  return db.transaction(async tx => {
-    const targets = await tx.select({
-      configurationId: aiFilterConfiguration.id,
-      ownerId: aiFilterConfiguration.ownerId,
-      watchlistId: aiFilterConfiguration.watchlistId,
-      queryVersionId: aiFilterQueryVersion.id,
-      query: aiFilterQueryVersion.queryText,
-      candidateLanguages: aiFilterQueryVersion.candidateLanguages,
-    }).from(aiFilterConfiguration).innerJoin(aiFilterQueryVersion, and(
-      eq(aiFilterQueryVersion.configurationId, aiFilterConfiguration.id),
-      eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
-    )).where(and(
-      eq(aiFilterConfiguration.status, "enabled"),
-      sql`(SELECT count(*) FROM ${aiFilterSegment} WHERE ${aiFilterSegment.kind} = 'freshness' AND ${aiFilterSegment.status} = 'processing' AND ${aiFilterSegment.leaseExpiresAt} > ${now.toISOString()}::timestamptz) < ${AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT}`,
-      paidEntitlementCondition(aiFilterConfiguration.ownerId, now),
-      sql`(${aiFilterConfiguration.refreshRequestedAt} IS NULL OR ${aiFilterConfiguration.refreshRequestedAt} < ${new Date(now.getTime() - DISPATCH_INTERVAL_MS).toISOString()}::timestamptz)`,
-      sql`NOT EXISTS (SELECT 1 FROM ${aiFilterSegment} WHERE ${aiFilterSegment.watchlistId} = ${aiFilterConfiguration.watchlistId} AND ${aiFilterSegment.kind} = 'freshness' AND ${aiFilterSegment.status} = 'processing' AND ${aiFilterSegment.leaseExpiresAt} > ${now.toISOString()}::timestamptz)`,
-    )).orderBy(
-      sql`${aiFilterConfiguration.refreshRequestedAt} ASC NULLS FIRST`,
-      asc(aiFilterConfiguration.id),
-    ).limit(Math.min(limit, REFRESH_PAGE_SIZE)).for("update", { of: aiFilterConfiguration, skipLocked: true });
-    if (targets.length) {
-      await tx.update(aiFilterConfiguration).set({ refreshRequestedAt: now })
-        .where(inArray(aiFilterConfiguration.id, targets.map(target => target.configurationId)));
-    }
+/** Bounded rotating repair covers missed index signals, late indexing and expiry. */
+export async function claimAiFilterRefreshTargets(
+  now: Date,
+  limit = 1,
+): Promise<RefreshTarget[]> {
+  return db.transaction(async (tx) => {
+    const targets = await tx
+      .select({
+        configurationId: aiFilterConfiguration.id,
+        ownerId: aiFilterConfiguration.ownerId,
+        watchlistId: aiFilterConfiguration.watchlistId,
+        queryVersionId: aiFilterQueryVersion.id,
+        query: aiFilterQueryVersion.queryText,
+        candidateLanguages: aiFilterQueryVersion.candidateLanguages,
+      })
+      .from(aiFilterConfiguration)
+      .innerJoin(
+        aiFilterQueryVersion,
+        and(
+          eq(aiFilterQueryVersion.configurationId, aiFilterConfiguration.id),
+          eq(
+            aiFilterQueryVersion.revision,
+            aiFilterConfiguration.currentRevision,
+          ),
+        ),
+      )
+      .where(
+        and(
+          eq(aiFilterConfiguration.status, "enabled"),
+          paidEntitlementCondition(aiFilterConfiguration.ownerId, now),
+          sql`(${aiFilterConfiguration.refreshRequestedAt} IS NULL OR ${aiFilterConfiguration.refreshRequestedAt}<${new Date(now.getTime() - REPAIR_INTERVAL_MS).toISOString()}::timestamptz)`,
+        ),
+      )
+      .orderBy(
+        sql`${aiFilterConfiguration.refreshRequestedAt} ASC NULLS FIRST`,
+        asc(aiFilterConfiguration.id),
+      )
+      .limit(Math.min(2, limit))
+      .for("update", { of: aiFilterConfiguration, skipLocked: true });
+    if (targets.length)
+      await tx
+        .update(aiFilterConfiguration)
+        .set({ refreshRequestedAt: now })
+        .where(
+          inArray(
+            aiFilterConfiguration.id,
+            targets.map((target) => target.configurationId),
+          ),
+        );
     return targets;
   });
 }
 
 const dependencies = {
-  claim: claimAiFilterRefreshTargets,
-  assertScope: assertAiFilterCandidateScope,
+  claimWorker: claimAiFilterWorker,
+  releaseWorker: releaseAiFilterWorker,
+  repair: claimAiFilterRefreshTargets,
+  assertScope: countAiFilterCandidates,
   configure: putAiFilterConfiguration,
-  start: startAiFilterCatchup,
+  load: loadAiFilterCandidatePage,
+  caughtUp: markAiFilterRepairCaughtUp,
+  enqueue: enqueueAiFilterWork,
+  claim: claimAiFilterWork,
+  finish: finishAiFilterWork,
+  step: runAiFilterCatchupStep,
 };
 
-/** Scheduled matching is authorized by the saved, enabled narrowing request. */
-export async function runAiFilterRefreshSweep(input: {
-  now?: Date;
-  dependencies?: typeof dependencies;
-} = {}) {
+/** One project-wide bounded time slice. No fanout, detached promises or Workflow runs. */
+export async function runAiFilterRefreshSweep(
+  input: { dependencies?: typeof dependencies } = {},
+) {
   const counters = { claimed: 0, started: 0, deferred: 0, failed: 0 };
   const policy = readAiFilterRuntimePolicy();
-  if (process.env.VERCEL_ENV !== "production" || !canRunAiFilter(policy) ||
+  if (
+    process.env.VERCEL_ENV !== "production" ||
+    narrowedWorkerPaused() ||
+    !policy.enabled ||
+    !policy.routeEnabled ||
     !process.env.TYPESAFE_AI_TOKEN?.trim() ||
-    Buffer.byteLength(process.env.AI_FILTER_CACHE_HMAC_SECRET ?? "", "utf8") < 32) {
+    Buffer.byteLength(process.env.AI_FILTER_CACHE_HMAC_SECRET ?? "", "utf8") <
+      32
+  ) {
     return { status: "off" as const, ...counters };
   }
-  const now = input.now ?? new Date();
   const deps = input.dependencies ?? dependencies;
-  const deadline = Date.now() + SWEEP_WORK_BUDGET_MS;
-  // Prepare one target at a time. A timed-out invocation must not mark a
-  // whole page dispatched and repeatedly starve its later watchlists.
-  while (counters.claimed < REFRESH_PAGE_SIZE && Date.now() < deadline) {
-    const targets = await deps.claim(now, 1);
-    if (!targets.length) break;
-    counters.claimed += targets.length;
-    for (const target of targets) {
+  const leaseOwner = await deps.claimWorker();
+  if (!leaseOwner) return { status: "completed" as const, ...counters };
+  const deadline = Date.now() + 42_000;
+  const signal = AbortSignal.timeout(42_000);
+  try {
+    // At most one repair per tick leaves capacity for foreground/backlog work.
+    for (const target of await deps.repair(new Date(), 1)) {
       try {
-        await deps.assertScope({
-          ownerId: target.ownerId, watchlistId: target.watchlistId,
+        const total = await deps.assertScope({
+          ownerId: target.ownerId,
+          watchlistId: target.watchlistId,
           candidateLanguages: target.candidateLanguages,
-          signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+          signal,
         });
+        if (total > 10_000) throw new TypeError("ineligible");
         const state = await deps.configure({
-          ownerId: target.ownerId, watchlistId: target.watchlistId,
-          query: target.query, candidateLanguages: target.candidateLanguages,
-          expectedEnabledQueryVersionId: target.queryVersionId, now,
+          ...target,
+          expectedEnabledQueryVersionId: target.queryVersionId,
         });
-        await deps.start({
-          ownerId: target.ownerId, watchlistId: target.watchlistId,
-          queryVersionId: state.queryVersionId, kind: "freshness",
-          demandTargetOffset: 10_000,
+        const page = await deps.load({
+          ownerId: target.ownerId,
+          watchlistId: target.watchlistId,
+          offset: 0,
+          windowStart: aiFilterHistoricalHorizonStart(),
+          windowEnd: aiFilterHorizonEnd(new Date()),
+          onlyUndecidedForQueryVersionId: state.queryVersionId,
+          candidateLimit: 1,
+          signal,
         });
-        counters.started += 1;
+        if (page.scannedCount)
+          await deps.enqueue({
+            ownerId: target.ownerId,
+            watchlistId: target.watchlistId,
+            queryVersionId: state.queryVersionId,
+            kind: "freshness",
+            demandTargetOffset: 10_000,
+          });
+        else
+          await deps.caughtUp({
+            watchlistId: target.watchlistId,
+            queryVersionId: state.queryVersionId,
+          });
       } catch (error) {
-        if (error instanceof AiFilterNotFoundError || error instanceof AiFilterEntitlementError || error instanceof TypeError) {
+        if (
+          error instanceof TypeError ||
+          error instanceof AiFilterNotFoundError ||
+          error instanceof AiFilterEntitlementError
+        )
           counters.deferred += 1;
-        } else {
-          counters.failed += 1;
-        }
+        else counters.failed += 1;
       }
     }
+    // Five candidates keep each provider call bounded. A time slice may advance
+    // several checkpoints but always yields to the next lane/oldest work item.
+    while (
+      counters.claimed < MAX_WORK_ITEMS &&
+      Date.now() + 25_000 < deadline
+    ) {
+      const target = await deps.claim(leaseOwner);
+      if (!target) break;
+      counters.claimed += 1;
+      try {
+        if (target.query) {
+          const total = await deps.assertScope({
+            ownerId: target.ownerId,
+            watchlistId: target.watchlistId,
+            candidateLanguages: target.candidateLanguages,
+            signal,
+          });
+          if (total > 10_000) {
+            await deps.finish(target, "paused_kill", "scope_too_broad");
+            counters.deferred += 1;
+            continue;
+          }
+          const current = await deps.configure({
+            ownerId: target.ownerId,
+            watchlistId: target.watchlistId,
+            query: target.query,
+            candidateLanguages: target.candidateLanguages,
+            expectedEnabledQueryVersionId: target.queryVersionId,
+          });
+          if (current.queryVersionId !== target.queryVersionId) {
+            await deps.finish(target, "disabled");
+            continue;
+          }
+        }
+        const result = await deps.step({
+          ...target,
+          candidateLimit: 5,
+          signal,
+        });
+        await deps.finish(target, result.status);
+        if (
+          result.status.startsWith("paused_") &&
+          result.status !== "paused_entitlement" &&
+          result.status !== "paused_budget"
+        )
+          counters.failed += 1;
+        counters.started += result.segmentId ? 1 : 0;
+      } catch {
+        await deps.finish(target, "failed", "worker_unavailable");
+        counters.failed += 1;
+      }
+    }
+    return { status: "completed" as const, ...counters };
+  } catch (error) {
+    counters.failed += 1;
+    throw error;
+  } finally {
+    await deps.releaseWorker(leaseOwner, counters.failed > 0);
   }
-  // Aggregate evidence only: queries and owner IDs never reach cron logs.
-  return { status: "completed" as const, ...counters };
 }

@@ -1,11 +1,12 @@
 # Narrowed maintenance and subscription controls
 
 The incident controls live in `apps/web/src/config/service-availability.json`.
-All three controls are enabled for the 2026-10-11 quota incident:
+The source controls support independent containment and staged recovery:
 
 | Control | Effect |
 | --- | --- |
-| `narrowedMaintenance` | Blocks configuration writes, Workflow starts and model execution; suppresses foreground evaluation/polling and shows maintenance notices. Saved criteria and decisions remain stored. |
+| `narrowedMaintenance` | Blocks owner configuration writes and demand; suppresses foreground evaluation/polling and shows maintenance notices. Saved criteria and decisions remain stored. |
+| `narrowedWorkerPaused` | Stops shared worker execution independently of the public maintenance banner. This permits recovery verification before reopening. Both runtime execution switches must also be enabled. |
 | `subscriptionPurchasesPaused` | Independently closes new Pro purchases. Narrowed maintenance also closes purchases even if this flag is false. |
 | `subscriptionBillingPaused` | Desired existing Stripe collection state for the explicit billing operator command. Editing this file alone does **not** pause provider billing. |
 
@@ -57,22 +58,34 @@ can still complete: disabling application checkout does not expire provider
 sessions. Inspect and expire those separately before declaring a complete sales
 freeze. See [Stripe collection pause](https://docs.stripe.com/billing/subscriptions/pause-payment).
 
+Email updates keep their existing independent daily cron, provider admission,
+delivery windows, quotas, cooldown and idempotency controls. None of these
+maintenance flags pauses standard job emails. Email preparation never enqueues
+classification or spends AI budget. Narrowed-only opt-ins wait for completed
+coverage and retain incomplete windows for retry; they never fall back to broad
+results. Existing accepted, covered decisions remain eligible during maintenance.
+Worker coverage progress must preserve the configuration edit timestamp so it
+does not invalidate pending email plans for unchanged criteria. Actual criteria
+edits and feedback still invalidate stale plans before submission.
+
 Already-created Workflow runs belong to their original deployment; new source
-or environment gates do not prove those runs stopped. Inventory and cancel or
-quiesce them separately using their actual run identity and durable checkpoints.
+or environment gates do not prove those runs stopped. Migration 0104 invalidates
+their segment leases and rejects future claims at the database boundary. Retain
+a bounded inventory for later cleanup using actual run identities.
 Do not bypass Workflow quota enforcement or mutate the crawler writers.
 
 ## Resume
 
 Resume requires an explicit operator decision after the incident acceptance
-criteria in issues #10417–#10420 are satisfied. Capacity restoration and alerts
-are outside this incident's scope.
+criteria below are satisfied. The operator authorized implementation and service
+restoration on 2026-10-11. Paid-plan upgrades and alerts remain outside scope.
 
 1. Clear `narrowedMaintenance` in a reviewed PR; retain purchase/billing pauses
    as needed. Restore the existing execution switches only when reopening is
    authorized. Deploy and prove current-revision progress in a bounded feed.
 2. Dispatch the timer workflow with `action=activate` and exact current main.
-   Activation fails while the source maintenance control is still enabled.
+   Activation fails while `narrowedWorkerPaused` is enabled. Public maintenance
+   can remain on during worker recovery verification.
 3. To resume billing, explicitly clear `subscriptionBillingPaused` and run
    `billing:control resume`. It clears only indefinite `void` pauses carrying
    this tool's ownership marker. It preserves foreign and scheduled pauses.
@@ -85,3 +98,36 @@ work records. It must not create a Workflow/child Workflow/hook/recurring loop
 per watchlist. If bounded Vercel orchestration cannot meet that contract, use a
 dedicated resource-limited worker on the Hetzner backend. Idle watchlists must
 produce zero Workflow runs.
+
+## Shared-worker recovery after migration 0104
+
+1. Keep the public maintenance and purchase controls on. Deploy migration 0104
+   through the exact-head routine migration workflow. Verify the singleton row,
+   demand table and enabled legacy-worker fence. The migration preserves criteria
+   and decisions, and invalidates old processing leases. Cancellation of old
+   Workflow records is cleanup, not the execution safety boundary after this fence.
+2. Enable the two production AI runtime switches, leave `narrowedWorkerPaused`
+   false, and deploy via the normal protected web production workflow. No plan
+   upgrade or Workflow quota restoration is required.
+3. Use timer `action=verify`, with exact current main and the affected watchlist
+   UUID, to capture current revision, fingerprint, language scope, counts and
+   fence receipt. It is read-only and logs no query text or owner identity.
+4. Activate the timer through `action=activate`. Inspect bounded service receipts
+   and repeat `action=verify` after ticks. Require actual reviewed decisions and
+   current-criteria progress; a successful HTTP trigger is insufficient.
+5. Only then reopen the public maintenance and purchase controls in a second PR
+   and deploy. Existing billing uses the explicit operator command independently;
+   changing its desired-state flag alone never mutates provider subscriptions.
+
+The project worker admits at most one tick per 55 seconds, at most five serial
+five-candidate checkpoints and one repair scope per tick. It has a 42-second
+work deadline and 70-second crash leases. Three consecutive failures open a
+15-minute shared circuit; per-work retries back off 5 minutes to 1 hour.
+The host HTTP runner has separate systemd CPU/memory/task limits and no database
+credentials or Docker socket. No crawler writers are restarted.
+
+Freshness currently uses bounded rotating repair, including late indexing and
+expired decisions. Per-posting commit signals and re-evaluation of enriched
+unexpired postings remain tracked follow-ups. Larger scope counts increase
+repair/backlog latency, never managed Workflow run count. Reopening must not
+advertise one-minute freshness.

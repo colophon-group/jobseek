@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { withTestEnv } from "@/test-utils/env";
 
-const mocks = vi.hoisted(() => ({ run: vi.fn() }));
+vi.mock("server-only",()=>({}));
+const mocks = vi.hoisted(() => ({ run: vi.fn(), inspect:vi.fn() }));
+vi.mock("@/lib/ai-filter/recovery-service",()=>({inspectAiFilterRecovery:mocks.inspect}));
 vi.mock("@/lib/ai-filter/refresh-service", () => ({ runAiFilterRefreshSweep: mocks.run }));
 import { GET } from "./route";
 withTestEnv({ AI_FILTER_REFRESH_SECRET: "test-cron" });
@@ -35,5 +37,11 @@ describe("background narrowing cron boundary", () => {
     const response = await GET(request("Bearer test-cron"));
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toContain("private upstream body");
+  });
+  it("protects read-only recovery inspection and never dispatches work",async ()=> {
+    mocks.inspect.mockResolvedValue({reviewed:0,legacyWorkersFenced:true});
+    const response=await GET(new Request("https://jseek.co/api/internal/ai-filter-refresh?inspect=ff96b7d8-db7e-43a2-aafd-e4007fa68fa9",{headers:{authorization:"Bearer test-cron"}}));
+    expect(response.status).toBe(200);expect(mocks.run).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({recovery:{reviewed:0}});
   });
 });

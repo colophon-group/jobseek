@@ -2,213 +2,418 @@
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { Sql } from "postgres";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { withTestEnv } from "@/test-utils/env";
 
-const mocks = vi.hoisted(() => ({ client: null as Sql | null, postings: [] as Array<{ id: string; firstSeenAt: string }>, classify: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  client: null as Sql | null,
+  postings: [] as Array<{ id: string; firstSeenAt: string }>,
+  classify: vi.fn(),
+}));
 vi.mock("server-only", () => ({}));
 vi.mock("@/db", async () => {
   if (!process.env.AI_FILTER_TEST_DATABASE_URL) return { db: {} };
   const uri = new URL(process.env.AI_FILTER_TEST_DATABASE_URL);
-  if (!["localhost", "127.0.0.1"].includes(uri.hostname) || !uri.pathname.endsWith("_fixture")) {
-    throw new Error("AI filter tests require an explicit localhost *_fixture database");
+  if (
+    !["localhost", "127.0.0.1"].includes(uri.hostname) ||
+    !uri.pathname.endsWith("_fixture")
+  ) {
+    throw new Error(
+      "AI filter tests require an explicit localhost *_fixture database",
+    );
   }
   const { default: postgres } = await import("postgres");
   const { drizzle } = await import("drizzle-orm/postgres-js");
   const schema = await import("@/db/schema");
-  mocks.client = postgres(uri.toString(), { max: 5, prepare: false, connection: { TimeZone: "UTC" }, onnotice: () => {} });
+  mocks.client = postgres(uri.toString(), {
+    max: 5,
+    prepare: false,
+    connection: { TimeZone: "UTC" },
+    onnotice: () => {},
+  });
   return { db: drizzle(mocks.client, { schema }) };
 });
-vi.mock("@/lib/services/search", () => ({ getPostingDetail: async () => null }));
+vi.mock("@/lib/services/search", () => ({
+  getPostingDetail: async () => null,
+}));
 vi.mock("@/lib/services/watchlist-matcher", () => ({
-  compileWatchlistMatcherSources: async (sources: unknown[]) => sources.map(() => ({ candidateFilters: { anyCompany: true, companyIds: [] } })),
-  readWatchlistCandidatesByIds: async (ids: string[]) => mocks.postings.filter(post => ids.includes(post.id)),
-  readWatchlistCandidates: async (input: { excludePostingIds?: string[]; window?: { windowEnd: Date }; limit: number; offset: number }) => {
-    const posts = mocks.postings.filter(post =>
-      !input.excludePostingIds?.includes(post.id) &&
-      (!input.window || Date.parse(post.firstSeenAt) < input.window.windowEnd.getTime())
-    ).sort((a, b) => Date.parse(b.firstSeenAt) - Date.parse(a.firstSeenAt));
-    return { total: posts.length, postings: posts.slice(input.offset, input.offset + input.limit).map(post => ({
-      ...post, title: "AI Engineer", company: { id: "company", name: "Fixture", slug: "fixture", icon: null }, sourceUrl: "https://example.test/job", locationNames: [], isActive: true,
-      classifierMetadata: { locations: [{ name: "Zurich", type: "onsite" }], employmentType: "full_time", seniorityName: null, experienceMin: null, experienceMax: null, technologies: [], salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null, descriptionLocale: "en" },
-    })) };
+  compileWatchlistMatcherSources: async (sources: unknown[]) =>
+    sources.map(() => ({
+      candidateFilters: { anyCompany: true, companyIds: [] },
+    })),
+  readWatchlistCandidatesByIds: async (ids: string[]) =>
+    mocks.postings.filter((post) => ids.includes(post.id)),
+  readWatchlistCandidates: async (input: {
+    excludePostingIds?: string[];
+    window?: { windowEnd: Date };
+    limit: number;
+    offset: number;
+  }) => {
+    const posts = mocks.postings
+      .filter(
+        (post) =>
+          !input.excludePostingIds?.includes(post.id) &&
+          (!input.window ||
+            Date.parse(post.firstSeenAt) < input.window.windowEnd.getTime()),
+      )
+      .sort((a, b) => Date.parse(b.firstSeenAt) - Date.parse(a.firstSeenAt));
+    return {
+      total: posts.length,
+      postings: posts
+        .slice(input.offset, input.offset + input.limit)
+        .map((post) => ({
+          ...post,
+          title: "AI Engineer",
+          company: {
+            id: "company",
+            name: "Fixture",
+            slug: "fixture",
+            icon: null,
+          },
+          sourceUrl: "https://example.test/job",
+          locationNames: [],
+          isActive: true,
+          classifierMetadata: {
+            locations: [{ name: "Zurich", type: "onsite" }],
+            employmentType: "full_time",
+            seniorityName: null,
+            experienceMin: null,
+            experienceMax: null,
+            technologies: [],
+            salaryMin: null,
+            salaryMax: null,
+            salaryCurrency: null,
+            salaryPeriod: null,
+            descriptionLocale: "en",
+          },
+        })),
+    };
   },
 }));
-vi.mock("./mining-policy", () => ({ assertAiFilterMiningAllowed: async () => {} }));
-vi.mock("./jev-client", async importOriginal => {
+vi.mock("./mining-policy", () => ({
+  assertAiFilterMiningAllowed: async () => {},
+}));
+vi.mock("./jev-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./jev-client")>();
-  return { ...actual, JevClient: class { classify = mocks.classify; } };
+  return {
+    ...actual,
+    JevClient: class {
+      classify = mocks.classify;
+    },
+  };
 });
 vi.mock("./workflow-trigger", () => ({ startAiFilterCatchup: vi.fn() }));
 
+import {
+  enqueueAiFilterWork,
+  claimAiFilterWorker,
+  claimAiFilterWork,
+  finishAiFilterWork,
+  releaseAiFilterWorker,
+} from "./work-queue";
 import { runAiFilterCatchupStep } from "./catchup-service";
-import { claimAiFilterRefreshTargets } from "./refresh-service";
-import { getAiFilterOwnerState, putAiFilterConfiguration } from "./configuration-service";
-import { listAiFilterDecisions } from "./decision-service";
+import { runAiFilterRefreshSweep } from "./refresh-service";
+import {
+  getAiFilterOwnerState,
+  putAiFilterConfiguration,
+} from "./configuration-service";
 import { AI_FILTER_PROMPT_VERSION, JEV_MODEL } from "./policy";
 
-withTestEnv({ VERCEL_ENV: "production", AI_FILTER_ENABLED: "true", AI_FILTER_JEV_1_13_0_ENABLED: "true", TYPESAFE_AI_TOKEN: "fixture", AI_FILTER_CACHE_HMAC_SECRET: "x".repeat(32), PADDLE_ENVIRONMENT: undefined, STRIPE_ENVIRONMENT: undefined });
+withTestEnv({
+  VERCEL_ENV: "production",
+  AI_FILTER_ENABLED: "true",
+  AI_FILTER_JEV_1_13_0_ENABLED: "true",
+  TYPESAFE_AI_TOKEN: "fixture",
+  AI_FILTER_CACHE_HMAC_SECRET: "x".repeat(32),
+  PADDLE_ENVIRONMENT: undefined,
+  STRIPE_ENVIRONMENT: undefined,
+});
 const sql = () => mocks.client!;
 beforeAll(async () => {
   if (!mocks.client) return;
-  await sql().unsafe(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
+  await sql()
+    .unsafe(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
     CREATE TABLE "user" (id text PRIMARY KEY);
     CREATE TABLE watchlist (id uuid PRIMARY KEY, user_id text REFERENCES "user"(id), title text DEFAULT 'AI', filters jsonb DEFAULT '{"anyCompany":true}');
     CREATE TABLE watchlist_company (watchlist_id uuid, company_id uuid);
     CREATE TABLE user_preferences (user_id text, locale text DEFAULT 'en', job_languages text[] DEFAULT '{}');
     CREATE TABLE subscription (user_id text, plan text, status text, ends_at timestamptz);`);
-  for (const file of ["0092_jev_ai_filter_foundation.sql", "0093_ai_filter_historical_horizon.sql", "0094_ai_filter_candidate_languages.sql", "0103_ai_filter_freshness.sql"]) {
-    for (const statement of (await readFile(`drizzle/${file}`, "utf8")).split("--> statement-breakpoint").filter(s => s.trim())) {
+  for (const file of [
+    "0092_jev_ai_filter_foundation.sql",
+    "0093_ai_filter_historical_horizon.sql",
+    "0094_ai_filter_candidate_languages.sql",
+    "0103_ai_filter_freshness.sql",
+    "0104_ai_filter_shared_worker.sql",
+  ]) {
+    for (const statement of (await readFile(`drizzle/${file}`, "utf8"))
+      .split("--> statement-breakpoint")
+      .filter((s) => s.trim())) {
       await sql().unsafe(statement);
     }
   }
 });
-afterAll(async () => { await mocks.client?.end(); });
+afterAll(async () => {
+  await mocks.client?.end();
+});
 
 async function fixture(ownerId = "owner") {
   const watchlistId = randomUUID();
   await sql()`INSERT INTO "user" VALUES (${ownerId}) ON CONFLICT DO NOTHING`;
   await sql()`INSERT INTO subscription VALUES (${ownerId},'unlimited','active',NULL)`;
   await sql()`INSERT INTO watchlist (id,user_id) VALUES (${watchlistId},${ownerId})`;
-  const state = await putAiFilterConfiguration({ ownerId, watchlistId, query: "AI development", candidateLanguages: ["en"] });
-  return { ownerId, watchlistId, queryVersionId: state.queryVersionId, leaseOwner: randomUUID(), demandTargetOffset: 10_000, kind: "freshness" as const };
+  const state = await putAiFilterConfiguration({
+    ownerId,
+    watchlistId,
+    query: "AI development",
+    candidateLanguages: ["en"],
+  });
+  return {
+    ownerId,
+    watchlistId,
+    queryVersionId: state.queryVersionId,
+    demandTargetOffset: 10000,
+    kind: "freshness" as const,
+  };
 }
-
-describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)("freshness execution with PostgreSQL", () => {
-  beforeEach(async () => {
-    await sql().unsafe('TRUNCATE "user", subscription, watchlist_company, user_preferences CASCADE');
-    mocks.postings = [];
-    mocks.classify.mockReset().mockImplementation(async ({ jobs }) => ({
-      model: JEV_MODEL, promptVersion: AI_FILTER_PROMPT_VERSION,
-      decisions: jobs.map((job: { payload: { candidateId: string } }) => ({ candidateId: job.payload.candidateId, decision: "accepted" })),
-      usage: { inputTokens: 100, outputTokens: 0 }, attempts: 1, ambiguousFailedAttempts: 0, latencyMs: 1,
-    }));
-  });
-
-  it("admits only two live freshness segments across owners and skips further scope preparation", async () => {
-    const first = await fixture("first-owner");
-    const second = await fixture("second-owner");
-    const third = await fixture("third-owner");
-    for (const input of [first, second]) {
-      await sql()`INSERT INTO ai_filter_segment
-        (kind,watchlist_id,owner_id,query_version_id,status,lease_owner,lease_expires_at,window_start,window_end,idempotency_key)
-        VALUES ('freshness',${input.watchlistId},${input.ownerId},${input.queryVersionId},'processing',${randomUUID()},now()+interval '5 minutes','2000-01-01',now(),${randomUUID()})`;
-    }
-    expect(await runAiFilterCatchupStep(third)).toMatchObject({ status: "busy", segmentId: null });
-    expect(await claimAiFilterRefreshTargets(new Date())).toEqual([]);
-    expect(mocks.classify).not.toHaveBeenCalled();
-    // This search-specific ceiling must not replace the existing historical limits.
-    expect(await runAiFilterCatchupStep({ ...third, kind: "historical" })).toMatchObject({ status: "caught_up" });
-    await sql()`UPDATE ai_filter_segment SET lease_expires_at=now()-interval '1 second' WHERE owner_id=${first.ownerId}`;
-    expect((await claimAiFilterRefreshTargets(new Date())).length).toBeGreaterThan(0);
-    expect(await runAiFilterCatchupStep(third)).toMatchObject({ status: "caught_up" });
-  });
-
-  it("evaluates new and late-indexed postings ahead of a frozen 2200-job historical cursor", async () => {
-    const input = await fixture();
-    const historyId = randomUUID();
-    await sql()`INSERT INTO ai_filter_segment (id,watchlist_id,owner_id,query_version_id,status,selection_offset,scanned_count,cursor,window_start,window_end,idempotency_key)
-      VALUES (${historyId},${input.watchlistId},${input.ownerId},${input.queryVersionId},'completed',2150,50,50,'2000-01-01','2026-09-30','old-history')`;
-    const fresh = { id: randomUUID(), firstSeenAt: new Date(Date.now() - 5000).toISOString() };
-    const late = { id: randomUUID(), firstSeenAt: "2026-09-20T12:00:00Z" };
-    mocks.postings = [fresh, late];
-    expect((await runAiFilterCatchupStep(input)).status).toBe("continue");
-    expect((await runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() })).status).toBe("caught_up");
-    const rows = await sql()`SELECT candidate_id FROM ai_filter_decision ORDER BY posting_first_seen_at DESC`;
-    expect(rows.map(row => row.candidate_id)).toEqual([fresh.id, late.id]);
-    expect((await sql()`SELECT selection_offset,window_end FROM ai_filter_segment WHERE id=${historyId}`)[0]!.selection_offset).toBe(2150);
-    expect(mocks.classify).toHaveBeenCalledOnce();
-    expect(await getAiFilterOwnerState(input)).toMatchObject({ status: "caught_up", counts: { accepted: 2 } });
-    expect((await listAiFilterDecisions({ ...input, bucket: "accepted" })).decisions).toHaveLength(2);
-    const newArrival = { id: randomUUID(), firstSeenAt: new Date(Date.now() - 500).toISOString() };
-    mocks.postings.unshift(newArrival);
-    expect((await runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() })).status).toBe("continue");
-    expect(mocks.classify.mock.calls[1]![0].jobs.map((job: { payload: { candidateId: string } }) => job.payload.candidateId)).toEqual([newArrival.id]);
-  });
-
-  it("keeps one active segment per lane and excludes duplicate workers", async () => {
-    const input = await fixture();
-    await sql()`INSERT INTO ai_filter_segment (watchlist_id,owner_id,query_version_id,status,window_start,window_end,idempotency_key,lease_owner,lease_expires_at)
-      VALUES (${input.watchlistId},${input.ownerId},${input.queryVersionId},'processing','2000-01-01',now(),'active-history','history',now()+interval '5 minutes')`;
-    mocks.postings = [{ id: randomUUID(), firstSeenAt: new Date(Date.now() - 1000).toISOString() }];
-    const results = await Promise.all([
-      runAiFilterCatchupStep(input), runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() }),
-    ]);
-    expect(results.map(result => result.status).sort()).toEqual(["busy", "continue"]);
-    expect(mocks.classify).toHaveBeenCalledOnce();
-  });
-
-  it("renews expired decisions and cache entries once, retaining owner overrides", async () => {
-    const input = await fixture();
-    const post = { id: randomUUID(), firstSeenAt: "2026-09-10T12:00:00Z" };
-    mocks.postings = [post];
-    await runAiFilterCatchupStep(input);
-    await sql()`UPDATE ai_filter_decision SET decided_at=now()-interval '31 days',expires_at=now()-interval '1 day',user_override='rejected'`;
-    await sql()`UPDATE ai_filter_global_cache SET expires_at=now()-interval '1 day'`;
-    expect((await runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() })).status).toBe("continue");
-    expect((await runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() })).status).toBe("caught_up");
-    const decisions = await sql()`SELECT candidate_id,user_override,expires_at > now() AS current FROM ai_filter_decision`;
-    expect(decisions).toHaveLength(1);
-    expect(decisions[0]).toMatchObject({ candidate_id: post.id, user_override: "rejected", current: true });
-    expect(mocks.classify).toHaveBeenCalledTimes(2);
-  });
-
-  it("renews an expired watchlist decision from a still-valid global cache without paid work", async () => {
-    const input = await fixture();
-    mocks.postings = [{ id: randomUUID(), firstSeenAt: "2026-09-10T12:00:00Z" }];
-    await runAiFilterCatchupStep(input);
-    await sql()`UPDATE ai_filter_decision SET decided_at=now()-interval '31 days',expires_at=now()-interval '1 day'`;
-    await runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() });
-    expect((await sql()`SELECT expires_at > now() AS current FROM ai_filter_decision`)[0]!.current).toBe(true);
-    expect(mocks.classify).toHaveBeenCalledOnce();
-  });
-
-  it("does not regress freshness coverage when old historical work finishes later", async () => {
-    const input = await fixture();
-    expect((await runAiFilterCatchupStep(input)).status).toBe("caught_up");
-    const [before] = await sql()`SELECT last_caught_up_at FROM ai_filter_configuration`;
-    // Resume an empty historical window after the freshness proof committed.
-    await sql()`INSERT INTO ai_filter_segment (watchlist_id,owner_id,query_version_id,status,selection_offset,scanned_count,window_start,window_end,idempotency_key)
-      VALUES (${input.watchlistId},${input.ownerId},${input.queryVersionId},'completed',100,50,'2000-01-01','2026-09-30','old-history')`;
-    await runAiFilterCatchupStep({ ...input, kind: "historical", leaseOwner: randomUUID() });
-    const [after] = await sql()`SELECT last_caught_up_at FROM ai_filter_configuration`;
-    expect(after!.last_caught_up_at).toEqual(before!.last_caught_up_at);
-    expect(await getAiFilterOwnerState(input)).toMatchObject({ status: "caught_up" });
-  });
-
-  it("does not run an obsolete scheduled revision or a disabled prompt", async () => {
-    const input = await fixture();
-    expect((await runAiFilterCatchupStep({ ...input, queryVersionId: randomUUID() })).status).toBe("disabled");
-    await sql()`UPDATE ai_filter_configuration SET status='disabled',disabled_at=now()`;
-    expect((await runAiFilterCatchupStep(input)).status).toBe("disabled");
-    await expect(putAiFilterConfiguration({ ...input, query: "AI development", candidateLanguages: ["en"], expectedEnabledQueryVersionId: input.queryVersionId })).rejects.toThrow("not found");
-    expect(mocks.classify).not.toHaveBeenCalled();
-  });
-
-  it("preserves caught-up coverage across disjoint historical windows", async () => {
-    const input = await fixture();
-    await sql()`INSERT INTO ai_filter_segment (watchlist_id,owner_id,query_version_id,status,window_start,window_end,idempotency_key)
-      VALUES (${input.watchlistId},${input.ownerId},${input.queryVersionId},'caught_up','2000-01-01','2026-09-30','foundation')`;
-    await sql()`UPDATE ai_filter_configuration SET last_caught_up_at='2026-09-30',last_sweep_at=now()`;
-    expect((await runAiFilterCatchupStep({ ...input, kind: "historical" })).status).toBe("caught_up");
-    expect(await getAiFilterOwnerState(input)).toMatchObject({ status: "caught_up" });
-  });
-
-  it("claims duplicate cron ticks atomically and retries lost dispatches on the next minute", async () => {
-    await fixture();
-    const now = new Date();
-    const ticks = await Promise.all([claimAiFilterRefreshTargets(now), claimAiFilterRefreshTargets(now)]);
-    expect(ticks.flat()).toHaveLength(1);
-    expect(await claimAiFilterRefreshTargets(now)).toHaveLength(0);
-    expect(await claimAiFilterRefreshTargets(new Date(now.getTime() + 60_000))).toHaveLength(1);
-  });
-
-  it("excludes disabled and unsubscribed owners from scheduled claims", async () => {
-    await fixture();
-    await sql()`UPDATE subscription SET status='expired'`;
-    expect(await claimAiFilterRefreshTargets(new Date())).toHaveLength(0);
-    await sql()`UPDATE subscription SET status='active'`;
-    await sql()`UPDATE ai_filter_configuration SET status='disabled',disabled_at=now()`;
-    expect(await claimAiFilterRefreshTargets(new Date())).toHaveLength(0);
-  });
+async function unlockTick() {
+  await sql()`UPDATE ai_filter_worker SET next_tick_at=now()-interval '1 second'`;
+  await sql()`UPDATE ai_filter_work SET available_at=now()-interval '1 second' WHERE status='queued'`;
+}
+async function tick() {
+  await unlockTick();
+  return runAiFilterRefreshSweep();
+}
+const posting = (date = "2026-09-20T12:00:00Z") => ({
+  id: randomUUID(),
+  firstSeenAt: date,
 });
+
+describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
+  "shared worker transactions and recovery",
+  () => {
+    beforeEach(async () => {
+      await sql().unsafe(
+        'TRUNCATE "user",subscription,watchlist_company,user_preferences CASCADE',
+      );
+      await sql()`UPDATE ai_filter_worker SET lease_owner=NULL,lease_expires_at=NULL,next_tick_at=now(),blocked_until=NULL,reason=NULL,failures=0,next_lane='historical'`;
+      mocks.postings = [];
+      mocks.classify.mockReset().mockImplementation(async ({ jobs }) => ({
+        model: JEV_MODEL,
+        promptVersion: AI_FILTER_PROMPT_VERSION,
+        decisions: jobs.map((job: { payload: { candidateId: string } }) => ({
+          candidateId: job.payload.candidateId,
+          decision: "accepted",
+        })),
+        usage: { inputTokens: 100, outputTokens: 0 },
+        attempts: 1,
+        ambiguousFailedAttempts: 0,
+        latencyMs: 1,
+      }));
+    });
+    it("coalesces tabs and extensions before dispatch and retains extensions arriving during processing", async () => {
+      const input = await fixture();
+      await Promise.all(
+        Array.from({ length: 20 }, (_, index) =>
+          enqueueAiFilterWork({
+            ...input,
+            kind: "historical",
+            demandTargetOffset: 500 + index,
+          }),
+        ),
+      );
+      const [row] =
+        await sql()`SELECT * FROM ai_filter_work WHERE kind='historical'`;
+      expect(Number(row!.target_offset)).toBe(519);
+      expect(Number(row!.generation)).toBe(20);
+      const owner = await claimAiFilterWorker();
+      expect(owner).toBeTruthy();
+      const target = await claimAiFilterWork(owner!);
+      expect(target!.kind).toBe("historical");
+      await enqueueAiFilterWork({
+        ...input,
+        kind: "historical",
+        demandTargetOffset: 1000,
+      });
+      await finishAiFilterWork(target!, "demand_satisfied");
+      const [after] =
+        await sql()`SELECT * FROM ai_filter_work WHERE kind='historical'`;
+      expect(after!.status).toBe("queued");
+      expect(after!.target_offset).toBe(1000);
+    });
+    it("permits one worker at a fixed cadence even with concurrent host/manual requests", async () => {
+      const owners = await Promise.all(
+        Array.from({ length: 10 }, () => claimAiFilterWorker()),
+      );
+      expect(owners.filter(Boolean)).toHaveLength(1);
+      await releaseAiFilterWorker(owners.find(Boolean)!, false);
+      expect(await claimAiFilterWorker()).toBeNull();
+    });
+    it.each([1, 10, 100])(
+      "%i idle saved scopes execute zero segments and zero paid calls",
+      async (count) => {
+        for (let index = 0; index < count; index++)
+          await fixture(`idle-${index}`);
+        await sql()`UPDATE ai_filter_work SET status='idle'`;
+        expect(await tick()).toMatchObject({ started: 0, failed: 0 });
+        expect(
+          (
+            await sql()`SELECT count(*)::integer AS count FROM ai_filter_segment`
+          )[0]!.count,
+        ).toBe(0);
+        expect(mocks.classify).not.toHaveBeenCalled();
+      },
+    );
+    it("bounds a large backlog to five checkpoints, preserving materialized results across restart", async () => {
+      const input = await fixture();
+      mocks.postings = Array.from({ length: 100 }, () => posting());
+      expect((await tick()).claimed).toBeLessThanOrEqual(5);
+      expect(
+        (
+          await sql()`SELECT max(scanned_count) AS count FROM ai_filter_segment`
+        )[0]!.count,
+      ).toBeLessThanOrEqual(5);
+      const count = (
+        await sql()`SELECT count(*)::integer AS count FROM ai_filter_decision`
+      )[0]!.count;
+      expect(count).toBeGreaterThan(0);
+      expect(count).toBeLessThanOrEqual(25);
+      const state = await getAiFilterOwnerState(input);
+      expect(state.coverage?.state).toBe("partial");
+      await tick();
+      expect((await getAiFilterOwnerState(input)).counts.total).toBeGreaterThan(
+        count,
+      );
+    });
+    it("rejects legacy deployment leases at the database even while saved criteria are enabled", async () => {
+      const input = await fixture();
+      await expect(
+        runAiFilterCatchupStep({ ...input, leaseOwner: randomUUID() }),
+      ).rejects.toMatchObject({
+        cause: { message: "narrowed_shared_worker_required" },
+      });
+      expect(mocks.classify).not.toHaveBeenCalled();
+    });
+    it("recovers abandoned worker/work leases and does not duplicate classified jobs", async () => {
+      const input = await fixture();
+      mocks.postings = [posting()];
+      const owner = await claimAiFilterWorker();
+      const target = await claimAiFilterWork(owner!);
+      expect(
+        (await runAiFilterCatchupStep({ ...target!, candidateLimit: 5 }))
+          .status,
+      ).toBe("continue");
+      await sql()`UPDATE ai_filter_worker SET lease_expires_at=now()-interval '1 second'`;
+      await sql()`UPDATE ai_filter_work SET lease_expires_at=now()-interval '1 second'`;
+      await tick();
+      expect(mocks.classify).toHaveBeenCalledOnce();
+      expect((await getAiFilterOwnerState(input)).counts.total).toBe(1);
+    });
+    it("rotates foreground and freshness lanes instead of letting a backlog monopolize capacity", async () => {
+      const first = await fixture();
+      const second = await fixture("second");
+      await enqueueAiFilterWork({ ...second, kind: "historical" });
+      const owner = await claimAiFilterWorker();
+      const a = await claimAiFilterWork(owner!);
+      expect(a!.kind).toBe("historical");
+      await finishAiFilterWork(a!, "continue");
+      const b = await claimAiFilterWork(owner!);
+      expect(b!.kind).toBe("freshness");
+      expect([first.watchlistId, second.watchlistId]).toContain(b!.watchlistId);
+    });
+    it("persists exponential backoff and a shared failure circuit across invocations", async () => {
+      const input = await fixture();
+      for (let failure = 0; failure < 3; failure++) {
+        await unlockTick();
+        const owner = await claimAiFilterWorker();
+        await releaseAiFilterWorker(owner!, true);
+      }
+      await unlockTick();
+      expect(await claimAiFilterWorker()).toBeNull();
+      expect(await getAiFilterOwnerState(input)).toMatchObject({
+        status: "paused_infrastructure",
+        coverage: { state: "unreviewed" },
+      });
+    });
+    it("reviews late-indexed old postings and expired decisions without an owner page request", async () => {
+      const input = await fixture();
+      mocks.postings = [posting()];
+      await tick();
+      await tick();
+      const late = posting("2026-08-01T12:00:00Z");
+      mocks.postings.push(late);
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=NULL`;
+      await tick();
+      await tick();
+      expect((await getAiFilterOwnerState(input)).counts.total).toBe(2);
+      await sql()`UPDATE ai_filter_decision SET decided_at=now()-interval '29 days',expires_at=now()-interval '1 second'`;
+      await sql()`UPDATE ai_filter_global_cache SET expires_at=now()-interval '1 second' WHERE status='ready'`;
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=NULL`;
+      await tick();
+      expect(mocks.classify.mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+    it("publishes coverage without invalidating email plans for unchanged criteria", async () => {
+      await fixture();
+      const [before] = await sql()`SELECT updated_at FROM ai_filter_configuration`;
+      mocks.postings = [posting()];
+      await tick();
+      await tick();
+      const [after] = await sql()`SELECT updated_at,last_caught_up_at FROM ai_filter_configuration`;
+      expect(after.updated_at).toEqual(before.updated_at);
+      expect(after.last_caught_up_at).toBeTruthy();
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=NULL`;
+      await tick();
+      const [repaired] = await sql()`SELECT updated_at FROM ai_filter_configuration`;
+      expect(repaired.updated_at).toEqual(before.updated_at);
+    });
+    it("keeps zero reviewed distinct from completed evaluation with zero accepted", async () => {
+      const input = await fixture();
+      expect((await getAiFilterOwnerState(input)).coverage?.state).toBe(
+        "unreviewed",
+      );
+      mocks.postings = [posting()];
+      mocks.classify.mockImplementation(async ({ jobs }) => ({
+        model: JEV_MODEL,
+        promptVersion: AI_FILTER_PROMPT_VERSION,
+        decisions: jobs.map((job: { payload: { candidateId: string } }) => ({
+          candidateId: job.payload.candidateId,
+          decision: "rejected",
+        })),
+        usage: { inputTokens: 100, outputTokens: 0 },
+        attempts: 1,
+        ambiguousFailedAttempts: 0,
+        latencyMs: 1,
+      }));
+      await tick();
+      await tick();
+      expect(await getAiFilterOwnerState(input)).toMatchObject({
+        status: "caught_up",
+        counts: { accepted: 0, total: 1 },
+        coverage: { state: "complete" },
+      });
+    });
+    it("discards old revisions and disabled/unentitled scopes before paid work", async () => {
+      const input = await fixture();
+      mocks.postings = [posting()];
+      await putAiFilterConfiguration({
+        ...input,
+        query: "different query",
+        candidateLanguages: ["en"],
+      });
+      await sql()`UPDATE subscription SET status='cancelled'`;
+      await tick();
+      expect(mocks.classify).not.toHaveBeenCalled();
+      await sql()`UPDATE subscription SET status='active'`;
+      await sql()`UPDATE ai_filter_configuration SET status='disabled',disabled_at=now()`;
+      await tick();
+      expect(mocks.classify).not.toHaveBeenCalled();
+    });
+  },
+);

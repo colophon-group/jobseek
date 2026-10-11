@@ -4703,6 +4703,12 @@ msgstr "Recharger le compte"
 msgid "marketing.tracker.proofBody"
 msgstr "Retrouve les détails du poste pour préparer un entretien. Ton statut et tes tours d’entretien restent associés à l’offre sauvegardée."
 
+#. Notice when narrowed review is paused and the accepted feed has no materialized matches yet
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewPaused"
+msgstr "L’examen est temporairement suspendu. Vos critères enregistrés sont conservés."
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -5190,6 +5196,12 @@ msgstr "Offres en {shownNames} et {remaining} autres"
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Offres dans toutes les langues"
+
+#. Notice above accepted matches while the saved narrowed feed is only partly reviewed
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.partialReview"
+msgstr "Les résultats examinés sont affichés. L’examen de ce flux n’est pas terminé."
 
 #. Sign-in page heading
 #. js-lingui-explicit-id

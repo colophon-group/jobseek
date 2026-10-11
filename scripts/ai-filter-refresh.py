@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import argparse
+import re
 from pathlib import Path
 import urllib.error
 import urllib.request
@@ -17,7 +19,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def run(opener=None, credential_directory: str | None = None) -> dict:
+def run(opener=None, credential_directory: str | None = None, inspect: str | None = None) -> dict:
     directory = credential_directory or os.environ.get("CREDENTIALS_DIRECTORY", "")
     if not directory:
         raise ValueError("credential_unavailable")
@@ -25,7 +27,10 @@ def run(opener=None, credential_directory: str | None = None) -> dict:
     if not 1 <= len(bearer) <= 1024 or any(ord(c) < 33 or ord(c) > 126 for c in bearer):
         raise ValueError("credential_invalid")
     client = opener or urllib.request.build_opener(NoRedirect())
-    request = urllib.request.Request(ENDPOINT, headers={
+    if inspect is not None and not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", inspect):
+        raise ValueError("invalid_scope")
+    endpoint = ENDPOINT if inspect is None else ENDPOINT + "?inspect=" + inspect
+    request = urllib.request.Request(endpoint, headers={
         "Authorization": f"Bearer {bearer}", "Accept": "application/json",
         "User-Agent": "Jobseek-Narrowed-Refresh/1",
     })
@@ -36,7 +41,13 @@ def run(opener=None, credential_directory: str | None = None) -> dict:
     if len(payload) > MAX_RESPONSE_BYTES:
         raise ValueError("refresh_response_too_large")
     result = json.loads(payload)
-    if result.get("contractVersion") != "narrowed-refresh-v1" or result.get("status") not in ("off", "completed"):
+    if inspect is not None:
+        recovery = result.get("recovery", {})
+        if result.get("contractVersion") != "narrowed-worker-v2" or recovery.get("legacyWorkersFenced") is not True:
+            raise ValueError("recovery_contract_unavailable")
+        return {"status": "inspected", "recovery": {key: recovery.get(key) for key in (
+            "status", "queryRevision", "queryVersionId", "filterFingerprint", "candidateLanguages", "entitled", "reviewed", "accepted", "remaining", "coverage", "legacyWorkersFenced")}}
+    if result.get("contractVersion") != "narrowed-worker-v2" or result.get("status") not in ("off", "completed"):
         raise ValueError("refresh_contract_unavailable")
     counters = {}
     for key in ("claimed", "started", "deferred", "failed"):
@@ -51,7 +62,10 @@ def run(opener=None, credential_directory: str | None = None) -> dict:
 
 def main() -> int:
     try:
-        result = run()
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--inspect")
+        arguments = parser.parse_args()
+        result = run(inspect=arguments.inspect)
     except Exception:
         # Never emit request headers, credential bytes, or an upstream body.
         print(json.dumps({"event": "ai_filter_refresh_trigger", "status": "failed"}))

@@ -85,61 +85,47 @@ metadata instead of making otherwise valid jobs disappear.
 
 ## Continuous freshness and historical evaluation
 
-Each immutable query revision describes the full active historical horizon,
-starting at `2000-01-01T00:00:00.000Z` and ending at a whole-second boundary.
-This is a selection boundary, not an instruction to evaluate the entire feed
-at setup time.
+Narrowed no longer starts managed Vercel Workflow runs. Browser demand commits
+coalesced Postgres work, unique by immutable query revision and historical or
+freshness lane. Criteria creation/revision commits enqueue freshness in the
+same database transaction. Shared GETs remain read-only.
 
-An enabled saved request authorizes continuous matching, including while its
-owner is away. The Hetzner `jobseek-ai-filter-refresh.timer` calls
-`/api/internal/ai-filter-refresh` every minute in production. This runs on the
-existing crawler host and avoids Vercel Hobby's daily-only cron limit. The authenticated endpoint claims at most 20 eligible watchlists,
-oldest dispatch first, with PostgreSQL row locks and a 45-second dispatch floor.
-Only the next target is claimed at a time, within a 45-second preparation
-budget, so a timed-out invocation cannot repeatedly starve the end of its page.
-Disabled configurations, expired entitlement, preview deployments, unavailable
-credentials and either disabled execution switch contribute no work. Preparation is serial,
-so a minute trigger cannot burst parallel scope scans. Two live freshness
-segments are allowed project-wide, enforced under the shared project admission
-lock; a full freshness lane also skips dispatch preparation until capacity frees.
-Count-only scope checks retain the readiness receipt and use one search per
-company batch, without sorting and hydrating UUID guard rows. Candidate row
-selection still proves UUID ordering before and after every page.
- Lost
-Workflow dispatches retry on the next scheduled pass. The prepared revision is
-checked again so a stale dispatch cannot re-enable or overwrite an edited prompt.
+The existing Hetzner timer calls the bearer-protected web worker once per
+minute. A durable singleton slot limits project-wide execution to one active
+worker, with a 55-second admission floor and a 70-second crash lease. A tick
+has a 42-second deadline, prepares at most one rotating repair scope and
+executes at most five five-candidate checkpoints, serially. Backlog size changes
+completion latency; it cannot increase scheduled invocation count or create
+managed Workflow runs. Idle scopes create no segments or paid calls.
 
-Each refresh Workflow runs at most ten 50-candidate segments. It reads the full
-active scope newest first and excludes current, unexpired decisions **before**
-Typesense pagination. Each segment starts at offset zero in the remaining set;
-new arrivals take priority even during a large initial backlog. This also covers
-late indexing/enrichment of jobs whose `first_seen_at` is older than the last
-refresh, and renews expired decisions. The exclusion set is bounded at 50,000
-UUIDs and is sent in a POST search body, including stable-order guards and
-company fanout. Oversized exclusions or a scope outside the existing 1–10,000
-candidate boundary fail closed. The classifier, semantic cache, TDM policy,
-spend reservations and configured budgets remain the execution boundary.
+Historical and freshness lanes alternate, oldest available work first. Demand
+extensions during execution increment a generation, so completing the old
+claim cannot discard newly committed work. The existing semantic singleflight,
+spend reservations, entitlement checks and revision isolation remain the paid
+execution boundary. Candidate selection still requires the stable Typesense
+receipt, mining policy and the 10,000-candidate scope limit.
 
-Under normal load, new searchable jobs begin evaluation on the next minute's
-pass and appear after classification. Initial/changed requests and backlogs may
-need multiple passes; provider failures, budget limits, capacity and scheduler
-jitter can delay completion. The endpoint emits only aggregate dispatch counts.
-The original historical cursor remains available for owner-driven paging, in a
-separate segment lane. An old historical segment cannot block the refresh lane
-or move its completed coverage backwards. Both lanes share the existing per-owner
-and project concurrency limits. Opening or scrolling can still request a bounded
-500-candidate historical runway, but freshness does not depend on those actions.
+The repair pass rotates enabled entitled scopes with a five-minute per-scope
+floor and excludes current unexpired decisions before selecting candidates.
+It detects late indexing independently of original first-seen timestamps and
+renews expired decisions. For N continuously enabled scopes, repair can take
+approximately max(5,N) minutes plus failures/jitter. Committed per-posting index
+and enrichment signals remain a follow-up optimization; this release relies
+on bounded repair for freshness and does not reclassify an unexpired decision
+solely because a posting was enriched. Do not promise one-minute freshness.
 
-Reads remain side-effect free. Returning owners and shared viewers read persisted
-accepted decisions through the ordinary page bootstrap. Reopening a narrowed
-drawer, refocusing a visible tab, or restoring it from the browser cache reloads
-the first persisted accepted page with a safe GET, even when `hasMore` was false.
-React Activity route restoration also reloads after reconnecting its effects.
-Changed results restart the accepted cursor; concurrent resume events coalesce
-and late responses abort on scope changes. A complete cached page needs no
-reconcile request. Foreground progress polling remains bounded at 1.5
-seconds, with five-second background state polling while work is active and no
-reads in hidden tabs. No paid work is started by a shared viewer or GET request.
+Failures persist per-work retry state (five minutes to one hour). Three
+consecutive failed ticks open a shared fifteen-minute circuit. These are
+execution controls, not alerts. Provider transport ambiguity remains charged
+conservatively and is not blindly replayed. Lease expiry returns interrupted
+work to shared admission without creating another orchestration backend.
+
+Owner and shared state distinguishes unreviewed, partial and complete coverage.
+Incomplete feeds retain materialized current-revision matches, show a partial
+notice and cannot report zero reviewed as “no matches”. Infrastructure pauses
+are explicit and suppress foreground demand retries. Completion describes the
+verified revision and its coverage timestamp, not an eternal guarantee about
+future arrivals.
 
 ## Why Postgres owns the cache
 
@@ -220,10 +206,19 @@ contract before changing an existing timer. Leave the timer disabled after a sea
 OOM or while index recovery is in progress; a successful deployment alone does
 not prove that background matching can run safely.
 
-The Next.js Workflow SDK owns durable catch-up. Workflow code loops only over a
-bounded Node.js step; Postgres, Typesense, R2, and Jev access remain inside that
-step. Ambiguous provider transport failure is charged conservatively and is
-not blindly replayed.
+Migration `0104_ai_filter_shared_worker` creates durable demand and the singleton
+worker slot. It invalidates existing processing leases and installs a database
+trigger that rejects processing claims unless they belong to the current shared
+slot. This fences legacy deployment-bound workers even when Workflow cancellation
+is quota-blocked. Existing query revisions, decisions and usage reservations are
+preserved. A code rollback to per-watchlist Workflow execution is incompatible
+with this fence; keep maintenance on during any such rollback.
+
+Apply through the allowlisted routine migration workflow before promotion.
+Worker activation and read-only watchlist recovery inspection use
+`deploy-ai-filter-refresh.yml` with `action=activate` or `action=verify`.
+The worker can be exercised while public Narrowed and purchases remain under
+maintenance; `narrowedWorkerPaused` independently prevents execution.
 
 Required runtime configuration:
 
@@ -244,7 +239,7 @@ AI_FILTER_MAX_SEGMENTS_PROJECT=20
 Runtime variables are forwarded in both root and web build tasks in
 `turbo.json`. Configure secrets and switches for the intended Vercel environment
 before promotion. Keep both switches false or absent until migrations, the
-stable Typesense receipt and Workflow deployment have been verified. If a
+stable Typesense receipt and shared worker fence have been verified. If a
 monthly ceiling is configured, verify its amount before promotion. Paid
 execution requires both switches, a valid credential, a Pro entitlement,
 and a database-authorized reservation for the current watchlist and segment.
@@ -264,13 +259,13 @@ unauthorized access share a not-found boundary.
 
 | Operation | Authorization and behavior |
 |---|---|
-| `GET /api/internal/ai-filter-refresh` | Scheduler bearer only; production-only bounded background Workflow dispatch |
+| `GET /api/internal/ai-filter-refresh` | Scheduler bearer only; production-only shared worker, or read-only recovery inspection |
 | `GET /api/web/watchlists/{id}/ai-filter/estimate` | Owner only; entitled owners receive candidate count, cost range, and monthly spend; ineligible owners receive entitlement and spend without an extra search count |
 | `PUT /api/web/watchlists/{id}/ai-filter` | Owner only; validate 1-10,000 candidate scope and enable/replace query |
 | `DELETE /api/web/watchlists/{id}/ai-filter` | Owner only; disable and cooperatively cancel new work |
 | `GET /api/web/watchlists/{id}/ai-filter` | Owner-only state read; never starts Jev |
 | `GET /api/web/watchlists/{id}/ai-filter/events?after=N` | Owner-only cursor-resumable event snapshot |
-| `POST /api/web/watchlists/{id}/ai-filter/reconcile` | Owner-only demand trigger; rate-limited to 12 per minute, validates scope, clamps the requested cursor to the persisted frontier, and starts/joins Workflow |
+| `POST /api/web/watchlists/{id}/ai-filter/reconcile` | Owner-only demand trigger; rate-limited to 12 per minute, validates scope, clamps the requested cursor to the persisted frontier, and commits/extends durable demand |
 | `GET /api/web/watchlists/{id}/ai-filter/decisions?bucket=accepted` | Owner reads accepted results plus state; shared viewers may read persisted accepted results only |
 
 ## Fluid Compute profile
@@ -287,9 +282,8 @@ The web path is designed around fewer invocations and bounded active CPU:
 - polling is bounded, cancellable for safe GETs, and suspended while a
   foreground load is active or the browser tab is hidden;
 - owner prefetch starts one 500-candidate demand per visible result cursor;
-- minute refresh dispatch claims at most 20 watchlists and starts bounded workflows; and
-- long-running provider work runs in Workflow rather than holding a route
-  invocation open.
+- minute scheduling admits one fixed worker and at most five checkpoints; and
+- each route execution has a bounded deadline and durable checkpoints.
 
 Do not move authoritative paid-call state into an in-memory or regional cache,
 add a second client polling loop, hydrate all accepted decisions to compute a

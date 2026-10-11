@@ -8,6 +8,10 @@ import type { WebhookEventPayload } from "resend";
 
 const mocks = vi.hoisted(() => ({ client: null as Sql | null, send: vi.fn(), match: vi.fn() }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/config/service-availability.json", () => ({ default: {
+  narrowedMaintenance: true, narrowedWorkerPaused: true,
+  subscriptionPurchasesPaused: true, subscriptionBillingPaused: true,
+} }));
 vi.mock("@/lib/notifications/provider", () => ({ sendNotificationEmail: mocks.send }));
 vi.mock("@/lib/services/watchlist-matcher", async () => {
   const { buildWatchlistCandidateWindowFilter } = await import("@/lib/search/watchlist-candidate-query");
@@ -116,6 +120,13 @@ describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification deliv
     mocks.send.mockReset().mockResolvedValue({ status: "sent", messageId: "provider-message" });
   });
 
+
+  it("delivers standard emails while Narrowed and subscription admission are paused", async () => {
+    const plan = await fixture();
+    expect(await deliverNotificationPlan(plan, config)).toBe("sent");
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect((await row(plan)).status).toBe("sent");
+  });
 
   it("maps the completed-window aggregate to a Date rather than losing the no-backlog floor", async () => {
     const plan = await fixture();

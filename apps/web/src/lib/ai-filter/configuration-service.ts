@@ -1,5 +1,5 @@
 import "server-only";
-import { assertNarrowedAvailable, narrowedUnderMaintenance } from "@/lib/service-availability";
+import { assertNarrowedAvailable, narrowedUnderMaintenance, narrowedWorkerPaused } from "@/lib/service-availability";
 
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -7,7 +7,6 @@ import {
   desc,
   eq,
   gt,
-  lte,
   sql,
 } from "drizzle-orm";
 
@@ -67,6 +66,7 @@ export type AiFilterOwnerState = Readonly<{
   queryRevision: number;
   queryVersionId: string;
   status:
+    | "paused_infrastructure"
     | "maintenance"
     | "idle"
     | "processing"
@@ -79,6 +79,7 @@ export type AiFilterOwnerState = Readonly<{
     | "cancelled"
     | "failed"
     | "disabled";
+  coverage?: AiFilterUiState["coverage"];
   counts: Readonly<{ accepted: number; rejected: number; total: number }>;
   progress: Readonly<{
     selectionOffset: number;
@@ -205,7 +206,7 @@ export async function putAiFilterConfiguration(input: {
   expectedEnabledQueryVersionId?: string;
   now?: Date;
 }): Promise<AiFilterOwnerState> {
-  assertNarrowedAvailable();
+  if (!input.expectedEnabledQueryVersionId) assertNarrowedAvailable();
   const now = input.now ?? new Date();
   await db.transaction(async (tx) => {
     await lockConfiguration(tx, input.watchlistId);
@@ -515,7 +516,7 @@ export async function getAiFilterOwnerState(input: {
       ))
       .limit(1);
     if (!queryVersion) throw new AiFilterNotFoundError();
-    const [[latestSegment], [historicalFoundation], [counts], [budget], [event]] = await Promise.all([
+    const [[latestSegment], [counts], [budget], [event]] = await Promise.all([
       tx
         .select({
           status: aiFilterSegment.status,
@@ -532,16 +533,6 @@ export async function getAiFilterOwnerState(input: {
           eq(aiFilterSegment.queryVersionId, queryVersion.id),
         ))
         .orderBy(desc(aiFilterSegment.createdAt))
-        .limit(1),
-      tx
-        .select({ id: aiFilterSegment.id })
-        .from(aiFilterSegment)
-        .where(and(
-          eq(aiFilterSegment.watchlistId, input.watchlistId),
-          eq(aiFilterSegment.queryVersionId, queryVersion.id),
-          eq(aiFilterSegment.status, "caught_up"),
-          lte(aiFilterSegment.windowStart, queryVersion.horizonStartedAt),
-        ))
         .limit(1),
       tx
         .select({
@@ -580,7 +571,6 @@ export async function getAiFilterOwnerState(input: {
     const entitled = await activeEntitlement(tx, input.ownerId, now);
     const enabled = configuration.status === "enabled";
     const caughtUpCoversQueryHorizon = Boolean(
-      historicalFoundation &&
       configuration.lastCaughtUpAt &&
       configuration.lastSweepAt &&
       configuration.lastCaughtUpAt.getTime() >= queryVersion.horizonEndsAt.getTime(),
@@ -590,6 +580,22 @@ export async function getAiFilterOwnerState(input: {
     const effectiveSegmentStatus = caughtUpCoversQueryHorizon
       ? "caught_up"
       : latestSegment?.status === "caught_up" ? "completed" : latestSegment?.status ?? null;
+    const [work] = await tx.execute<{ queued: boolean; paused: boolean; expired: boolean; reason: string | null; infrastructurePaused: boolean }>(sql`
+      SELECT COALESCE(bool_or(w.status IN ('queued','processing')),false) AS queued,
+        COALESCE(bool_or(w.status='paused' OR (w.reason IS NOT NULL AND w.available_at>now())),false) AS paused,
+        COALESCE(bool_or(w.status='processing' AND w.lease_expires_at<=now()),false) AS expired,
+        max(w.reason) AS reason,
+        EXISTS (SELECT 1 FROM ai_filter_worker WHERE id=1 AND blocked_until>now()) AS "infrastructurePaused"
+      FROM ai_filter_work w WHERE w.query_version_id=${queryVersion.id}::uuid
+    `);
+    let status = publicStatus(enabled,effectiveSegmentStatus,caughtUpCoversQueryHorizon ? null : latestSegment?.stopReason ?? null);
+    if (enabled && !narrowedUnderMaintenance()) {
+      if (!entitled) status = "paused_entitlement";
+      else if (narrowedWorkerPaused() || work?.infrastructurePaused || work?.expired) status = "paused_infrastructure";
+      else if (work?.paused) status = latestSegment?.status === "paused_budget" ? "paused_budget" : "provider_unavailable";
+      else if (work?.queued) status = "processing";
+      else if (latestSegment?.status === "processing" && !caughtUpCoversQueryHorizon) status = "paused_infrastructure";
+    }
     return Object.freeze({
       watchlistId: input.watchlistId,
       enabled,
@@ -597,11 +603,12 @@ export async function getAiFilterOwnerState(input: {
       query: queryVersion.queryText,
       queryRevision: queryVersion.revision,
       queryVersionId: queryVersion.id,
-      status: publicStatus(
-        enabled,
-        effectiveSegmentStatus,
-        caughtUpCoversQueryHorizon ? null : latestSegment?.stopReason ?? null,
-      ),
+      status,
+      coverage: Object.freeze({
+        state: status === "caught_up" ? "complete" as const : (counts?.total ?? 0)>0 ? "partial" as const : "unreviewed" as const,
+        reviewed: counts?.total ?? 0,
+        through: configuration.lastSweepAt?.toISOString() ?? null,
+      }),
       counts: Object.freeze({
         accepted: counts?.accepted ?? 0,
         rejected: counts?.rejected ?? 0,

@@ -140,6 +140,16 @@ describe("WatchlistJobList matching results", () => {
     hookMocks.session = { isLoggedIn: true, isPending: false };
   });
 
+  it.each(["idle", "paused_infrastructure"] as const)("does not label zero reviewed as no matches for a shared %s feed", async status => {
+    const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({decisions:[],nextOffset:0,hasMore:false,total:0})});vi.stubGlobal("fetch",fetchMock);
+    render(<WatchlistJobList {...baseProps} resultMode="narrowed" aiFilterReadOnly
+      aiFilterState={aiState({status})} initialAiAcceptedPage={{queryVersionId:aiState().queryVersionId,postings:[],nextOffset:0,hasMore:false,total:0}} />);
+    await act(async ()=> {});
+    expect(screen.queryByText("No jobs match these criteria.")).toBeNull();
+    expect(screen.getByText(status === "paused_infrastructure" ? "Review is temporarily paused. Your saved criteria are preserved." : "Reviewing this feed…")).toBeTruthy();
+    expect(fetchMock.mock.calls.every(([,options])=>options?.method!=="POST")).toBe(true);
+  });
+
   it("does not read or demand AI decisions while the broad feed is selected", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
