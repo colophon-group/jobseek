@@ -2,7 +2,7 @@
   "status": "local candidate qualified; no production admission",
   "version": "0.13.1012",
   "profiles": 202,
-  "base_revision": "b733c6c5ecb9ba9b40c7ef59c64964740f194f5c",
+  "base_revision": "5eec6ffcb0a095f4eec8ed86f9337815acb76da2",
   "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
   "candidate_board_count": 37,
   "public_qualified_board_count": 36,
@@ -377,5 +377,15 @@
   ],
   "mandatory_python_ownership_tests": 89,
   "vet": "ordinary-queue and ordinary-worker passed",
-  "additional_validation": "All Workday/DOM/JSON-LD detail admission unit contracts passed under race after correcting two historical blanket TLS-rejection assertions; malformed flags and unsupported secondary options remain rejected."
+  "additional_validation": "All Workday/DOM/JSON-LD detail admission unit contracts passed under race after correcting two historical blanket TLS-rejection assertions; malformed flags and unsupported secondary options remain rejected.",
+  "previous_qualification_base_revision": "b733c6c5ecb9ba9b40c7ef59c64964740f194f5c",
+  "full_local_worker_race": {
+    "head": "77a991c3fdcbf83ea3932c53f8da05f40b89cba8",
+    "rebased_equivalent_head": "83901c1048e34a2699612e9071ad4810c04e7b42",
+    "equivalent_tree": "14fc4cd709989c82fe24e850e34e8db383cb396b",
+    "returncode": 0,
+    "elapsed_seconds": 867.65,
+    "mandatory_postgres_redis": true,
+    "log_sha256": "e408531388b0f67e331e87088df1c546de4525ceb55cd6a3a52f427496058218"
+  }
 }

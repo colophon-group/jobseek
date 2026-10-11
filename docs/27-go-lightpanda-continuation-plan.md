@@ -1,6 +1,29 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1010 deployed; failed full activation recovered
+## Current checkpoint — source1011 merged; original whole rollout running
+
+[PR #10409](https://github.com/colophon-group/jobseek/pull/10409) merged as
+`5eec6ffcb0a095f4eec8ed86f9337815acb76da2`, version **0.13.1011 / 201 profiles**.
+Required CI, Crawler Deploy Gate, installed-image parity, both physical Lightpanda
+architectures, the renderer contract and ARM synthetic whole-lane qualification
+passed for the final `b733c6c5` head. The ARM report tests the equivalent pull merge
+tree `64be97de`; its exact parents and tree are independently verified. It is
+synthetic evidence, not full-fleet freshness or cost proof. The full mandatory
+local worker race suite also passed in 853.96 seconds.
+
+The original outgoing B0 rollback and exact selector clear succeeded. Independent
+readback proves **cold epoch 280**, healthy base writers, no owner receipts or
+Redis projections, no native tokens, and preserved retired SQL plans. A fresh
+head/base/hold/review/check audit preceded the head-bound merge. The original
+[whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38116937869)
+and matching [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38116979406)
+are running for that exact merged source. Deployment success, selected immutable
+image readbacks, incoming cold readiness and exporter progress are not yet proved.
+Ordinary Go ownership remains inactive. After successful rollout, use fresh
+all-board/all-route admission and the supported full activation, then observe
+natural health, conservation, memory and fleet freshness.
+
+## Historical source1010 checkpoint — failed full activation recovered
 
 [PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
 `f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
@@ -140,7 +163,7 @@ delaying the verified Oracle/Nextdata/inline delivery.
 ## Following grouped detail release — Workday proxy, DOM and JSON-LD TLS
 
 The isolated candidate on `fix-crawler/native-detail-transport-group` reserves
-**0.13.1012 / 202 profiles**, based on the combined release's `b733c6c5` tree.
+**0.13.1012 / 202 profiles**, rebased onto merged source1011 `5eec6ffcb`.
 It implements three detail transport variants together: 22 Workday configurations
 with explicit proxy requests, 13 static DOM TLS exceptions, and two JSON-LD TLS
 exceptions. Workday proxy authority has its own immutable profile; it cannot
@@ -159,12 +182,14 @@ HTTP bytes independently, without another origin request. Real mandatory
 PostgreSQL/Redis worker tests cover success, reserved and transient outcomes,
 credentialed CONNECT, unrelated TLS trust, wrong-client refusal, canonical writes
 and schedule/lease conservation. All 18 interruption/retirement cases pass;
-native executable startup and the complete retained Python ownership suite pass.
+native executable startup and all 89 retained Python ownership tests pass.
+The full mandatory worker race suite passed in 867.65 seconds at `77a991c3`;
+the rebased `83901c104` candidate has the exact same Git tree.
 See [the bounded proof](evidence/go-native-grouped-detail-transports-candidate-2026-10-11.json).
 
-Finish and deliver PR #10409 first. Preserve this candidate independently, rebase
-it onto the actual merged source, then renew required CI, installed-image proof
-and deployment gates for its final head. Fresh all-board/all-route admission must
+Finish the original source1011 rollout while this candidate enters its own PR.
+Renew required CI, installed-image proof and deployment gates for its final head.
+Fresh all-board/all-route admission must
 preserve the previous qualified cohort and reject remaining cache, lane, step or
 source mismatches. No new board has production detail authority from these local
 proofs. Full-fleet freshness, memory, cost and Python retirement remain unfinished.
