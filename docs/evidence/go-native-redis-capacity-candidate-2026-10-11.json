@@ -1,7 +1,7 @@
 {
   "status": "local candidate qualified; no production deployment",
   "version": "0.13.1013",
-  "base_revision": "3142a3162f392597870a936557823f5b6d58e844",
+  "base_revision": "68ff4fd49bda61127a64cb166d8ef679033d7344",
   "operations": [
     "redis-capacity summary",
     "redis-capacity inspect",
@@ -9,7 +9,7 @@
   ],
   "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
   "original_reference_scope": "Original capacity function bodies and Lua from immutable archive; only unrelated app imports and unused rebuild SQL constant omitted. Actual private Redis and installed native candidate command. Dynamic timestamp/duration and Redis process/client RAM excluded; every other snapshot field, prune report and Redis DUMP match.",
-  "real_redis_race_contracts": 4,
+  "real_redis_race_contracts": 3,
   "python_contract_tests": 15,
   "ruff": "PASS",
   "pyright_cli": "0 errors",
@@ -39,5 +39,7 @@
     "change": "split existing native queue and worker suites into two CI matrix lanes with separate job-scoped PostgreSQL/Redis fixtures",
     "coverage": "all four original modules retain full race, vet, tidy and gofmt; retained Python ownership/cutover contracts run in worker lane; Required CI depends on the entire matrix",
     "validation": "actionlint passes and parsed workflow asserts original module union, mandatory databases and aggregate gate; runtime benefit awaits actual CI"
-  }
+  },
+  "qualified_rebase_from": "3142a3162f392597870a936557823f5b6d58e844",
+  "pure_boundary_identity_contracts": 2
 }

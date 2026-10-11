@@ -1,6 +1,38 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1011 deployed; next 91-board release qualified
+## Current checkpoint — 91-board source1012 merged; whole rollout running
+
+[PR #10411](https://github.com/colophon-group/jobseek/pull/10411) merged as
+`68ff4fd49bda61127a64cb166d8ef679033d7344`, **0.13.1012 / 202 profiles**.
+It delivers the 36-board Workday/DOM/JSON-LD transport group and 55-board shared
+DOM/JSON-LD enrichment group in one release. All 180 original public samples,
+42 mandatory worker cases and 42 cold reversal cases pass. The combined full
+mandatory local worker suite passes in 857.108 seconds. Final Required CI,
+installed-image parity and Crawler Deploy Gate passed at exact `3142a316`.
+Fresh predecessor readback confirms cold280, six healthy base services and no
+active native plans, receipts or projections. Fresh head/base/draft/check/hold
+and review checks preceded the atomic head-bound merge.
+
+The original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38120768444)
+is running; the matching [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38120825701)
+succeeded at attempt 1. Incoming selected images, cold readiness and exporter
+progress still require independent readbacks. Native ownership remains inactive.
+Then stage B0 through the original wrapper, renew complete actual-route admission
+against the merged SDK and preserve the full **7,763 / 7,585** prior cohort plus
+16 qualified monitor additions and every newly qualified detail whose actual
+cache, worker lane and step pass. Local/public qualification alone grants no
+production authority. Full-fleet freshness, memory, cost and final retirement
+remain unfinished.
+
+[PR #10412](https://github.com/colophon-group/jobseek/pull/10412) follows with
+native Redis capacity operations and two CI matrix lanes. Its rebased qualified
+tree is unchanged; all four original modules, mandatory PostgreSQL/Redis, full
+race/vet/tidy/gofmt and retained Python ownership/cutover tests remain under
+Required CI. The lanes use separate job services. The expected reduction in
+wall-clock CI time requires actual run evidence.
+
+## Historical checkpoint — source1011 deployed before source1012
+
 
 [PR #10409](https://github.com/colophon-group/jobseek/pull/10409) merged as
 `5eec6ffcb0a095f4eec8ed86f9337815acb76da2`, version **0.13.1011 / 201 profiles**.
