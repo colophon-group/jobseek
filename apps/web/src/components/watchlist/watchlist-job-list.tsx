@@ -309,7 +309,7 @@ function WatchlistJobListContent({
     : isInfiniteLoading;
   const showUnavailable = aiFilterActive
     ? aiResults.unavailable || (!aiFilterReadOnly && (
-      aiFilterState.status === "provider_unavailable" ||
+      aiFilterState.status === "paused_infrastructure" || aiFilterState.status === "provider_unavailable" ||
       aiFilterState.status === "paused_kill" || aiFilterState.status === "failed" ||
       aiFilterState.status === "paused_budget" ||
       aiFilterState.status === "paused_entitlement"
@@ -529,14 +529,28 @@ function WatchlistJobListContent({
         <div className={`col-start-1 row-start-1 min-w-0 max-w-full [overflow-anchor:none] ${
           drawerOpen ? "invisible h-0 overflow-hidden" : ""
         }`}>
+          {aiFilterActive && postings.length > 0 && aiFilterState.status !== "caught_up" && (
+            <p className="py-3 text-sm text-muted" role="status">
+              <Trans id="watchlists.jobList.partialReview" comment="Notice above accepted matches while the saved narrowed feed is only partly reviewed">
+                Showing reviewed matches. Review of this feed is incomplete.
+              </Trans>
+            </p>
+          )}
           {rows}
 
           {aiFilterActive && narrowedUnderMaintenance() ? (
             <NarrowedMaintenanceNotice />
+          ) : aiFilterActive && postings.length === 0 &&
+              (aiFilterState.status === "paused_infrastructure" || aiFilterState.status === "paused_kill" || aiFilterState.status === "provider_unavailable" || aiFilterState.status === "paused_budget") ? (
+            <p className="py-12 text-center text-sm text-muted" role="status">
+              <Trans id="watchlists.jobList.reviewPaused" comment="Notice when narrowed review is paused and the accepted feed has no materialized matches yet">
+                Review is temporarily paused. Your saved criteria are preserved.
+              </Trans>
+            </p>
           ) : showUnavailable ? (
             <SearchUnavailable />
           ) : aiFilterActive && postings.length === 0 &&
-              (isLoading || aiResults.hasMore) ? (
+              (isLoading || aiResults.hasMore || aiFilterState.status !== "caught_up") ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted" role="status">
               <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
               <Trans

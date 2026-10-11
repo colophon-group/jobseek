@@ -1,6 +1,7 @@
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 export type AiFilterUiStatus =
+  | "paused_infrastructure"
   | "maintenance"
   | "idle"
   | "processing"
@@ -23,6 +24,7 @@ export type AiFilterUiState = Readonly<{
   queryRevision: number;
   queryVersionId: string;
   status: AiFilterUiStatus;
+  coverage?: Readonly<{ state: "unreviewed" | "partial" | "complete"; reviewed: number; through: string | null }>;
   counts: Readonly<{ accepted: number; rejected: number; total: number }>;
   progress: Readonly<{
     selectionOffset: number;

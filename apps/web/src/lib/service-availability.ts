@@ -5,6 +5,10 @@ export function narrowedUnderMaintenance(): boolean {
   return availability.narrowedMaintenance;
 }
 
+export function narrowedWorkerPaused(): boolean {
+  return availability.narrowedWorkerPaused !== false;
+}
+
 export function subscriptionPurchasesPaused(): boolean {
   return availability.subscriptionPurchasesPaused || narrowedUnderMaintenance();
 }

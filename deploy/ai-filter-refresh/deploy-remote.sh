@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 revision="${1:-}"
 [[ "$revision" =~ ^[0-9a-f]{40}$ && "$(git rev-parse HEAD)" = "$revision" ]]
-python3 -c 'import json; from pathlib import Path; controls = json.loads(Path("apps/web/src/config/service-availability.json").read_text()); assert controls["narrowedMaintenance"] is False, "Narrowed maintenance blocks timer activation"'
+python3 -c 'import json; from pathlib import Path; controls = json.loads(Path("apps/web/src/config/service-availability.json").read_text()); assert controls["narrowedWorkerPaused"] is False, "Narrowed worker pause blocks timer activation"'
 : "${TARGET_HOST:?}" "${SSH_PRIVATE_KEY:?}" "${SSH_KNOWN_HOSTS:?}" "${RUNNER_TEMP:?}" "${AI_FILTER_REFRESH_SECRET:?}"
 [[ "$TARGET_HOST" =~ ^[a-zA-Z0-9.:_-]+$ ]]
 stage="$(mktemp -d "$RUNNER_TEMP/jobseek-ai-filter-refresh.XXXXXX")"

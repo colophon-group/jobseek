@@ -38,7 +38,7 @@ class FakeOpener:
 
 class RefreshTimerTests(unittest.TestCase):
     def test_dispatches_to_only_the_fixed_endpoint_and_omits_private_response_fields(self):
-        opener = FakeOpener([{"contractVersion": "narrowed-refresh-v1", "status": "completed", "claimed": 1, "started": 1, "deferred": 0, "failed": 0, "private": "do not log"}])
+        opener = FakeOpener([{"contractVersion": "narrowed-worker-v2", "status": "completed", "claimed": 1, "started": 1, "deferred": 0, "failed": 0, "private": "do not log"}])
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / "refresh-bearer").write_text("fixture" * 8)
             result = runner.run(opener, folder)
@@ -57,7 +57,7 @@ class RefreshTimerTests(unittest.TestCase):
         self.assertIsNone(runner.NoRedirect().redirect_request(None, None, 302, "", {}, "https://other.example"))
 
     def test_rejects_malformed_counters(self):
-        opener = FakeOpener([{"contractVersion": "narrowed-refresh-v1", "status": "completed", "claimed": True}])
+        opener = FakeOpener([{"contractVersion": "narrowed-worker-v2", "status": "completed", "claimed": True}])
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / "refresh-bearer").write_text("fixture" * 8)
             with self.assertRaisesRegex(ValueError, "response_invalid"):
@@ -73,7 +73,7 @@ class RefreshTimerTests(unittest.TestCase):
         self.assertNotIn("AI_FILTER_REFRESH_SECRET", pause)
         self.assertNotIn("docker", pause)
         activate = (ROOT.parent / "deploy/ai-filter-refresh/deploy-remote.sh").read_text()
-        self.assertIn('controls["narrowedMaintenance"] is False', activate)
+        self.assertIn('controls["narrowedWorkerPaused"] is False', activate)
         workflow = (ROOT.parent / ".github/workflows/deploy-ai-filter-refresh.yml").read_text()
         self.assertIn("default: pause", workflow)
         self.assertIn("if: inputs.action == 'activate'", workflow)

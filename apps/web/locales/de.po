@@ -4703,6 +4703,12 @@ msgstr "Konto erneut laden"
 msgid "marketing.tracker.proofBody"
 msgstr "Kehre bei der Gesprächsvorbereitung zu den Stellendetails zurück. Status und Gesprächsrunden bleiben mit der gespeicherten Stelle verknüpft."
 
+#. Notice when narrowed review is paused and the accepted feed has no materialized matches yet
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewPaused"
+msgstr "Die Prüfung ist vorübergehend pausiert. Ihre gespeicherten Kriterien bleiben erhalten."
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -5190,6 +5196,12 @@ msgstr "Stellen auf {shownNames} und {remaining} weiteren"
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Stellen in allen Sprachen"
+
+#. Notice above accepted matches while the saved narrowed feed is only partly reviewed
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.partialReview"
+msgstr "Geprüfte Treffer werden angezeigt. Die Prüfung dieses Feeds ist noch nicht abgeschlossen."
 
 #. Sign-in page heading
 #. js-lingui-explicit-id

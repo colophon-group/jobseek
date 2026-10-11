@@ -25,7 +25,7 @@ type AiDecisionPageResponse = {
 };
 
 function aiFilterResultsBlocked(state: AiFilterUiState): boolean {
-  return state.status === "maintenance" || state.status === "paused_entitlement" ||
+  return state.status === "paused_infrastructure" || state.status === "maintenance" || state.status === "paused_entitlement" ||
     state.status === "paused_budget" ||
     state.status === "provider_unavailable" ||
     state.status === "paused_kill" ||
@@ -35,7 +35,7 @@ function aiFilterResultsBlocked(state: AiFilterUiState): boolean {
 }
 
 function aiFilterDemandCannotStart(state: AiFilterUiState): boolean {
-  return state.status === "maintenance" || state.status === "paused_entitlement" ||
+  return state.status === "paused_infrastructure" || state.status === "maintenance" || state.status === "paused_entitlement" ||
     state.status === "paused_budget" ||
     state.status === "cancelled" ||
     state.status === "failed" ||

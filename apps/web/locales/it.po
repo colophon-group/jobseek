@@ -4703,6 +4703,12 @@ msgstr "Riprova a caricare l'account"
 msgid "marketing.tracker.proofBody"
 msgstr "Ritrova i dettagli della posizione per preparare un colloquio. Stato e fasi dei colloqui restano collegati all’offerta salvata."
 
+#. Notice when narrowed review is paused and the accepted feed has no materialized matches yet
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewPaused"
+msgstr "La revisione è temporaneamente sospesa. I criteri salvati sono conservati."
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -5190,6 +5196,12 @@ msgstr "Offerte in {shownNames} e {remaining} altre"
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Offerte in tutte le lingue"
+
+#. Notice above accepted matches while the saved narrowed feed is only partly reviewed
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.partialReview"
+msgstr "Sono mostrati i risultati esaminati. La revisione di questo feed è incompleta."
 
 #. Sign-in page heading
 #. js-lingui-explicit-id

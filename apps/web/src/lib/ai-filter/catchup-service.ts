@@ -1,4 +1,5 @@
 import "server-only";
+import { narrowedWorkerPaused } from "@/lib/service-availability";
 
 import { assertAiFilterMiningAllowed } from "./mining-policy";
 
@@ -27,7 +28,7 @@ import {
 import { CLASSIFIER_INPUT_NORMALIZER_VERSION, CLASSIFIER_INPUT_SCHEMA_VERSION } from "./classifier-input";
 import { aiFilterHistoricalHorizonStart, aiFilterHorizonEnd } from "./horizon";
 
-const SEGMENT_LEASE_MS = 5 * 60 * 1_000;
+const SEGMENT_LEASE_MS = 70_000;
 
 export type AiFilterCatchupStepResult = Readonly<{
   status:
@@ -406,6 +407,7 @@ export async function runAiFilterCatchupStep(input: {
   queryVersionId?: string;
   now?: Date;
   signal?: AbortSignal;
+  candidateLimit?: number;
 }): Promise<AiFilterCatchupStepResult> {
   if (
     !Number.isSafeInteger(input.demandTargetOffset) ||
@@ -430,7 +432,9 @@ export async function runAiFilterCatchupStep(input: {
       maxSegmentsPerProject: 20,
     };
   }
-  const executionEnabled = policyValid && canRunAiFilter(policy);
+  const executionEnabled = policyValid && (input.leaseOwner.startsWith("shared-worker:")
+    ? policy.enabled && policy.routeEnabled && !narrowedWorkerPaused()
+    : canRunAiFilter(policy));
   const hasEntitlement = await entitled(input.ownerId, now);
   const claim = await claimSegment({
     ...input,
@@ -490,6 +494,7 @@ export async function runAiFilterCatchupStep(input: {
         ? claim.segment.queryVersionId
         : undefined,
       signal: input.signal,
+      candidateLimit: input.candidateLimit,
     });
   } catch (error) {
     await pauseSegment({

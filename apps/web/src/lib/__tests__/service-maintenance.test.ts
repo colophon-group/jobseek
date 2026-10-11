@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const controls = vi.hoisted(() => ({ narrowedMaintenance: true, subscriptionPurchasesPaused: true, subscriptionBillingPaused: true }));
-const mocks = vi.hoisted(() => ({ start: vi.fn(), stripe: vi.fn() }));
+const mocks = vi.hoisted(() => ({ enqueue: vi.fn(), stripe: vi.fn() }));
 vi.mock("@/config/service-availability.json", () => ({ default: controls }));
 vi.mock("server-only", () => ({}));
-vi.mock("workflow/api", () => ({ start: mocks.start }));
+vi.mock("../ai-filter/work-queue", () => ({ enqueueAiFilterWork: mocks.enqueue }));
 vi.mock("@/lib/stripe/client", () => ({ getStripe: mocks.stripe }));
 vi.mock("@/lib/stripe/checkout-policy", () => ({ checkoutPolicyMessage: vi.fn() }));
 
@@ -21,12 +21,12 @@ beforeEach(() => {
 });
 
 describe("service maintenance admission", () => {
-  it("blocks Workflow creation even with both execution switches enabled", async () => {
+  it("blocks demand admission even with both execution switches enabled", async () => {
     const policy = readAiFilterRuntimePolicy({ AI_FILTER_ENABLED: "true", AI_FILTER_JEV_1_13_0_ENABLED: "true" });
     expect(canRunAiFilter(policy)).toBe(false);
     await expect(startAiFilterCatchup({ ownerId: "owner", watchlistId: "watchlist", demandTargetOffset: 500 }))
       .rejects.toThrow(NarrowedMaintenanceError);
-    expect(mocks.start).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
   });
 
   it("allows the ordinary execution switches to govern after an explicit reopening", () => {

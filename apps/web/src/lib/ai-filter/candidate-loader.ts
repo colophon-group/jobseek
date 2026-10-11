@@ -212,6 +212,7 @@ async function fetchDescription(
   fetchImpl: typeof fetch,
   signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new AiFilterCandidateLoadError("description_unavailable");
   for (let attempt = 0; attempt <= DESCRIPTION_FETCH_RETRIES; attempt += 1) {
     const controller = new AbortController();
     const abortFromParent = () => controller.abort(signal?.reason);
@@ -381,11 +382,13 @@ export async function loadAiFilterCandidatePage(input: {
   windowEnd: Date;
   signal?: AbortSignal;
   dependencies?: CandidateLoaderDependencies;
+  candidateLimit?: number;
   /** Repair mode: scan past candidates that already have a durable decision. */
   excludeDecidedForQueryVersionId?: string;
   /** Refresh reads exclude durable decisions before newest-first pagination. */
   onlyUndecidedForQueryVersionId?: string;
 }): Promise<AiFilterCandidatePage> {
+  const candidateLimit = Math.min(50, Math.max(1, input.candidateLimit ?? 50));
   const { compiled, locale } = await ownedMatcher(input.ownerId, input.watchlistId);
   let excludePostingIds: string[] | undefined;
   if (input.onlyUndecidedForQueryVersionId) {
@@ -464,13 +467,13 @@ export async function loadAiFilterCandidatePage(input: {
   const selected: AiFilterExecutionCandidate[] = [];
   let scannedCount = 0;
   let total = 0;
-  while (selected.length < 50) {
+  while (selected.length < candidateLimit) {
     let searchResult: Awaited<ReturnType<typeof readWatchlistCandidates>>;
     try {
       searchResult = await readWatchlistCandidates({
         filters: compiled.candidateFilters,
         offset: input.offset + scannedCount,
-        limit: CANDIDATE_OVERFETCH_LIMIT,
+        limit: Math.min(CANDIDATE_OVERFETCH_LIMIT, candidateLimit),
         window: { windowStart: input.windowStart, windowEnd: input.windowEnd },
         order: "newest",
         requireStableOrder: true,
@@ -512,10 +515,10 @@ export async function loadAiFilterCandidatePage(input: {
         const outcome = outcomeById.get(candidate.id);
         if (outcome) selected.push(outcome);
       }
-      if (selected.length === 50) break;
+      if (selected.length === candidateLimit) break;
     }
     if (
-      selected.length === 50 ||
+      selected.length === candidateLimit ||
       input.offset + scannedCount >= searchResult.total
     ) {
       break;

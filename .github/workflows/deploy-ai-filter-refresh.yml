@@ -8,7 +8,11 @@ on:
         required: true
         default: pause
         type: choice
-        options: [pause, activate]
+        options: [pause, activate, verify]
+      watchlist_id:
+        description: Watchlist UUID for read-only recovery verification
+        required: false
+        type: string
       revision:
         description: Exact current main SHA after the freshness migration and web deployment
         required: true
@@ -51,7 +55,7 @@ jobs:
           persist-credentials: false
       - name: Validate the timer and credential transport
         run: |
-          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh deploy/ai-filter-refresh/pause-remote.sh deploy/ai-filter-refresh/pause-host.sh
+          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh deploy/ai-filter-refresh/pause-remote.sh deploy/ai-filter-refresh/pause-host.sh deploy/ai-filter-refresh/verify-remote.sh
           python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
           systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer
       - name: Install and activate the bounded HTTP timer over pinned SSH
@@ -71,3 +75,12 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
           EXPECTED_SHA: ${{ inputs.revision }}
         run: bash deploy/ai-filter-refresh/pause-remote.sh "$EXPECTED_SHA"
+      - name: Verify saved criteria and recovery through the protected endpoint
+        if: inputs.action == 'verify'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+          WATCHLIST_ID: ${{ inputs.watchlist_id }}
+        run: bash deploy/ai-filter-refresh/verify-remote.sh "$EXPECTED_SHA" "$WATCHLIST_ID"

@@ -4703,6 +4703,12 @@ msgstr "Retry account"
 msgid "marketing.tracker.proofBody"
 msgstr "Return to the job details while you prepare for an interview. Your status and interview rounds stay attached to the role you saved."
 
+#. Notice when narrowed review is paused and the accepted feed has no materialized matches yet
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewPaused"
+msgstr "Review is temporarily paused. Your saved criteria are preserved."
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -5190,6 +5196,12 @@ msgstr "Showing jobs in {shownNames} and {remaining} more"
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Showing jobs in all languages"
+
+#. Notice above accepted matches while the saved narrowed feed is only partly reviewed
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.partialReview"
+msgstr "Showing reviewed matches. This feed is still being reviewed."
 
 #. Sign-in page heading
 #. js-lingui-explicit-id
