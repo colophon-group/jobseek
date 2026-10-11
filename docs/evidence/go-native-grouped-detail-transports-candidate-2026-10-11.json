@@ -376,5 +376,6 @@
     "No CI/installed image proof, production deployment, active ordinary ownership or full-fleet freshness/cost claim."
   ],
   "mandatory_python_ownership_tests": 89,
-  "vet": "ordinary-queue and ordinary-worker passed"
+  "vet": "ordinary-queue and ordinary-worker passed",
+  "additional_validation": "All Workday/DOM/JSON-LD detail admission unit contracts passed under race after correcting two historical blanket TLS-rejection assertions; malformed flags and unsupported secondary options remain rejected."
 }
