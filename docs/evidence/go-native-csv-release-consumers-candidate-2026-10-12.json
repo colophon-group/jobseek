@@ -28,13 +28,14 @@
     "Go_tidy_diff": "clean",
     "bridge_original_Python_oracle_cases": 24,
     "CSV_archive_cases": 17,
-    "deployment_regressions": "71 passed62.29s",
+    "deployment_regressions": "71 passed61.02s",
     "source_binding_refusal_cases": 7,
     "workflow_contracts": "3 passed",
     "ruff": "pass",
-    "shell_syntax": "pass"
+    "shell_syntax": "pass",
+    "documentation_without_Go_in_PATH": "pass0.24s"
   },
-  "test_log_sha256": "c1b1ae0854faa3f228ccd3abcfc6d2e8f06399e918b9814c064f6b416365d800",
+  "test_log_sha256": "5eb8347a3e31e5cc96eb421630edfec9a24af20f0f2feafdfab3e28bed0e3ca6",
   "limitations": [
     "CSV archives are bounded to128MiB and20,000 entries; current registry under10MiB.",
     "Rejection diagnostics are categorical and contain no evidence content.",

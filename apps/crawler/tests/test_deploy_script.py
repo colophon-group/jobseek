@@ -94,13 +94,16 @@ def native_csv_tools_directory(
 
 @pytest.fixture(autouse=True)
 def bind_native_csv_artifacts(
-    native_csv_tools_directory: Path, monkeypatch: pytest.MonkeyPatch
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("JOBSEEK_CSV_NATIVE_TOOL_DIR", str(native_csv_tools_directory))
+    # Filesystem deployment regressions use the real source-bound executable.
+    # Static documentation/workflow checks run before Go is installed.
+    if "tmp_path" not in request.fixturenames:
+        return
+    directory = request.getfixturevalue("native_csv_tools_directory")
+    monkeypatch.setenv("JOBSEEK_CSV_NATIVE_TOOL_DIR", str(directory))
     monkeypatch.setenv("JOBSEEK_CSV_TOOL_REVISION", "c" * 40)
-    monkeypatch.setenv(
-        "NATIVE_DEPLOY_TOOLS", str(native_csv_tools_directory / "crawler-deploy-tools-arm64")
-    )
+    monkeypatch.setenv("NATIVE_DEPLOY_TOOLS", str(directory / "crawler-deploy-tools-arm64"))
 
 
 def _create_deploy_spec_rollback_archive(
