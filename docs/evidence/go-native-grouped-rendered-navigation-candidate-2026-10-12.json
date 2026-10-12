@@ -33,7 +33,8 @@
   "retained_failure_history": [
     "Initial proxy profile guard refused replacements; fixed only exact source-bound DOM/browser branch",
     "First physical database replay required exact board URL and refused Spain action-selected final query; fixed exact witnessed final query while forwarding its actual final URL",
-    "Original group has5 failures and2 additional unqualified physical/action cases; no failures converted to empty success"
+    "Original group has5 failures and2 additional unqualified physical/action cases; no failures converted to empty success",
+    "Full queue CI rejected source-bound browser replacements in the old shared HTTP proxy registry coverage assertion; coverage now explicitly expects exactly the three qualified Alten browser replacements, preserving strict original HTTP proxy coverage for every other row"
   ],
   "remaining": [
     "Committed-head CI/image/Linux/gate qualification",
