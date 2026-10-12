@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "status": "source1023 deployed; original full-floor ordinary activation succeeded; independent active293 authority and natural work verified",
+  "source_revision": "4c38863bce647387bc93ed7dd0f588f1224d4bfb",
+  "version": "0.13.1023",
+  "profiles": 204,
+  "pr": 10437,
+  "reviewed_head": "16b78bb377599bef4b0b37435747c9a5e64fce6a",
+  "images": {
+    "source_revision": "4c38863bce647387bc93ed7dd0f588f1224d4bfb",
+    "renderer_image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:429c3f1771807e01cca7ca414b255e74570f87e15cfe90a430b811b0681467b4",
+    "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:37dfc74e9224e20caa066ff096f286b69c0101dd890085522825bd32a9c8518a",
+    "browser_image_ref": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3100fdc9cb89ffe09573c6b323bebd81b73ade3179215770065ef772ddfa1dca"
+  },
+  "crawler_original_workflow": {
+    "run": 38186558944,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "renderer_original_workflow": {
+    "run": 38186581669,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "qualification": {
+    "required_CI": 38183982892,
+    "required_CI_attempt": 2,
+    "infrastructure_retry": "executor initialization was rate limited while pulling Postgres; exact-head single-job retry and dependent Required CI passed",
+    "contracts": 38183982803,
+    "pilot": 38184098915,
+    "deploy_gate": 38183982767,
+    "ARM": 38183993819,
+    "ARM_arms": 16,
+    "ARM_admitted": true,
+    "ARM_report_sha256": "cee2160c9af91047ff9a9d0aafd2b22230d5fe2fa48348a263bfef881dddb3cf"
+  },
+  "native_postgresql_preflight_seconds": 0.46,
+  "independent_cold_readback": {
+    "epoch": 292,
+    "schema": {
+      "version": "0040",
+      "columns": {
+        "next_detail_at": "timestamptz",
+        "next_detail_description_hash": "int8",
+        "next_detail_step": "int2"
+      },
+      "constraint_validated": true
+    },
+    "restored_writers": 7,
+    "health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200
+    },
+    "cancelled_source1022_plan_staged": true
+  },
+  "b0": {
+    "cohort": "cdom",
+    "routing_epoch": "293",
+    "plan_digest": "9c01bbd27d9a9cee68d6943af9c89ec8666de777097abae28525d20b489e8013",
+    "receipt_sha256": "900885d52d4a10973ab72aeae0ac0c8bd9dcc48403c137f5fa458eed706d4f4c",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204
+    }
+  },
+  "ordinary": {
+    "enabled_boards": 7885,
+    "monitor_boards": 7788,
+    "detail_boards": 7683,
+    "previous_monitor_count_preserved": 7788,
+    "previous_detail_count_preserved": 7683,
+    "scheduled_detail_postings": 1679084,
+    "scheduled_owned_postings": 1556370,
+    "qualified_monitor_additions": 0,
+    "qualified_detail_candidates": 0,
+    "actual_posting_routes_reconciled": true,
+    "state": "active; independently verified",
+    "epoch": 293,
+    "plan_sha256": "480e7262b52e57e7c2f15067323f40d2d267e848c3da4686ccb637af97c77e53",
+    "projection_sha1": "8a5540c44c454964ca74dc9ed882a379b94110fe",
+    "receipt_sha256": "3844c2ffe7a46c1966bd45f1c1aff9c3ffb5e85d05f34a6f81dc6eab8355a319",
+    "restored_restart_armed_writers": 10,
+    "health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "natural_summary": {
+      "observed_at": "2026-10-12T00:46:32.504902+00:00",
+      "fences_by_task": [
+        {
+          "task_kind": "monitor",
+          "state": "active",
+          "count": 16
+        },
+        {
+          "task_kind": "monitor",
+          "state": "completed",
+          "count": 47
+        },
+        {
+          "task_kind": "scrape",
+          "state": "completed",
+          "count": 23
+        }
+      ],
+      "scope": "naturally scheduled active293 native claims; no replay or synthetic work injected"
+    },
+    "completed_monitors": 47,
+    "exact_settled_recurring_schedules": 46,
+    "retained_completion_leases": 1
+  },
+  "full_migration_complete": false,
+  "limitations": [
+    "Initial natural work advances:69 monitor/43 detail completions,68 exact recurring monitor schedules. The earlier retained completion settled; a different newer completion remains under observation. Finalization/configuration1, posting-write deadline2, settlement-unacknowledged2 and ordinary detail failures3 remain bounded diagnostics for follow-up, not sustained conservation/freshness proof.",
+    "Sustained fleet freshness and matched-throughput production cost remain unproved.",
+    "76 remaining uncompiled monitor configurations span DOM53/API12/inline4/RSS2/BrassRing4/Njoyn1;21 compiled configurations outside the ordinary floor still need appropriate admission, including B0 and held candidates.",
+    "Production Python schema, credential, CSV, legacy worker/browser consumers remain."
+  ],
+  "readback_sha256": {
+    "native1023-merge-authority-pr10437-verified1-2026-10-12.json": "31207e1d95ebfb1c7d99865dc1b97cdf40d4195094dc19db070100600bd34089",
+    "native-source1023-postdeploy-cold292-independent-verified1-2026-10-12.json": "ecb2b23a3deebbe0a57cf2cfbe85e20d1f360d406ceb86550c63eec93bcd0b3a",
+    "native-source1023-renderer-independent-verified1-2026-10-12.json": "92c5f69da22ebdbcf0fd4f48598ac803e139d68913dfb8c64128babae4b7881d",
+    "native-source1023-deploy-tools-independent-verified1-2026-10-12.json": "84a32970d2ac4fca2eac0bf93dd84bc00e4bc4a49ba54718f887490f89fecd34",
+    "native-source1023-exporter-progress-independent-verified1-2026-10-12.json": "f193cf80aa3cef02eb05874f8d203c02151dd36b1272fd594770d22492c7c3fb",
+    "native1023-supported-b0-readback-verified1-2026-10-12.log": "4fbff04d847fcd6d9620ab44bf936ff98dfc81e70bf919e7781beb8fcc2cf038",
+    "native1023-owner-receipt-independent-verified1-2026-10-12.json": "7a8187b1ecc910833fd6be9a6e0cef145932117df25bcc81db4df17856b4801c",
+    "native-source1023-full-conservation-independent-verified1-2026-10-12.json": "68a2720b5343a5aa4100b9234e8ffd89d4ad894fce10abf543a53a972bc9c8f4",
+    "native-source1023-ordinary-kernel-independent-verified1-2026-10-12.json": "e104cd228be404ae124fa7cd2edc71d7d3fe84a522a05c0c9e6dfd51bb7c93c5",
+    "native-source1023-detail-ages-independent-verified1-2026-10-12.json": "c66402df8cd416918b652a4c439a10fc3744162b9ce4b3df5dd17dbedb6f322b",
+    "native-source1023-owner-activate-promoted-attempt1-2026-10-12.log": "45f48166f47afa4d3ec4cc197dfc16eb8a71a223e0818ac319d52ae3eaf150d8",
+    "native-source1023-full-conservation-independent-verified2-2026-10-12.json": "2ab03576136c17ff2cf01f950d4d28f14c58bd4cb4cd3d121bc72fec7f9ca0b5",
+    "native-source1023-ordinary-kernel-independent-verified2-2026-10-12.json": "3ba4fc42c26ca14c4659cc6c55a28b5987793961a7e9a6e2033565cb1ee63d08",
+    "native-source1023-detail-ages-independent-verified2-2026-10-12.json": "4ccca16ac42cf209f856618ba8e920227456173cd9bd2655e5eca7b9c823a50e"
+  },
+  "observed_at_utc": "2026-10-12T00:46:32.919791+00:00",
+  "kernel": {
+    "CPU": "104.78%",
+    "memory": "327.5MiB / 1GiB",
+    "restart_count": 0,
+    "kernel_OOM_kills": 0
+  },
+  "scheduled_detail_ages": {
+    "observed_at": "2026-10-12T00:46:33.965446+00:00",
+    "ages": [
+      {
+        "native_owned": false,
+        "scheduled": 122644,
+        "due": 118877,
+        "overdue_1h": 118835,
+        "overdue_6h": 118266,
+        "overdue_24h": 116275,
+        "oldest_due_seconds": 17392884.061415
+      },
+      {
+        "native_owned": true,
+        "scheduled": 1555840,
+        "due": 1530443,
+        "overdue_1h": 1529973,
+        "overdue_6h": 1526839,
+        "overdue_24h": 1505365,
+        "oldest_due_seconds": 17379287.284266
+      }
+    ]
+  },
+  "processing_diagnostics": [
+    [
+      "finalization",
+      "configuration"
+    ]
+  ],
+  "followup": {
+    "observed_at_utc": "2026-10-12T00:48:57.893483+00:00",
+    "natural_summary": {
+      "observed_at": "2026-10-12T00:48:57.414042+00:00",
+      "fences_by_task": [
+        {
+          "task_kind": "monitor",
+          "state": "active",
+          "count": 15
+        },
+        {
+          "task_kind": "monitor",
+          "state": "completed",
+          "count": 69
+        },
+        {
+          "task_kind": "scrape",
+          "state": "active",
+          "count": 3
+        },
+        {
+          "task_kind": "scrape",
+          "state": "completed",
+          "count": 43
+        }
+      ],
+      "scope": "naturally scheduled active293 native claims; no replay or synthetic work injected"
+    },
+    "completed_monitors": 69,
+    "exact_recurring_schedules": 68,
+    "retained_completion_leases": 1,
+    "first_snapshot_retained_monitor_settled": true,
+    "remaining_retained_monitor": "au-small-finance-bank-careers",
+    "resource": {
+      "CPUPerc": "102.14%",
+      "MemUsage": "517.2MiB / 1GiB",
+      "MemPerc": "50.50%",
+      "PIDs": "10"
+    },
+    "restart_count": 0,
+    "kernel_OOM_kills": 0,
+    "diagnostic_classes": {
+      "finalization:configuration": 1,
+      "detail_failure:failed": 3,
+      "posting_write:deadline": 2,
+      "detail_settlement:unacknowledged": 1,
+      "settlement:unacknowledged": 1
+    },
+    "scheduled_detail_ages": {
+      "observed_at": "2026-10-12T00:48:58.825774+00:00",
+      "ages": [
+        {
+          "native_owned": false,
+          "scheduled": 122644,
+          "due": 118876,
+          "overdue_1h": 118834,
+          "overdue_6h": 118264,
+          "overdue_24h": 116276,
+          "oldest_due_seconds": 17393029.001689
+        },
+        {
+          "native_owned": true,
+          "scheduled": 1555840,
+          "due": 1530467,
+          "overdue_1h": 1529961,
+          "overdue_6h": 1526844,
+          "overdue_24h": 1505434,
+          "oldest_due_seconds": 17379432.22454
+        }
+      ]
+    }
+  }
+}
