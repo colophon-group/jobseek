@@ -3089,3 +3089,11 @@ At20:13 UTC, the active fleet still has6,819 due native monitors /4,528 over an
 hour late and1,541,413 due native detail routes /1,486,120 over a day late. This
 candidate repairs a concrete contract mismatch; its production freshness and
 resource effect is unproved. See [the capacity candidate](evidence/go-native-worker-capacity-candidate-2026-10-11.json).
+
+### Source1035 retirement recovery — 2026-10-12
+
+Source0.13.1035 (`5a98c747aec1834d157151e46ff2489ee2275024`, PR #10450) passed its original full crawler/renderer deployments, supported B0 and ordinary activation at epoch301, and independent serving verification with7804 monitor boards and7683 detail boards. The next mixed batch qualifies Bunge and the GE Vernova Menk/King detail boards.
+
+The outgoing ordinary retirement then refused eligibility and contained the complete writer lane, retaining the exact source1035 retiring receipt. Read-only diagnosis proved one historical source1034/epoch299 monitor receipt belongs to the immutable retired plan with profile `accenture.http-items/v1`; retirement’s historical browser-profile allowlist omitted that supported profile. Current epoch/plan, B0 boards, and current scrape bindings matched; there were no conflicting plans or future receipts. Candidatus has the same omission. Real PostgreSQL/Redis regressions reproduce both failures after a fresh owner has its own interrupted claim. Add only the two supported profiles to historical recognition, retain all receipts, and verify cold reversal and revoked old/current write authority.
+
+Recovery uses the existing compatibility-admin workflow: qualify and merge the corrected mixed batch at its exact final head, obtain its immutable crawler image from the original workflow build (deployment must refuse retained ordinary/B0 receipts), cache that image through `crawler-native-admin-prepull.yml`, then invoke the unchanged installed ordinary wrapper with the approved admin source/image. Keep source1035 selected until full supported retirement, B0 rollback, selector clearing, and independent cold302 verification succeed. Retry the original full deployment only after that recovery. No SQL/Redis receipt edits, lease clearing, partial restarts, or wrapper replacement. Full migration remains incomplete.
