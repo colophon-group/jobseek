@@ -473,6 +473,20 @@ func discoverInitial(ctx context.Context, o Options, first *Document, fetch Fetc
 			}
 			result.URLOnly = len(o.Fields) == 0
 		}
+		if o.URLField == "" && o.URLTemplate == "" && o.domLinks != nil && len(selected) > 0 {
+			links, e := o.domLinks(ctx)
+			if e != nil {
+				return result, e
+			}
+			items := make([]map[string]any, 0, len(selected))
+			for _, i := range selected {
+				items = append(items, sourceRows[i].row)
+			}
+			o.domURLField, o.domURLs, e = DOMCrossrefURLs(sourceRows[selected[0]].document, items, o.BoardURL, links)
+			if e != nil {
+				return result, e
+			}
+		}
 		for _, i := range selected {
 			source := sourceRows[i]
 			job, found, err := project(source.document, source.row, o, join)
@@ -563,6 +577,15 @@ func project(d *Document, row map[string]any, o Options, join JoinURL) (Job, boo
 			if err != nil {
 				return job, false, err
 			}
+		}
+	}
+	if rawURL == "" && o.domURLField != "" {
+		if value, ok := row[o.domURLField]; ok {
+			id, e := d.String(value)
+			if e != nil {
+				return job, false, e
+			}
+			rawURL = o.domURLs[id]
 		}
 	}
 	if rawURL == "" && len(o.Fields) > 0 {

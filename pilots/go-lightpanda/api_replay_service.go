@@ -62,7 +62,8 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 			}
 			inventory, err = api.DiscoverByteDance(ctx, portal, fetch)
 		} else {
-			inventory, err = api.DiscoverBrowserReplay(ctx, task.APIReplay.options, fetch, api.PythonJoinURL, usingHTTP)
+			links, _ := ctx.Value(replayDOMLinksContextKey{}).(api.DOMLinks)
+			inventory, err = api.DiscoverBrowserReplay(ctx, task.APIReplay.options, fetch, api.PythonJoinURL, usingHTTP, links)
 		}
 		collected = err == nil
 		return err

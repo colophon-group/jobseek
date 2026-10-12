@@ -1,6 +1,95 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1022 deployed; B0 active at epoch291
+## Current checkpoint — source1023 deployed; full ordinary ownership active293
+
+[PR #10437](https://github.com/colophon-group/jobseek/pull/10437) merged as
+`4c38863bce647387bc93ed7dd0f588f1224d4bfb`, **0.13.1023 /204 profiles**.
+The [original whole crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38186558944)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38186581669)
+succeeded at attempt1. Exact-head Required CI passed at attempt2 after a
+registry-rate-limited Postgres pull prevented executor test initialization;
+the single failed executor job and dependent Required CI were retried.
+Contracts/installed-image parity, both pilot architectures, deploy gate and
+all16 ARM admission comparisons passed at the same reviewed head.
+Independent readback verifies exact selected source/images, schema0040, seven
+restored base services, six health endpoints, native host artifacts/compiled
+source/actual CSV tree and successful export. Native PostgreSQL operational
+preflight passed in0.46s. See the [production checkpoint](evidence/go-native-source1023-production-2026-10-12.json).
+
+The original source1022 B0 rollback and selector clear completed at cold292;
+its cancelled ordinary plan remains staged and inert, with no new attempts.
+Source1023's unchanged B0 wrapper then activated **epoch293**, independently
+verified with its source/image-bound receipt and seven healthy endpoints.
+Fresh admission covers **7,885 boards /1,679,084 scheduled routes**, preserves
+all **7,788 monitor /7,683 detail-board** owners and reconciles all their
+**1,556,370 owned routes**, with zero new additions and zero floor route-cache
+mismatches. Remaining6,754 cache mismatches are outside that admitted floor.
+Ordinary staging and original exact-plan activation succeeded. Independent
+SQL/Redis/receipt readback proves **active293**, all ten restart-armed writers
+and eight healthy endpoints. Initial natural work shows47 completed monitors
+and23 details;46 monitor receipts exactly match recurring schedules, with one
+retained completion lease still being observed. The worker has no restart or
+kernel OOM, with327.5MiB/1GiB and about one CPU core used in the initial snapshot.
+A second readback advances to69 monitor/43 detail completions and68 exact
+recurring schedules. The earlier retained completion settled; a different newer
+completion remains under observation. The worker is still free of restart/OOM,
+with517.2MiB/1GiB and about one CPU core used. Bounded finalization/configuration,
+write-deadline and unacknowledged-settlement diagnostics need follow-up. Owned
+scheduled details still include **1,505,434 more than24hours overdue**. These early
+results do not establish sustained freshness or cost.
+
+The correction preserves a stopped legacy detail fetch's exact pending later
+step/hash/interval and canonical future cycle deadline. All eight actual
+JSON-LD/DOM/proxy ordered chains, durable Redis restart, cold reversal and
+invented-handoff/live-lease refusal pass real local PostgreSQL/Redis race tests.
+Lightpanda **1.0.0** remains the latest stable release verified on2026-10-12.
+A later natural observation at01:10UTC shows347 completed monitors and550
+completed detail claims. All347 monitors have their exact recurring schedule;
+the previously retained completion leases have settled. The worker remains
+free of restart/OOM at516.3MiB/1GiB. Finalization/configuration diagnostics have
+increased to3 and detail failures to12; their cause and the large overdue
+backlog remain follow-up work, not successful freshness/cost evidence.
+
+### Continue the full migration
+
+1. Continue independent natural recurring-settlement and queue-conservation
+   observations on source1023 active293; follow up the initial retained completion
+   lease and finalization/configuration diagnostic without changing ownership.
+2. Measure actual20/5 concurrency against monitor/detail ages and cgroup CPU/RAM.
+   The earlier1.48million detail routes more than24hours late remain unresolved;
+   local/synthetic benchmarks do not establish production freshness or cost.
+3. Deliver the combined Go deployment/CSV consumer batch in
+   [PR #10438](https://github.com/colophon-group/jobseek/pull/10438), candidate
+   **0.13.1025 /204 profiles**. It ports release-bridge provenance, runtime
+   attestation, CSV tree verification, archive validation/extraction, generation
+   activation/fsync and trusted-runner manifest creation. The source-bound
+   executable and original global mutation lock, quiescence, journal, publisher
+   policy, compatibility/staleness gates and rollback contracts remain in force.
+   Seventeen Go archive cases,24 original bridge oracle cases,71 deployment
+   regressions and Linux architecture qualification govern delivery. Full
+   source-bound CI and the original whole rollout are still required; this
+   candidate has no production authority. See the [consumer-batch evidence](evidence/go-native-csv-release-consumers-candidate-2026-10-12.json).
+   Add the [DOM cross-reference correction](evidence/go-native-api-dom-crossref-candidate-2026-10-12.json)
+   to this grouped delivery, **0.13.1026 /204 profiles**. IATA's original Python
+   and physical pinned Lightpanda captures now agree on all34 URLs and all
+   eight exported content fields. A real local PostgreSQL/Redis replay persists
+   all34 source/title identities and settles the exact canonical recurring
+   deadline and lease. Twelve original DOM cases and two physical cookie,
+   pagination and later-publisher-denial cases pass. Production still runs
+   source1023; natural IATA recovery is required after delivery.
+4. Continue grouped monitor/controller work from the current exact SDK frontier:
+   **DOM53, API12, inline4, RSS2, BrassRing4 and Njoyn1** configurations remain
+   uncompiled. Another21 compile outside the ordinary floor, including B0 boards,
+   but need appropriate qualification. Preserve held Hitachi Energy/Implenia until
+   complete fresh evidence passes; compilation alone grants no ownership.
+5. Finish standalone CSV publication, credential helpers, schema execution and
+   remaining legacy worker/browser consumers. Establish full enabled-route
+   replacement, sustained freshness/conservation/resources/cost, supported cold
+   reversal and the rollback window before retiring production Python,
+   Playwright and Chromium. Keep useful isolated offline Python.
+   **The full migration goal remains active and incomplete.**
+
+## Historical checkpoint — source1022 deployed; supported failed-activation recovery
 
 [PR #10435](https://github.com/colophon-group/jobseek/pull/10435) merged as
 `ab32fe6a7914718ea8deb351487682d10a64e746`, **0.13.1022 /204 profiles**.
@@ -60,7 +149,10 @@ release checked on2026-10-12; all images use immutable digests.
    held Njoyn and BrassRing inventory completion and canonical route-cache repairs.
    Preserve held Hitachi Energy and Implenia until fresh full evidence qualifies
    them. Compilation and empty/synthetic fixtures do not grant board ownership.
-4. Finish standalone CSV publication, release-bridge/credential helpers, schema
+4. Deliver the [source1024 Go bridge/attestation candidate](evidence/go-native-release-bridge-candidate-2026-10-12.json)
+   after restoring source1023 adoption. Its24 original Python oracle cases and
+   all63 deployment regressions pass locally; Linux qualification and the original
+   rollout remain required. Finish standalone CSV publication, credential helpers, schema
    execution and remaining legacy worker/browser consumers through their existing
    operational contracts. Retain useful isolated offline Python.
 5. Establish full enabled-route replacement, sustained freshness/conservation and

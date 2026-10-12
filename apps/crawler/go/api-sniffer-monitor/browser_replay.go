@@ -14,8 +14,8 @@ import (
 // DiscoverBrowserReplay keeps the established parser and pagination traversal.
 // Read the initial document once, set Python's browser/HTTP page budget from
 // that document, then seed Discover so capture reuse does not issue a replay.
-func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fetch, join JoinURL, httpFallback bool) (Inventory, error) {
-	if fetch == nil || join == nil {
+func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fetch, join JoinURL, httpFallback bool, domLinks ...DOMLinks) (Inventory, error) {
+	if fetch == nil || join == nil || len(domLinks) > 1 {
 		return Inventory{}, ErrOptions
 	}
 	firstRequest := Request{Method: o.Inventory.Method, URL: o.Inventory.Endpoint, Body: o.Inventory.Body, Headers: o.Inventory.Headers.Clone()}
@@ -28,6 +28,9 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 		return Inventory{}, err
 	}
 	inventory := o.Inventory
+	if len(domLinks) == 1 && domLinks[0] != nil && inventory.URLField == "" && inventory.URLTemplate == "" && !inventory.HTML {
+		inventory.domLinks = domLinks[0]
+	}
 	if inventory.Pagination != nil {
 		pagination := *inventory.Pagination
 		pagination.MaxPages = limit

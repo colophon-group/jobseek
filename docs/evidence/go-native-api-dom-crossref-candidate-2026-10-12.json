@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "status": "locally qualified next migration batch; no serving authority",
+  "version": "0.13.1026",
+  "profiles": 204,
+  "base_candidate": "54259de0b7b93a5461f8a904903e4c8e75af4794",
+  "problem": "IATA API rows have requisition IDs but no URL field. Original Python derives posting URLs from the current rendered page; native replay previously returned zero jobs/truncated and correctly refused a successful empty lifecycle.",
+  "change": "Go preserves original DOM ID/path/slug/query derivation within the affine verified browser conversation. A typed private context carries the callback across the executor task copy; callbacks close before the conversation ends. Explicit URL configurations remain unchanged.",
+  "validation": {
+    "original_DOM_cases": 12,
+    "Go_API_race": "pass13.253s",
+    "pilot_focused_race": "pass6.798s",
+    "physical_Lightpanda": "1.0.0;34 jobs,not truncated",
+    "original_public_field_parity": {
+      "urls": 34,
+      "fields": [
+        "title",
+        "description",
+        "locations",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
+        "metadata",
+        "extras"
+      ],
+      "mismatches": 0
+    },
+    "real_private_PostgreSQL_Redis": "34 canonical source/title matches; exact recurring deadline and lease settlement; race pass5.425s",
+    "physical_cookie_pagination_and_later_publisher_denial": "2 cases;pass2.434s",
+    "vet": "pass",
+    "tidy_diff": "clean"
+  },
+  "evidence_sha256": {
+    "original": {
+      "sha256": "77d9154f5e513609c7fb652cb68dac74a3de3147c4fd14e500a1fd2675f688ce"
+    },
+    "physical": {
+      "sha256": "cdcf74a14c9abee47cb1f5979f684cbee5f5e000ac2cbe0a68035cd8233cf148"
+    },
+    "canonical": {
+      "sha256": "a60a7288ed19c9df027b2b42a49229959f1775c485819b85228edabb6ada0130"
+    }
+  },
+  "limitations": [
+    "Production remains source1023 active293; no failure counters or ownership have been modified.",
+    "Required CI, Linux physical qualification, source-bound full rollout and natural production recovery remain pending.",
+    "URL-only configurations without an explicit URL field and broader frontend/controller gaps remain unsupported.",
+    "No new monitor/detail owners are admitted by these tests."
+  ],
+  "full_migration_complete": false
+}

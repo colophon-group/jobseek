@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "local qualified next batch; no production deployment",
+  "version": "0.13.1024",
+  "profiles": 204,
+  "parent_candidate": "16b78bb377599bef4b0b37435747c9a5e64fce6a",
+  "scope": [
+    "Go release bridge provenance validation",
+    "Go runtime attestation epoch validation"
+  ],
+  "operational_consumers": [
+    "original whole-deployment active-generation bridge verification invokes the source-bound Go host executable with an empty environment"
+  ],
+  "preserved_contract": [
+    "generic v3 rejects legacy residue",
+    "exact legacy metadata keys and formats1/2",
+    "unique explicitly attested runtime epoch",
+    "source SHA256 and immutable image bindings",
+    "initial exact source Compose/environment/success bytes",
+    "transitive bridge rules",
+    "symlink and malformed evidence refusal"
+  ],
+  "validation": {
+    "Go_race": "pass2.799s",
+    "original_Python_bridge_oracle_cases": 24,
+    "deployment_regressions": "63 passed66.74s",
+    "Go_vet": "pass",
+    "Go_tidy_diff": "clean",
+    "shell_syntax": "pass"
+  },
+  "test_log_sha256": "52af4b3c3fe7dbd01d67754312fa6d8179184e88f79538fdea3e63b1612fea36",
+  "remaining_before_delivery": [
+    "required checks and Linux host artifact qualification",
+    "original source-bound whole rollout",
+    "independent selected release and actual bridge-state verification"
+  ],
+  "limitations": [
+    "The standalone CSV workflow still invokes Python bridge and attestation consumers; their native artifact binding remains a separate operational change.",
+    "Production Python schema, credential, CSV, legacy worker/browser consumers remain.",
+    "Publish this batch after source1023 adoption is restored; no ownership authority follows from local tests."
+  ],
+  "full_migration_complete": false
+}

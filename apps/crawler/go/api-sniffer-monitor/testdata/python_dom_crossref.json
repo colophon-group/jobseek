@@ -1,0 +1,253 @@
+[
+  {
+    "name": "numeric-csod",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "requisitionId": 3829
+      },
+      {
+        "requisitionId": 3821
+      }
+    ],
+    "links": [
+      "https://example.com/ux/ats/requisition/3829"
+    ],
+    "urls": [
+      "https://example.com/ux/ats/requisition/3829",
+      "https://example.com/ux/ats/requisition/3821"
+    ]
+  },
+  {
+    "name": "slug",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": 1,
+        "slug": "one"
+      },
+      {
+        "id": 2,
+        "slug": "two"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/1/one"
+    ],
+    "urls": [
+      "https://example.com/jobs/1/one",
+      "https://example.com/jobs/2/two"
+    ]
+  },
+  {
+    "name": "query-fields",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": 1,
+        "locale": "en",
+        "location": {
+          "name": "New York"
+        }
+      },
+      {
+        "id": 2,
+        "locale": "de",
+        "location": {
+          "name": "Zug"
+        }
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/1?locale=en&city=New+York&unrelated=private"
+    ],
+    "urls": [
+      "https://example.com/jobs/1?locale=en&city=New+York",
+      "https://example.com/jobs/2?locale=de&city=Zug"
+    ]
+  },
+  {
+    "name": "first-id-field",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "externalId": "AA",
+        "id": "BB"
+      },
+      {
+        "externalId": "CC",
+        "id": "DD"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/AA",
+      "https://example.com/jobs/BB"
+    ],
+    "urls": [
+      "https://example.com/jobs/AA",
+      "https://example.com/jobs/CC"
+    ]
+  },
+  {
+    "name": "query-only-first-reference",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs?id=AA",
+      "https://example.com/jobs/AA"
+    ],
+    "urls": []
+  },
+  {
+    "name": "foreign-host",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA"
+      }
+    ],
+    "links": [
+      "https://foreign.example/jobs/AA"
+    ],
+    "urls": []
+  },
+  {
+    "name": "missing-id",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "title": "A"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/A"
+    ],
+    "urls": []
+  },
+  {
+    "name": "missing-item-id",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA"
+      },
+      {
+        "title": "B"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/AA"
+    ],
+    "urls": [
+      "https://example.com/jobs/AA"
+    ]
+  },
+  {
+    "name": "first-ten-only",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": 100
+      },
+      {
+        "id": 101
+      },
+      {
+        "id": 102
+      },
+      {
+        "id": 103
+      },
+      {
+        "id": 104
+      },
+      {
+        "id": 105
+      },
+      {
+        "id": 106
+      },
+      {
+        "id": 107
+      },
+      {
+        "id": 108
+      },
+      {
+        "id": 109
+      },
+      {
+        "id": 110
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/110"
+    ],
+    "urls": []
+  },
+  {
+    "name": "duplicate-id-last-content",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA",
+        "slug": "first"
+      },
+      {
+        "id": "AA",
+        "slug": "last"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/AA/first"
+    ],
+    "urls": [
+      "https://example.com/jobs/AA/first",
+      "https://example.com/jobs/AA/last"
+    ]
+  },
+  {
+    "name": "encoded-path",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA"
+      },
+      {
+        "id": "BB"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs%2F/AA"
+    ],
+    "urls": [
+      "https://example.com/jobs%2F/AA",
+      "https://example.com/jobs%2F/BB"
+    ]
+  },
+  {
+    "name": "blank-and-duplicate-query",
+    "board_url": "https://example.com/careers",
+    "items": [
+      {
+        "id": "AA",
+        "locale": "en"
+      },
+      {
+        "id": "BB",
+        "locale": "de"
+      }
+    ],
+    "links": [
+      "https://example.com/jobs/AA?locale=&locale=en&locale=ignored"
+    ],
+    "urls": [
+      "https://example.com/jobs/AA?locale=en",
+      "https://example.com/jobs/BB?locale=de"
+    ]
+  }
+]

@@ -81,6 +81,24 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+      - name: Qualify native host deployment tools
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          artifacts="$(mktemp -d "$RUNNER_TEMP/native-deploy-tools.XXXXXX")"
+          bash scripts/build-deploy-tools.sh "$source_sha" "$artifacts/scripts"
+          source scripts/native-deploy-tools.sh
+          initialize_native_deploy_tools "$artifacts/scripts" "$source_sha"
+          env -i "$NATIVE_DEPLOY_TOOLS" --build-info
+          (
+            cd go/deploy-tools
+            go test -race ./...
+            go vet ./...
+            go mod tidy -diff
+            test -z "$(gofmt -l .)"
+          )
+
       - name: Test one-shot Python mTLS client contract
         working-directory: apps/crawler
         run: |

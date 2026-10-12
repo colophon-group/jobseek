@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "locally qualified combined deployment and CSV batch; no deployment",
+  "version": "0.13.1025",
+  "profiles": 204,
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10438",
+  "parent_candidate": "5ff28788db6f1ca18aa672c11bddce6ce39dce75",
+  "scope": [
+    "release bridge provenance",
+    "runtime attestation",
+    "CSV exact tree verification",
+    "CSV archive exact tree/attestation validation",
+    "bounded CSV archive extraction",
+    "atomic generation activation",
+    "generation fsync",
+    "trusted-runner CSV manifest generation"
+  ],
+  "preserved_contract": [
+    "trusted workflow revision binds host tools separately from historical requested data",
+    "two architecture digest manifest and compiled source verified before publication",
+    "original mutation lock, maintenance window, journal recovery and complete rollback",
+    "original native-owner publication refusal and runtime/data staleness checks",
+    "archive paths/duplicates/symlinks/manifest/contract/runtime epoch rejected before extraction"
+  ],
+  "validation": {
+    "Go_race": "pass3.081s",
+    "Go_vet": "pass",
+    "Go_tidy_diff": "clean",
+    "bridge_original_Python_oracle_cases": 24,
+    "CSV_archive_cases": 17,
+    "deployment_regressions": "71 passed61.02s",
+    "source_binding_refusal_cases": 7,
+    "workflow_contracts": "3 passed",
+    "ruff": "pass",
+    "shell_syntax": "pass",
+    "documentation_without_Go_in_PATH": "pass0.24s"
+  },
+  "test_log_sha256": "5eb8347a3e31e5cc96eb421630edfec9a24af20f0f2feafdfab3e28bed0e3ca6",
+  "limitations": [
+    "CSV archives are bounded to128MiB and20,000 entries; current registry under10MiB.",
+    "Rejection diagnostics are categorical and contain no evidence content.",
+    "Source-bound Linux AMD64/ARM64 qualification, required CI and original whole rollout remain pending.",
+    "Production Python CSV lifecycle pruning/journal handling/sync, schema, credentials and legacy workers/browser remain.",
+    "Remaining monitor configurations and sustained freshness/cost proof are incomplete."
+  ],
+  "full_migration_complete": false
+}
