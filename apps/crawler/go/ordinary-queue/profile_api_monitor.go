@@ -67,9 +67,10 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[string]json.RawMessage, provider, profile, token, endpoint string) (GreenhouseMonitorProfile, error) {
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
 	if string(md["proxy"]) == "true" {
+		directRenderedReplacement := provider == "dom" && profile == domRenderedMonitorProfile && config["monitor_needs_browser"] == "1" && selfIdentifyingDOMSource(config, md)
 		if proxy, ok := httpMonitorProxyProfiles[profile]; ok && config["monitor_needs_browser"] == "0" {
 			profile = proxy
-		} else if !ProfileRequiresProxy(profile) {
+		} else if !directRenderedReplacement && !ProfileRequiresProxy(profile) {
 			return fail()
 		}
 	}

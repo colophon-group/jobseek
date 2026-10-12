@@ -31,6 +31,11 @@ func MonitorSkipsSSL(config map[string]string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if config["monitor_needs_browser"] == "1" && selfIdentifyingDOMSource(config, md) {
+		// The exact source-bound browser replacement uses verified TLS. Keep
+		// the legacy exception in the ownership hash, never in its HTTP client.
+		return false, nil
+	}
 	// The Workday probe records ssl_verify=false for a publisher with a
 	// broken chain. Honor that explicit board setting for CXS discovery as
 	// well as details, without enabling fallback or proxy/browser overrides.

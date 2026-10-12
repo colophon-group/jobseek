@@ -1,0 +1,23 @@
+{
+  "schema": "jobseek.supported-cold-reversal/v1",
+  "outgoing_source": "96d705e7f04f64c656d22316a8616f1d9a728914",
+  "incoming_merged_source": "3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e",
+  "observed_at_utc": "2026-10-12T06:55:43.235471+00:00",
+  "canonical": {
+    "routing_epoch": 296,
+    "active_plans": 0,
+    "source1028_plan_state": "retired",
+    "retained_source1028_receipts": 2259
+  },
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "live_oneoffs": 0,
+  "restored_base_service_count": 7,
+  "healthy_endpoint_count": 6,
+  "independent_proof_sha256": "357aff969b761e41ea6eff55d560356520cab5406bdd3697bbaa2a793077ad64",
+  "ordinary_retirement_succeeded": true,
+  "b0_reversal_succeeded": true,
+  "locked_selector_clear_succeeded": true,
+  "incoming_activation_claimed": false,
+  "migration_schema_version": "0040"
+}

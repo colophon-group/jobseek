@@ -1,6 +1,41 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1028 deployed; full ordinary ownership active295
+## Current checkpoint — source1029 merged; cold296; original rollouts running
+
+[PR #10441](https://github.com/colophon-group/jobseek/pull/10441) merged as
+`3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e`, **0.13.1029 /204 profiles**.
+Exact candidate `91b45a0e8923a1d7dadadd813a85fb2e0728693e` passed Required CI,
+installed-image contracts, both Linux pilots, Crawler Deploy Gate and the
+[manual whole-lane run](https://github.com/colophon-group/jobseek/actions/runs/38210647227):
+all16 ARM arms, clean committed-head checkout and admitted numeric verdict.
+
+Source1028's original ordinary retirement and B0 reversal succeeded. The normal
+locked selector clear waited for scheduled native Typesense reconciliation to
+finish, then succeeded. Independent cold296 readback verifies zero active plans,
+no owner receipts/projections/tokens, retained source1028 write receipts,
+schema0040 and seven restored restart-armed base services with six healthy
+endpoints. See the [cold reversal evidence](evidence/go-native-source1029-cold-reversal-2026-10-12.json).
+The exact-head/base guarded merge followed this fresh proof.
+
+The original full crawler rollout and matching renderer rollout are running.
+After both succeed, independently verify their immutable source/images, native
+host artifacts, actual CSV tree and exporter progress. Activate B0 through its
+original wrapper, capture every actual scheduled posting route, and admit the
+two qualified Trip/Air Belgium monitors while preserving **7,788 monitors and
+7,683 detail boards**. Verify the resulting **7,790 monitor owners /7,683 detail
+owners**, canonical effects, natural recurring settlement and freshness.
+No source1029 owner activation is claimed yet.
+
+The four-board rendered follow-up is [PR #10443](https://github.com/colophon-group/jobseek/pull/10443).
+It matches all94 original URLs for Alten Portugal/Spain/Finland and
+ArcelorMittal Ukraine, with physical PostgreSQL/Redis and portable failure-path
+proofs. Rebase onto the actual merged source1029 and qualify its final head;
+perform its original full rollout and one fresh grouped admission. Its detail
+replacements remain unqualified. Production Python/Playwright/Chromium
+retirement, every enabled route and sustained whole-fleet freshness/cost remain
+required. **The full migration remains incomplete.**
+
+## Historical checkpoint — source1028 deployed; full ordinary ownership active295
 
 [PR #10440](https://github.com/colophon-group/jobseek/pull/10440) merged as
 `96d705e7f04f64c656d22316a8616f1d9a728914`, **0.13.1028 /204 profiles**.
@@ -46,6 +81,30 @@ remaining work includes credential/schema helpers, legacy worker/browser
 consumers and every enabled route. Production Python, Playwright and Chromium
 retirement still requires full replacement authority, supported cold reversal
 and the rollback window. **The full migration goal remains active and incomplete.**
+
+## Next grouped candidate — four rendered source contracts
+
+The following **0.13.1030** prototype covers Alten Portugal, Spain and Finland,
+and ArcelorMittal Ukraine together. Original / physical inventories match
+**5 /65 /17 /7 URLs**, and real PostgreSQL /Redis replay inserts all **94** with
+exact deadline/lease settlement and publisher/incomplete/empty protection.
+Exact static configuration hashes select a direct verified-TLS, self-identifying
+replacement while retaining original controls in the ownership hash. Original
+`transport_attempts=3` rotates proxy endpoints after origin blocks; the direct
+replacement retains the existing bounded single native transport retry and
+fails origin blocks without proxy fallback. Spain forwards its witnessed
+pagination query. These choices are explicit replacement contracts, not
+unqualified generic flags. Browser detail replacement remains outstanding.
+See the [candidate evidence](evidence/go-native-grouped-rendered-navigation-candidate-2026-10-12.json).
+
+Source1028 has now recovered IATA and Banner's University Arizona faculty board
+through natural scheduling: all **34 /90** active jobs were seen, current-epoch
+receipts completed with zero failures, and both recurring schedules settled to
+the exact committed deadlines. See the [natural recovery evidence](evidence/go-native-source1028-natural-recovery-2026-10-12.json).
+The next source1029 PR has green Required CI, Gate, image parity and both
+exact-head Linux pilots; its exact-head ARM comparison is still in progress.
+Source1028 remains active while that qualification finishes. Full migration,
+sustained fleet freshness and attributable whole-lane cost remain incomplete.
 
 ## Historical checkpoint — source1026 deployed; cold294; combined source1028 next
 

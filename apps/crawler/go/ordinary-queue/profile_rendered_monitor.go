@@ -50,7 +50,13 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	}
 	selfIdentifying := selfIdentifyingDOMSource(config, md)
 	if selfIdentifying {
-		delete(options, "stealth")
+		// These sources have direct verified-TLS replacement evidence. Original
+		// transport_attempts controls proxy-origin rotation, which has no role
+		// in this direct route. Native navigation retains its bounded single
+		// transport retry and refuses origin HTTP blocks without proxy fallback.
+		for _, key := range []string{"stealth", "proxy", "skip_ssl", "transport_attempts"} {
+			delete(options, key)
+		}
 	}
 	if err := normalizeDOMLightpandaResourceOptions(options); err != nil {
 		return fail()
@@ -71,7 +77,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		delete(cloneMD, key)
 	}
 	if selfIdentifying {
-		delete(cloneMD, "stealth")
+		for _, key := range []string{"stealth", "proxy", "skip_ssl", "transport_attempts"} {
+			delete(cloneMD, key)
+		}
 	}
 	if raw, exists := cloneMD["pagination"]; exists && string(raw) != "null" {
 		// Whole-list totals newly admitted with pagination are static-only.

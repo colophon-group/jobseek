@@ -1,0 +1,77 @@
+{
+  "wait": "domcontentloaded",
+  "proxy": true,
+  "render": true,
+  "actions": [
+    {
+      "action": "dismiss_overlays"
+    },
+    {
+      "state": "attached",
+      "action": "wait_for",
+      "required": true,
+      "selector": "a.card-title[href*=\"/jobs/\"]"
+    },
+    {
+      "action": "evaluate",
+      "script": "(()=>{const s=document.querySelector(`select[name=per_page]`);if(!s)throw new Error(`missing per_page`);if(![...s.options].some(o=>o.value===`100`)){const o=document.createElement(`option`);o.value=`100`;o.textContent=`100 jobs per page`;s.appendChild(o)}window.jQuery(s).val(`100`).trigger(`change`)})()",
+      "required": true
+    },
+    {
+      "ms": 6000,
+      "action": "wait"
+    },
+    {
+      "action": "evaluate",
+      "script": "(()=>{const n=new Set([...document.querySelectorAll(`a.card-title[href*=\\\"/jobs/\\\"]`)].map(a=>a.href)).size;const h=[...document.querySelectorAll(`h1,h2,h3,h4`)].map(e=>(e.textContent||``).trim().replace(/\\s+/g,` `)).find(t=>/^\\d+ Ofertas de empleo$/i.test(t));if(!h)throw new Error(`missing advertised job total`);const e=Number(h.match(/^\\d+/)[0]);if(n!==e)throw new Error(`found ${n} unique jobs but page advertises ${e}`);return n})()",
+      "required": true
+    }
+  ],
+  "stealth": true,
+  "timeout": 30000,
+  "url_filter": "^https?://(?:www\\.)?alten\\.es/jobs/[0-9]+-[^/?#]+/?$",
+  "scraper_type": "dom",
+  "link_selector": "a.card-title[href*=\"/jobs/\"]",
+  "drop_threshold": 0.5,
+  "scraper_config": {
+    "wait": "domcontentloaded",
+    "proxy": true,
+    "scope": ".col-md-8.p-4.px-md-5.wp-block-bootstrap-column",
+    "steps": [
+      {
+        "tag": "h2",
+        "field": "title"
+      },
+      {
+        "html": true,
+        "stop": "ENVÍA TU CANDIDATURA",
+        "field": "description"
+      },
+      {
+        "attr": "data-ws-date",
+        "field": "date_posted",
+        "date_input_format": "%d/%m/%Y"
+      },
+      {
+        "attr": "data-ws-location",
+        "field": "locations",
+        "optional": true
+      }
+    ],
+    "render": true,
+    "actions": [
+      {
+        "action": "evaluate",
+        "script": "(()=>{const m=document.querySelector(`.col-md-8.p-4.px-md-5.wp-block-bootstrap-column`),b=document.querySelector(`.block-body.has-primary-color.has-gray-200-background-color`);if(!m||!b)throw new Error(`missing job content or metadata`);const x=(b.innerText||``).split(/\\n+/).map(s=>s.trim()).filter(Boolean),d=x.find(s=>/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(s)),l=x.filter(s=>s!==d&&!/^(?:[A-Z]{2}\\d+|\\d+)$/.test(s)).join(`, `);if(!d)throw new Error(`missing job date`);const de=document.createElement(`p`);de.dataset.wsDate=``;de.textContent=d;m.appendChild(de);if(l){const le=document.createElement(`p`);le.dataset.wsLocation=``;le.textContent=l;m.appendChild(le)}})()",
+        "required": true
+      }
+    ],
+    "stealth": true,
+    "timeout": 30000,
+    "resource_policy": "none",
+    "transport_attempts": 3
+  },
+  "resource_policy": "none",
+  "delist_threshold": 1,
+  "transport_attempts": 3
+}

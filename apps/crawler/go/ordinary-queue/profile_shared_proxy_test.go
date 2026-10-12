@@ -73,6 +73,14 @@ func TestSharedHTTPProxyCurrentRegistryCoverage(t *testing.T) {
 	}
 	supported := map[string]bool{"dom": true, "api_sniffer": true, "inline": true, "sitemap": true, "eightfold": true, "phenom": true}
 	monitors, details, pending := map[string]int{}, map[string]int{}, map[string]int{}
+	// These three original proxy configurations now have source-bound direct
+	// browser replacements. Keep HTTP proxy coverage strict for every other row.
+	qualifiedRendered := map[string]bool{
+		"https://www.alten.pt/pt/career/jobs/":       true,
+		"https://www.alten.es/unete-a-alten/empleo/": true,
+		"https://www.alten.fi/en/career/jobs/":       true,
+	}
+	rendered := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[indexes["monitor_type"]]
 		if !supported[provider] {
@@ -108,13 +116,25 @@ func TestSharedHTTPProxyCurrentRegistryCoverage(t *testing.T) {
 			continue
 		}
 		if !ProfileRequiresProxy(p.Profile) || MonitorWorker(p) != Simple {
-			t.Fatal("proxy config acquired wrong transport")
+			if provider != "dom" || !qualifiedRendered[c["board_url"]] || p.Profile != domRenderedMonitorProfile || MonitorWorker(p) != Browser || ProfileRequiresProxy(p.Profile) {
+				t.Fatal("proxy config acquired wrong transport")
+			}
+			if skip, err := MonitorSkipsSSL(c); err != nil || skip {
+				t.Fatal("rendered replacement did not retain verified TLS")
+			}
+			rendered[c["board_url"]]++
+			continue
 		}
 		monitors[provider]++
 		if scraper, ok := md["scraper_type"].(string); ok && scraper != "skip" {
 			if _, e := inspectDetailOwnership(profileBoardID, c); e == nil {
 				details[provider]++
 			}
+		}
+	}
+	for board := range qualifiedRendered {
+		if rendered[board] != 1 {
+			t.Fatal("qualified rendered registry replacement missing", board)
 		}
 	}
 	if monitors["eightfold"] != 9 || details["eightfold"] != 9 || monitors["inline"] != 2 || monitors["dom"] < 6 || monitors["sitemap"] < 3 {
