@@ -80,3 +80,17 @@ func TestRSSJobInviteIdentityRejectsIncompleteAndPublisherReserved(t *testing.T)
 		}
 	}
 }
+
+func TestRSSJobInviteIdentityAcceptsUnicodeLocationWithoutChangingOriginalURL(t *testing.T) {
+	location := "/job/München-Projektleiter-Rohbau-Großprojekt-(mwd)/13351-de_DE/"
+	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", location)
+		w.WriteHeader(http.StatusFound)
+	})
+	p := queue.GreenhouseMonitorProfile{Provider: "rss", Endpoint: "https://example.com/googlefeed.xml", RSSResolveJobInviteIdentity: true}
+	input := RichDiscovery{Jobs: []RichMonitorJob{{URL: "https://example.com/job/Alias/1364692957/", Metadata: map[string]any{"id": "feed-7"}}}}
+	out, err := resolveRSSJobInviteIdentities(context.Background(), client.client, p, input)
+	if err != nil || len(out.Jobs) != 1 || out.Jobs[0].URL != "https://example.com"+location || out.Jobs[0].Metadata["job_invite_id"] != "13351" || out.Jobs[0].Metadata["job_locale"] != "de_DE" || out.Jobs[0].Metadata["feed_id"] != "feed-7" {
+		t.Fatal("original Unicode redirect identity changed", err)
+	}
+}

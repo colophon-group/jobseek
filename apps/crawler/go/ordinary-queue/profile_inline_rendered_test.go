@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -27,5 +28,36 @@ func TestRenderedInlineBindsParserAndBrowserBoundary(t *testing.T) {
 	c["monitor_needs_browser"] = "0"
 	if _, e := InspectRichMonitor(profileBoardID, c); e == nil {
 		t.Fatal("browser inventory entered simple lane")
+	}
+}
+
+func TestDaiichiInlineBindsQualifiedOriginalConfigWithoutStealthNavigation(t *testing.T) {
+	raw, err := os.ReadFile("testdata/self_identifying_daiichi_vietnam_metadata.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := profileConfig()
+	c["crawler_type"], c["monitor_needs_browser"], c["board_url"], c["metadata"] = "inline", "1", "https://www.daiichisankyo.com.vn/vn/doi-ngu-nhan-su/co-hoi-nghe-nghiep/", string(raw)
+	p, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || MonitorWorker(p) != Browser {
+		t.Fatal("qualified inline refused", err)
+	}
+	_, options, err := RenderedInlineMonitorOptions(c)
+	if err != nil || options["stealth"] != nil || !strings.Contains(c["metadata"], "stealth") {
+		t.Fatal("original binding or direct navigation lost", err)
+	}
+	for _, change := range []string{"host", "parser", "proxy"} {
+		v := cloneConfig(c)
+		switch change {
+		case "host":
+			v["board_url"] = "https://other.example/careers"
+		case "parser":
+			v["metadata"] = strings.Replace(c["metadata"], "title", "description", 1)
+		case "proxy":
+			v["metadata"] = strings.Replace(c["metadata"], "{", `{"proxy":true,`, 1)
+		}
+		if _, err := InspectRichMonitor(profileBoardID, v); err == nil {
+			t.Fatal("unqualified drift admitted", change)
+		}
 	}
 }

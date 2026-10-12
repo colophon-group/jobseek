@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek.native-grouped-candidate-evidence/v1",
+  "observed_at_utc": "2026-10-12T19:47:56.672742+00:00",
+  "base_source": "6670f75a2dcf71fcbd7c712175ef2aa0edd84177",
+  "version": "0.13.1037",
+  "scope": [
+    "SuccessFactors same-origin Unicode redirect identity preserving original URL before canonical transform",
+    "Daiichi Vietnam exact original inline configuration through normal pinned Lightpanda navigation",
+    "UK embassy original/live PDF listing zero proof using existing Go HTTP route"
+  ],
+  "evidence_sha256": {
+    "jobseek-native1037-rss-unicode-before1.log": "aa9ab9253e6a6da1f8b361e929ff1683914c7cb1d65c4e232a62a62645801ecf",
+    "jobseek-native1037-rss-unicode-after1.log": "dacea05e5403baaf9187ef8dff452fc75d2012318231dece4a9d1cca1dc6481d",
+    "jobseek-native1037-document-rss-replay6.log": "be57cfc8f6262919d0990cd2cb894905c2eef5882b6ca6e58160bb97f974ad97",
+    "jobseek-native1037-grouped-profile-final1.log": "530e51ab18f621df98366a1efb317be56e8114169dbc5d0f911d17b3bbe7ebcb",
+    "jobseek-native1037-rss-inline-canonical1.log": "9032dc0ccd340aa83d9752a80ee2e4fb49393c6cad3de922819b969592a91e95",
+    "jobseek-native1037-daiichi-physical-original1.log": "5825b1e950fd97cdfd2455e3e3388e360e096ef5879e8c13f42ae87a5ff1bafe",
+    "native1037-daiichi-vietnam-lightpanda-local-public1-2026-10-12.json": "1642cb1ec0000f1e5e46ba33729e1e73f4e7e088882138f2058b4c6554d5e652"
+  },
+  "results": {
+    "rss_regression_before": "failed original Unicode redirect",
+    "rss_regression_after": "all identity/publisher-policy tests pass8.012s",
+    "original_replay": "343 original Implenia jobs/344 requests and all compared fields match;UKzero/1requestmatch7.867s",
+    "canonical": "real PostgreSQL/Redis Unicode identity and rendered inline success/failure/policy cases pass14.923s",
+    "profiles": "rendered inline, exact-source compatibility, grouped existing DOM compatibility tests pass",
+    "daiichi_physical": "originalzero equals physical Lightpanda1.0.0 Go parser result2.914s",
+    "UKlive": "verified TLS Go zero inventory equals original3.50s"
+  },
+  "unqualified": {
+    "implenia_live": "fresh method capture hit36HTTP429 responses; no live admission authority",
+    "FIH": "physical2,820,070-byte HTML exceeds existing2,000,000-byte rendered contract; no limit increase",
+    "australia_US": "original302fetchfailures",
+    "gymnastics": "original PDF ownership ValueError",
+    "BNP_Malloy": "originalbrowserHTTPstatusfailures",
+    "BethIsrael": "originalRSSnotXML",
+    "Skechers": "originalzeroprooffailure",
+    "MediaMarkt": "original5jobs verified; interactiveLightpanda/parser/canonical path not yetported"
+  },
+  "full_migration_complete": false
+}

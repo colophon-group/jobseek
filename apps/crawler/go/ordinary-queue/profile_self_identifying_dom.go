@@ -31,6 +31,10 @@ func selfIdentifyingDOMSource(config map[string]string, md map[string]json.RawMe
 	if config["crawler_type"] != "dom" || !ok {
 		return false
 	}
+	return sourceMetadataMatches(md, expected)
+}
+
+func sourceMetadataMatches(md map[string]json.RawMessage, expected string) bool {
 	stable := map[string]any{}
 	for key, raw := range md {
 		if monitorRuntimeFields[key] || key == "_monitor_config_fingerprint" {

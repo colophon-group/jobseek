@@ -1,0 +1,26 @@
+{
+  "wait": "domcontentloaded",
+  "steps": [
+    {
+      "tag": "p",
+      "field": "title",
+      "regex": "^\\d+\\.\\s*(.+)",
+      "match_regex": "^\\d+\\.\\s*.+"
+    },
+    {
+      "text": "Địa điểm làm việc:",
+      "field": "location",
+      "regex": "Địa điểm làm việc:\\s*(.+)"
+    },
+    {
+      "tag": "li",
+      "html": true,
+      "field": "description",
+      "stop_regex": "^(?:\\d+\\.\\s*.+|Bài viết khác)$"
+    }
+  ],
+  "render": true,
+  "stealth": true,
+  "timeout": 30000,
+  "scraper_type": "skip"
+}
