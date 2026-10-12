@@ -1,0 +1,143 @@
+{
+  "schema": "jobseek.native-production-checkpoint/v1",
+  "source_revision": "db69c40a0eaf54b9c06281756098b76d907e2f4d",
+  "qualified_head": "c8f08a0bd9ef0e906057d79bcb086fbb81c9cc77",
+  "version": "0.13.1026",
+  "profile_count": 204,
+  "merged_pr": 10438,
+  "original_deploy_workflow": 38197566280,
+  "original_renderer_workflow": 38197667762,
+  "workflow_attempts": 1,
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "db69c40a0eaf54b9c06281756098b76d907e2f4d",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:1efc54c4350595368877908ba578a3aff56f47547fbdf67516773349150a7712"
+  },
+  "renderer": {
+    "observed_at_utc": "2026-10-12T03:04:29.375732+00:00",
+    "source_revision": "db69c40a0eaf54b9c06281756098b76d907e2f4d",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:c560c9ecf9f555222864bc38cd16770014c9772df1e771fd761bdf0d7784b231",
+    "renderer_generation": "sha-db69c40a0eaf54b9c06281756098b76d907e2f4d-r38197667762a1",
+    "running": true,
+    "sticky_OOM": false
+  },
+  "cold_baseline": {
+    "canonical": {
+      "routing_epoch": 294,
+      "active_plans": 0,
+      "source1023_plan_state": "retired",
+      "retained_source1023_receipts": 3071,
+      "source1026_plan_count": 0
+    },
+    "queue": {
+      "browser_native_tokens": 0,
+      "b0_producer_owner": 0,
+      "simple_native_tokens": 0,
+      "ordinary_projection": 0
+    },
+    "receipts_absent": true,
+    "selectors_cleared": true,
+    "writers": [
+      {
+        "service": "worker-1",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      },
+      {
+        "service": "worker-2",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      },
+      {
+        "service": "worker-3",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      },
+      {
+        "service": "browser-1",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:1efc54c4350595368877908ba578a3aff56f47547fbdf67516773349150a7712"
+      },
+      {
+        "service": "drain",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      },
+      {
+        "service": "exporter",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      },
+      {
+        "service": "lightpanda-claimant",
+        "running": true,
+        "restart": "unless-stopped",
+        "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:c61bb98e9233c07016f950d9fd74f31c500a68cd55371f038e39a113f4ef6da2"
+      }
+    ],
+    "health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200
+    },
+    "migration_schema": {
+      "version": "0040",
+      "columns": {
+        "next_detail_at": "timestamptz",
+        "next_detail_description_hash": "int8",
+        "next_detail_step": "int2"
+      },
+      "constraint_validated": true
+    },
+    "native_stopped": {
+      "ordinary-go": {
+        "absent": true
+      },
+      "lightpanda-producer": {
+        "status": "exited",
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "lightpanda-executor": {
+        "status": "exited",
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      }
+    },
+    "live_oneoffs": 0
+  },
+  "qualification": {
+    "required_ci": 38193874282,
+    "contracts": 38193874139,
+    "pilot": 38193874260,
+    "deploy_gate": 38193874355,
+    "exact_head_whole_lane": 38194640242,
+    "whole_lane_arms": 16,
+    "whole_lane_report_sha256": "ac036e41d779162952caa0f780ca1a992f25cca2f7be3a8ef3229caebdf5ea32"
+  },
+  "private_proof_sha256": {
+    "cold_baseline": "d7dbc71b85e772eca85eae6532736b9068cf767e9012c1a50ddf2815bfd67047",
+    "renderer": "5ae0846659c695d2ff0fbe0f96dc32c32435b96228c264ab0b322a264df0bf49"
+  },
+  "next": "Deliver combined source28 publication/claim-capacity release; perform one final full preserved-floor admission and B0/ordinary activation there",
+  "limits": [
+    "source26 native ownership was intentionally not activated; natural IATA/Banner Go recovery remains unproved",
+    "source23 preserved monitor/detail floor remains7788/7683; no new owners",
+    "full migration/freshness/conservation/resources/cost and production Python retirement remain incomplete"
+  ]
+}
