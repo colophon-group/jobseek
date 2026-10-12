@@ -41,6 +41,26 @@ replacements remain unqualified. Production Python/Playwright/Chromium
 retirement, every enabled route and sustained whole-fleet freshness/cost remain
 required. **The full migration remains incomplete.**
 
+## Following combined source1032 — four monitors and native credential installation
+
+The next local candidate combines source1031's four additional rendered monitors
+with Go credential preparation in the original full deployment. The original
+Python bundle builder remains an offline CI/reference tool. Production prepare
+uses the Go binary from the exact immutable crawler image, with the existing
+network-none/read-only/cap-drop/unprivileged container and unchanged finalization.
+
+Go preserves archive identity/metadata, canonical PKI and pins, six-file modes,
+sealed claimant-owned retry, no-follow reads and the original atomic/fsync
+publication boundaries. All99 original/native checks and six native equivalence
+checks pass; Go race tests and vet pass, and both Linux architectures compile.
+Actual sealed-owner retry executes in the root Linux image build; that check,
+installed-image qualification and the original rollout remain pending. See the
+[candidate evidence](evidence/go-native-claimant-installer-candidate-2026-10-12.json).
+
+Complete source1030's consolidated six-monitor activation before qualifying and
+delivering this combined follow-up against its actual merged base. This candidate
+grants no ownership authority and does not complete the full migration.
+
 ## Following source1031 — four more rendered controls qualified locally
 
 Alten Italy, Netherlands and Switzerland plus Glasswall match all61 original

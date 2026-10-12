@@ -1,0 +1,37 @@
+{
+  "schema": "jobseek.native-claimant-installer-candidate/v1",
+  "candidate_version": "0.13.1032",
+  "parent_local_candidate_head": "93736f1893e2f3637658a7244a97863bf7ea9e4d",
+  "parent_open_pr": 10443,
+  "production_authority": false,
+  "production_consumer": "Original quiesced full deployment claimant credential prepare command",
+  "native_command": "go-lightpanda-claimant-credentials prepare",
+  "offline_python_retained": "Bundle creation, validation oracle and historical rollback scripts",
+  "original_native_checks": 99,
+  "original_native_checks_log_sha256": "13f7ed809717d22a16d4b2067c9d1d717188ef9713bcc271f9f6fa5767cd5223",
+  "native_equivalence_checks": 6,
+  "native_equivalence_log_sha256": "e0a91a60b590843e6dde20d0ad8212bb8821db6cf8b8cee699184922cd01c7a6",
+  "go_race_and_vet_passed": true,
+  "linux_cli_and_tests_cross_compiled": [
+    "amd64",
+    "arm64"
+  ],
+  "actual_linux_sealed_owner_execution_pending": true,
+  "preserved": [
+    "Exact complete transport archive, mode, size and digest",
+    "Canonical P-256/SHA-256 CA/client/server PKI, SAN/EKU/usage/validity/signatures and three pins",
+    "Original six-file generation and source/archive identity",
+    "No-follow inode and complete read checks",
+    "File/directory modes, sealed claimant owner10001 retry, foreign owner refusal",
+    "Candidate write and fsync, atomic rename, parent fsync and original failure recovery boundaries",
+    "Network-none, read-only, cap-drop ALL, no-new-privileges and unprivileged installer container",
+    "Private transport cleanup and existing finalization/rollback contract"
+  ],
+  "validation_limits": [
+    "Actual unprivileged sealed-owner retry is Linux/root image-build test; local Mac tests cannot execute it",
+    "Native installed image, final exact-head CI and original whole rollout still required",
+    "Full migration, remaining enabled routes and sustained fleet freshness/cost remain incomplete"
+  ],
+  "combines_with_four_more_rendered_monitor_candidates": true,
+  "full_migration_complete": false
+}

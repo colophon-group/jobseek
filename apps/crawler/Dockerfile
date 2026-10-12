@@ -7,9 +7,11 @@ COPY src/lua/lightpanda_b0_queue.lua src/lua/lightpanda_b0_queue.lua
 COPY go/publisher-policy/ go/publisher-policy/
 COPY go/lightpanda-b0-supervisor/ go/lightpanda-b0-supervisor/
 WORKDIR /workspace/apps/crawler/go/lightpanda-b0-supervisor
-RUN go test ./... \
+RUN go test ./... github.com/colophon-group/jobseek/apps/crawler/contracts/v1/claimantbundle \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
-       -o /out/lightpanda-b0-supervisor .
+       -o /out/lightpanda-b0-supervisor . \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/go-lightpanda-claimant-credentials ./cmd/credentials
 
 # ── Inactive native Go Lightpanda B0 database executor ──────────────
 FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-b0-executor-build
@@ -262,6 +264,7 @@ RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
     && rm -rf /tmp/jobseek-wheel contracts
 
 COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
+COPY --from=lightpanda-b0-build /out/go-lightpanda-claimant-credentials /usr/local/bin/go-lightpanda-claimant-credentials
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
 COPY --from=go-b0-executor-build /out/go-lightpanda-b0-executor /usr/local/bin/go-lightpanda-b0-executor
 COPY --from=go-ordinary-worker-build /out/go-ordinary-worker /usr/local/bin/go-ordinary-worker
