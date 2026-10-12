@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-11T23:14:14.317670+00:00",
+  "status": "source1022 serving after supported ordinary activation cancellation; B0 active291; ordinary staged and inert",
+  "source_revision": "ab32fe6a7914718ea8deb351487682d10a64e746",
+  "version": "0.13.1022",
+  "profiles": 204,
+  "full_migration_complete": false,
+  "grouped_deliveries": [
+    {
+      "pr": 10431,
+      "scope": [
+        "rotating browser API paths",
+        "RSS alias identities"
+      ],
+      "merge_revision": "d365467744d0f5acd7985fe93dd8d2d120903b66"
+    },
+    {
+      "pr": 10434,
+      "included_parent_pr": 10432,
+      "scope": [
+        "Go PostgreSQL operational preflight",
+        "Go CSV manifest creation and verification",
+        "separate discovery20/monitor5 capacity"
+      ],
+      "merge_revision": "06f081f6acf96418f743bedaf55269c771299ea9"
+    },
+    {
+      "pr": 10435,
+      "scope": [
+        "Go atomic release-pointer publication",
+        "Go generation/root fsync",
+        "Go USTAR deployment-spec packing",
+        "Go complete rollback archive verification and extraction"
+      ],
+      "reviewed_head": "4b2597f1559229e47d2c3a9ca531e8ecc5f81813"
+    }
+  ],
+  "crawler_deployment": {
+    "run": 38180090898,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "renderer_deployment": {
+    "run": 38180133973,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "identities": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:690a50e3f6a16b506ab86d5e272576895365c779142888efce7d7e3d16f0560a",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:9aa14dad324e76e755e0c95b80222078836e3f9d04e83751d8881efbfb949e7c",
+    "JOBSEEK_DEPLOY_REVISION": "ab32fe6a7914718ea8deb351487682d10a64e746"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:4a06f4e55ae87425f2ee9dfe3da591a5f192dd1814a52a5a7fd79170bb4c0be6",
+  "native_host_artifacts": {
+    "observed_at_utc": "2026-10-11T22:37:34.237600+00:00",
+    "source_revision": "ab32fe6a7914718ea8deb351487682d10a64e746",
+    "selected_generation": "release-ab32fe6a7914718ea8deb351487682d10a64e746.Tw6eom",
+    "host_architecture": "amd64",
+    "native_artifact_sha256": {
+      "crawler-deploy-tools.source": "9546394a806689176d978b0daecba314fedf3e9ef30d9c93a7f0de625479e2f6",
+      "crawler-deploy-tools.sha256": "1002a995af1eb045e03bbb3b2683dbe4fbde4850b234dc6059f5eb4c2484eab9",
+      "crawler-deploy-tools-amd64": "ecd034c52343180f16a3e32f7000981401d209ed5759c3120fb33e5e262f33a7",
+      "crawler-deploy-tools-arm64": "ebdde7f792973854f1c9e3d27b2b842f9616313e063edcfb83d18dfe10ff10ff"
+    },
+    "compiled_source_verified": true,
+    "source_data_csv_contract_verified": true,
+    "scope": "read-only deployed native host artifact identity and actual selected CSV verification; no credentials or mutation"
+  },
+  "schema_evidence": {
+    "version": "0040",
+    "columns": {
+      "next_detail_at": "timestamptz",
+      "next_detail_description_hash": "int8",
+      "next_detail_step": "int2"
+    },
+    "constraint_validated": true
+  },
+  "base_health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "exporter_metrics": {
+    "crawler_exporter_last_flush_ts": 1791758253.0,
+    "crawler_exporter_rows_exported_total{table=\"job_posting\"}": 155.0,
+    "crawler_typesense_export_docs_total{status=\"success\"}": 155.0,
+    "crawler_typesense_export_docs_total{status=\"error\"}": 0.0,
+    "crawler_exporter_cdc_unknown_writers_total": 0.0,
+    "crawler_typesense_healthy": 1.0,
+    "crawler_exporter_downstream_available{target=\"typesense\"}": 1.0,
+    "crawler_exporter_downstream_backoff_seconds{target=\"typesense\"}": 0.0,
+    "crawler_exporter_flush_duration_seconds_sum": 13.637845169999995,
+    "crawler_exporter_flush_duration_seconds_count": 137.0
+  },
+  "b0": {
+    "cohort": "cdom",
+    "routing_epoch": "291",
+    "plan_digest": "dc3c5ab1192e2c5502a27e33da7e6a50b76242433ed9e3147a462614a2f69494",
+    "receipt_sha256": "90c44eba30ea94a3b90dadf7e8f4bf01ce2aac5423125e300e3f92b79ab36538",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204
+    }
+  },
+  "ordinary": {
+    "status": "activation rejected at projection/authority; original recover-pending succeeded; staged inert",
+    "required_preserved_floor": {
+      "monitors": 7788,
+      "detail_boards": 7683
+    },
+    "new_unqualified_additions": 0,
+    "enabled_census_boards": 7885,
+    "actual_scheduled_routes": 1679728,
+    "owned_scheduled_routes": 1556997,
+    "fresh_admission_passed": true,
+    "plan_sha256": "6da2d74ee5a4c7b01ae85ebeb2de85696786fa7df75921013effdd68eb5fddbf",
+    "projection_sha1": "b05e6f217237969813412b0b8fbc29b133ea5207",
+    "canonical_after_recovery": {
+      "observed_at": "2026-10-11T23:14:14.290367+00:00",
+      "active_plans": 0,
+      "candidate": {
+        "state": "staged",
+        "source_revision": "ab32fe6a7914718ea8deb351487682d10a64e746",
+        "epoch": 291
+      },
+      "epoch": 291,
+      "candidate_fences": 0
+    },
+    "redis_after_recovery": {
+      "projection_sha1": "",
+      "b0_owner": 1
+    },
+    "owner_receipt_absent": true,
+    "candidate_fences": 0
+  },
+  "qualification": {
+    "required_CI": 38177013448,
+    "deploy_gate": 38176997170,
+    "runtime_contracts_installed_image": 38177015765,
+    "both_pilot_architectures": 38177020577,
+    "manual_ARM": 38177018007,
+    "whole_lane_arms": 16,
+    "whole_lane_admitted": true,
+    "whole_lane_report_sha256": "5a830f9695c3112fed0a81721cb1f6398349450ac4d7ca99bf159f788cce0eff"
+  },
+  "readback_sha256": {
+    "native-source1022-postdeploy-cold290-independent-verified1-2026-10-11.json": "ccec483a699a32e50ea16d1225274e71784b12e38218dad132016122774cac6f",
+    "native-source1022-renderer-independent-verified1-2026-10-11.json": "df31f37c9d4bfd21d2b12ae39da248ae55eee24801c7d0c5f492602b624423ca",
+    "native-source1022-exporter-progress-independent-verified1-2026-10-11.json": "4906c252573aab0912d899e5a6166d0dddc3018ffde25a3eed8f61c9630f757a",
+    "native-source1022-deploy-tools-independent-verified1-2026-10-11.json": "c2650e6550e1897e4aa69bf1f41a85fd1c521ab63ede83e43e9290c91f67d730",
+    "native-source1022-owner-activate-promoted-attempt1-2026-10-11.log": "d0b33d7bd038c7a4aed0a202adf50d978b0a474c807e9c65a9a1abf546cdb6fb",
+    "native-source1022-owner-recover-pending-promoted-attempt1-2026-10-11.log": "af0c30a23c95c56aaca2d22024dfd5840f8b5c7fd462a2cfdf9e341302bbb5ec",
+    "native1022-recovered-stack-independent-verified1-2026-10-11.json": "560385597a12916bc626ec6f65ac4f7d7ca9c00ad5d6bc75f46d387900bb1a53",
+    "native1022-supported-b0-readback-recovered1-2026-10-11.log": "44f8181fa14a7d45fe52e0d6d41d6519292751312ac366410174bbd80b553522",
+    "native1022-projection-structural-diagnostic1-2026-10-11.json": "36e66588d6d8d7499ce0c29fb651273bb18028ce5bde2b043bc93389df55c691",
+    "admission-summary-source1022-verified1.json": "a2faf51a487c1b4ec74a9746bb2d7708662df4eebe9b804ba9a3b4bba5ddae8f"
+  },
+  "lightpanda_version": "1.0.0",
+  "held_new_owners": [
+    "hitachi-energy-careers",
+    "implenia-global"
+  ],
+  "limitations": [
+    "Ordinary ownership remains inactive after contained activation rejection and supported cancellation; capacity/freshness improvement unproved.",
+    "Source1018 freshness backlog remains unresolved: over1.48million detail routes exceeded24hours.",
+    "Measured short legacy baseline and synthetic ARM density do not establish matched-throughput production cost.",
+    "Production Python worker/browser, schema, standalone CSV/release-bridge/credential consumers remain to be retired through qualified replacements."
+  ],
+  "restored_writer_stack": [
+    {
+      "service": "worker-1",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "worker-2",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "worker-3",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "browser-1",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "drain",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "exporter",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "lightpanda-producer",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "lightpanda-executor",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    },
+    {
+      "service": "lightpanda-claimant",
+      "running": true,
+      "restart_policy": "unless-stopped",
+      "restarts": 0,
+      "oom": false
+    }
+  ]
+}
