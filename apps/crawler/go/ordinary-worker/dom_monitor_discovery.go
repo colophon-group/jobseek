@@ -368,7 +368,7 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 	if err != nil || c.Pagination == nil {
 		return result, err
 	}
-	if c.Pagination.AdvertisedRanges != nil && c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 && len(result.Jobs) == 0 {
+	if (c.Pagination.AdvertisedRanges != nil || c.RichRows != nil) && c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 && len(result.Jobs) == 0 {
 		return result, nil // The root's explicit empty proof already passed.
 	}
 	rules, err := queue.FeedMonitorURLRules(config)
@@ -437,6 +437,9 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 		}
 		if count == 0 {
 			break
+		}
+		if page == c.Pagination.MaxPages && c.RichRows != nil && c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
+			return RichDiscovery{Response: result.Response}, dom.ErrListingProof
 		}
 	}
 	if result.domListingTotal != nil && *result.domListingTotal != len(jobs) {

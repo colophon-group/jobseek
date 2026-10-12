@@ -46,6 +46,17 @@ replay and actual Go public reads with the pinned verified-TLS trust bundle. Can
 effects, fresh routes and final-head qualification remain required; Thales' original
 connection failure grants no detail authority.
 
+The following0.13.1036 mixed batch adds Bunge's static rich-row pagination with
+explicit empty-state proof (four original jobs, two requests), plus GE Vernova
+Menk and King's already-supported detail parsers. Bunge original/live verified-TLS
+URL/title/location comparisons, seven canonical failure/policy cases and the full
+DOM parser suite pass. Both detail boards match all13 original fields and request
+sequences in replay and actual Go public reads;39 real PostgreSQL/Redis success,
+reservation and transient cases pass. GE's selected enrichment preserves existing
+titles while updating description/date/salary. Current source1035 remains fixed;
+this following candidate needs final-head checks, fresh routes and original cutover.
+See the [mixed candidate proof](evidence/go-native-rich-pagination-detail-candidate-2026-10-12.json).
+
 Finish this candidate's exact-head CI/Linux/ARM qualifications, supported original
 full rollout and fresh grouped admission after source1034 ownership readback.
 Continue remaining browser/monitor/detail and native activation/schema consumers;
