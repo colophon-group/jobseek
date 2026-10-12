@@ -1,6 +1,91 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1023 deployed; full ordinary ownership active293
+## Current checkpoint — source1026 deployed; cold294; combined source1028 next
+
+[PR #10438](https://github.com/colophon-group/jobseek/pull/10438) merged as
+`db69c40a0eaf54b9c06281756098b76d907e2f4d`, **0.13.1026 /204 profiles**.
+The [original whole crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38197566280)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38197667762)
+succeeded at attempt1. Exact-head Required CI, installed-image parity, both
+Linux pilots, deploy gate and all16 committed-head ARM comparisons passed.
+Independent readback verifies the selected crawler/browser/renderer source and
+immutable images, schema0040, seven restored base services and six health
+endpoints. The renderer is running with no sticky OOM. See the
+[production evidence](evidence/go-native-source1026-production-2026-10-12.json).
+
+Source1023's original ordinary retirement, B0 reversal and locked selector clear
+succeeded. Cold294 has zero active ordinary plans, no ownership receipts or
+routing projections, preserved source1023 audit receipts and stopped native
+actors. Source1026 has no ordinary plan. Keep this verified cold baseline while
+[PR #10440](https://github.com/colophon-group/jobseek/pull/10440), combined
+**0.13.1028**, finishes final qualification; then deliver its original whole
+crawler/renderer rollout and perform one final native activation. A temporary
+source1026 activation followed by immediate retirement adds no useful serving
+proof. The preserved floor remains **7,788 monitors /7,683 detail boards**,
+with no new owner authority.
+
+The source1026 batch ports eight deployment/CSV publication consumers and
+restores browser API URL derivation from DOM requisition links. Public physical
+Lightpanda and original-crawler comparisons agree on IATA's34 jobs and Banner
+Health's90 jobs, including all eight canonical content fields. Midea returns
+733 jobs with both implementations and both mark the inventory incomplete;
+this is not complete-board recovery evidence. Production Go recovery must be
+observed after the final ownership activation. Lightpanda **1.0.0** remains the
+latest official release, rechecked2026-10-12, with the existing immutable pin.
+
+The combined source1028 follow-up removes the five remaining Python filesystem
+and publication primitives from the standalone CSV host wrapper: journal
+publication, cleanup fsync and retention. Current registry/database/schedule
+sync already runs in Go; Python sync is retained as an offline reference and
+for historical recovery images. All71 original recovery/retention regressions pass, including active,
+journal and inflight protection, malformed-journal refusal and three distinct
+runtime-image rollback windows. See the [publication evidence](evidence/go-native-publication-journal-candidate-2026-10-12.json).
+
+It also reserves monitor capacity before claiming shared worker slots. A race
+fixture reproduces the previous saturation, then passes after the correction.
+Actual PostgreSQL/Redis tests verify eligible detail write/receipt/settlement
+while a recurring monitor stays queued; strict first-time monitor priority
+still refuses the detail claim without queue or freshness effects. Runtime,
+capacity, ownership and accounting checks pass, with unchanged total/monitor
+limits. These tests establish capacity mechanics, not production throughput.
+See the [capacity evidence](evidence/go-native-claim-capacity-candidate-2026-10-12.json).
+
+Final qualification exposed an aging Eightfold integration replay: its recorded
+clock crossed the weekly refresh boundary, triggering a full crawl outside the
+declared incremental HTTP responses. Integration fixtures now preserve their
+recorded watermark ages against the live pipeline clock; production refresh
+logic is unchanged. The fixture uses the original microsecond precision, with
+an explicit nanosecond-clock regression proving that terminal patches retain
+the timestamp rather than appearing to roll it back. Direct and proxy
+canonical-effect checks remain required.
+
+Continue in this order:
+
+1. Finish final combined-head CI/image/Linux qualification and exact-head merge.
+   Complete the original whole crawler and matching renderer rollouts from the
+   verified cold baseline; independently verify selected source/images, native
+   host tools, actual CSV tree, schema, exporter and complete fleet readiness.
+2. Use the exact qualified Go SDK and fresh canonical/Redis actual-route census
+   to preserve all7,788/7,683 owners. Run original B0 stage/activation, ordinary
+   staging and exact-plan activation; independently verify every receipt,
+   projection, writer and health endpoint. Observe natural IATA/Banner recovery
+   and recurring settlement, without resetting failures or injecting work.
+3. Measure sustained monitor/detail ages, conservation, CPU/RAM and attributable
+   whole-lane cost. Source1023 reached625 monitor/1,807 detail completions with
+   no restart/OOM; it still had about1.5million details overdue24hours, increasing
+   monitor lateness and processing failures. Those limits remain unresolved.
+4. Continue grouped route work: the latest frontier has DOM53, API12, inline4,
+   RSS2, BrassRing4 and Njoyn1 uncompiled configurations;21 more compile outside
+   the ordinary floor. Compilation alone grants no ownership. Preserve held
+   Hitachi Energy/Implenia until complete fresh evidence passes.
+5. Finish CSV database/schedule sync, credential helpers, schema execution and
+   remaining legacy worker/browser consumers. Establish full enabled-route
+   replacement, sustained freshness/conservation/resources/cost, supported cold
+   reversal and the rollback window before retiring production Python,
+   Playwright and Chromium. Keep useful isolated offline Python.
+   **The full migration goal remains active and incomplete.**
+
+## Historical checkpoint — source1023 deployed; full ordinary ownership active293
 
 [PR #10437](https://github.com/colophon-group/jobseek/pull/10437) merged as
 `4c38863bce647387bc93ed7dd0f588f1224d4bfb`, **0.13.1023 /204 profiles**.
@@ -82,7 +167,16 @@ backlog remain follow-up work, not successful freshness/cost evidence.
    uncompiled. Another21 compile outside the ordinary floor, including B0 boards,
    but need appropriate qualification. Preserve held Hitachi Energy/Implenia until
    complete fresh evidence passes; compilation alone grants no ownership.
-5. Finish standalone CSV publication, credential helpers, schema execution and
+5. Continue the separate **0.13.1027** publication journal/filesystem follow-up.
+   Five original CSV consumers now use the source-bound Go host tools: durable
+   journal replacement, journal-removal fsync, failed-generation fsync and
+   bootstrap-candidate fsync and publication retention. All71 original deployment regressions pass,
+   including interrupted-publication recovery, active/journal/inflight retention,
+   malformed-journal refusal and three distinct runtime image-pair retention;
+   Go race/vet and seven refusal cases preserve the existing journal bytes.
+   This local candidate has no production authority. See the
+   [candidate evidence](evidence/go-native-publication-journal-candidate-2026-10-12.json).
+   Finish standalone CSV publication, credential helpers, schema execution and
    remaining legacy worker/browser consumers. Establish full enabled-route
    replacement, sustained freshness/conservation/resources/cost, supported cold
    reversal and the rollback window before retiring production Python,

@@ -1,0 +1,46 @@
+{
+  "schema": "jobseek.native-migration-candidate/v1",
+  "status": "local qualification; no production authority",
+  "version": "0.13.1027",
+  "parent_candidate": "c8f08a0bd9ef0e906057d79bcb086fbb81c9cc77",
+  "scope": [
+    "CSV recovery journal file fsync/atomic replacement/parent fsync",
+    "CSV journal removal directory fsync",
+    "discarded failed data generation directory fsync",
+    "discarded bootstrap candidate directory fsync",
+    "CSV publication pruning: active and journal releases, newest data generations, three distinct runtime image pairs, candidates and forward staging"
+  ],
+  "preserved_contract": [
+    "original global mutation lock",
+    "original journal body and recovery state machine",
+    "original protected rollback and publication retention",
+    "original candidate deletion predicates and publication refusal under native owners"
+  ],
+  "validation": {
+    "go_race": "passed3.362s",
+    "go_vet": "passed",
+    "original_deployment_regressions": "71 passed60.50s with native pruning, journal and cleanup",
+    "shell_syntax": "passed",
+    "refusal_cases": [
+      "wrong parent",
+      "same path",
+      "symlink",
+      "directory",
+      "unsafe permissions",
+      "oversized journal",
+      "missing temporary"
+    ],
+    "refusal_effect": "retained recovery journal bytes unchanged",
+    "original_retention_contracts": [
+      "live journal/rollback/inflight state preserved",
+      "malformed journal refuses all deletion",
+      "three distinct runtime pairs retained"
+    ]
+  },
+  "remaining": [
+    "actual CSV database/schedule sync",
+    "source-bound Linux qualification, required checks and original full rollout",
+    "production Python retirement and complete enabled-board replacement/freshness/cost",
+    "No Python filesystem/publication primitives remain in standalone CSV host wrapper; actual crawler sync remains Python"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "jobseek.native-migration-candidate/v1",
+  "version": "0.13.1028",
+  "status": "local candidate; no production authority",
+  "parent_candidate": "55d382ec20ce5606fc33d64c3f638842bd6bdc59",
+  "problem": "Post-claim monitor semaphore lets waiting monitor leases consume all shared discovery slots, preventing eligible detail claims from starting",
+  "change": [
+    "Reserve a monitor slot before popping a monitor-capable claim",
+    "Use existing ownership and queue barriers to claim eligible details directly when monitor slots are occupied",
+    "Release a reservation on nil/error/detail claims and after leased monitor execution; retain original signal drain/heartbeat behavior"
+  ],
+  "preserved": [
+    "strict global first-time priority and recurring fairness",
+    "source/epoch/ownership/installed projection checks",
+    "SQL write fences, exact canonical receipts and Redis token/lease settlement",
+    "original total and monitor concurrency limits",
+    "enabled monitor/detail owner floor; no new owners"
+  ],
+  "qualification": {
+    "before_loop": "race reproduction fails: only two monitors enter, shared remaining slots held by waiting monitors",
+    "after_loop": "runtime/monitor-capacity race tests pass2.567s",
+    "real_postgres_redis": "eligible first-time detail write/receipt/settlement preserves due recurring monitor; strict first-time monitor blocks detail-only claim with no queue/freshness change; original accounting and ownership regressions pass3.641s",
+    "vet": "both queue and worker pass"
+  },
+  "limits": [
+    "This proves capacity mechanics, not production throughput or freshness",
+    "Legitimate strict first-time priority can still hold recurring details until first-time work is processed",
+    "Linux image qualification, required CI, original rollout/cutover and natural conservation/freshness proof remain required"
+  ]
+}

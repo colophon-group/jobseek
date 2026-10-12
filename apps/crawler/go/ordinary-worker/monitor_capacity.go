@@ -21,3 +21,27 @@ func executeWithMonitorSlot(ctx context.Context, slots chan struct{}, kind queue
 	}
 	return execute()
 }
+
+// Reserve monitor capacity before popping a lease. Excess discovery slots
+// claim details directly instead of retaining monitors that cannot execute.
+func claimWithMonitorCapacity(ctx context.Context, s runtimeServices) (*queue.Claim, bool, error) {
+	reserved := false
+	if s.monitorSlots != nil && s.claimDetail != nil {
+		select {
+		case s.monitorSlots <- struct{}{}:
+			reserved = true
+		default:
+			claim, err := s.claimDetail(ctx)
+			if err == nil && claim != nil && claim.Descriptor().Kind != queue.Scrape {
+				return nil, false, queue.ErrConfiguration
+			}
+			return claim, false, err
+		}
+	}
+	claim, err := s.claim(ctx)
+	if reserved && (err != nil || claim == nil || claim.Descriptor().Kind != queue.Monitor) {
+		<-s.monitorSlots
+		reserved = false
+	}
+	return claim, reserved, err
+}

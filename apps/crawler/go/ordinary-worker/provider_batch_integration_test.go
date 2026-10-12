@@ -10,12 +10,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
 
 type providerBatchHTTPCase struct {
 	Name           string
+	Now            string
 	BoardURL       string `json:"board_url"`
 	Metadata       json.RawMessage
 	Pages          map[string]json.RawMessage
@@ -46,11 +48,87 @@ func providerBatchReference(t *testing.T, provider, name string) providerBatchHT
 	}
 	for _, row := range rows {
 		if row.Name == name {
+			if provider == "eightfold" {
+				row.Metadata = providerBatchWatermarkAt(t, row, time.Now().UTC())
+			}
 			return row
 		}
 	}
 	t.Fatal("provider reference case missing", provider, name)
 	return providerBatchHTTPCase{}
+}
+
+// The HTTP corpus records a clock as well as watermark dates. Keep their ages
+// when exercising the live pipeline clock, otherwise a frozen incremental
+// replay silently becomes a weekly full crawl as the test corpus ages.
+func providerBatchWatermarkAt(t *testing.T, row providerBatchHTTPCase, now time.Time) json.RawMessage {
+	t.Helper()
+	// Python's clock/patch and the live discoverer use microsecond precision.
+	// Linux time.Now can include nanoseconds, which would look like a rollback
+	// when an otherwise unchanged watermark is formatted by the terminal patch.
+	now = now.Truncate(time.Microsecond)
+	recorded, err := time.Parse(time.RFC3339Nano, row.Now)
+	if err != nil {
+		t.Fatal("missing recorded Eightfold clock", err)
+	}
+	var metadata map[string]any
+	if json.Unmarshal(row.Metadata, &metadata) != nil {
+		t.Fatal("invalid Eightfold metadata")
+	}
+	if watermark, ok := metadata["pcsx_watermark"].(map[string]any); ok {
+		for _, key := range []string{"last_full_at", "last_incremental_at"} {
+			if raw, ok := watermark[key].(string); ok {
+				stamp, err := time.Parse(time.RFC3339Nano, raw)
+				if err != nil {
+					t.Fatal("invalid recorded watermark", err)
+				}
+				watermark[key] = now.Add(stamp.Sub(recorded)).Format(time.RFC3339Nano)
+			}
+		}
+	}
+	body, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return body
+}
+
+func TestProviderBatchWatermarkPreservesRecordedRefreshAge(t *testing.T) {
+	row := providerBatchHTTPCase{
+		Now:      "2026-10-06T03:00:00.120000Z",
+		Metadata: json.RawMessage(`{"pcsx_watermark":{"last_full_at":"2026-10-05T03:00:00.120000Z","last_incremental_at":"2026-10-06T02:00:00.120000Z","max_ts":123,"enabled":false}}`),
+	}
+	for _, raw := range []string{"2026-10-12T04:00:00Z", "2030-01-01T00:00:00Z", "2030-01-01T00:00:00.123456789Z"} {
+		t.Run(raw, func(t *testing.T) {
+			now, err := time.Parse(time.RFC3339Nano, raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded, err := api.Decode(providerBatchWatermarkAt(t, row, now))
+			if err != nil {
+				t.Fatal("invalid shifted metadata", err)
+			}
+			metadata := decoded.Value.(map[string]any)
+			wm, err := api.EightfoldReadWatermark(metadata)
+			if err != nil || wm.LastFullAt == nil || wm.LastIncrementalAt == nil ||
+				now.Truncate(time.Microsecond).Sub(*wm.LastFullAt) != 24*time.Hour || now.Truncate(time.Microsecond).Sub(*wm.LastIncrementalAt) != time.Hour ||
+				wm.NeedsFull(now) || wm.MaxTS != 123 || wm.Enabled == nil || *wm.Enabled {
+				t.Fatal("recorded age or immutable watermark fields changed", err)
+			}
+			patch, err := json.Marshal(wm.Patch())
+			if err != nil {
+				t.Fatal(err)
+			}
+			decodedPatch, err := api.Decode(patch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			next, err := api.EightfoldReadWatermark(decodedPatch.Value.(map[string]any))
+			if err != nil || !next.LastFullAt.Equal(*wm.LastFullAt) || !next.LastIncrementalAt.Equal(*wm.LastIncrementalAt) {
+				t.Fatal("terminal patch rounded the fixture watermark backwards", err)
+			}
+		})
+	}
 }
 
 func providerBatchReferenceHTTP(t *testing.T, c providerBatchHTTPCase) *VerifiedDirectHTTP {

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func workdayOwnershipDocument(t *testing.T) ownershipDocument {
@@ -157,5 +159,129 @@ func TestWorkdayDetailOwnershipAdmissionMatchesSupportedMonitorSites(t *testing.
 		if err != nil || p.Domain != "fixture.wd1.myworkdayjobs.com" {
 			t.Fatal("site admission differs", site, err)
 		}
+	}
+}
+
+func TestRealDetailOnlyClaimLeavesDueMonitorQueued(t *testing.T) {
+	f := currentWorkdayDetailQueueFixture(t)
+	ctx := context.Background()
+	if _, err := f.observer.Exec(ctx, "UPDATE job_board SET next_check_at=clock_timestamp()-interval '1 hour' WHERE id=$1::uuid", f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"monitors_simple:workday", "ready:simple:1"} {
+		member := f.task.ID
+		if key == "ready:simple:1" {
+			member = "workday"
+		}
+		if err := f.client.redis.ZAdd(ctx, key, redis.Z{Score: 1, Member: member}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// An eligible first-time detail precedes a recurring monitor under the
+	// unchanged global queue priority. Capacity selection must retain that
+	// priority while leaving the due monitor untouched.
+	domain, err := f.client.redis.HGet(ctx, "scrape:"+f.task.ID, "domain").Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZRem(ctx, "scrapes_simple:"+domain, f.task.ID).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZAdd(ctx, "ft_scrapes_simple:"+domain, redis.Z{Score: 1, Member: f.task.ID}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZAdd(ctx, "ready:simple:0", redis.Z{Score: 1, Member: domain}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	p, err := f.authority.StageOwnership(ctx, strings.Repeat("a", 40), []string{f.task.ID}, []string{f.task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	activateFixturePlan(t, f, p)
+	t.Cleanup(func() {
+		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", p.digest)
+	})
+	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.projection, 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(a.Close)
+	claim, err := a.ClaimDetails(ctx, Simple)
+	if err != nil || claim == nil || claim.Descriptor().Kind != Scrape || !claim.OwnershipBound() {
+		t.Fatal("detail-only claim unavailable", err)
+	}
+	if score := f.client.redis.ZScore(ctx, "monitors_simple:workday", f.task.ID).Val(); score != 1 {
+		t.Fatal("detail claim consumed due monitor")
+	}
+	var checked *time.Time
+	if err := f.observer.QueryRow(ctx, "SELECT last_checked_at FROM job_board WHERE id=$1::uuid", f.task.ID).Scan(&checked); err != nil || checked != nil {
+		t.Fatal("detail-only claim changed monitor freshness", err)
+	}
+	current, err := a.ReadWorkdayDetail(ctx, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	due := futureDue()
+	receipt, err := a.WriteWorkdayDetail(ctx, current, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "UPDATE job_posting SET next_scrape_at=$2 WHERE id=$1::uuid", claim.Descriptor().ID, due)
+		return err
+	})
+	if err != nil || receipt == nil {
+		t.Fatal("canonical detail receipt missing", err)
+	}
+	if err := a.Settle(ctx, claim, receipt); err != nil {
+		t.Fatal("detail-only settlement failed", err)
+	}
+	monitor, err := a.Claim(ctx, Simple)
+	if err != nil || monitor == nil || monitor.Descriptor().Kind != Monitor {
+		t.Fatal("retained due monitor not claimable", err)
+	}
+}
+
+func TestRealDetailOnlyClaimPreservesFirstTimeMonitorPriority(t *testing.T) {
+	f := currentWorkdayDetailQueueFixture(t)
+	ctx := context.Background()
+	if _, err := f.observer.Exec(ctx, "UPDATE job_board SET next_check_at=clock_timestamp()-interval '1 hour' WHERE id=$1::uuid", f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"ft_monitors_simple:workday", "ready:simple:0"} {
+		member := f.task.ID
+		if key == "ready:simple:0" {
+			member = "workday"
+		}
+		if err := f.client.redis.ZAdd(ctx, key, redis.Z{Score: 1, Member: member}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err := f.authority.StageOwnership(ctx, strings.Repeat("a", 40), []string{f.task.ID}, []string{f.task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	activateFixturePlan(t, f, p)
+	t.Cleanup(func() {
+		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", p.digest)
+	})
+	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.projection, 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(a.Close)
+	before := snapshot(t, f.client)
+	claim, err := a.ClaimDetails(ctx, Simple)
+	if err != nil || claim != nil {
+		t.Fatal("capacity selection bypassed strict first-time monitor priority", err)
+	}
+	if !reflect.DeepEqual(before, snapshot(t, f.client)) {
+		t.Fatal("priority refusal changed retained queue state")
+	}
+	var checked *time.Time
+	if err := f.observer.QueryRow(ctx, "SELECT last_checked_at FROM job_board WHERE id=$1::uuid", f.task.ID).Scan(&checked); err != nil || checked != nil {
+		t.Fatal("priority refusal fabricated monitor freshness", err)
 	}
 }

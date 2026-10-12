@@ -284,7 +284,7 @@ active_data_contract_matches() {
 prune_publications() {
   local protected_candidate="${1:-}" consumed_candidate="${2:-}"
   local protected_forward_staging="${3:-}" generation generation_basename format explicit_count
-  local -a verified_v3_generations=() python_args=()
+  local -a verified_v3_generations=() prune_args=()
   shift 3 || true
   explicit_count="$#"
   for generation in "$ACTIVE_RELEASE_ROOT"/*; do
@@ -297,285 +297,16 @@ prune_publications() {
       verified_v3_generations+=("$generation")
     fi
   done
-  python_args=(
+  prune_args=(
     "$ACTIVE_RELEASE_ROOT" "$ACTIVE_RELEASE_POINTER" "$PUBLICATION_JOURNAL" \
     "$CANDIDATE_ROOT" "$DEPLOY_DIR" "$PUBLICATION_KEEP_GENERATIONS" \
     "$PUBLICATION_GRACE_SECONDS" "$protected_candidate" "$consumed_candidate" \
     "$protected_forward_staging" "$explicit_count" "$@"
   )
   if (( ${#verified_v3_generations[@]} )); then
-    python_args+=("${verified_v3_generations[@]}")
+    prune_args+=("${verified_v3_generations[@]}")
   fi
-  python3 - "${python_args[@]}" <<'PY'
-import os
-import pathlib
-import re
-import shutil
-import stat
-import sys
-import time
-
-(
-    release_root_text,
-    active_pointer_text,
-    journal_text,
-    candidate_root_text,
-    deploy_dir_text,
-    keep_text,
-    grace_text,
-    protected_candidate,
-    consumed_candidate,
-    protected_forward_staging_text,
-    explicit_count_text,
-    *generation_paths,
-) = sys.argv[1:]
-
-release_root = pathlib.Path(release_root_text)
-active_pointer = pathlib.Path(active_pointer_text)
-journal = pathlib.Path(journal_text)
-candidate_root = pathlib.Path(candidate_root_text)
-deploy_dir = pathlib.Path(deploy_dir_text)
-generation_name = re.compile(r"(?:release-|data-)[A-Za-z0-9._-]+|(?:murmur|legacy)\.[A-Za-z0-9._-]+")
-candidate_name = re.compile(r"[0-9a-f]{40}-[1-9][0-9]*-[1-9][0-9]*")
-forward_staging_name = re.compile(r"\.crawler-forward-data-[0-9a-f]{40}\.[A-Za-z0-9]+")
-
-try:
-    keep = int(keep_text)
-    grace = int(grace_text)
-    explicit_count = int(explicit_count_text)
-except ValueError as error:
-    raise SystemExit("invalid publication retention configuration") from error
-if not 1 <= keep <= 20 or not 0 <= grace <= 604800:
-    raise SystemExit("publication retention configuration is outside safe bounds")
-if not 0 <= explicit_count <= len(generation_paths):
-    raise SystemExit("invalid publication retention path counts")
-explicit_releases = generation_paths[:explicit_count]
-verified_release_paths = generation_paths[explicit_count:]
-
-
-def require_directory(path: pathlib.Path, label: str) -> None:
-    try:
-        mode = path.lstat().st_mode
-    except FileNotFoundError as error:
-        raise SystemExit(f"{label} is unavailable") from error
-    if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
-        raise SystemExit(f"{label} is unsafe")
-
-
-def validate_generation(path_text: str, label: str) -> pathlib.Path:
-    path = pathlib.Path(path_text)
-    if path.parent != release_root or not generation_name.fullmatch(path.name):
-        raise SystemExit(f"{label} is outside the release-generation root")
-    require_directory(path, label)
-    return path
-
-
-def read_exact_values(path: pathlib.Path) -> dict[str, str]:
-    try:
-        mode = path.lstat().st_mode
-    except FileNotFoundError:
-        return {}
-    if not stat.S_ISREG(mode) or stat.S_ISLNK(mode):
-        raise SystemExit("publication journal is unsafe")
-    if stat.S_IMODE(mode) != 0o600:
-        raise SystemExit("publication journal permissions are unsafe")
-    values: dict[str, list[str]] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        key, separator, value = line.partition("=")
-        if not separator:
-            raise SystemExit("publication journal is malformed")
-        values.setdefault(key, []).append(value)
-    if any(len(items) != 1 for items in values.values()):
-        raise SystemExit("publication journal contains duplicate keys")
-    return {key: items[0] for key, items in values.items()}
-
-
-def fsync_directory(path: pathlib.Path) -> None:
-    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
-
-
-require_directory(release_root, "release-generation root")
-require_directory(deploy_dir, "deploy root")
-try:
-    active_mode = active_pointer.lstat().st_mode
-except FileNotFoundError as error:
-    raise SystemExit("active release pointer is unavailable") from error
-if not stat.S_ISLNK(active_mode):
-    raise SystemExit("active release pointer is unsafe")
-active = validate_generation(os.readlink(active_pointer), "active release")
-
-protected_releases = {active}
-journal_values = read_exact_values(journal)
-if journal_values:
-    required = {
-        "PUBLICATION_FORMAT_VERSION",
-        "SYNC_SUCCEEDED",
-        "RECOVERY_ACTION",
-        "PREVIOUS_RELEASE",
-        "TARGET_RELEASE",
-    }
-    if set(journal_values) != required or journal_values["PUBLICATION_FORMAT_VERSION"] != "1":
-        raise SystemExit("publication journal has an unsupported contract")
-    if journal_values["SYNC_SUCCEEDED"] not in {"0", "1"}:
-        raise SystemExit("publication journal has an invalid sync state")
-    if journal_values["RECOVERY_ACTION"] not in {"restore-previous", "promote-target"}:
-        raise SystemExit("publication journal has an invalid recovery action")
-    protected_releases.add(
-        validate_generation(journal_values["PREVIOUS_RELEASE"], "journal previous release")
-    )
-    protected_releases.add(
-        validate_generation(journal_values["TARGET_RELEASE"], "journal target release")
-    )
-for release in explicit_releases:
-    if release:
-        protected_releases.add(validate_generation(release, "explicitly protected release"))
-verified_releases = {
-    validate_generation(release, "verified v3 release")
-    for release in verified_release_paths
-}
-
-if protected_candidate and not candidate_name.fullmatch(protected_candidate):
-    raise SystemExit("protected CSV candidate identity is invalid")
-if consumed_candidate and not candidate_name.fullmatch(consumed_candidate):
-    raise SystemExit("consumed CSV candidate identity is invalid")
-if candidate_root.exists():
-    require_directory(candidate_root, "CSV candidate root")
-elif protected_candidate or consumed_candidate:
-    raise SystemExit("CSV candidate root is unavailable")
-protected_forward_staging = None
-if protected_forward_staging_text:
-    protected_forward_staging = pathlib.Path(protected_forward_staging_text)
-    if (
-        protected_forward_staging.parent != deploy_dir
-        or not forward_staging_name.fullmatch(protected_forward_staging.name)
-    ):
-        raise SystemExit("protected forward-data staging path is unsafe")
-    require_directory(protected_forward_staging, "protected forward-data staging")
-
-now = time.time()
-deleted_generation = False
-generation_entries: list[tuple[int, pathlib.Path]] = []
-for entry in os.scandir(release_root):
-    if not generation_name.fullmatch(entry.name) or entry.is_symlink():
-        continue
-    if not entry.is_dir(follow_symlinks=False):
-        continue
-    generation_entries.append((entry.stat(follow_symlinks=False).st_mtime_ns, pathlib.Path(entry.path)))
-newest = {
-    path
-    for _, path in sorted(
-        (item for item in generation_entries if item[1] in verified_releases),
-        key=lambda item: (item[0], item[1].name),
-        reverse=True,
-    )[:keep]
-}
-crawler_ref_pattern = re.compile(
-    r"ghcr\.io/[A-Za-z0-9._-]+/jobseek-crawler@sha256:[0-9a-f]{64}"
-)
-browser_ref_pattern = re.compile(
-    r"ghcr\.io/[A-Za-z0-9._-]+/jobseek-crawler-browser@sha256:[0-9a-f]{64}"
-)
-
-
-def release_image_pair(path: pathlib.Path) -> tuple[str, str] | None:
-    evidence = path / "success.env"
-    try:
-        mode = evidence.lstat().st_mode
-    except FileNotFoundError as error:
-        raise SystemExit("verified release image evidence is unavailable") from error
-    if not stat.S_ISREG(mode) or stat.S_ISLNK(mode) or evidence.stat().st_size > 65536:
-        raise SystemExit("verified release image evidence is unsafe")
-    values: dict[str, list[str]] = {}
-    for line in evidence.read_text(encoding="utf-8").splitlines():
-        key, separator, value = line.partition("=")
-        if separator and key in {"CRAWLER_IMAGE_REF", "BROWSER_IMAGE_REF"}:
-            values.setdefault(key, []).append(value)
-    if not values:
-        # Compatibility with early verified v3 test/bootstrap generations that
-        # predate browser identity in the success marker.
-        return None
-    if set(values) != {"CRAWLER_IMAGE_REF", "BROWSER_IMAGE_REF"} or any(
-        len(items) != 1 for items in values.values()
-    ):
-        raise SystemExit("verified release image evidence is incomplete or duplicated")
-    pair = (values["CRAWLER_IMAGE_REF"][0], values["BROWSER_IMAGE_REF"][0])
-    if not crawler_ref_pattern.fullmatch(pair[0]) or not browser_ref_pattern.fullmatch(pair[1]):
-        raise SystemExit("verified release image evidence is malformed")
-    return pair
-
-
-# Generic publication churn can create many data-only generations that all
-# point at one runtime. Preserve the newest three distinct successful image
-# pairs independently of the ordinary five-generation data rollback window:
-# active plus two delayed runtime rollback releases for Docker GC.
-newest_image_releases: set[pathlib.Path] = set()
-seen_image_pairs: set[tuple[str, str]] = set()
-for _, path in sorted(
-    (item for item in generation_entries if item[1] in verified_releases),
-    key=lambda item: (item[0], item[1].name),
-    reverse=True,
-):
-    pair = release_image_pair(path)
-    if pair is None or pair in seen_image_pairs:
-        continue
-    seen_image_pairs.add(pair)
-    newest_image_releases.add(path)
-    if len(newest_image_releases) == 3:
-        break
-for mtime_ns, path in generation_entries:
-    age = now - (mtime_ns / 1_000_000_000)
-    if path in protected_releases or path in newest or path in newest_image_releases or age < grace:
-        continue
-    shutil.rmtree(path)
-    deleted_generation = True
-if deleted_generation:
-    fsync_directory(release_root)
-
-if candidate_root.exists():
-    deleted_candidate = False
-    if consumed_candidate:
-        consumed_path = candidate_root / consumed_candidate
-        try:
-            consumed_mode = consumed_path.lstat().st_mode
-        except FileNotFoundError:
-            consumed_mode = None
-        if consumed_mode is not None:
-            if not stat.S_ISDIR(consumed_mode) or stat.S_ISLNK(consumed_mode):
-                raise SystemExit("consumed CSV candidate is unsafe")
-            shutil.rmtree(consumed_path)
-            deleted_candidate = True
-    for entry in os.scandir(candidate_root):
-        if not candidate_name.fullmatch(entry.name) or entry.is_symlink():
-            continue
-        if entry.name == protected_candidate or not entry.is_dir(follow_symlinks=False):
-            continue
-        age = now - entry.stat(follow_symlinks=False).st_mtime
-        if age < grace:
-            continue
-        shutil.rmtree(entry.path)
-        deleted_candidate = True
-    if deleted_candidate:
-        fsync_directory(candidate_root)
-
-deleted_forward_staging = False
-for entry in os.scandir(deploy_dir):
-    if not forward_staging_name.fullmatch(entry.name) or entry.is_symlink():
-        continue
-    path = pathlib.Path(entry.path)
-    if path == protected_forward_staging or not entry.is_dir(follow_symlinks=False):
-        continue
-    age = now - entry.stat(follow_symlinks=False).st_mtime
-    if age < grace:
-        continue
-    shutil.rmtree(path)
-    deleted_forward_staging = True
-if deleted_forward_staging:
-    fsync_directory(deploy_dir)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" publication-prune "${prune_args[@]}"
 }
 
 activate_release_generation() {
@@ -667,36 +398,13 @@ write_journal() {
     "PREVIOUS_RELEASE=$previous" \
     "TARGET_RELEASE=$target" >"$temporary"
   chmod 0600 "$temporary"
-  python3 - "$temporary" "$PUBLICATION_JOURNAL" "$DEPLOY_DIR" <<'PY'
-import os
-import sys
-
-temporary, journal, parent = sys.argv[1:]
-fd = os.open(temporary, os.O_RDONLY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-os.replace(temporary, journal)
-fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" journal-publish \
+    "$temporary" "$PUBLICATION_JOURNAL" "$DEPLOY_DIR"
 }
 
 clear_journal() {
   rm -f -- "$PUBLICATION_JOURNAL"
-  python3 - "$DEPLOY_DIR" <<'PY'
-import os
-import sys
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$DEPLOY_DIR"
 }
 
 recover_publication() (
@@ -1005,16 +713,7 @@ discard_candidate_generation() {
   resolve_active_release
   [[ "$generation" != "$ACTIVE_RELEASE" ]] || return 1
   rm -rf -- "$generation"
-  python3 - "$ACTIVE_RELEASE_ROOT" <<'PY'
-import os
-import sys
-
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$ACTIVE_RELEASE_ROOT"
 }
 
 discard_bootstrap_candidate() {
@@ -1026,16 +725,7 @@ discard_bootstrap_candidate() {
   [[ -d "$CANDIDATE_ROOT" && ! -L "$CANDIDATE_ROOT" && \
     -d "$candidate" && ! -L "$candidate" ]] || return 1
   rm -rf -- "$candidate"
-  python3 - "$CANDIDATE_ROOT" <<'PY'
-import os
-import sys
-
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$CANDIDATE_ROOT"
 }
 
 cleanup() {
