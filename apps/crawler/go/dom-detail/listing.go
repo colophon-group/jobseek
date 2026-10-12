@@ -25,6 +25,7 @@ type ListingConfig struct {
 	ScriptLinks                          *ScriptLinksConfig
 	OnclickSelector                      string
 	EmptySelector, EmptyText             string
+	RequireNonEmpty                      bool // Code-owned replacement proof; not a metadata option.
 	FetchURL                             string
 	BoardURL                             string
 	Proofs                               *ListingProofs

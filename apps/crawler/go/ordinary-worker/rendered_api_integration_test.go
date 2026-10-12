@@ -20,15 +20,32 @@ func TestRealRenderedAPIURLTransformCanonicalSettlement(t *testing.T) {
 	testRealRenderedAPICanonicalSettlement(t, true)
 }
 
-func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool) {
+func TestRealHashRoutedAPICanonicalSettlementAndFailureAuthority(t *testing.T) {
+	testRealRenderedAPICanonicalSettlement(t, false, true)
+}
+
+func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool, hashRoute ...bool) {
 	t.Helper()
+	trip := len(hashRoute) > 0 && hashRoute[0]
 	for _, mode := range []string{"rich", "truncated", "publisher", "failed", "wrong_binding"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := `{"browser":true,"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title","description":"body","locations":"city"},"scraper_type":"skip"}`
+			boardURL := "https://example.com/careers"
+			if trip {
+				boardURL = "https://careers.trip.com/#/jobList"
+				metadata = strings.Replace(metadata, `https://example.com/api`, `https://careers.trip.com/api/oversea/getOverseaJobAd`, 1)
+				metadata = strings.Replace(metadata, `"browser":true`, `"browser":true,"method":"POST"`, 1)
+			}
 			if transform {
 				metadata = strings.TrimSuffix(metadata, "}") + `,"url_transform":{"find":"/new$","replace":"/canonical"}}`
 			}
-			f := privateRichPipelineFixture(t, "api_sniffer", metadata, queue.Browser)
+			f := privateRichPipelineFixtureURL(t, "api_sniffer", metadata, boardURL, queue.Browser)
+			postingURL := "https://example.com/job/" + f.company + "/new"
+			policyURL := "https://example.com/api"
+			if trip {
+				postingURL = "https://careers.trip.com/#/job-detail?fromId=aB12cD34&atsApiType=Moka_Overseas"
+				policyURL = "https://careers.trip.com/api/oversea/getOverseaJobAd"
+			}
 			ctx := context.Background()
 			claim, err := f.a.Claim(ctx, queue.Browser)
 			if err != nil || claim == nil {
@@ -40,12 +57,12 @@ func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool) {
 			}
 			renderer := heldMonitor(func(_ context.Context, p queue.GreenhouseMonitorProfile, _ map[string]string) (RichDiscovery, error) {
 				response := replay.Response{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: p.EffectiveConfigSHA256, Outcome: "success"}
-				response.Inventory = json.RawMessage(fmt.Sprintf(`{"Jobs":[{"url":%q,"title":"Senior Software Engineer","description":"<p>Build Go services in Zurich.</p>","locations":["Zurich"],"metadata":{"language":"en"},"extras":{}}],"Truncated":%t,"LastResponseProbe":false}`, "https://example.com/job/"+f.company+"/new", mode == "truncated"))
+				response.Inventory = json.RawMessage(fmt.Sprintf(`{"Jobs":[{"url":%q,"title":"Senior Software Engineer","description":"<p>Build Go services in Zurich.</p>","locations":["Zurich"],"metadata":{"language":"en"},"extras":{}}],"Truncated":%t,"LastResponseProbe":false}`, postingURL, mode == "truncated"))
 				switch mode {
 				case "publisher":
 					response.Outcome = "publisher_reserved"
 					response.Inventory = nil
-					response.Reservation = &replay.Reservation{URL: "https://example.com/api", Source: "meta"}
+					response.Reservation = &replay.Reservation{URL: policyURL, Source: "meta"}
 				case "failed":
 					response.Outcome = "failed"
 					response.Inventory = nil
@@ -79,7 +96,7 @@ func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool) {
 				if err := f.pg.QueryRow(ctx, "SELECT p.titles[1],p.source_url,p.location_ids,d.html,d.r2_uploaded,p.description_r2_hash FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.board_id=$1::uuid AND p.id<>$2::uuid", f.board, f.original).Scan(&title, &source, &locations, &html, &uploaded, &canonical); err != nil {
 					t.Fatal(err)
 				}
-				wantSource := "https://example.com/job/" + f.company + "/new"
+				wantSource := postingURL
 				if transform {
 					wantSource = strings.TrimSuffix(wantSource, "/new") + "/canonical"
 				}

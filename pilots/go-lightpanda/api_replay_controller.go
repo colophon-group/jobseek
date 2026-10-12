@@ -55,7 +55,7 @@ func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, 
 		"load":             runtimev1.WaitCondition_WAIT_CONDITION_LOAD,
 		"networkidle":      runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE,
 	}[o.Wait]
-	return Task{URL: boardURL, Navigation: &navigationOptions{wait: wait, timeout: time.Duration(o.TimeoutMS) * time.Millisecond}, APIReplay: &apiReplayTask{boardURL: boardURL, options: o, converse: converse}}, nil
+	return Task{URL: o.BootstrapURL, Navigation: &navigationOptions{wait: wait, timeout: time.Duration(o.TimeoutMS) * time.Millisecond}, APIReplay: &apiReplayTask{boardURL: boardURL, options: o, converse: converse}}, nil
 }
 
 func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capture *replayCapture, status int, finalURL, html string, signals *runtimev1.ResourcePolicySignals) error {

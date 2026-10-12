@@ -1,6 +1,53 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1026 deployed; cold294; combined source1028 next
+## Current checkpoint — source1028 deployed; full ordinary ownership active295
+
+[PR #10440](https://github.com/colophon-group/jobseek/pull/10440) merged as
+`96d705e7f04f64c656d22316a8616f1d9a728914`, **0.13.1028 /204 profiles**.
+The [original whole crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38204987952)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38205005933)
+succeeded at attempt1. Independent cold readback verifies the selected immutable
+images, actual CSV tree and native host artifacts, schema0040, restored base
+writers, renderer and exporter progress. Original B0 activation succeeded at
+**epoch295**. The fresh full-route audit reconciled **1,673,956 scheduled posting
+routes** across **7,885 enabled boards**, preserving **7,788 monitor owners and
+7,683 detail-board owners**, with no newly admitted owners.
+
+Original ordinary stage binds plan
+`8239d1bf1cf38ebc8d46f78d8c533b623c5e84f12cf7dd927fea9e106acb1151`
+and projection `7da2c1c3d53806fd55c3a440c10f0a6e90c4646d`.
+The supported original activation succeeded after natural legacy SQL lease
+expiry. Independent serving readback verifies the exact receipt, SQL plan and
+Redis projection, all10 running restart-armed services and eight healthy
+endpoints. Early natural processing completed7 monitor and11 detail receipts;
+all7 completed monitor leases are settled. See the
+[production evidence](evidence/go-native-source1028-production-2026-10-12.json).
+Continue natural IATA/Banner recovery, recurring settlement and sustained
+freshness/resources; this early observation proves serving, not fleet health.
+
+The following **0.13.1029** batch ports two types together: Trip.com's
+hash-routed API and Air Belgium's rendered DOM listing. Physical Lightpanda
+matches all175 original Trip jobs and all12 compared fields; real PostgreSQL /
+Redis replay inserts175 postings with exact deadline and lease settlement.
+A narrow posting-identity rule fixes the legacy bare-host filter's rejection of
+real Trip SPA links. The DOM replacement preserves its original configuration
+hash, discovers/inserts all3 jobs and retains browser-detail routing; unproved
+zero, publisher reservation and incomplete documents protect canonical state.
+Both types have portable canonical-effect and failure tests. See the
+[grouped candidate evidence](evidence/go-native-hash-api-dom-candidate-2026-10-12.json).
+CMA detail replacement remains unqualified. Failed physical/parser/canonical
+observations are retained; these local results grant no production ownership.
+
+Continue with exact committed-head CI/image/Linux/gate qualification, original
+full deployment and fresh grouped admission, preserving the complete prior
+floor. Then measure sustained freshness/conservation and comparable whole-lane
+resources/cost. Current registry/database/schedule sync already runs in Go;
+remaining work includes credential/schema helpers, legacy worker/browser
+consumers and every enabled route. Production Python, Playwright and Chromium
+retirement still requires full replacement authority, supported cold reversal
+and the rollback window. **The full migration goal remains active and incomplete.**
+
+## Historical checkpoint — source1026 deployed; cold294; combined source1028 next
 
 [PR #10438](https://github.com/colophon-group/jobseek/pull/10438) merged as
 `db69c40a0eaf54b9c06281756098b76d907e2f4d`, **0.13.1026 /204 profiles**.
@@ -78,7 +125,7 @@ Continue in this order:
    RSS2, BrassRing4 and Njoyn1 uncompiled configurations;21 more compile outside
    the ordinary floor. Compilation alone grants no ownership. Preserve held
    Hitachi Energy/Implenia until complete fresh evidence passes.
-5. Finish CSV database/schedule sync, credential helpers, schema execution and
+5. Finish remaining credential helpers, schema execution and
    remaining legacy worker/browser consumers. Establish full enabled-route
    replacement, sustained freshness/conservation/resources/cost, supported cold
    reversal and the rollback window before retiring production Python,

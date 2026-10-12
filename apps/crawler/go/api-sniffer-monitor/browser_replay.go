@@ -53,6 +53,7 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 // Admission must also require the affine capture/fetch controller; these options
 // alone never authorize a browser profile or replace its legacy owner.
 type BrowserReplayOptions struct {
+	BootstrapURL        string // Code-owned navigation alias; never a metadata override.
 	LiveURLMatch        string
 	ResponseBodyLimit   int // Fixed native provider factory only; never metadata-controlled.
 	Inventory           Options
@@ -61,8 +62,16 @@ type BrowserReplayOptions struct {
 	pageCapConfigured   bool
 }
 
+// BootstrapAliasMatches verifies the one code-owned network alias against the
+// canonical board and explicit API. A detached option cannot grant another URL.
+func (o BrowserReplayOptions) BootstrapAliasMatches(board, navigation string) bool {
+	return o.Inventory.BoardURL == board && o.BootstrapURL == navigation &&
+		board == "https://careers.trip.com/#/jobList" && navigation == "https://careers.trip.com/" &&
+		o.Inventory.Endpoint == "https://careers.trip.com/api/oversea/getOverseaJobAd" && o.Inventory.Method == "POST"
+}
+
 func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOptions, error) {
-	o := BrowserReplayOptions{Wait: "load", TimeoutMS: 20000, SettleMS: 3000}
+	o := BrowserReplayOptions{BootstrapURL: boardURL, Wait: "load", TimeoutMS: 20000, SettleMS: 3000}
 	d, e := Decode([]byte(raw))
 	if e != nil {
 		return o, ErrOptions
@@ -70,6 +79,13 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	m, ok := d.Value.(map[string]any)
 	if !ok || m["browser"] != true {
 		return o, ErrOptions
+	}
+	// Trip.com's hash is a client-side listing route, not a network resource.
+	// Its same-origin root establishes the affine session for the explicit API.
+	// Retain the canonical board URL for identity and URL assembly, and grant
+	// this navigation alias only to the independently verified API endpoint.
+	if boardURL == "https://careers.trip.com/#/jobList" && m["api_url"] == "https://careers.trip.com/api/oversea/getOverseaJobAd" && m["method"] == "POST" {
+		o.BootstrapURL = "https://careers.trip.com/"
 	}
 	if raw, present := m["api_url_match"]; present {
 		pattern, ok := raw.(string)
@@ -124,10 +140,11 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if pg, ok := m["pagination"].(map[string]any); ok {
 		_, o.pageCapConfigured = pg["max_pages"]
 	}
-	o.Inventory, e = OptionsFromMetadata(boardURL, metadata)
+	o.Inventory, e = OptionsFromMetadata(o.BootstrapURL, metadata)
 	if e != nil {
 		return o, e
 	}
+	o.Inventory.BoardURL = boardURL
 	if o.Inventory.PDFProof != nil {
 		return o, ErrOptions
 	}

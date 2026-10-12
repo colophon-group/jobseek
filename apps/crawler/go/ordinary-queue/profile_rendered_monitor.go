@@ -48,6 +48,10 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			options[key] = v
 		}
 	}
+	selfIdentifying := selfIdentifyingDOMSource(config, md)
+	if selfIdentifying {
+		delete(options, "stealth")
+	}
 	if err := normalizeDOMLightpandaResourceOptions(options); err != nil {
 		return fail()
 	}
@@ -65,6 +69,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	}
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
 		delete(cloneMD, key)
+	}
+	if selfIdentifying {
+		delete(cloneMD, "stealth")
 	}
 	if raw, exists := cloneMD["pagination"]; exists && string(raw) != "null" {
 		// Whole-list totals newly admitted with pagination are static-only.
@@ -108,5 +115,6 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err != nil {
 		return fail()
 	}
+	listing.RequireNonEmpty = selfIdentifying
 	return listing, options, nil
 }

@@ -42,6 +42,9 @@ func classifyJobURL(raw, board string) string {
 	}
 	path := strings.TrimRight(p.path, "/")
 	if path == "" {
+		if tripPostingIdentity(raw, board) {
+			return ""
+		}
 		if api.CVWarehousePostingURL(raw) {
 			return ""
 		}
@@ -57,6 +60,37 @@ func classifyJobURL(raw, board string) string {
 		return "board_homepage"
 	}
 	return ""
+}
+
+// Trip's posting ID lives in the SPA route at the site root. The legacy bare
+// host guard drops these real postings; admit only the verified canonical
+// listing, detail route and explicit ATS identity, preserving the full URL.
+func tripPostingIdentity(raw, board string) bool {
+	if board != "https://careers.trip.com/#/jobList" {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host != "careers.trip.com" || u.User != nil || u.Path != "/" || u.RawQuery != "" || u.ForceQuery {
+		return false
+	}
+	route, err := url.Parse(u.Fragment)
+	if err != nil || route.Path != "/job-detail" || route.Scheme != "" || route.Host != "" || route.Fragment != "" {
+		return false
+	}
+	query, err := url.ParseQuery(route.RawQuery)
+	if err != nil || len(query) != 2 || len(query["fromId"]) != 1 || len(query["atsApiType"]) != 1 || query.Get("atsApiType") != "Moka_Overseas" {
+		return false
+	}
+	id := query.Get("fromId")
+	if len(id) == 0 || len(id) > 128 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 func queryText(raw string) string {

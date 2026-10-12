@@ -272,7 +272,7 @@ func validateTask(task Task) error {
 	if len(task.Actions) > 0 && (!actions.Valid(task.Actions) || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
 		return actions.ErrActions
 	}
-	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
+	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL && (task.APIReplay.nativeProvider != "" || !task.APIReplay.options.BootstrapAliasMatches(task.APIReplay.boardURL, task.URL)) || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
 		return errReplayCapture
 	}
 	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
