@@ -59,8 +59,16 @@ func TestSharedHTTPMonitorTLSCurrentRegistryAndRetainedSitemapTransport(t *testi
 		}
 		p, e := InspectRichMonitor(profileBoardID, c)
 		if c["monitor_needs_browser"] == "1" {
-			if e == nil {
-				t.Fatal("HTTP proof admitted browser exception")
+			if row[h["board_slug"]] == "arcelormittal-ukraine" {
+				// This exact source now has independent rendered-document
+				// replacement proof using verified TLS, rather than an HTTP
+				// browser exception. Original skip_ssl remains in its hash.
+				skip, tlsErr := MonitorSkipsSSL(c)
+				if e != nil || tlsErr != nil || skip || MonitorWorker(p) != Browser || ProfileRequiresProxy(p.Profile) || p.SnapshotSHA256 != configDigest(c) {
+					t.Fatal("verified rendered replacement lost original binding", e, tlsErr)
+				}
+			} else if e == nil {
+				t.Fatal("HTTP proof admitted unqualified browser exception")
 			}
 			rendered++
 			continue

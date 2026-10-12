@@ -47,6 +47,30 @@ consumers and every enabled route. Production Python, Playwright and Chromium
 retirement still requires full replacement authority, supported cold reversal
 and the rollback window. **The full migration goal remains active and incomplete.**
 
+## Next grouped candidate — four rendered source contracts
+
+The following **0.13.1030** prototype covers Alten Portugal, Spain and Finland,
+and ArcelorMittal Ukraine together. Original / physical inventories match
+**5 /65 /17 /7 URLs**, and real PostgreSQL /Redis replay inserts all **94** with
+exact deadline/lease settlement and publisher/incomplete/empty protection.
+Exact static configuration hashes select a direct verified-TLS, self-identifying
+replacement while retaining original controls in the ownership hash. Original
+`transport_attempts=3` rotates proxy endpoints after origin blocks; the direct
+replacement retains the existing bounded single native transport retry and
+fails origin blocks without proxy fallback. Spain forwards its witnessed
+pagination query. These choices are explicit replacement contracts, not
+unqualified generic flags. Browser detail replacement remains outstanding.
+See the [candidate evidence](evidence/go-native-grouped-rendered-navigation-candidate-2026-10-12.json).
+
+Source1028 has now recovered IATA and Banner's University Arizona faculty board
+through natural scheduling: all **34 /90** active jobs were seen, current-epoch
+receipts completed with zero failures, and both recurring schedules settled to
+the exact committed deadlines. See the [natural recovery evidence](evidence/go-native-source1028-natural-recovery-2026-10-12.json).
+The next source1029 PR has green Required CI, Gate, image parity and both
+exact-head Linux pilots; its exact-head ARM comparison is still in progress.
+Source1028 remains active while that qualification finishes. Full migration,
+sustained fleet freshness and attributable whole-lane cost remain incomplete.
+
 ## Historical checkpoint — source1026 deployed; cold294; combined source1028 next
 
 [PR #10438](https://github.com/colophon-group/jobseek/pull/10438) merged as

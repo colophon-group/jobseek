@@ -1,0 +1,45 @@
+{
+  "schema": "jobseek.grouped-rendered-navigation-candidate/v1",
+  "candidate_version": "0.13.1030",
+  "parent_candidate_head": "91b45a0e8923a1d7dadadd813a85fb2e0728693e",
+  "parent_pr": 10441,
+  "production_authority": false,
+  "lightpanda_release": "1.0.0",
+  "original_jobs": {
+    "alten-portugal": 5,
+    "alten-spain": 65,
+    "alten-finland": 17,
+    "arcelormittal-ukraine": 7
+  },
+  "physical_original_URL_parity": 94,
+  "canonical_insertions": 94,
+  "physical_database_race_seconds": 6.395,
+  "physical_database_log_sha256": "3ef50ce13e404a2d691658f91f19f77797f58444de8eb8775c2cbb061ef5df84",
+  "portable_database_race_seconds": 8.434,
+  "portable_database_log_sha256": "6683b1fbde7546b0f36628c86d736afb8d74320ee4773868c80b17e3d1dff714",
+  "preserved": [
+    "Full original static configuration in immutable ownership hash",
+    "Original browser detail routing; detail replacement remains unqualified",
+    "Exact committed deadline and lease settlement",
+    "Publisher reservations, incomplete documents and unproved zero protect canonical inventory",
+    "Other proxy/TLS profiles retain their original transport authority"
+  ],
+  "replacement_choices": [
+    "Only exact static source hashes select direct verified-TLS self-identifying Lightpanda navigation",
+    "Original proxy/stealth/skip_ssl controls remain in original metadata; their replacement is explicitly qualified direct verified-TLS navigation",
+    "transport_attempts=3 is legacy proxy-origin rotation, not navigation transport retry; the direct route uses existing bounded single native transport retry and fails origin blocks without proxy fallback",
+    "Spain retains the actual action-selected final query sortby=date&pagenum=1&per_page=100"
+  ],
+  "retained_failure_history": [
+    "Initial proxy profile guard refused replacements; fixed only exact source-bound DOM/browser branch",
+    "First physical database replay required exact board URL and refused Spain action-selected final query; fixed exact witnessed final query while forwarding its actual final URL",
+    "Original group has5 failures and2 additional unqualified physical/action cases; no failures converted to empty success"
+  ],
+  "remaining": [
+    "Committed-head CI/image/Linux/gate qualification",
+    "Original full release and fresh full-floor plus grouped admission",
+    "Rendered details for these sources",
+    "Sustained fleet freshness and whole-lane ordinary resources/cost"
+  ],
+  "full_migration_complete": false
+}

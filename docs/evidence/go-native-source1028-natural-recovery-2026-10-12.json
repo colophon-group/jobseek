@@ -1,0 +1,76 @@
+{
+  "schema": "jobseek.native-natural-api-recovery/v1",
+  "source_revision": "96d705e7f04f64c656d22316a8616f1d9a728914",
+  "routing_epoch": 295,
+  "plan_sha256": "8239d1bf1cf38ebc8d46f78d8c533b623c5e84f12cf7dd927fea9e106acb1151",
+  "observed_at_utc": "2026-10-12T06:23:11.587878+00:00",
+  "original_version": "0.13.1028",
+  "boards": [
+    {
+      "board_slug": "banner-health-university-arizona-faculty",
+      "crawler_type": "api_sniffer",
+      "last_checked_at": "2026-10-12T06:09:39.995244+00:00",
+      "next_check_at": "2026-10-12T07:10:01.323576+00:00",
+      "consecutive_failures": 0,
+      "empty_check_count": 0,
+      "native_receipt_state": "completed",
+      "native_receipt_updated_at": "2026-10-12T06:10:01.358311+00:00",
+      "active_postings": 90,
+      "active_seen_since_native_start": 90
+    },
+    {
+      "board_slug": "iata-careers",
+      "crawler_type": "api_sniffer",
+      "last_checked_at": "2026-10-12T05:54:09.500844+00:00",
+      "next_check_at": "2026-10-12T06:54:22.318751+00:00",
+      "consecutive_failures": 0,
+      "empty_check_count": 0,
+      "native_receipt_state": "completed",
+      "native_receipt_updated_at": "2026-10-12T05:54:22.407612+00:00",
+      "active_postings": 34,
+      "active_seen_since_native_start": 34
+    }
+  ],
+  "exact_committed_recurring_schedules": [
+    {
+      "slug": "iata-careers",
+      "canonical_due": 1791788062.318751,
+      "recurring_due": "1791788062.318751",
+      "matches_original_committed_schedule": true
+    },
+    {
+      "slug": "banner-health-university-arizona-faculty",
+      "canonical_due": 1791789001.323576,
+      "recurring_due": "1791789001.323576",
+      "matches_original_committed_schedule": true
+    }
+  ],
+  "native_summary": {
+    "observed_at": "2026-10-12T06:23:09.689347+00:00",
+    "fences_by_task": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 4
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 637
+      },
+      {
+        "task_kind": "scrape",
+        "state": "active",
+        "count": 5
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 980
+      }
+    ],
+    "scope": "naturally scheduled active295 native claims; no replay or synthetic work injected"
+  },
+  "proof_sha256": "cb77aeedd5af601a111a1ed9783121a82882bb845c731cfe95266be1e241455c",
+  "scope": "Naturally scheduled native completions after original activation; no counter reset or synthetic task injection. Both boards have all active postings seen, completed current-epoch receipts, zero failures and exact settled recurring schedules. Not sustained fleet-wide freshness or cost proof."
+}

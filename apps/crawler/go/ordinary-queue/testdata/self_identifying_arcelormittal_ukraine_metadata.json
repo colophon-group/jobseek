@@ -1,0 +1,32 @@
+{
+  "wait": "domcontentloaded",
+  "render": true,
+  "timeout": 30000,
+  "skip_ssl": true,
+  "url_filter": "/people-and-careers/arcelormittal-kryvyi-rih-as-your-workplace/.+",
+  "scraper_type": "dom",
+  "scraper_config": {
+    "wait": "domcontentloaded",
+    "steps": [
+      {
+        "tag": "h1",
+        "field": "title"
+      },
+      {
+        "html": true,
+        "stop": "cookie",
+        "field": "description",
+        "optional": true
+      }
+    ],
+    "render": true,
+    "stealth": true,
+    "timeout": 30000,
+    "defaults": {
+      "locations": [
+        "Kryvyi Rih, Ukraine"
+      ]
+    },
+    "skip_ssl": true
+  }
+}
