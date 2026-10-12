@@ -191,8 +191,7 @@ done
   echo "ERROR: staged rollback pool-budget override is unavailable or unsafe" >&2
   exit 1
 }
-[[ -f "$CLAIMANT_CREDENTIAL_ARCHIVE" && ! -L "$CLAIMANT_CREDENTIAL_ARCHIVE" && \
-  -f "$CLAIMANT_CREDENTIAL_INSTALLER" && ! -L "$CLAIMANT_CREDENTIAL_INSTALLER" ]] || {
+[[ -f "$CLAIMANT_CREDENTIAL_ARCHIVE" && ! -L "$CLAIMANT_CREDENTIAL_ARCHIVE" ]] || {
   echo "ERROR: staged Lightpanda claimant credential bundle is unavailable or unsafe" >&2
   exit 1
 }

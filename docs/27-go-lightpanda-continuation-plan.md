@@ -1,6 +1,50 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1030 serving297; six monitors admitted; source1032 qualified
+## Current checkpoint — source1030 restored cold298; source1033 deployment preflight failed
+
+PR10444 merged as `0295a3fb5a0aed879eb0fbd54825bee6fa5592fc`, version0.13.1033.
+Exact head4e7 core CI/image/Linux/Gate and all16 ARM comparison arms passed.
+All3,306 merged SDK blobs equal the qualified candidate. Original ordinary
+retirement, B0 reversal and locked selector clear succeeded; independent cold298
+checks prove restored healthy source1030 writers and no native owners, receipts,
+projection or tokens. Original full crawler run38258546622 failed before selecting incoming specs or
+changing the live release: staged-artifact preflight still references removed
+`CLAIMANT_CREDENTIAL_INSTALLER`. Independent post-failure checks confirm healthy
+source1030 at cold298, no native owners/receipts/projection/tokens and no foreign
+oneoffs. Renderer run38258578192 succeeded; exact source/digest checks passed.
+Do not retry the unchanged source1033 deploy. PR10448/source1034 carries the
+preflight repair with navigation and CPU fixes; original rollout and fresh
+admission of the seven-monitor additions remain required.
+Seven monitor additions/89 original URLs and the native credential installer
+remain one release. Renew the complete source/image/receipt-bound census and
+preserve7,794 /7,683 before admitting the prospective7,801 /7,683 cohort.
+
+Source1030 naturally completed1,015 monitor/219 detail claims. Finland recovered
+and refreshed all17 postings; Spain and Portugal success remains unproved.
+Production-network CDP evidence shows complete Alten HTTP403 responses followed
+by a late Lightpanda Shutdown notification, which the current adapter mislabels
+as transport failure. The separate0.13.1034 candidate preserves actual HTTP
+status after this narrowly identified cleanup event; incomplete failures stay
+refused. Regression fails before/passes after, and actual renderer-network
+observations preserve control200 and both origin403 responses.
+
+The same candidate gives the ordinary worker two CPU cores after observed97.77%
+CPU saturation and a growing6,761 due-monitor backlog. It retains20 total/5
+monitor claims,1GiB container limit and512MiB Go target. This is proposed capacity,
+not proven fleet freshness or cost. Verify through the original complete release
+and sustained due-age/resource observation. See the [candidate proof](evidence/go-native-navigation-cpu-candidate-2026-10-12.json).
+
+Continue the full migration after source1034 rollout and ownership readback. Fresh grouped
+reference probes for remaining inline/RSS configurations found Daiichi empty,
+BNP navigation failure and Implenia identity resolution exhausted by HTTP429.
+These observations grant no new profile authority. Preserve every enabled board,
+finish valid grouped monitor/detail and production-consumer replacements, and
+prove freshness, whole-lane cost and supported cold reversal/rollback before
+retiring production Python, Playwright and Chromium. Offline Python remains useful.
+
+**The full migration is incomplete and the goal remains active.**
+
+## Historical checkpoint — source1030 serving297; six monitors admitted; source1032 qualified
 
 Source1030 is deployed at `3bedb97f20179901fb6730e5acd72be0d061a5c1`
 through successful original crawler run38221957465 and renderer run38222023557.

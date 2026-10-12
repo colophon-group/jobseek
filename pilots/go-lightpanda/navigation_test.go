@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -213,5 +214,33 @@ func TestNavigationFailureCorrelatesOnlyMainDocumentAndRejectsNativePseudoPage(t
 	state.observe(&network.EventLoadingFailed{RequestID: "second", Type: network.ResourceTypePing, ErrorText: "RecvError"}, now)
 	if !errors.As(state.documentFailure, &transport) || !transport.retryable {
 		t.Fatal("native Ping type broke document identity correlation")
+	}
+}
+
+func TestNavigationCompletedDocumentIgnoresLateShutdown(t *testing.T) {
+	for _, status := range []int64{200, 403} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			state := newNavigationState("main")
+			now := time.Now()
+			state.observe(&network.EventRequestWillBeSent{RequestID: "document", FrameID: "main", Type: network.ResourceTypeDocument}, now)
+			state.observe(&network.EventResponseReceived{RequestID: "document", FrameID: "main", Type: network.ResourceTypeDocument, Response: &network.Response{Status: status}}, now)
+			state.commit("loader", now)
+			state.observe(&page.EventLoadEventFired{}, now)
+			state.observe(&network.EventLoadingFinished{RequestID: "document"}, now)
+			state.observe(&network.EventLoadingFailed{RequestID: "document", Type: network.ResourceTypePing, ErrorText: "Shutdown"}, now)
+			if state.documentFailure != nil {
+				t.Fatal("completed HTTP response replaced by cleanup failure")
+			}
+			if ready, _ := state.readiness(runtimev1.WaitCondition_WAIT_CONDITION_LOAD, now); !ready {
+				t.Fatal("completed document lost readiness")
+			}
+		})
+	}
+	state := newNavigationState("main")
+	now := time.Now()
+	state.observe(&network.EventRequestWillBeSent{RequestID: "unfinished", FrameID: "main", Type: network.ResourceTypeDocument}, now)
+	state.observe(&network.EventLoadingFailed{RequestID: "unfinished", Type: network.ResourceTypePing, ErrorText: "Shutdown"}, now)
+	if state.documentFailure == nil {
+		t.Fatal("unfinished shutdown admitted")
 	}
 }

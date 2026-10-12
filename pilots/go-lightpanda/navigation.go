@@ -141,7 +141,10 @@ func (state *navigationState) observe(event any, now time.Time) {
 	case *network.EventLoadingFailed:
 		// Lightpanda labels loadingFailed.type Ping even for a document.
 		// Correlate the request ID learned from the main-frame request.
-		if event.RequestID == state.documentRequest && state.documentRequest != "" {
+		// Lightpanda 1.0.0 emits Shutdown after loadingFinished when an owner
+		// is torn down. A completed HTTP response retains its actual status;
+		// an unfinished transfer still fails closed.
+		if event.RequestID == state.documentRequest && state.documentRequest != "" && !(state.documentCompleted && state.documentStatusValid && event.ErrorText == "Shutdown") {
 			state.documentFailure = navigationError(event.ErrorText)
 		}
 		if _, ok := state.requests[event.RequestID]; ok {
