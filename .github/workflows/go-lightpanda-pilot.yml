@@ -88,10 +88,8 @@ jobs:
           source_sha="$(git rev-parse HEAD)"
           artifacts="$(mktemp -d "$RUNNER_TEMP/native-deploy-tools.XXXXXX")"
           bash scripts/build-deploy-tools.sh "$source_sha" "$artifacts/scripts"
-          INCOMING_DIR="$artifacts"
-          JOBSEEK_DEPLOY_REVISION="$source_sha"
           source scripts/native-deploy-tools.sh
-          initialize_native_deploy_tools
+          initialize_native_deploy_tools "$artifacts/scripts" "$source_sha"
           env -i "$NATIVE_DEPLOY_TOOLS" --build-info
           (
             cd go/deploy-tools
