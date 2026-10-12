@@ -35,8 +35,9 @@ latest official release, rechecked2026-10-12, with the existing immutable pin.
 
 The combined source1028 follow-up removes the five remaining Python filesystem
 and publication primitives from the standalone CSV host wrapper: journal
-publication, cleanup fsync and retention. Actual database/schedule sync remains
-Python. All71 original recovery/retention regressions pass, including active,
+publication, cleanup fsync and retention. Current registry/database/schedule
+sync already runs in Go; Python sync is retained as an offline reference and
+for historical recovery images. All71 original recovery/retention regressions pass, including active,
 journal and inflight protection, malformed-journal refusal and three distinct
 runtime-image rollback windows. See the [publication evidence](evidence/go-native-publication-journal-candidate-2026-10-12.json).
 
@@ -48,6 +49,12 @@ still refuses the detail claim without queue or freshness effects. Runtime,
 capacity, ownership and accounting checks pass, with unchanged total/monitor
 limits. These tests establish capacity mechanics, not production throughput.
 See the [capacity evidence](evidence/go-native-claim-capacity-candidate-2026-10-12.json).
+
+Final qualification exposed an aging Eightfold integration replay: its recorded
+clock crossed the weekly refresh boundary, triggering a full crawl outside the
+declared incremental HTTP responses. Integration fixtures now preserve their
+recorded watermark ages against the live pipeline clock; production refresh
+logic is unchanged. Direct and proxy canonical-effect checks remain required.
 
 Continue in this order:
 
