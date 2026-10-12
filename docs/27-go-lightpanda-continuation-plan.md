@@ -14,7 +14,8 @@ locked selector clear waited for scheduled native Typesense reconciliation to
 finish, then succeeded. Independent cold296 readback verifies zero active plans,
 no owner receipts/projections/tokens, retained source1028 write receipts,
 schema0040 and seven restored restart-armed base services with six healthy
-endpoints. The exact-head/base guarded merge followed this fresh proof.
+endpoints. See the [cold reversal evidence](evidence/go-native-source1029-cold-reversal-2026-10-12.json).
+The exact-head/base guarded merge followed this fresh proof.
 
 The original full crawler rollout and matching renderer rollout are running.
 After both succeed, independently verify their immutable source/images, native
