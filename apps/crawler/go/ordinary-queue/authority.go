@@ -302,6 +302,19 @@ func canonicalDue(ctx context.Context, tx pgx.Tx, claim *Claim) (*time.Time, err
 // fresh atomic Redis validation. A delayed expired/reaped/retired attempt never
 // activates merely because it reaches PostgreSQL later.
 func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error) {
+	return a.claim(ctx, worker, false)
+}
+
+// ClaimDetails preserves the complete ownership/receipt/lease barriers while
+// leaving monitor work queued when the runtime's monitor capacity is occupied.
+func (a *Authority) ClaimDetails(ctx context.Context, worker WorkerType) (*Claim, error) {
+	if a.ownership == nil {
+		return nil, ErrConfiguration
+	}
+	return a.claim(ctx, worker, true)
+}
+
+func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bool) (*Claim, error) {
 	var claim *Claim
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
 		if err := a.requireOwnership(ctx, tx, nil); err != nil {
@@ -312,7 +325,7 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		if a.ownership == nil {
 			task, err = a.queue.ClaimFenced(ctx, worker)
 		} else {
-			task, err = a.claimOwned(ctx, tx, worker)
+			task, err = a.claimOwnedFiltered(ctx, tx, worker, detailsOnly)
 		}
 		if task != nil {
 			claim = &Claim{owner: a, task: *task}

@@ -19,6 +19,7 @@ import (
 type runtimeServices struct {
 	monitorSlots chan struct{}
 	claim        func(context.Context) (*queue.Claim, error)
+	claimDetail  func(context.Context) (*queue.Claim, error)
 	heartbeat    func(context.Context, *queue.Claim) error
 	execute      func(context.Context, *queue.Claim) (*GreenhouseClaimResult, error)
 }
@@ -152,7 +153,7 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 				if claims.Err() != nil {
 					return
 				}
-				claim, err := s.claim(claims)
+				claim, reservedMonitor, err := claimWithMonitorCapacity(claims, s)
 				if err != nil {
 					if claims.Err() != nil {
 						return
@@ -178,7 +179,14 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 				// A pop racing shutdown is retained and drained, never silently dropped.
 				m.active.Add(1)
 				started := time.Now()
-				result, err := runLeasedClaim(tasks, c, s, claim, m)
+				executionServices := s
+				if reservedMonitor {
+					executionServices.monitorSlots = nil
+				}
+				result, err := runLeasedClaim(tasks, c, executionServices, claim, m)
+				if reservedMonitor {
+					<-s.monitorSlots
+				}
 				if errors.Is(err, ErrDrainTimeout) {
 					unsafeTask.Store(true)
 				}
@@ -428,12 +436,16 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 	}()
 	var claimTurn atomic.Uint64
-	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) {
+	claimOwned := func(ctx context.Context, detailsOnly bool) (*queue.Claim, error) {
+		pop := authority.Claim
+		if detailsOnly {
+			pop = authority.ClaimDetails
+		}
 		worker := queue.Simple
 		if renderer != nil && claimTurn.Add(1)%2 == 0 {
 			worker = queue.Browser
 		}
-		claim, err := authority.Claim(ctx, worker)
+		claim, err := pop(ctx, worker)
 		if err != nil || claim != nil || renderer == nil {
 			return claim, err
 		}
@@ -442,8 +454,9 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		} else {
 			worker = queue.Simple
 		}
-		return authority.Claim(ctx, worker)
-	}, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+		return pop(ctx, worker)
+	}
+	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, false) }, claimDetail: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, true) }, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
 		useProxy, err := runtimeClaimUsesProxy(ctx, authority, claim)
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)
