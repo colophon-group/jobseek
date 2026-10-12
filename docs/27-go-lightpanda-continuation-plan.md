@@ -1,6 +1,47 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1030 restored cold298; source1033 deployment preflight failed
+## Current checkpoint — source1034 deployed; grouped native activation completed299
+
+PR10448 merged as `915d34ac84adbda9be528171cd0936660725bb6f`, version0.13.1034.
+Required CI, Gate, installed-image contracts, exact-head Linux and all16 ARM
+comparison arms passed. All3,306 merged SDK blobs equal the qualified head723.
+Original crawler run38266282668 and renderer run38266305005 succeeded. Independent
+selected source/images, host tools/CSV contract, renderer, exporter progress and
+cold298 checks passed. Original B0 staging/activation succeeded at299.
+
+The complete source/receipt-bound census reconciles7,885 enabled boards and
+1,678,664 scheduled posting routes. Read-only admission preserves7,794 monitors
+and7,683 detail boards and adds all seven monitors together: Alten Italy,
+Netherlands, Switzerland, Glasswall, Axis, Sulzer-Schmid and Tyson Thailand.
+Original ordinary stage produced7,801 /7,683; supported activation completed at299
+after legacy ten-minute SQL leases expired naturally. The original wrapper restored
+the complete stack. Independent active receipt, SQL/Redis membership and full restored stack checks pass:
+all10 containers running, eight healthy endpoints, matching7,801 /7,683 ownership.
+Early natural receipts include4 monitors and23 details. All seven new-board effects
+remain naturally scheduled, not yet observed. The installed worker has two CPU cores,
+1GiB limit and512MiB Go target; initial memory170.3MiB, zero restarts/OOM.
+Do not clear leases or bypass mutation locks. Observe due ages and installed two-CPU
+capacity; sustained fleet freshness and attributable production cost remain unproved.
+
+The following0.13.1035 candidate groups DOM and API-sniffer work: Geneva's exact
+advertised-range paginator (33 URLs), Fressnapf Luxembourg's full bounded fallback
+body plus JobPosting verification (7 URLs), and Innosuisse's matching original/
+pinned Lightpanda1.0.0 empty inventory. Original request/URL comparisons, actual
+verified-TLS Go public reads and canonical database/queue conservation checks pass.
+All three retain existing detail ownership. Hitachi2,262 and IHG408 original jobs
+remain unqualified after failed physical engine runs; retained failures grant no
+replacement authority. See the [candidate proof](evidence/go-native-grouped-static-api-candidate-2026-10-12.json).
+
+Finish this candidate's exact-head CI/Linux/ARM qualifications, supported original
+full rollout and fresh grouped admission after source1034 ownership readback.
+Continue remaining browser/monitor/detail and native activation/schema consumers;
+prove complete fleet freshness, comparable whole-lane resources/cost and supported
+cold reversal/rollback window before retiring production Python, Playwright and
+Chromium. Preserve useful isolated offline Python and every enabled board.
+
+**The full migration remains incomplete.**
+
+## Historical checkpoint — source1030 restored cold298; source1033 deployment preflight failed
 
 PR10444 merged as `0295a3fb5a0aed879eb0fbd54825bee6fa5592fc`, version0.13.1033.
 Exact head4e7 core CI/image/Linux/Gate and all16 ARM comparison arms passed.

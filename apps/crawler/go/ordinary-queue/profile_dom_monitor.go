@@ -45,6 +45,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	}
 	keys := []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
 	keys = append(keys, dom.ListingProviderKeys...)
+	keys = append(keys, "my_job_shop")
 	keys = append(keys, "title_matched_url_scan", "require_pdf_text", "require_unexpired_pdf")
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
