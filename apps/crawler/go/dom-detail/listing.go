@@ -181,7 +181,8 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		return c, err
 	}
 	c.Proofs, err = ListingProofOptions(config)
-	if err != nil || c.Proofs != nil && c.Pagination != nil && c.Pagination.AdvertisedRanges == nil && (c.Proofs.TotalPattern == nil || len(c.Proofs.EmptyStates) != 0) {
+	richEmptyPagination := c.RichRows != nil && !truth(config["render"]) && c.Proofs != nil && c.Proofs.TotalPattern == nil && len(c.Proofs.EmptyStates) > 0
+	if err != nil || c.Proofs != nil && c.Pagination != nil && c.Pagination.AdvertisedRanges == nil && !richEmptyPagination && (c.Proofs.TotalPattern == nil || len(c.Proofs.EmptyStates) != 0) {
 		return c, ErrListingProof
 	}
 	if c.Pagination != nil && c.Pagination.AdvertisedRanges != nil && (c.RichRows != nil || c.ScriptLinks != nil || c.IncludeBoardURL || c.RequireJSONLD || c.Proofs != nil && c.Proofs.TotalPattern != nil) {

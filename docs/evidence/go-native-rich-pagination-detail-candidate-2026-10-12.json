@@ -1,0 +1,69 @@
+{
+  "reference_source": "915d34ac84adbda9be528171cd0936660725bb6f",
+  "scope": "following grouped candidate; exact final-head CI, merged SDK binding, fresh full route census and original cutover required",
+  "boards": [
+    "ge-vernova-menk-usa",
+    "king-careers"
+  ],
+  "original_details": 13,
+  "exact_original_requests_fields_replay": {
+    "passed": true,
+    "seconds": 2.528,
+    "log_sha256": "2d1bd6f3b753e0b4aa221d196bb678bee4100053acfd0bfc21ac8deafa5309cd"
+  },
+  "verified_tls_live": {
+    "passed": true,
+    "details": 13,
+    "seconds": 16.328,
+    "pinned_certifi": true,
+    "no_proxy_or_ssl_exception": true,
+    "log_sha256": "fe6a16ed102dd1f3b2f840136119e74c1d628e862f471b1a7ee94e5c90169e8e"
+  },
+  "unqualified": {
+    "thales-dis-bps-germany": "original ConnectError before response"
+  },
+  "remaining_work": "portable final-head evidence, required checks and fresh route/source/receipt admission after source1035; no ownership granted",
+  "canonical_effects": {
+    "passed": true,
+    "cases": 39,
+    "seconds": 16.363,
+    "real_postgres_redis": true,
+    "success_description_and_selected_title": true,
+    "publisher_reservation_transient_preservation": true,
+    "deadline_lease_conservation": true,
+    "ge_enrich_selected_fields": [
+      "description",
+      "date_posted",
+      "base_salary"
+    ],
+    "ge_existing_title_preserved": true,
+    "log_sha256": "30b6790b4fbf44176498c98a3d09f0bd694944a27a198a62466101e1ccf9c9e1"
+  },
+  "observed_at_utc": "2026-10-12T16:15:02.539195+00:00",
+  "schema": "jobseek.native-rich-pagination-detail-candidate/v1",
+  "original_canonical_source": "915d34ac84adbda9be528171cd0936660725bb6f",
+  "proof_sha256": {
+    "jobseek-native1036-two-detail-public-replay1.log": "2d1bd6f3b753e0b4aa221d196bb678bee4100053acfd0bfc21ac8deafa5309cd",
+    "jobseek-native1036-two-detail-public-live3.log": "fe6a16ed102dd1f3b2f840136119e74c1d628e862f471b1a7ee94e5c90169e8e",
+    "jobseek-native1036-two-detail-canonical8.log": "30b6790b4fbf44176498c98a3d09f0bd694944a27a198a62466101e1ccf9c9e1",
+    "jobseek-native1036-bunge-original-public-replay5.log": "6442224269cf1b8996703f238dad3e0febfe1cd413a01bda8dc538ee8a9cd181",
+    "jobseek-native1036-rich-pagination-effects3.log": "910a6ae0960d8970833ac526db6f9af576cb63a0e079a6c53fbbfc5f2d2c9180",
+    "jobseek-native1036-dom-full1.log": "2f65b6fc3bcd9c542439c6dc95cf6d823af31ea681bd5c5f9745efe3372ee191",
+    "jobseek-native1036-rich-pagination-profiles1.log": "d3e8004abb169825bbb4eb12d91ae2a26801b5d18a94387b497be0e698d024f0"
+  },
+  "version": "0.13.1036",
+  "monitor": {
+    "slug": "bunge-careers-au-nz",
+    "original_jobs": 4,
+    "original_requests": 2,
+    "public_go_verified_tls": true,
+    "rich_fields": [
+      "url",
+      "title",
+      "locations"
+    ],
+    "absent_fields_preserved": true,
+    "canonical_cases": 7,
+    "scope": "static rich-row pagination with existing explicit empty proof; original repeat-page termination; failed or reserved tails preserve prior rows; exhausted new-page budget refused"
+  }
+}

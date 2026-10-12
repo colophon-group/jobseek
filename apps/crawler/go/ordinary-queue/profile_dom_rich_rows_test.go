@@ -52,3 +52,17 @@ func TestDOMRichRowsRefuseInvalidExtractionBeforeOwnership(t *testing.T) {
 		}
 	}
 }
+
+func TestRichEmptyPaginationRetainsStaticTransportAuthority(t *testing.T) {
+	c := domMonitorConfig()
+	c["monitor_needs_browser"] = "0"
+	c["metadata"] = `{"rich_rows":{"row_selector":"article","link_selector":"a"},"pagination":{"param_name":"offset","start":0,"increment":20},"empty_states":[{"selector":".empty","exact_text":"No jobs","forbidden_link_selector":"article a"}],"scraper_type":"skip"}`
+	if p, err := InspectRichMonitor(profileBoardID, c); err != nil || p.Profile != "dom.direct-rows/v1" {
+		t.Fatal("static rich pagination refused", err)
+	}
+	c["monitor_needs_browser"] = "1"
+	c["metadata"] = strings.Replace(c["metadata"], `{"rich_rows":`, `{"render":true,"rich_rows":`, 1)
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("rendered rich pagination admitted without physical evidence")
+	}
+}

@@ -70,7 +70,8 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err == nil && listing.RichRows != nil && (listing.ScriptLinks != nil || listing.OnclickSelector != "") {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
-	if err == nil && listing.RichRows != nil && (listing.Proofs != nil && listing.ProviderProof == nil || listing.IncludeBoardURL || listing.RequireJSONLD) {
+	richEmptyPagination := listing.RichRows != nil && listing.Pagination != nil && listing.Proofs != nil && listing.Proofs.TotalPattern == nil && len(listing.Proofs.EmptyStates) > 0
+	if err == nil && listing.RichRows != nil && (listing.Proofs != nil && listing.ProviderProof == nil && !richEmptyPagination || listing.IncludeBoardURL || listing.RequireJSONLD) {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	if err == nil && listing.RichRows != nil && listing.RichRows.TotalSelector != "" && listing.Pagination != nil {

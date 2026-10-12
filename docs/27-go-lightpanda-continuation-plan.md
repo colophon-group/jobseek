@@ -46,6 +46,17 @@ replay and actual Go public reads with the pinned verified-TLS trust bundle. Can
 effects, fresh routes and final-head qualification remain required; Thales' original
 connection failure grants no detail authority.
 
+The following0.13.1036 mixed batch adds Bunge's static rich-row pagination with
+explicit empty-state proof (four original jobs, two requests), plus GE Vernova
+Menk and King's already-supported detail parsers. Bunge original/live verified-TLS
+URL/title/location comparisons, seven canonical failure/policy cases and the full
+DOM parser suite pass. Both detail boards match all13 original fields and request
+sequences in replay and actual Go public reads;39 real PostgreSQL/Redis success,
+reservation and transient cases pass. GE's selected enrichment preserves existing
+titles while updating description/date/salary. Current source1035 remains fixed;
+this following candidate needs final-head checks, fresh routes and original cutover.
+See the [mixed candidate proof](evidence/go-native-rich-pagination-detail-candidate-2026-10-12.json).
+
 Finish this candidate's exact-head CI/Linux/ARM qualifications, supported original
 full rollout and fresh grouped admission after source1034 ownership readback.
 Continue remaining browser/monitor/detail and native activation/schema consumers;
@@ -3078,3 +3089,11 @@ At20:13 UTC, the active fleet still has6,819 due native monitors /4,528 over an
 hour late and1,541,413 due native detail routes /1,486,120 over a day late. This
 candidate repairs a concrete contract mismatch; its production freshness and
 resource effect is unproved. See [the capacity candidate](evidence/go-native-worker-capacity-candidate-2026-10-11.json).
+
+### Source1035 retirement recovery — 2026-10-12
+
+Source0.13.1035 (`5a98c747aec1834d157151e46ff2489ee2275024`, PR #10450) passed its original full crawler/renderer deployments, supported B0 and ordinary activation at epoch301, and independent serving verification with7804 monitor boards and7683 detail boards. The next mixed batch qualifies Bunge and the GE Vernova Menk/King detail boards.
+
+The outgoing ordinary retirement then refused eligibility and contained the complete writer lane, retaining the exact source1035 retiring receipt. Read-only diagnosis proved one historical source1034/epoch299 monitor receipt belongs to the immutable retired plan with profile `accenture.http-items/v1`; retirement’s historical browser-profile allowlist omitted that supported profile. Current epoch/plan, B0 boards, and current scrape bindings matched; there were no conflicting plans or future receipts. Candidatus has the same omission. Real PostgreSQL/Redis regressions reproduce both failures after a fresh owner has its own interrupted claim. Add only the two supported profiles to historical recognition, retain all receipts, and verify cold reversal and revoked old/current write authority.
+
+Recovery uses the existing compatibility-admin workflow: qualify and merge the corrected mixed batch at its exact final head, obtain its immutable crawler image from the original workflow build (deployment must refuse retained ordinary/B0 receipts), cache that image through `crawler-native-admin-prepull.yml`, then invoke the unchanged installed ordinary wrapper with the approved admin source/image. Keep source1035 selected until full supported retirement, B0 rollback, selector clearing, and independent cold302 verification succeed. Retry the original full deployment only after that recovery. No SQL/Redis receipt edits, lease clearing, partial restarts, or wrapper replacement. Full migration remains incomplete.

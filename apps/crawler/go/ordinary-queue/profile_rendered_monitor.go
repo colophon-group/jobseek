@@ -90,6 +90,11 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		}
 	}
 	if raw, exists := cloneMD["pagination"]; exists && string(raw) != "null" {
+		if rows := md["rich_rows"]; rows != nil && string(rows) != "null" {
+			if empty := md["empty_states"]; empty != nil && string(empty) != "null" {
+				return fail() // Rich-row empty-tail pagination is qualified only on static HTTP.
+			}
+		}
 		// Whole-list totals newly admitted with pagination are static-only.
 		// Preserve the previously qualified single-page rendered proof path.
 		if total, exists := md["advertised_total"]; exists && string(total) != "null" {
