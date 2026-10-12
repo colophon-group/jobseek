@@ -245,7 +245,9 @@ services:
       retries: 3
       start_period: 15s
     mem_limit: 1g
-    cpus: 1.0
+    # Full native ownership saturates one CPU; retain the existing claim and
+    # memory bounds while giving parsing and settlement two CPU cores.
+    cpus: 2.0
 
   # -- Exporter ----------------------------------------------------
   exporter:

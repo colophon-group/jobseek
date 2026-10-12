@@ -1,0 +1,37 @@
+{
+  "observed_at_utc": "2026-10-12T13:59:36.273507+00:00",
+  "candidate_version": "0.13.1034",
+  "state": "local candidate only; current source1033 deployment remains separate",
+  "navigation_problem": "Pinned engine emits Shutdown after complete HTTP response; adapter overwrites actual403 as transport failure",
+  "navigation_fix": "Ignore only late Shutdown following correlated loadingFinished and valid actual status. Unfinished shutdown and genuine failures remain refused.",
+  "before_regression_sha256": "d0641cf455ae440d00de5d59c6e86f78f5ed4bba2f186dfc1201412e1c88d5f8",
+  "after_race_sha256": "17034102d91ff37a9e8ef228e0547c25720e8bc064faa97e5864cfc153d1e7be",
+  "physical_before_sha256": "3f97ee11a8340777688b648b9844ee184e1c413a5a13970bdb71acbeb05c7d6a",
+  "physical_after_sha256": "1aad6e10cdb73f360bef1d20369002833b722a114af4dea1fba9ab25853ce971",
+  "physical_after_statuses": {
+    "arcelormittal-ukraine": 200,
+    "alten-spain": 403,
+    "alten-finland": 403
+  },
+  "ordinary_capacity_change": {
+    "cpus_before": 1,
+    "cpus_candidate": 2,
+    "total_claims": 20,
+    "monitor_claims": 5,
+    "memory_limit_bytes": 1073741824,
+    "go_memory_target": "512MiB"
+  },
+  "ordinary_serving_baseline": {
+    "source_version": "0.13.1030",
+    "cpu_percent": 97.77,
+    "memory_mib": 316,
+    "restarts": 0,
+    "oom": false,
+    "native_monitors_due": 6761,
+    "overdue_1h": 5181
+  },
+  "candidate_freshness_or_production_cost_proved": false,
+  "production_authority": false,
+  "runtime_contracts_sha256": "5b593106b8cbeb58cd656b0ae465b14ee9bc959288179e3ed7f6af1f4a0ecb56",
+  "runtime_contract_scope": "Complete existing claimant/deployment resource, role/ownership/cold reversal and ordinary cutover regression suites"
+}
