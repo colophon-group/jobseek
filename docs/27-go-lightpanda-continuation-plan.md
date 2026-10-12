@@ -32,6 +32,20 @@ All three retain existing detail ownership. Hitachi2,262 and IHG408 original job
 remain unqualified after failed physical engine runs; retained failures grant no
 replacement authority. See the [candidate proof](evidence/go-native-grouped-static-api-candidate-2026-10-12.json).
 
+PR10450 carries this grouped candidate. Its first full queue suite exposed a stale
+registry count: Fressnapf now passes the intended MyJobShop/full-body contract.
+The corrected assertion names that board and verifies its original static transport
+and JobPosting requirement; final-head checks must be renewed. The R2 job separately
+failed before tests because the public Postgres registry exceeded its data limit.
+Hitachi completes within the existing600s production budget, but fresh live inventories
+still differ (original2,263 versus native2,262); no replacement authority is granted.
+IHG stops at a resource limit before inventory, and a private256MiB heap discriminator
+also failed. Production retains the fixed128MiB heap. Following read-only detail
+research proves all13 original GE Vernova Menk/King fields and request sequences in
+replay and actual Go public reads with the pinned verified-TLS trust bundle. Canonical
+effects, fresh routes and final-head qualification remain required; Thales' original
+connection failure grants no detail authority.
+
 Finish this candidate's exact-head CI/Linux/ARM qualifications, supported original
 full rollout and fresh grouped admission after source1034 ownership readback.
 Continue remaining browser/monitor/detail and native activation/schema consumers;
