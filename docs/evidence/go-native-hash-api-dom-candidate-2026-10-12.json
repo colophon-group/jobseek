@@ -1,0 +1,73 @@
+{
+  "schema": "jobseek.grouped-hash-api-and-dom-candidate/v1",
+  "observed_at_utc": "2026-10-12T05:31:53.884017+00:00",
+  "candidate_version": "0.13.1029",
+  "base_revision": "96d705e7f04f64c656d22316a8616f1d9a728914",
+  "production_authority": false,
+  "lightpanda_release": "1.0.0",
+  "profiles": [
+    {
+      "board": "trip-com-group-global-careers",
+      "provider": "api_sniffer",
+      "canonical_board": "https://careers.trip.com/#/jobList",
+      "code_owned_bootstrap": "https://careers.trip.com/",
+      "original_jobs": 175,
+      "physical_jobs": 175,
+      "url_differences": 0,
+      "field_differences": {
+        "title": 0,
+        "description": 0,
+        "locations": 0,
+        "employment_type": 0,
+        "job_location_type": 0,
+        "date_posted": 0,
+        "base_salary": 0,
+        "language": 0,
+        "localizations": 0,
+        "metadata": 0,
+        "extras": 0,
+        "source_identity": 0
+      },
+      "physical_comparison_sha256": "337fce242a2960db9cb251ba5eaed8d7c2ec52e3423658d6a4225e5c49277870",
+      "canonical_insertions": 175,
+      "original_filter_limitation": "Legacy bare-host filter drops valid site-root SPA posting URLs; new exact-host, canonical-listing, typed posting route preserves their identities."
+    },
+    {
+      "board": "cma-cgm-air-belgium",
+      "provider": "dom",
+      "canonical_board": "https://www.airbelgium.com/jobs/",
+      "original_jobs": 3,
+      "physical_jobs": 3,
+      "url_differences": 0,
+      "canonical_insertions": 3,
+      "detail_routing": "Original browser queue preserved; detail replacement remains unqualified",
+      "replacement_binding": "Original static navigation/parser configuration hash retained; code-owned self-identifying navigation; unproved zero refused."
+    }
+  ],
+  "canonical_effects": {
+    "physical_replay_race_pass": true,
+    "physical_replay_seconds": 31.151,
+    "physical_replay_log_sha256": "f9a80f6cca88be5ff0e581d6c5d565243f0520dd85d23af78cb15b59411101f6",
+    "portable_postgres_redis_race_pass": true,
+    "portable_seconds": 4.94,
+    "portable_log_sha256": "593db11394a92a4dd97c188a5cd1a24ad5771926c815a6651ffd6e5b50af237a",
+    "exact_committed_deadline_and_lease_settlement": true,
+    "publisher_reservation_protects_inventory": true,
+    "incomplete_document_and_wrong_binding_protect_inventory": true,
+    "DOM_unproved_empty_refused": true,
+    "existing_MokaHR_Johdi_fragment_guards_preserved": true
+  },
+  "retained_failed_observations": [
+    "Trip physical prototype2 failed with cleanup proved; later prototype3 succeeded; transient cause not established",
+    "Initial Trip canonical replay inserted zero jobs; fixed verified SPA URL identity classification",
+    "Initial DOM replay accepted unproved zero; fixed source-owned nonempty proof requirement"
+  ],
+  "remaining_qualification": [
+    "Exact committed-head CI, image parity, Linux pilots and Crawler Deploy Gate",
+    "Original full crawler and matching renderer release",
+    "Fresh source-bound full-floor plus grouped additional-owner admission",
+    "Natural scheduling and sustained freshness/resource/cost measurement",
+    "CMA rendered-detail replacement"
+  ],
+  "full_migration_complete": false
+}

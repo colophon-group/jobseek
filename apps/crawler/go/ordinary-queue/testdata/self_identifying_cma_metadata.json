@@ -1,0 +1,37 @@
+{
+  "render": true,
+  "scraper_config": {
+    "defaults": {
+      "locations": [
+        "Mont-Saint-Guibert, BE"
+      ]
+    },
+    "render": true,
+    "stealth": true,
+    "steps": [
+      {
+        "field": "title",
+        "tag": "h1"
+      },
+      {
+        "field": "employment_type",
+        "regex": "(?i)Employment type\\s*:?\\s*(.+)",
+        "tag": "p",
+        "text": "Employment type"
+      },
+      {
+        "field": "description",
+        "html": true,
+        "stop_count": 200,
+        "tag": "p"
+      }
+    ],
+    "timeout": 30000,
+    "wait": "domcontentloaded"
+  },
+  "scraper_type": "dom",
+  "stealth": true,
+  "timeout": 30000,
+  "url_filter": "(?i)(first[-_ ]?officer|lmcc[-_ ]?engineer|material[-_ ]?controller)",
+  "wait": "domcontentloaded"
+}

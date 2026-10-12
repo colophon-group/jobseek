@@ -1,0 +1,101 @@
+{
+  "schema": "jobseek.native-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-12T05:34:26.402394+00:00",
+  "version": "0.13.1028",
+  "source_revision": "96d705e7f04f64c656d22316a8616f1d9a728914",
+  "merged_pr": 10440,
+  "original_crawler_run": 38204987952,
+  "original_renderer_run": 38205005933,
+  "original_runs_success_attempt": 1,
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "96d705e7f04f64c656d22316a8616f1d9a728914",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:67c5e5dd5c6a07563130dc588adb7733ca233d37e835e45e0e21aa0ba90d24cf",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:fd37d538eda2d9d7deb072971251bbfd959cdcd86a7f7a90e807bd5950dd2ccc"
+  },
+  "renderer_image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:bfb8d6ad8abd2e33844dfcd7f5a7871990791fe2cc3aa31b4560cf19d5326790",
+  "lightpanda_release": "1.0.0",
+  "routing_epoch": 295,
+  "ordinary_owner_active": true,
+  "plan_sha256": "8239d1bf1cf38ebc8d46f78d8c533b623c5e84f12cf7dd927fea9e106acb1151",
+  "projection_sha1": "7da2c1c3d53806fd55c3a440c10f0a6e90c4646d",
+  "owner_receipt_sha256": "8fa9a18a30341f66478bde2201d6061f49eb8498fe594305bb93b0a7a8be521e",
+  "b0_receipt_sha256": "bb55852ecfa1f4633c3e15ea0342618de1b73016f7ed8abbbfdf35f762f61784",
+  "full_floor_preserved": {
+    "monitors": 7788,
+    "detail_boards": 7683,
+    "enabled_boards": 7885,
+    "scheduled_posting_routes_reconciled": 1673956,
+    "new_monitor_owners": 0,
+    "new_detail_owners": 0
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "canonical": {
+    "active_plans": 1,
+    "active_plan": {
+      "state": "active",
+      "source_revision": "96d705e7f04f64c656d22316a8616f1d9a728914",
+      "routing_epoch": 295,
+      "monitors": 7788,
+      "details": 7683
+    },
+    "outgoing_source1015_plan_state": "retired",
+    "outgoing_source1017_plan_state": "retired",
+    "retained_never_activated974_plan_state": "staged",
+    "routing_epoch": 295
+  },
+  "routing": {
+    "projection_sha1": "7da2c1c3d53806fd55c3a440c10f0a6e90c4646d",
+    "b0_producer_owner": 1
+  },
+  "natural_summary": {
+    "observed_at": "2026-10-12T05:34:25.439227+00:00",
+    "fences_by_task": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 3
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 7
+      },
+      {
+        "task_kind": "scrape",
+        "state": "active",
+        "count": 4
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 11
+      }
+    ],
+    "scope": "naturally scheduled active295 native claims; no replay or synthetic work injected"
+  },
+  "early_completed_monitor_receipts": 7,
+  "early_retained_completion_leases": 0,
+  "proof_sha256": {
+    "native1028-owner-receipt-independent-verified1-2026-10-12.json": "787c1faf96524041bd3dbd86c51bf2b06cb6f65866e7a31c39439e8356f8981b",
+    "native-source1028-fleet-freshness-independent-verified1-2026-10-12.json": "6c75d43471867638dc43ecabd60030705526c64e45d29ca3b1b9ee378cb4d263",
+    "native-source1028-owner-activate-promoted-attempt1-2026-10-12.log": "dc5179fb5e9c6d6d852f741a14d35d184afd716abb67b869aab25c6bf04fbef8",
+    "native-source1028-postdeploy-cold294-independent-prestage2-2026-10-12.json": "1ed45364e83cb45f1dc0a8cc7991c4fbffb3dbffc0ad459ec47a20581fa9f89e"
+  },
+  "scope": "Original full immutable release, preserved-floor original activation and independent early serving evidence; not sustained freshness or whole-lane cost proof",
+  "remaining": [
+    "Observe natural IATA/Banner recovery and sustained completion/settlement",
+    "Prove sustained monitor/detail freshness and comparable whole-lane resources/cost",
+    "Complete remaining enabled profiles, credential/schema and legacy runtime consumers",
+    "Exercise full replacement cold reversal and rollback window before production Python/Playwright/Chromium retirement"
+  ],
+  "full_migration_complete": false
+}
