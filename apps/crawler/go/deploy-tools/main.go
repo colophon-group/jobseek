@@ -12,6 +12,12 @@ import (
 var sourceRevision = "unbuilt"
 
 func run(args []string) error {
+	if len(args) == 4 && args[0] == "journal-publish" {
+		return publishJournal(args[1], args[2], args[3])
+	}
+	if len(args) == 2 && args[0] == "directory-fsync" {
+		return syncDirectory(args[1])
+	}
 	if len(args) == 4 && args[0] == "release-activate" {
 		return activateRelease(args[1], args[2], args[3])
 	}

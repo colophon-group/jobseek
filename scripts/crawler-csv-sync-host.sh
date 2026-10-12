@@ -667,36 +667,13 @@ write_journal() {
     "PREVIOUS_RELEASE=$previous" \
     "TARGET_RELEASE=$target" >"$temporary"
   chmod 0600 "$temporary"
-  python3 - "$temporary" "$PUBLICATION_JOURNAL" "$DEPLOY_DIR" <<'PY'
-import os
-import sys
-
-temporary, journal, parent = sys.argv[1:]
-fd = os.open(temporary, os.O_RDONLY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-os.replace(temporary, journal)
-fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" journal-publish \
+    "$temporary" "$PUBLICATION_JOURNAL" "$DEPLOY_DIR"
 }
 
 clear_journal() {
   rm -f -- "$PUBLICATION_JOURNAL"
-  python3 - "$DEPLOY_DIR" <<'PY'
-import os
-import sys
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$DEPLOY_DIR"
 }
 
 recover_publication() (
@@ -1005,16 +982,7 @@ discard_candidate_generation() {
   resolve_active_release
   [[ "$generation" != "$ACTIVE_RELEASE" ]] || return 1
   rm -rf -- "$generation"
-  python3 - "$ACTIVE_RELEASE_ROOT" <<'PY'
-import os
-import sys
-
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$ACTIVE_RELEASE_ROOT"
 }
 
 discard_bootstrap_candidate() {
@@ -1026,16 +994,7 @@ discard_bootstrap_candidate() {
   [[ -d "$CANDIDATE_ROOT" && ! -L "$CANDIDATE_ROOT" && \
     -d "$candidate" && ! -L "$candidate" ]] || return 1
   rm -rf -- "$candidate"
-  python3 - "$CANDIDATE_ROOT" <<'PY'
-import os
-import sys
-
-fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" directory-fsync "$CANDIDATE_ROOT"
 }
 
 cleanup() {

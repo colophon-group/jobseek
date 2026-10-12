@@ -82,7 +82,15 @@ backlog remain follow-up work, not successful freshness/cost evidence.
    uncompiled. Another21 compile outside the ordinary floor, including B0 boards,
    but need appropriate qualification. Preserve held Hitachi Energy/Implenia until
    complete fresh evidence passes; compilation alone grants no ownership.
-5. Finish standalone CSV publication, credential helpers, schema execution and
+5. Continue the separate **0.13.1027** publication journal/filesystem follow-up.
+   Four original CSV consumers now use the source-bound Go host tools: durable
+   journal replacement, journal-removal fsync, failed-generation fsync and
+   bootstrap-candidate fsync. All71 original deployment regressions pass,
+   including interrupted-publication recovery and retained rollback evidence;
+   Go race/vet and seven refusal cases preserve the existing journal bytes.
+   This local candidate has no production authority. See the
+   [candidate evidence](evidence/go-native-publication-journal-candidate-2026-10-12.json).
+   Finish standalone CSV publication, credential helpers, schema execution and
    remaining legacy worker/browser consumers. Establish full enabled-route
    replacement, sustained freshness/conservation/resources/cost, supported cold
    reversal and the rollback window before retiring production Python,
