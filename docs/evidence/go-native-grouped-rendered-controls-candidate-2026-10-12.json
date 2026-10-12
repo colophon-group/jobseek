@@ -22,7 +22,8 @@
     "Source-bound direct verified-TLS replacement only",
     "Exact committed deadline and lease settlement",
     "Browser detail routing; detail replacement unqualified",
-    "Publisher reservation, incomplete document and unproved-zero protections"
+    "Publisher reservation, incomplete document and unproved-zero protections",
+    "Shared proxy registry coverage verifies all7 source-bound rendered proxy replacements and retains strict HTTP proxy coverage for every other row"
   ],
   "research_limits": [
     "12 original public cases: 9 positive, 2 zeros, 1 failure",
@@ -35,5 +36,6 @@
     "Rendered detail replacements",
     "Sustained fleet freshness and resources/cost"
   ],
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "parent_requalified_candidate_head": "ed22d3a320d47c1bbb7f8be79bb16260a041d5af"
 }
