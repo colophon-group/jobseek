@@ -20,7 +20,7 @@ func TestLiveAPIPublicCanonicalReplay(t *testing.T) {
 	if originalDir == "" || nativeDir == "" {
 		t.Skip("requires original/physical public inventory captures")
 	}
-	for _, slug := range []string{"hitachi-energy-careers", "innosuisse-main"} {
+	for _, slug := range []string{"hitachi-energy-careers", "innosuisse-main", "ihg-kimpton-americas"} {
 		t.Run(slug, func(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join(originalDir, slug+"-original.json"))
 			var original struct {

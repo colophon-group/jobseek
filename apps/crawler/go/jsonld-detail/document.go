@@ -23,6 +23,8 @@ type DocumentOptions struct {
 	// Inline alternate feeds use Jina's public cache bypass header. Other
 	// configured document routes retain their narrower header vocabulary.
 	InlineCacheBypass bool `json:"inline_cache_bypass,omitempty"`
+	// Code-owned lower bound for authoritative listing bodies; never publisher input.
+	MaxBodyBytes int `json:"-"`
 }
 type DocumentResult struct {
 	Requests    int    `json:"requests"`
@@ -59,6 +61,13 @@ func origin(raw string) string {
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Hostname()) + ":" + port
 }
 func documentPage(ctx context.Context, client requestDoer, endpoint string, opts DocumentOptions, stats *DocumentResult) ([]byte, error) {
+	limit := maxResponseBytes
+	if opts.MaxBodyBytes < 0 || opts.MaxBodyBytes > maxResponseBytes {
+		return nil, errors.New("invalid public document body limit")
+	}
+	if opts.MaxBodyBytes > 0 {
+		limit = opts.MaxBodyBytes
+	}
 	expected := origin(endpoint)
 	maxHops := 20
 	if opts.PublicHeaders {
@@ -116,14 +125,17 @@ func documentPage(ctx context.Context, client requestDoer, endpoint string, opts
 			stats.TDMPolicy = response.Header.Get("TDM-Policy")
 			return nil, errors.New("tdm-reservation=1")
 		}
-		body, err := io.ReadAll(io.LimitReader(&readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}, maxResponseBytes+1))
+		body, err := io.ReadAll(io.LimitReader(&readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}, int64(limit)+1))
 		response.Body.Close()
 		stats.Bytes += len(body)
 		if err != nil {
 			return nil, err
 		}
-		if len(body) > maxResponseBytes {
-			return nil, errors.New("public document exceeds 16 MiB")
+		if len(body) > limit {
+			if limit == maxResponseBytes {
+				return nil, errors.New("public document exceeds 16 MiB")
+			}
+			return nil, fmt.Errorf("public document exceeds %d bytes", limit)
 		}
 		reservation, policy := tdmMetadata(decodedBody(body, stats.ContentType))
 		if reservation == "1" {
@@ -162,6 +174,9 @@ func documentPage(ctx context.Context, client requestDoer, endpoint string, opts
 	return nil, errors.New("public document redirect limit")
 }
 func validateDocumentOptions(opts DocumentOptions) error {
+	if opts.MaxBodyBytes < 0 || opts.MaxBodyBytes > maxResponseBytes {
+		return errors.New("invalid public document body limit")
+	}
 	if len(opts.Headers) > 0 && !opts.PublicHeaders {
 		return errors.New("configured public headers require the public redirect contract")
 	}

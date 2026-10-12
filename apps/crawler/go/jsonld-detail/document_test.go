@@ -160,6 +160,7 @@ func TestDocumentRawBytesBoundsAndConfig(t *testing.T) {
 		t.Fatal("oversized body admitted")
 	}
 	for _, opts := range []DocumentOptions{
+		{MaxBodyBytes: -1}, {MaxBodyBytes: maxResponseBytes + 1},
 		{Headers: map[string]string{"Authorization": "secret"}, PublicHeaders: true},
 		{Headers: map[string]string{"Accept": "text/html"}},
 		{Headers: map[string]string{"User-Agent": "bad\nheader"}, PublicHeaders: true},
@@ -175,6 +176,17 @@ func TestDocumentRawBytesBoundsAndConfig(t *testing.T) {
 		result, err := FetchDocument(context.Background(), endpoint, DocumentOptions{})
 		if err == nil || result.Responses != 0 {
 			t.Fatalf("private target admitted: %s", endpoint)
+		}
+	}
+}
+
+func TestDocumentLowerStreamingBodyBound(t *testing.T) {
+	for _, size := range []int{1024, 1025} {
+		result, err := fetchDocument(context.Background(), doerFunc(func(r *http.Request) (*http.Response, error) {
+			return reply(r, 200, strings.Repeat("x", size)), nil
+		}), "https://example.com/jobs", DocumentOptions{MaxBodyBytes: 1024}, noWait)
+		if size == 1024 && (err != nil || len(result.Body) != size) || size == 1025 && (err == nil || len(result.Body) != 0) {
+			t.Fatal("code-owned listing bound lost", size, err)
 		}
 	}
 }

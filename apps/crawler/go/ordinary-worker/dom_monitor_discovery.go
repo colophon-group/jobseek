@@ -88,7 +88,7 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 	// Preserve the existing 500,000-codepoint single-page listing preview.
 	count := 0
 	for offset := range source {
-		if c.RichRows == nil && c.ScriptLinks == nil && c.OnclickSelector == "" && !later && count == 500_000 {
+		if c.RichRows == nil && c.ScriptLinks == nil && c.OnclickSelector == "" && !c.MyJobShop && (c.Proofs == nil || len(c.Proofs.EmptyStates) == 0) && !later && count == 500_000 {
 			source = source[:offset]
 			break
 		}
@@ -273,6 +273,12 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 	sort.Strings(ordered)
 	c.JoinProofURL = pythonJoinURL
 	proofOptions := c
+	if c.Pagination != nil && c.Pagination.AdvertisedRanges != nil && len(ordered) > 0 && (len(allowEmpty) == 0 || !allowEmpty[0]) {
+		result.domListingTotal, err = dom.ListingRangeTotal(source, c.Pagination.AdvertisedRanges, len(ordered))
+		if err != nil {
+			return RichDiscovery{Response: result.Response}, err
+		}
+	}
 	if c.Pagination != nil && c.Proofs != nil && c.Proofs.TotalPattern != nil {
 		if len(allowEmpty) == 0 || !allowEmpty[0] {
 			result.domListingTotal, err = dom.ListingAdvertisedTotal(source, c.Proofs)
@@ -362,6 +368,9 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 	if err != nil || c.Pagination == nil {
 		return result, err
 	}
+	if c.Pagination.AdvertisedRanges != nil && c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 && len(result.Jobs) == 0 {
+		return result, nil // The root's explicit empty proof already passed.
+	}
 	rules, err := queue.FeedMonitorURLRules(config)
 	if err != nil {
 		return result, err
@@ -390,6 +399,9 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 		return result, err
 	}
 	for page := 2; page <= c.Pagination.MaxPages && !result.Truncated; page++ {
+		if c.Pagination.AdvertisedRanges != nil && result.domListingTotal != nil && len(jobs) >= *result.domListingTotal {
+			break
+		}
 		endpoint := c.Pagination.URL(profile.Endpoint, page)
 		if c.Document.PublicHeaders {
 			a, _ := url.Parse(profile.Endpoint)

@@ -33,6 +33,7 @@ type ListingConfig struct {
 	JoinProofURL                         func(string, string) (string, error)
 	TitleScan                            *TitleScanConfig
 	PDFProof                             *PDFListingProof
+	MyJobShop                            bool
 }
 
 // ListingOptions covers the existing static single-page href inventory.
@@ -42,6 +43,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
 	allowed["rich_rows"] = true
+	allowed["my_job_shop"] = true
 	allowed["title_matched_url_scan"] = true
 	allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
 	for _, key := range ListingProviderKeys {
@@ -150,6 +152,13 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		}
 	}
 	var err error
+	if value := config["my_job_shop"]; value != nil {
+		var ok bool
+		c.MyJobShop, ok = value.(bool)
+		if !ok {
+			return c, ErrListingProof
+		}
+	}
 	c.ScriptLinks, err = ScriptLinksOptions(config["script_json_links"])
 	if err != nil {
 		return c, err
@@ -172,13 +181,19 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		return c, err
 	}
 	c.Proofs, err = ListingProofOptions(config)
-	if err != nil || c.Proofs != nil && c.Pagination != nil && (c.Proofs.TotalPattern == nil || len(c.Proofs.EmptyStates) != 0) {
+	if err != nil || c.Proofs != nil && c.Pagination != nil && c.Pagination.AdvertisedRanges == nil && (c.Proofs.TotalPattern == nil || len(c.Proofs.EmptyStates) != 0) {
+		return c, ErrListingProof
+	}
+	if c.Pagination != nil && c.Pagination.AdvertisedRanges != nil && (c.RichRows != nil || c.ScriptLinks != nil || c.IncludeBoardURL || c.RequireJSONLD || c.Proofs != nil && c.Proofs.TotalPattern != nil) {
 		return c, ErrListingProof
 	}
 	if (c.IncludeBoardURL || c.RequireJSONLD) && (c.EmptySelector != "" || config["empty_states"] != nil) || c.IncludeBoardURL && config["advertised_total"] != nil {
 		return c, ErrListingProof
 	}
 	c.Document, err = directDocumentOptions(config, endpoint)
+	if c.MyJobShop || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
+		c.Document.MaxBodyBytes = 2 << 20
+	}
 	// The listing outer loop owns one shared attempt budget across statuses,
 	// empty documents and transport failures, including public-header requests.
 	c.Document.RetryLimits = nil

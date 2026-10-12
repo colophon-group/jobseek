@@ -34,7 +34,7 @@ func TestLightpandaLiveAPIPublicOriginalFields(t *testing.T) {
 	if !supported || verifyFileSHA256(binary, expected) != nil {
 		t.Fatal("official asset differs")
 	}
-	for _, slug := range []string{"hitachi-energy-careers", "innosuisse-main"} {
+	for _, slug := range []string{"hitachi-energy-careers", "innosuisse-main", "ihg-kimpton-americas"} {
 		t.Run(slug, func(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join(dir, slug+"-original.json"))
 			var original struct {

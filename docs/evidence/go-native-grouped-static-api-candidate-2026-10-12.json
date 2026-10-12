@@ -1,0 +1,63 @@
+{
+  "schema": "jobseek.native-grouped-static-api-candidate/v1",
+  "version": "0.13.1035",
+  "base_source_revision": "915d34ac84adbda9be528171cd0936660725bb6f",
+  "lightpanda_release": "1.0.0",
+  "scope": "candidate; final head and original full release/admission still required",
+  "monitors": [
+    {
+      "slug": "university-of-geneva-careers",
+      "type": "dom",
+      "original_urls": 33,
+      "contract": "exact contiguous advertised ranges and first-page count; stop at proven total; explicit zero proof retained"
+    },
+    {
+      "slug": "fressnapf-maxizoo-luxembourg",
+      "type": "dom",
+      "original_urls": 7,
+      "contract": "complete2MiB bounded fallback body; original redirect identities; each JobPosting verified before inventory acceptance"
+    },
+    {
+      "slug": "innosuisse-main",
+      "type": "api_sniffer",
+      "original_urls": 0,
+      "contract": "fresh original and physical pinned-engine inventories both empty; canonical zero settlement and deadline/lease conservation passed; no positive inventory claim"
+    }
+  ],
+  "preserved_detail_ownership": "all three already in the prior detail floor; no new detail authority",
+  "unqualified_api_sources": {
+    "hitachi-energy-careers": {
+      "original_urls": 2262,
+      "physical_result": "failed at120s"
+    },
+    "ihg-kimpton-americas": {
+      "original_urls": 408,
+      "physical_result": "failed at18s"
+    }
+  },
+  "verification": {
+    "original_static_references": {
+      "requests": 19,
+      "urls": 40,
+      "captured_headers": "content type, redirects and publisher policy"
+    },
+    "actual_public_go_http": "both complete inventories match fresh original URLs with verified TLS",
+    "canonical_effects": "31 database/queue cases: ranges9, full-body6 and existing pagination16; unproved root zero retains tail discovery; failures/reservations cannot alter canonical jobs; exact deadline/lease conservation retained",
+    "race_suites": [
+      "JSON-LD public document transport",
+      "DOM parser/listing",
+      "focused ordinary queue profiles",
+      "ordinary worker grouped static/public and canonical cases"
+    ]
+  },
+  "proof_sha256": {
+    "jobseek-native1035-grouped-static-public-live1.log": "28ef5baa14b5fb17e5220df2cf751575684aeacae7b6ddda6569d87364f8a59b",
+    "jobseek-native1035-full-body-runtime-effects2.log": "a0b69ed5096fa61b05ec2706f1f8ca01e24b7b09bba88cb114bdc53f1fe7a7b6",
+    "jobseek-native1035-innosuisse-zero-canonical1.log": "89a4918ec49db63f99e220f33103e923e8e36526845db2e1bb60049d436163f9",
+    "jobseek-native1035-dom-listing2.log": "6b71a2c1f515f2e13bbd8b0bf11f8303df9494d6e59a0de511af8124c51bd731",
+    "jobseek-native1035-queue-profiles1.log": "5c5cb8569f7078e1820d88641d19679127bddeb99fc73b972439708c8815dfe3",
+    "jobseek-native1035-jsonld-document2.log": "aad28f509f5ee60e8788d017a4d205a4728887cbf4f67a899a78cebe47aa4c85",
+    "jobseek-native1035-grouped-static-runtime-effects5.log": "c382cbbc3370b815d8d73a5f09a833ff5368be611b5d3be7b35257759deb9f04",
+    "jobseek-native1035-range-unproved-zero1.log": "351868ca3ed6f82ae9cb0d33f33f4e4ef86be6e32cc294ead54ee4801aee2444"
+  }
+}

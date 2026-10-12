@@ -38,6 +38,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if md["prospective_board"] != nil && string(md["prospective_board"]) != "null" {
 		return fail() // Original CareerCenter proof supports static rich rows only.
 	}
+	if md["my_job_shop"] != nil && string(md["my_job_shop"]) != "false" && string(md["my_job_shop"]) != "null" {
+		return fail() // Its complete fallback-body contract is static-only.
+	}
 	options := map[string]any{}
 	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "bot_protection", "transport_attempts", "encoding"} {
 		if raw, ok := md[key]; ok {
@@ -95,6 +98,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		var pagination map[string]json.RawMessage
 		if json.Unmarshal(raw, &pagination) != nil || pagination == nil {
 			return fail()
+		}
+		if ranges := pagination["advertised_ranges"]; ranges != nil && string(ranges) != "null" {
+			return fail() // The original advertised-range contract is static-only.
 		}
 		if flag, exists := pagination["browser"]; exists {
 			var browser bool

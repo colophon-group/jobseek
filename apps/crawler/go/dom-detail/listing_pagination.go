@@ -14,6 +14,7 @@ type ListingPagination struct {
 	Param, Template                      string
 	Start, Increment, MaxPages, Attempts int
 	Transient403                         bool
+	AdvertisedRanges                     *ListingAdvertisedRanges
 }
 
 func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
@@ -25,7 +26,7 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 		return nil, err
 	}
 	allowed := map[string]bool{}
-	for _, key := range []string{"param_name", "url_template", "start", "start_value", "increment", "max_pages", "browser", "transient_403", "transport_attempts"} {
+	for _, key := range []string{"param_name", "url_template", "start", "start_value", "increment", "max_pages", "browser", "transient_403", "transport_attempts", "advertised_ranges"} {
 		allowed[key] = true
 	}
 	for key := range m {
@@ -42,6 +43,10 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 		return nil, errors.New("unsupported browser pagination")
 	}
 	p := &ListingPagination{Start: 1, Increment: 1, MaxPages: 10000, Attempts: 3}
+	p.AdvertisedRanges, err = listingAdvertisedRangesOptions(m["advertised_ranges"])
+	if err != nil {
+		return nil, err
+	}
 	if m["start"] == nil {
 		m["start"] = m["start_value"]
 	}
