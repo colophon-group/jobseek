@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,6 +11,63 @@ from pathlib import Path
 import pytest
 
 CRAWLER = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize("transport", ["regular", "missing", "symlink"])
+def test_production_staged_bundle_preflight_needs_no_host_installer(
+    tmp_path: Path, transport: str
+) -> None:
+    source = (CRAWLER / "deploy.sh").read_text()
+    # Run real startup artifact checks in an isolated fixture, with no Docker,
+    # production lock, credentials or writers.
+    prefix = source.split("# Staged path is intentionally dynamic;", 1)[0]
+    incoming = tmp_path / "incoming"
+    incoming.mkdir()
+    live = tmp_path / "live"
+    live.mkdir()
+    prefix = prefix.replace('DEPLOY_DIR="/home/deploy"', f'DEPLOY_DIR="{live}"')
+    prefix = prefix.replace("/run/lock/jobseek-crawler-mutation.lock", str(tmp_path / "lock"))
+    specs = source.split("DEPLOY_SPEC_FILES=(", 1)[1].split(")", 1)[0].split()
+    for name in [*specs, "scripts/crawler-csv-sync-host.sh", "rollback-pool-budget.override.yml"]:
+        path = incoming / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("fixture\n")
+    archive = incoming / ("lightpanda-claimant-credentials-" + "a" * 40 + "-123-1.tar")
+    if transport == "regular":
+        archive.write_bytes(b"non-secret transport fixture")
+        archive.chmod(0o600)
+    elif transport == "symlink":
+        target = tmp_path / "foreign-transport"
+        target.write_bytes(b"non-secret foreign fixture")
+        archive.symlink_to(target)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    flock = bindir / "flock"
+    flock.write_text("#!/bin/sh\nexit 0\n")
+    flock.chmod(0o755)
+    script = incoming / "deploy.sh"
+    script.write_text(prefix + "printf 'staged-bundle-preflight-complete\\n'\n")
+    required = re.search(r"required_vars=\((.*?)\)", source, re.S)
+    assert required is not None
+    env = {name: "fixture" for name in required.group(1).split()}
+    env.update(
+        PATH=str(bindir) + os.pathsep + os.environ["PATH"],
+        JOBSEEK_DEPLOY_REVISION="a" * 40,
+        JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID="123-1",
+    )
+    result = subprocess.run(
+        ["bash", str(script)], env=env, capture_output=True, text=True, check=False, timeout=10
+    )
+    assert "unbound variable" not in result.stderr
+    if transport == "regular":
+        assert result.returncode == 0, result.stderr
+        assert "staged-bundle-preflight-complete" in result.stdout
+    else:
+        assert result.returncode != 0
+        assert "credential bundle is unavailable or unsafe" in result.stderr
+    assert not archive.exists() and not archive.is_symlink()
+    if transport == "symlink":
+        assert target.read_bytes() == b"non-secret foreign fixture"
 
 
 def deployment_reference():
