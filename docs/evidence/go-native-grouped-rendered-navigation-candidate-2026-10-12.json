@@ -41,5 +41,7 @@
     "Rendered details for these sources",
     "Sustained fleet freshness and whole-lane ordinary resources/cost"
   ],
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "parent_merged_source": "3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e",
+  "candidate_pr": 10443
 }
