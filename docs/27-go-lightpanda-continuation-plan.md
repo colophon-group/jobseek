@@ -1,6 +1,73 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1030 merged; original rollouts running; six monitors next
+## Current checkpoint — source1030 serving297; six monitors admitted; source1032 qualified
+
+Source1030 is deployed at `3bedb97f20179901fb6730e5acd72be0d061a5c1`
+through successful original crawler run38221957465 and renderer run38222023557.
+Independent incoming cold296, deployed native host tools, full CSV contract,
+matching renderer and successful exporter progress checks passed. Original B0
+and ordinary activation succeeded; routing epoch297 owns **7,794 monitors /
+7,683 detail boards**, preserving the entire previous7,788 /7,683 floor and
+adding Trip, CMA/AirBelgium, ArcelorMittal Ukraine, and Alten Portugal, Spain,
+and Finland together. Lightpanda remains the latest verified stable1.0.0.
+
+The source-bound full census reconciled7,885 enabled boards and1,673,739 actual
+scheduled posting routes. Exact activated identities:
+
+- Ordinary plan: `f81b8fcfc76b37ba1c2a3f7fae40a1b0194e15409953193b1ec485aa54497921`.
+- Redis projection: `2105e40d47ea7d4e990297ef0e1409fd74d9781f`.
+- B0 receipt: `e1338fd16a3d8294e0c1d29e99743fa6f78d0be8690430e867a082be050b9eca`.
+- Ordinary active receipt: `c5d54f3816089218beda83e3a0d345f6b0d6c73144799406caff47fa2a4aa2a6`.
+
+At11:33UTC, independent SQL/Redis/host/HTTP observations confirmed one active
+plan, matching queue projection, all10 service containers running,8 healthy
+HTTP endpoints,32 completed native monitor receipts and12 completed native
+detail receipts.31 monitor receipts had their exact committed recurring
+schedule; one retained completion lease remains visible. Early ordinary-worker
+resource observation was216.4MiB /1GiB,512MiB Go target,~100% of its one CPU,
+zero restarts and no OOM. These observations establish early serving, **not
+sustained fleet freshness, complete new-board effects or production cost**.
+The six new monitors retain natural schedules; do not force claims for evidence.
+
+PR10444, source1032 at final head`e2fafeb1deac9178f3ebeafa073c0bf808e84155`,
+combines four more rendered monitors (Alten Italy44, Netherlands10,
+Switzerland3 and Glasswall4 original URLs) with the Go production claimant
+credential installer. Exact-head core CI/image/Linux/gate and all16 ARM
+comparison arms passed. CI run38222198431 attempt2 retried only Migration Drift
+after a public ECR image-pull rate limit; no code changed and successful worker
+suites were not repeated. Manual ARM run38222197276 retained a clean matching
+candidate/renderer report, admission true, no reasons, density ratios5.074–12.236.
+The native installer preserves original archive/PKI/pins/modes/atomic publication
+and retry contracts, including actual unprivileged sealed-key retry in Linux
+image checks. Source1031 is folded into this batch. **Source1032 is qualified,
+not yet merged or deployed.**
+
+Continue in this order:
+
+1. Observe source1030 natural effects, exact recurring deadlines, freshness and
+   resource behavior, keeping incomplete evidence explicit.
+2. Use the original quiesced ordinary retirement/B0 rollback and locked selector
+   clearing before source1032's full rollout. Re-read incoming merge authority,
+   exact head/base/main, required CI and Gate, holds and operator decisions;
+   bind the merge to that head. Verify exact original images and merged SDK,
+   then admit the preserved source1030 floor plus four monitors together.
+3. Continue grouped monitor/detail and production-consumer ports. The latest
+   census has91 monitor rows outside the ordinary cohort (including three
+   separately B0-owned rows), concentrated in DOM64, API-sniffer14, inline4,
+   RSS3, Njoyn1, BrassRing4 and sitemap1;202 detail rows remain outside it.
+   These counts include unproved existing profiles, not only missing types.
+4. For the next DOM group, Axis10 and Sulzer-Schmid1 need full fragment navigation
+   and result/publisher-policy qualification; Tyson17 needs explicit lean resource
+   qualification. Complete physical engine observations are research only and
+   grant no profile, persistence or production ownership authority.
+5. Finish native schema/activation/rollback consumers and remaining enabled
+   legacy execution. Establish whole-fleet freshness and comparable whole-lane
+   resources/cost plus the supported rollback window before retiring production
+   Python, Playwright and Chromium. Preserve useful offline Python tooling.
+
+**The full migration remains incomplete.**
+
+## Historical checkpoint — source1030 merged; original rollouts running; six monitors next
 
 [PR #10443](https://github.com/colophon-group/jobseek/pull/10443) merged as
 `3bedb97f20179901fb6730e5acd72be0d061a5c1`, **0.13.1030 /204 profiles**.
