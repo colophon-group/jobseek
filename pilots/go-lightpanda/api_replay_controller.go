@@ -19,6 +19,8 @@ import (
 // The conversation receives public documents and a scoped fetch function.
 // Captured request credentials stay in this target, including on later pages.
 // Runtime admission still requires the service protocol and HTTP fallback.
+type replayDOMLinksContextKey struct{}
+
 type apiReplayTask struct {
 	boardURL                       string
 	options                        api.BrowserReplayOptions
@@ -26,6 +28,7 @@ type apiReplayTask struct {
 	fallback                       api.Fetch
 	fallbackFactory                func(api.BrowserReplayOptions) (api.Fetch, func(), error)
 	nativeProvider, nativeMetadata string
+	domLinks                       api.DOMLinks
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -84,6 +87,33 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 		}
 		return failure
 	}
+	// The callback stays affine to this verified live target. Only bounded
+	// public posting URLs cross the service protocol after normal projection.
+	var linksMu sync.Mutex
+	linksOpen := true
+	task.domLinks = func(call context.Context) ([]string, error) {
+		linksMu.Lock()
+		defer linksMu.Unlock()
+		if !linksOpen || ctx.Err() != nil || call.Err() != nil {
+			return nil, errReplayCapture
+		}
+		target := chromedp.FromContext(ctx)
+		if target == nil || target.Target == nil {
+			return nil, errReplayCapture
+		}
+		command, cancel := context.WithCancel(call)
+		stop := context.AfterFunc(ctx, cancel)
+		defer stop()
+		defer cancel()
+		var links []string
+		err := chromedp.Evaluate(`(()=>{const nodes=document.querySelectorAll('a[href]');if(nodes.length>20000)throw new Error('DOM link limit');let size=0;return Array.from(nodes,a=>{const u=a.href;size+=u.length;if(size>2000000)throw new Error('DOM link limit');return u})})()`, &links).Do(cdp.WithExecutor(command, target.Target))
+		if err != nil {
+			return nil, errReplayCapture
+		}
+		return links, nil
+	}
+	defer func() { linksMu.Lock(); defer linksMu.Unlock(); linksOpen = false; task.domLinks = nil }()
+	ctx = context.WithValue(ctx, replayDOMLinksContextKey{}, task.domLinks)
 	timer := time.NewTimer(time.Duration(task.options.SettleMS) * time.Millisecond)
 	defer timer.Stop()
 	select {

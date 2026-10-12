@@ -69,6 +69,14 @@ backlog remain follow-up work, not successful freshness/cost evidence.
    regressions and Linux architecture qualification govern delivery. Full
    source-bound CI and the original whole rollout are still required; this
    candidate has no production authority. See the [consumer-batch evidence](evidence/go-native-csv-release-consumers-candidate-2026-10-12.json).
+   Add the [DOM cross-reference correction](evidence/go-native-api-dom-crossref-candidate-2026-10-12.json)
+   to this grouped delivery, **0.13.1026 /204 profiles**. IATA's original Python
+   and physical pinned Lightpanda captures now agree on all34 URLs and all
+   eight exported content fields. A real local PostgreSQL/Redis replay persists
+   all34 source/title identities and settles the exact canonical recurring
+   deadline and lease. Twelve original DOM cases and two physical cookie,
+   pagination and later-publisher-denial cases pass. Production still runs
+   source1023; natural IATA recovery is required after delivery.
 4. Continue grouped monitor/controller work from the current exact SDK frontier:
    **DOM53, API12, inline4, RSS2, BrassRing4 and Njoyn1** configurations remain
    uncompiled. Another21 compile outside the ordinary floor, including B0 boards,
