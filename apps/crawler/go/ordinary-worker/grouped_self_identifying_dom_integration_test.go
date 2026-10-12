@@ -21,7 +21,7 @@ func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *t
 		URLs       []string `json:"urls"`
 	}
 	raw, err := os.ReadFile("testdata/self_identifying_dom_original_urls.json")
-	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 4 {
+	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 8 {
 		t.Fatal("complete original public URL reference unavailable")
 	}
 	for _, c := range cases {

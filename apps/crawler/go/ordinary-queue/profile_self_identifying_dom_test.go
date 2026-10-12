@@ -8,6 +8,10 @@ import (
 
 func TestGroupedSelfIdentifyingDOMRetainsOriginalControlsAndRefusesDrift(t *testing.T) {
 	cases := map[string]string{
+		"alten_italy":           "https://www.alten.it/career/jobs/?per_page=100&sortby=date",
+		"alten_netherlands":     "https://www.alten.nl/werken-bij-alten/career-nl/",
+		"alten_switzerland":     "https://www.alten.ch/de/career/jobs/",
+		"glasswall":             "https://careers.glasswall.com/",
 		"alten_portugal":        "https://www.alten.pt/pt/career/jobs/",
 		"alten_spain":           "https://www.alten.es/unete-a-alten/empleo/",
 		"alten_finland":         "https://www.alten.fi/en/career/jobs/",

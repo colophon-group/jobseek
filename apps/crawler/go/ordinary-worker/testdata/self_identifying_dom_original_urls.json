@@ -120,5 +120,94 @@
       "https://ukraine.arcelormittal.com/people-and-careers/arcelormittal-kryvyi-rih-as-your-workplace/fakhivets",
       "https://ukraine.arcelormittal.com/people-and-careers/arcelormittal-kryvyi-rih-as-your-workplace/fakhivets-2"
     ]
+  },
+  {
+    "Name": "alten_italy",
+    "Slug": "alten-italy",
+    "board_url": "https://www.alten.it/career/jobs/?per_page=100&sortby=date",
+    "urls": [
+      "https://www.alten.it/jobs/1175-r-d-engineer-automotive/",
+      "https://www.alten.it/jobs/1652-junior-automotive-engineer/",
+      "https://www.alten.it/jobs/1794-junior-software-embedded-engineer/",
+      "https://www.alten.it/jobs/1803-project-engineer-life-science/",
+      "https://www.alten.it/jobs/1804-qa-on-the-floor-life-science/",
+      "https://www.alten.it/jobs/1805-r-d-lab-consultant-medtech-life-science/",
+      "https://www.alten.it/jobs/1806-project-manager-life-science/",
+      "https://www.alten.it/jobs/1807-senior-mechanical-engineer-life-science/",
+      "https://www.alten.it/jobs/1808-middle-process-engineer-life-science/",
+      "https://www.alten.it/jobs/1809-process-engineer-life-science/",
+      "https://www.alten.it/jobs/1810-qc-microbiologico-life-science/",
+      "https://www.alten.it/jobs/1811-mechanical-engineer-life-science/",
+      "https://www.alten.it/jobs/1812-cqv-team-leader/",
+      "https://www.alten.it/jobs/1813-senior-cqv-engineer-life-science/",
+      "https://www.alten.it/jobs/1814-cqv-specialist-life-science/",
+      "https://www.alten.it/jobs/1815-r-d-engineer-life-science/",
+      "https://www.alten.it/jobs/1816-junior-computer-system-validation-life-science/",
+      "https://www.alten.it/jobs/1817-senior-computer-system-validation-life-science/",
+      "https://www.alten.it/jobs/1818-middle-computer-system-validation-consultant-life-science/",
+      "https://www.alten.it/jobs/1819-project-manager-life-science/",
+      "https://www.alten.it/jobs/1823-computer-system-validation-life-science/",
+      "https://www.alten.it/jobs/1825-nuclear-project-engineer-life-science/",
+      "https://www.alten.it/jobs/1826-process-engineer-life-science/",
+      "https://www.alten.it/jobs/1829-senior-project-manager-life-science/",
+      "https://www.alten.it/jobs/1832-qa-junior-life-science/",
+      "https://www.alten.it/jobs/1833-qa-process-validation-life-science/",
+      "https://www.alten.it/jobs/1836-mechanical-designer-industry/",
+      "https://www.alten.it/jobs/1837-hmi-scada-engineer-industry/",
+      "https://www.alten.it/jobs/1838-plc-engineer-industry/",
+      "https://www.alten.it/jobs/1839-firmware-engineer-industry/",
+      "https://www.alten.it/jobs/1840-full-stack-developer-industry/",
+      "https://www.alten.it/jobs/1842-project-manager-life-science/",
+      "https://www.alten.it/jobs/1843-qc-consultant-life-science/",
+      "https://www.alten.it/jobs/1844-system-engineer-railway/",
+      "https://www.alten.it/jobs/1847-mes-implementation-specialist/",
+      "https://www.alten.it/jobs/1848-qc-microbiologico-life-science/",
+      "https://www.alten.it/jobs/1849-qc-chimico-pharma-life-science/",
+      "https://www.alten.it/jobs/1850-qc-chimico-senior-life-science/",
+      "https://www.alten.it/jobs/1851-quality-assurance-life-science/",
+      "https://www.alten.it/jobs/1852-junior-system-engineer/",
+      "https://www.alten.it/jobs/1853-quality-control-sample-coordinator-life-science/",
+      "https://www.alten.it/jobs/1854-csv-specialist-life-science/",
+      "https://www.alten.it/jobs/423-calibration-engineer-automotive/",
+      "https://www.alten.it/jobs/807-system-engineer-aerospace/"
+    ]
+  },
+  {
+    "Name": "alten_netherlands",
+    "Slug": "alten-netherlands",
+    "board_url": "https://www.alten.nl/werken-bij-alten/career-nl/",
+    "urls": [
+      "https://www.alten.nl/jobs/258-business-manager/",
+      "https://www.alten.nl/jobs/324-semiconductor-engineer/",
+      "https://www.alten.nl/jobs/367-hr-officer-ehv/",
+      "https://www.alten.nl/jobs/375-nl-ehv-bm-eng/",
+      "https://www.alten.nl/jobs/488-payroll-officer-salarisadministrateur/",
+      "https://www.alten.nl/jobs/498-data-engineer-capelle-aan-den-ijssel/",
+      "https://www.alten.nl/jobs/499-software-project-director/",
+      "https://www.alten.nl/jobs/500-project-lead-software/",
+      "https://www.alten.nl/jobs/506-nl-cap-financial-accountant/",
+      "https://www.alten.nl/jobs/508-talent-academy-officer/"
+    ]
+  },
+  {
+    "Name": "alten_switzerland",
+    "Slug": "alten-switzerland",
+    "board_url": "https://www.alten.ch/de/career/jobs/",
+    "urls": [
+      "https://www.alten.ch/de/jobs/879-google-cloud-platform/",
+      "https://www.alten.ch/de/jobs/899-dba-oracle-ticino/",
+      "https://www.alten.ch/de/jobs/903-pipe-project-manager-it-2/"
+    ]
+  },
+  {
+    "Name": "glasswall",
+    "Slug": "glasswall-careers",
+    "board_url": "https://careers.glasswall.com/",
+    "urls": [
+      "https://careers.glasswall.com/security-engineer-301019/",
+      "https://careers.glasswall.com/senior-developer-302735/",
+      "https://careers.glasswall.com/senior-qa-analyst-302037/",
+      "https://careers.glasswall.com/solutions-architect-us-301420/"
+    ]
   }
 ]

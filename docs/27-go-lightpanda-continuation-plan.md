@@ -19,11 +19,13 @@ The exact-head/base guarded merge followed this fresh proof.
 
 The original full crawler rollout and matching renderer rollout are running.
 After both succeed, independently verify their immutable source/images, native
-host artifacts, actual CSV tree and exporter progress. Activate B0 through its
-original wrapper, capture every actual scheduled posting route, and admit the
-two qualified Trip/Air Belgium monitors while preserving **7,788 monitors and
-7,683 detail boards**. Verify the resulting **7,790 monitor owners /7,683 detail
-owners**, canonical effects, natural recurring settlement and freshness.
+host artifacts, actual CSV tree and exporter progress. Keep source1029 cold while
+source1030 qualifies and deploys. Then activate B0 through its original wrapper,
+capture every actual scheduled posting route, and admit all six qualified
+Trip/Air Belgium and grouped rendered monitors while preserving **7,788 monitor
+owners and 7,683 detail-board owners**. Verify the resulting **7,794 monitor
+owners /7,683 detail owners**, canonical effects, recurring settlement and
+freshness. This consolidates ownership activation across both batches.
 No source1029 owner activation is claimed yet.
 
 The four-board rendered follow-up is [PR #10443](https://github.com/colophon-group/jobseek/pull/10443).
@@ -34,6 +36,23 @@ perform its original full rollout and one fresh grouped admission. Its detail
 replacements remain unqualified. Production Python/Playwright/Chromium
 retirement, every enabled route and sustained whole-fleet freshness/cost remain
 required. **The full migration remains incomplete.**
+
+## Following source1031 — four more rendered controls qualified locally
+
+Alten Italy, Netherlands and Switzerland plus Glasswall match all61 original
+URLs with physical Lightpanda1.0.0. PostgreSQL/Redis race replay verifies61 new
+canonical insertions, browser detail routing, committed deadlines and lease
+settlement. All16 new physical cases and32 portable cases including the parent
+group pass. Original proxy/stealth/transport controls remain in the ownership
+hash; only the four exact static configurations select the verified-TLS direct
+replacement. Configuration drift and foreign-source refusal tests pass.
+See the [candidate evidence](evidence/go-native-grouped-rendered-controls-candidate-2026-10-12.json).
+
+The twelve-board reference pass retains its two zeros, one original failure,
+one unsupported native action and four other physical/parser gaps. These are
+not admissions. Continue source1030's final qualification and consolidated
+six-monitor serving first; then rebase and qualify this next batch against the
+actual merged base. Detail replacements and full migration remain incomplete.
 
 ## Historical checkpoint — source1028 deployed; full ordinary ownership active295
 

@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek.grouped-rendered-controls-candidate/v1",
+  "candidate_version": "0.13.1031",
+  "parent_candidate_head": "208cdfa6e788ee72d15ac9f01e9863034a0d9c2a",
+  "parent_pr": 10443,
+  "production_authority": false,
+  "lightpanda_release": "1.0.0",
+  "original_jobs": {
+    "alten-italy": 44,
+    "alten-netherlands": 10,
+    "alten-switzerland": 3,
+    "glasswall-careers": 4
+  },
+  "physical_original_URL_parity": 61,
+  "new_canonical_insertions": 61,
+  "physical_postgres_redis_cases": 16,
+  "portable_postgres_redis_cases_including_parent_group": 32,
+  "physical_database_log_sha256": "1303761656336016928cb051a3fd4e18ef2a468ea1f5f45bb97de085ad5f8d80",
+  "portable_database_log_sha256": "e434eceea838cea02b191d08c74dfc21e39c529de0aa9f5d364216d8f5e6ad7d",
+  "preserved": [
+    "Original static metadata and proxy/stealth/transport controls in ownership hash",
+    "Source-bound direct verified-TLS replacement only",
+    "Exact committed deadline and lease settlement",
+    "Browser detail routing; detail replacement unqualified",
+    "Publisher reservation, incomplete document and unproved-zero protections"
+  ],
+  "research_limits": [
+    "12 original public cases: 9 positive, 2 zeros, 1 failure",
+    "8 successful physical documents and 1 unsupported action; overall physical observation test fails that unsupported action",
+    "Only4 complete URL matches select this batch; other gaps and zeros receive no new authority"
+  ],
+  "remaining": [
+    "Final committed-head CI/image/Linux/gate/whole-lane checks",
+    "Original full release and fresh preserved-floor admission",
+    "Rendered detail replacements",
+    "Sustained fleet freshness and resources/cost"
+  ],
+  "full_migration_complete": false
+}
