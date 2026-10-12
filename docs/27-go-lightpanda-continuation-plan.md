@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1029 merged; cold296; original rollouts running
+## Current checkpoint — source1029 deployed; cold296; six-monitor activation next
 
 [PR #10441](https://github.com/colophon-group/jobseek/pull/10441) merged as
 `3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e`, **0.13.1029 /204 profiles**.
@@ -17,7 +17,11 @@ schema0040 and seven restored restart-armed base services with six healthy
 endpoints. See the [cold reversal evidence](evidence/go-native-source1029-cold-reversal-2026-10-12.json).
 The exact-head/base guarded merge followed this fresh proof.
 
-The original full crawler rollout and matching renderer rollout are running.
+The [original full crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38215022486)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38215037550)
+succeeded at attempt1. Independent selected-image/cold/host-artifact/CSV/renderer
+and exporter verification passed. See the
+[production evidence](evidence/go-native-source1029-production-2026-10-12.json).
 After both succeed, independently verify their immutable source/images, native
 host artifacts, actual CSV tree and exporter progress. Keep source1029 cold while
 source1030 qualifies and deploys. Then activate B0 through its original wrapper,

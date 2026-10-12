@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek.go-native-production-checkpoint/v1",
+  "source_revision": "3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e",
+  "version": "0.13.1029",
+  "crawler_deploy_run": 38215022486,
+  "renderer_deploy_run": 38215037550,
+  "original_rollouts_succeeded": true,
+  "attempt": 1,
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:7ce3d59b21089a9088e1bfce47a965b9b0e6a7939db2dfb48b7fc00bcfd3d2e1",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:4006a89157af6c8e1ee387be621e7c7c07d178994edd9212832ee2d334079b71"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:54203d33ea286d86abbe141f04710c3cd62dbc2329aee3f3e1281650e8838c35",
+  "lightpanda_release": "1.0.0",
+  "observed_at_utc": "2026-10-12T07:15:29.411765+00:00",
+  "canonical": {
+    "routing_epoch": 296,
+    "active_plans": 0,
+    "source1028_plan_state": "retired",
+    "retained_source1028_receipts": 2259,
+    "incoming_source1029_plan_count": 0
+  },
+  "restored_base_services": 7,
+  "healthy_base_endpoints": 6,
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "native_host_artifacts_verified": true,
+  "actual_csv_contract_verified": true,
+  "exporter_health": 200,
+  "proof_sha256": {
+    "native-source1029-postdeploy-cold296-independent-verified1-2026-10-12.json": "c4aa27727891b4af693983912e42cbdb29b4358b1ef0af5fefef95303ed33542",
+    "native-source1029-deploy-tools-independent-verified1-2026-10-12.json": "87b9aaa1893dbd1a6b625c82d8c1635bc189c8e8e787a953454d1de15989585f",
+    "native-source1029-renderer-independent-verified1-2026-10-12.json": "287e92cd354f2177937f881a5e294e00b134375df5e6dbe49798bd2e7f5746f1",
+    "native-source1029-exporter-progress-independent-verified1-2026-10-12.json": "39370ece88117f3b8ff1b79f7072725b79730a015a8520fc51592e5da131c44f"
+  },
+  "native_ownership_active": false,
+  "next_action": "Finish source1030 final-head qualification and original full rollout, then one fresh full-route admission adding six monitors; preserve7788/7683 floor",
+  "full_migration_complete": false
+}
