@@ -1,6 +1,38 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1029 deployed; cold296; six-monitor activation next
+## Current checkpoint — source1030 merged; original rollouts running; six monitors next
+
+[PR #10443](https://github.com/colophon-group/jobseek/pull/10443) merged as
+`3bedb97f20179901fb6730e5acd72be0d061a5c1`, **0.13.1030 /204 profiles**.
+Final candidate `ed22d3a320d47c1bbb7f8be79bb16260a041d5af` passed Required CI,
+installed-image contracts, both Linux pilots, Crawler Deploy Gate and all16
+[exact-head ARM whole-lane arms](https://github.com/colophon-group/jobseek/actions/runs/38217551903).
+The earlier registry proxy assertion failure is retained; its narrow correction
+verifies the three qualified Alten direct browser replacements while preserving
+strict HTTP proxy coverage for every other row.
+
+The fresh source1029 cold296 proof followed scheduled Typesense reconciliation;
+zero active ownership plans, no projections/receipts/tokens, seven restored base
+writers and six healthy endpoints remained verified before the guarded merge.
+The [original full crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38221957465)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38222023557)
+are running. After independently verifying their actual source/images, CSV tree,
+host tools, renderer and exporter, activate original B0, reconcile every actual
+scheduled posting route and stage/activate **7,794 monitor owners /7,683 detail
+owners**. This adds all six Trip/Air Belgium/Alten/ArcelorMittal monitors in one
+activation while preserving the entire **7,788 /7,683** prior floor. No source1030
+native ownership is claimed yet; natural serving/freshness proof remains required.
+
+The combined follow-up is [PR #10444](https://github.com/colophon-group/jobseek/pull/10444):
+four more rendered monitors (61 original URLs) plus Go production credential
+installation, version **0.13.1032**. Its original committed-head ARM image build
+passed, including native credential tests in the root Go build stage; both Linux
+pilots and renderer image also passed. Rebase to the actual merged source1030 and
+qualify the final head before delivery. Offline Python bundle creation is retained.
+Production Python/Playwright/Chromium retirement, every enabled route, sustained
+freshness/resources/cost and the rollback window remain incomplete.
+
+## Historical checkpoint — source1029 deployed; cold296; six-monitor activation next
 
 [PR #10441](https://github.com/colophon-group/jobseek/pull/10441) merged as
 `3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e`, **0.13.1029 /204 profiles**.

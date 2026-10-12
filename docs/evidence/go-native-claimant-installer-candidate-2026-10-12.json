@@ -16,7 +16,7 @@
     "amd64",
     "arm64"
   ],
-  "actual_linux_sealed_owner_execution_pending": true,
+  "actual_linux_sealed_owner_execution_pending": false,
   "preserved": [
     "Exact complete transport archive, mode, size and digest",
     "Canonical P-256/SHA-256 CA/client/server PKI, SAN/EKU/usage/validity/signatures and three pins",
@@ -28,10 +28,16 @@
     "Private transport cleanup and existing finalization/rollback contract"
   ],
   "validation_limits": [
-    "Actual unprivileged sealed-owner retry is Linux/root image-build test; local Mac tests cannot execute it",
+    "Native sealed-owner retry is exercised by the root Linux image build; the warm exact-head image build passed, while final rebased installed-image/CI and deployment checks remain required",
     "Native installed image, final exact-head CI and original whole rollout still required",
     "Full migration, remaining enabled routes and sustained fleet freshness/cost remain incomplete"
   ],
   "combines_with_four_more_rendered_monitor_candidates": true,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "parent_merged_source1030": "3bedb97f20179901fb6730e5acd72be0d061a5c1",
+  "candidate_pr": 10444,
+  "warm_original_arm_image_build_run": 38220620409,
+  "warm_original_arm_image_build_head": "3fcf86fef803ea4eacf3348ee3ce814ac0b42b48",
+  "warm_image_build_passed": true,
+  "final_rebased_head_qualification_pending": true
 }
