@@ -16,12 +16,14 @@ import (
 
 func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *testing.T) {
 	var cases []struct {
-		Name, Slug string
-		Board      string   `json:"board_url"`
-		URLs       []string `json:"urls"`
+		Name, Slug    string
+		Board         string   `json:"board_url"`
+		URLs          []string `json:"urls"`
+		ScraperWorker string   `json:"scraper_worker"`
+		Final         string   `json:"final_url"`
 	}
 	raw, err := os.ReadFile("testdata/self_identifying_dom_original_urls.json")
-	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 8 {
+	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 11 {
 		t.Fatal("complete original public URL reference unavailable")
 	}
 	for _, c := range cases {
@@ -32,7 +34,11 @@ func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *t
 			}
 			for _, mode := range []string{"complete", "publisher", "unproved_empty", "incomplete"} {
 				t.Run(mode, func(t *testing.T) {
-					f := privateRichPipelineFixtureURL(t, "dom", string(metadata), c.Board, queue.Browser, queue.Browser)
+					detailWorker := queue.Browser
+					if c.ScraperWorker == "simple" {
+						detailWorker = queue.Simple
+					}
+					f := privateRichPipelineFixtureURL(t, "dom", string(metadata), c.Board, queue.Browser, detailWorker)
 					ctx := context.Background()
 					claim, err := f.a.Claim(ctx, queue.Browser)
 					if err != nil || claim == nil {
@@ -52,7 +58,15 @@ func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *t
 					}
 					var source strings.Builder
 					for _, u := range c.URLs {
-						source.WriteString(`<a class="card-title" href="` + html.EscapeString(u) + `">Job</a>`)
+						href := u
+						if c.Name == "tyson_thailand" {
+							parsed, err := url.Parse(u)
+							if err != nil {
+								t.Fatal("invalid original URL reference")
+							}
+							href = parsed.RequestURI()
+						}
+						source.WriteString(`<a class="card-title" href="` + html.EscapeString(href) + `">Job</a>`)
 					}
 					document := source.String()
 					documentFinal := c.Board
@@ -70,6 +84,9 @@ func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *t
 						expectedFinal := c.Board
 						if c.Name == "alten_spain" {
 							expectedFinal += "?sortby=date&pagenum=1&per_page=100"
+						}
+						if c.Final != "" {
+							expectedFinal = c.Final
 						}
 						if err != nil || json.Unmarshal(body, &physical) != nil || physical.Status != "succeeded" || !physical.Cleanup || physical.Result.Status != 200 || physical.Result.Final != expectedFinal {
 							t.Fatal("complete physical original document unavailable")
@@ -118,8 +135,8 @@ func TestRealGroupedSelfIdentifyingDOMCanonicalInventoryAndFailureAuthority(t *t
 							t.Fatal("original complete inventory changed", count, result.Batches.Inserted, missing, failures)
 						}
 						root, _ := url.Parse(c.Board)
-						if f.r.ZCard(ctx, "ft_scrapes_browser:"+root.Hostname()).Val() != int64(len(c.URLs)) {
-							t.Fatal("original browser detail routing lost")
+						if f.r.ZCard(ctx, "ft_scrapes_"+string(detailWorker)+":"+root.Hostname()).Val() != int64(len(c.URLs)) {
+							t.Fatal("original detail routing lost")
 						}
 						expected := map[string]bool{}
 						for _, u := range c.URLs {

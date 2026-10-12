@@ -107,7 +107,9 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// Wecruit landing pages use a fragment-only SPA route. Provider validation
 	// binds the explicit API origin and tenant; preserve the original URL in
 	// the immutable profile while removing its fragment only for this validator.
-	if provider == "wecruit" || provider == "jobdiva" {
+	// The same validation-only normalization applies to the exact qualified
+	// rendered DOM source hashes; their actual navigation retains the fragment.
+	if provider == "wecruit" || provider == "jobdiva" || provider == "dom" && profile == domRenderedMonitorProfile && selfIdentifyingDOMSource(config, md) {
 		if u, err := url.Parse(validation["board_url"]); err == nil {
 			u.Fragment, u.RawFragment = "", ""
 			validation["board_url"] = u.String()

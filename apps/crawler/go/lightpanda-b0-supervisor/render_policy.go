@@ -86,7 +86,7 @@ func validatedPolicyDocument(payload []byte) (*runtimev1.BrowserSuccess, string,
 	}
 	parsed, err := url.Parse(success.FinalUrl)
 	if err != nil || len(success.FinalUrl) > 8192 || strings.ContainsAny(success.FinalUrl, " \t\n\r") ||
-		(parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" || parsed.User != nil || parsed.Fragment != "" ||
+		(parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" || parsed.User != nil || parsed.Opaque != "" ||
 		success.Status == nil || *success.Status < 100 || *success.Status > 599 || success.Html == nil ||
 		len(success.ActionOutcomes)+len(success.Captures)+len(success.Evaluations)+len(success.Artifacts) != 0 {
 		return nil, "", errors.New("invalid rendered success shape")

@@ -8,6 +8,9 @@ import (
 )
 
 var selfIdentifyingDOMSourceHashes = map[string]string{
+	"https://www.sulzerschmid.ch/about-sulzer-schmid/#4_jobs":                                         "e4d2002feea8f81bc2cbe0832446be1c04d372e095ddc49f4ffce9c0483a55a4",
+	"https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#list":    "a058999cbde558c70f80166a2227dc5b66cb8e1168b322368b4e79993ff8627c",
+	"https://www.jobthai.com/en/company/125727":                                                       "344a4fffe19718e19d3a157954e5e54c91a5ad40ccd3f7908505f7d0b5f8e4c4",
 	"https://www.alten.it/career/jobs/?per_page=100&sortby=date":                                      "f0c078e9a0e2a3f070d092b49046851a98e56a29ebaa43999eda77c9b750b01a",
 	"https://www.alten.nl/werken-bij-alten/career-nl/":                                                "4f120f99911fc362056b05a51cbebd454c73180d74c35ca6dc5da63510f201e5",
 	"https://www.alten.ch/de/career/jobs/":                                                            "b4254cbe0bbbb04ef3e9fbbae09c1df31c408725b4b43cc0f879966288d18454",

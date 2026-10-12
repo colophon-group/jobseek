@@ -561,9 +561,9 @@ func validHTTPURL(value string) bool {
 		strings.ContainsAny(value, "\r\n") {
 		return false
 	}
-	parsed, err := url.ParseRequestURI(value)
+	parsed, err := url.Parse(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" ||
-		parsed.User != nil || parsed.Fragment != "" {
+		parsed.User != nil || parsed.Opaque != "" {
 		return false
 	}
 	return true

@@ -209,5 +209,58 @@
       "https://careers.glasswall.com/senior-qa-analyst-302037/",
       "https://careers.glasswall.com/solutions-architect-us-301420/"
     ]
+  },
+  {
+    "name": "axis",
+    "slug": "axis-bank-careers",
+    "board_url": "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#list",
+    "urls": [
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771820",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771823",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771828",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771831",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771834",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771835",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771836",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771838",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771841",
+      "https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#detail/job/771843"
+    ],
+    "scraper_worker": "browser"
+  },
+  {
+    "name": "sulzer_schmid",
+    "slug": "sulzer-schmid-careers",
+    "board_url": "https://www.sulzerschmid.ch/about-sulzer-schmid/#4_jobs",
+    "urls": [
+      "https://www.sulzerschmid.ch/jobs/senior-software-developer-robotics-drone-control/"
+    ],
+    "scraper_worker": "simple",
+    "final_url": "https://www.sulzerschmid.ch/about-sulzer-schmid-autonomous-drone-based-blade-inspection-experts/#4_jobs"
+  },
+  {
+    "name": "tyson_thailand",
+    "slug": "tyson-foods-thailand",
+    "board_url": "https://www.jobthai.com/en/company/125727",
+    "urls": [
+      "https://www.jobthai.com/en/job/1245412",
+      "https://www.jobthai.com/en/job/1268457",
+      "https://www.jobthai.com/en/job/1665554",
+      "https://www.jobthai.com/en/job/1665571",
+      "https://www.jobthai.com/en/job/1705367",
+      "https://www.jobthai.com/en/job/1705368",
+      "https://www.jobthai.com/en/job/1737142",
+      "https://www.jobthai.com/en/job/1746343",
+      "https://www.jobthai.com/en/job/1819171",
+      "https://www.jobthai.com/en/job/1891171",
+      "https://www.jobthai.com/en/job/1928204",
+      "https://www.jobthai.com/en/job/1948525",
+      "https://www.jobthai.com/en/job/1948547",
+      "https://www.jobthai.com/en/job/1970254",
+      "https://www.jobthai.com/en/job/1970271",
+      "https://www.jobthai.com/en/job/1970764",
+      "https://www.jobthai.com/en/job/605767"
+    ],
+    "scraper_worker": "simple"
   }
 ]

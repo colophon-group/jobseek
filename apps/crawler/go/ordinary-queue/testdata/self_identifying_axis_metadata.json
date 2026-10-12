@@ -1,0 +1,46 @@
+{
+  "actions": [
+    {
+      "action": "wait",
+      "ms": 10000
+    }
+  ],
+  "render": true,
+  "scraper_config": {
+    "actions": [
+      {
+        "action": "wait",
+        "ms": 10000
+      }
+    ],
+    "render": true,
+    "steps": [
+      {
+        "field": "title",
+        "tag": "h2"
+      },
+      {
+        "attr": "class=location-text",
+        "field": "locations",
+        "optional": true,
+        "tag": "li"
+      },
+      {
+        "tag": "h3",
+        "text": "Role description"
+      },
+      {
+        "field": "description",
+        "html": true,
+        "stop": "Skills",
+        "tag": "p"
+      }
+    ],
+    "timeout": 30000,
+    "wait": "networkidle"
+  },
+  "scraper_type": "dom",
+  "timeout": 60000,
+  "url_filter": "#detail/job/\\d+",
+  "wait": "networkidle"
+}

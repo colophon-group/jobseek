@@ -454,9 +454,9 @@ func validRuntimeV1URL(value string) bool {
 	if value == "" || len(value) > maxURLBytes || !utf8.ValidString(value) || strings.ContainsAny(value, "\r\n") {
 		return false
 	}
-	parsed, err := url.ParseRequestURI(value)
+	parsed, err := url.Parse(value)
 	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") &&
-		parsed.Host != "" && parsed.User == nil && parsed.Fragment == ""
+		parsed.Host != "" && parsed.User == nil && parsed.Opaque == ""
 }
 
 func validRuntimeV1SHA256(value string) bool {

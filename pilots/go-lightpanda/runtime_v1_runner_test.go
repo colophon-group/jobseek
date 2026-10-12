@@ -117,6 +117,32 @@ func TestRuntimeV1RunnerTranslatesB0AndB1ExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestNavigationRenderOnlyPreservesRequestedAndFinalFragments(t *testing.T) {
+	requested := "https://example.test/careers?source=public#list"
+	final := "https://example.test/careers?source=public#jobs"
+	input := bridgeInput(requested, "", 1024)
+	input.Plan.Navigation.WaitUntil = runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE
+	calls := 0
+	runner := runtimeV1Runner{config: Config{Binary: "/fixed/lightpanda", EgressPolicy: defaultEgressPolicy()}, run: func(_ context.Context, _ Config, task Task) (Result, error) {
+		calls++
+		if task.URL != requested {
+			t.Fatal("fragment changed before navigation")
+		}
+		return Result{Status: 200, FinalURL: final, HTML: "<html>complete</html>", HTMLPresent: true}, nil
+	}}
+	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := adapter.Execute(context.Background(), input)
+	if calls != 1 || result.GetSuccess() == nil || result.GetSuccess().FinalUrl != final || !validRuntimeV1URL(final) {
+		t.Fatal("fragment result or typed output validation changed")
+	}
+	if !bytes.Equal(bridgeManifestBody(result.GetSuccess().Html), []byte("<html>complete</html>")) {
+		t.Fatal("complete output changed")
+	}
+}
+
 func TestRuntimeV1RunnerPreservesHTMLPresence(t *testing.T) {
 	t.Run("missing HTML fails closed", func(t *testing.T) {
 		input := bridgeInput("https://example.test/jobs", "document.title", 64)

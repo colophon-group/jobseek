@@ -533,11 +533,11 @@ func canonicalTargetOrigin(rawURL string) (string, error) {
 	if len(rawURL) == 0 || len(rawURL) > maxURLBytes {
 		return "", errors.New("target URL is missing or too large")
 	}
-	parsed, err := url.ParseRequestURI(rawURL)
+	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.User != nil || parsed.Host == "" ||
-		(parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Fragment != "" ||
-		strings.Contains(rawURL, "#") {
-		return "", errors.New("target URL must be an absolute HTTP(S) URL without userinfo or fragment")
+		(parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Opaque != "" ||
+		strings.ContainsAny(rawURL, " \t\r\n") {
+		return "", errors.New("target URL must be an absolute HTTP(S) URL without userinfo")
 	}
 	hostname := strings.ToLower(parsed.Hostname())
 	if hostname == "" {

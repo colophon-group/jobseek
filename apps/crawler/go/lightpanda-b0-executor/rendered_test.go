@@ -58,12 +58,12 @@ func TestRenderedHTMLMatchesPythonOracle(t *testing.T) {
 }
 
 func TestRenderedURLRejectsInvalidAuthority(t *testing.T) {
-	for _, value := range []string{"", "file:///tmp/body", "https://user:pass@example.test/job", "https://example.test/job#fragment", "https://example.test:65536/job", "https://example.test/a\nb", "https://example.test/a b", "https://example.test/%qq", "https://"} {
+	for _, value := range []string{"", "file:///tmp/body", "https://user:pass@example.test/job", "https://example.test/job#%zz", "https://example.test:65536/job", "https://example.test/a\nb", "https://example.test/a b", "https://example.test/%qq", "https://"} {
 		if validRenderedURL(value) {
 			t.Fatalf("accepted invalid final URL %q", value)
 		}
 	}
-	for _, value := range []string{"https://example.test/job", "http://example.test:8080/job?q=x", "https://[::1]/job"} {
+	for _, value := range []string{"https://example.test/job", "https://example.test/job#fragment", "http://example.test:8080/job?q=x", "https://[::1]/job"} {
 		if !validRenderedURL(value) {
 			t.Fatalf("rejected valid final URL %q", value)
 		}

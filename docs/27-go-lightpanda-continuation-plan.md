@@ -67,6 +67,42 @@ Continue in this order:
 
 **The full migration remains incomplete.**
 
+## Following combined candidate — source1033, seven monitors and native credentials
+
+Fold the source1033 fragment/lean group into pending PR10444 rather than publish
+source1032 separately. The final candidate is **0.13.1033**, seven monitor
+additions: the previous Alten Italy/Netherlands/Switzerland and Glasswall61 URLs,
+plus Axis10, Sulzer-Schmid1 and Tyson Thailand17 = **89 original URLs**. The Go
+credential installer remains in this same full release. Preserve source1030's
+7,794 /7,683 floor; the prospective monitor target is7,801, with zero new detail
+replacement authority.
+
+For the three additional sources, fresh original references match current
+inventories. Actual bounded Go pool → navigation adapter → pinned Lightpanda1.0.0
+→ canonical complete result/publisher policy → worker → PostgreSQL/Redis checks
+passed.11 DOM inventories/183 exact original URLs and44 canonical/policy/failure
+cases include the previous rendered groups. Fragment navigation and result
+validation retain the exact requested/final URI, anonymous absolute HTTP(S)
+constraints and malformed escape/authority refusal; only exact static DOM source
+hashes gain the new fragment/lean profile authority. Original metadata remains
+in ownership hashes. Axis detail routing stays browser; Sulzer/Tyson stay simple.
+Generic unproved DOM fragments and lean configurations remain refused.
+
+The fresh Axis job identifiers changed from the earlier snapshot. The real
+runtime and freshly observed original inventories agree exactly; old failure
+logs remain evidence, and no identity-equality exception was introduced.
+Sulzer's verified same-publisher path redirect is captured independently while
+its requested/final fragment remains unchanged. Both raw and typed physical
+engine paths prove child cleanup. Candidate evidence is
+`docs/evidence/go-native-grouped-fragment-lean-candidate-2026-10-12.json`.
+
+Commit and qualify the combined final head once through Required CI, Gate,
+image parity, Linux and exact-head ARM report; then use the supported original
+full rollout and fresh merged-SDK/source/receipt-bound admission. The source1032
+`e2fafeb...` qualification is retained historical component evidence and cannot
+authorize this changed head. **No source1033 production authority exists yet;
+full migration remains incomplete.**
+
 ## Historical checkpoint — source1030 merged; original rollouts running; six monitors next
 
 [PR #10443](https://github.com/colophon-group/jobseek/pull/10443) merged as
