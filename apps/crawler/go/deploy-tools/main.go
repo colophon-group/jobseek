@@ -34,6 +34,14 @@ func run(args []string) error {
 		_, err = runtimeAttestation(body, args[2], args[3], args[4])
 		return err
 	}
+	if len(args) == 5 && args[0] == "csv-archive-verify" {
+		_, err := readCSVArchive(args[1], args[2], args[3], args[4])
+		return err
+	}
+	if len(args) == 6 && args[0] == "csv-unpack" {
+		return unpackCSVArchive(args[1], args[2], args[3], args[4], args[5])
+	}
+
 	if len(args) >= 4 && args[0] == "spec-pack" {
 		return packSpecs(args[1], args[2], args[3:])
 	}

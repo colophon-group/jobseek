@@ -43,6 +43,12 @@ step/hash/interval and canonical future cycle deadline. All eight actual
 JSON-LD/DOM/proxy ordered chains, durable Redis restart, cold reversal and
 invented-handoff/live-lease refusal pass real local PostgreSQL/Redis race tests.
 Lightpanda **1.0.0** remains the latest stable release verified on2026-10-12.
+A later natural observation at01:10UTC shows347 completed monitors and550
+completed detail claims. All347 monitors have their exact recurring schedule;
+the previously retained completion leases have settled. The worker remains
+free of restart/OOM at516.3MiB/1GiB. Finalization/configuration diagnostics have
+increased to3 and detail failures to12; their cause and the large overdue
+backlog remain follow-up work, not successful freshness/cost evidence.
 
 ### Continue the full migration
 
@@ -52,10 +58,17 @@ Lightpanda **1.0.0** remains the latest stable release verified on2026-10-12.
 2. Measure actual20/5 concurrency against monitor/detail ages and cgroup CPU/RAM.
    The earlier1.48million detail routes more than24hours late remain unresolved;
    local/synthetic benchmarks do not establish production freshness or cost.
-3. Deliver the [source1024 Go bridge/attestation candidate](evidence/go-native-release-bridge-candidate-2026-10-12.json),
-   locally committed as `2602ef196bcedc40a3a332383bff022060bc0b72`, after the verified source1023 restoration. Its24 original Python oracle cases and63 deployment
-   regressions pass; Linux execution/packaging, required checks and original rollout
-   still govern delivery. Standalone CSV bridge/attestation consumers remain Python.
+3. Deliver the combined Go deployment/CSV consumer batch in
+   [PR #10438](https://github.com/colophon-group/jobseek/pull/10438), candidate
+   **0.13.1025 /204 profiles**. It ports release-bridge provenance, runtime
+   attestation, CSV tree verification, archive validation/extraction, generation
+   activation/fsync and trusted-runner manifest creation. The source-bound
+   executable and original global mutation lock, quiescence, journal, publisher
+   policy, compatibility/staleness gates and rollback contracts remain in force.
+   Seventeen Go archive cases,24 original bridge oracle cases,71 deployment
+   regressions and Linux architecture qualification govern delivery. Full
+   source-bound CI and the original whole rollout are still required; this
+   candidate has no production authority. See the [consumer-batch evidence](evidence/go-native-csv-release-consumers-candidate-2026-10-12.json).
 4. Continue grouped monitor/controller work from the current exact SDK frontier:
    **DOM53, API12, inline4, RSS2, BrassRing4 and Njoyn1** configurations remain
    uncompiled. Another21 compile outside the ordinary floor, including B0 boards,

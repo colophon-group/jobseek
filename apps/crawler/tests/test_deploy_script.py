@@ -69,6 +69,40 @@ def bind_native_deployment_fixture(
     monkeypatch.setenv("NATIVE_DEPLOY_TOOLS", str(native_deploy_tools_binary))
 
 
+@pytest.fixture(scope="module")
+def native_csv_tools_directory(
+    native_deploy_tools_binary: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
+    directory = tmp_path_factory.mktemp("native-csv-tools")
+    names = ("crawler-deploy-tools-amd64", "crawler-deploy-tools-arm64")
+    for name in names:
+        shutil.copyfile(native_deploy_tools_binary, directory / name)
+        (directory / name).chmod(0o755)
+    shutil.copyfile(
+        REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh",
+        directory / "native-deploy-tools.sh",
+    )
+    (directory / "crawler-deploy-tools.source").write_text("c" * 40 + "\n")
+    (directory / "crawler-deploy-tools.sha256").write_text(
+        "".join(
+            f"{hashlib.sha256((directory / name).read_bytes()).hexdigest()}  {name}\n"
+            for name in names
+        )
+    )
+    return directory
+
+
+@pytest.fixture(autouse=True)
+def bind_native_csv_artifacts(
+    native_csv_tools_directory: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBSEEK_CSV_NATIVE_TOOL_DIR", str(native_csv_tools_directory))
+    monkeypatch.setenv("JOBSEEK_CSV_TOOL_REVISION", "c" * 40)
+    monkeypatch.setenv(
+        "NATIVE_DEPLOY_TOOLS", str(native_csv_tools_directory / "crawler-deploy-tools-arm64")
+    )
+
+
 def _create_deploy_spec_rollback_archive(
     archive_path: Path,
     entries: dict[str, tuple[bytes, int] | None],
@@ -752,7 +786,13 @@ def _csv_host_test_environment(
         "#!/usr/bin/env python3\n"
         "import hashlib, pathlib, sys\n"
         "path = pathlib.Path(sys.argv[-1])\n"
-        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+        "if sys.argv[1:] == ['--strict', '--status', '-c', 'crawler-deploy-tools.sha256']:\n"
+        "    for line in path.read_text().splitlines():\n"
+        "        digest, name = line.split('  ')\n"
+        "        if hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() != digest:\n"
+        "            sys.exit(1)\n"
+        "else:\n"
+        "    print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
     )
     return {
         **os.environ,
@@ -1215,7 +1255,7 @@ def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_genera
     wrong_contract[4] = "f" * 64
     result = subprocess.run(wrong_contract, check=False, capture_output=True, text=True, env=env)
     assert result.returncode != 0
-    assert "attestation identity is mismatched" in result.stderr
+    assert "CSV candidate archive evidence rejected" in result.stderr
     assert active.resolve() == legacy.resolve()
     assert list(release_root.glob("data-*")) == []
 
@@ -1245,7 +1285,7 @@ def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_genera
     command[7] = hashlib.sha256(candidate.read_bytes()).hexdigest()
     result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
     assert result.returncode != 0
-    assert "outside the attested runtime epoch" in result.stderr
+    assert "release bridge evidence rejected" in result.stderr
     assert active.resolve() == legacy.resolve()
     assert list(release_root.glob("data-*")) == []
 
@@ -1450,7 +1490,7 @@ def test_csv_publication_rejects_tree_a_claiming_active_contract_b_before_noop(
     for args in ([*command, "--check-runtime"], command):
         result = subprocess.run(args, check=False, capture_output=True, text=True, env=env)
         assert result.returncode != 0
-        assert "data contract does not match its exact tree" in result.stderr
+        assert "CSV candidate archive evidence rejected" in result.stderr
         assert "already committed" not in result.stderr
     assert active.resolve() == release_b.resolve()
     assert (candidates / candidate_a).exists()
@@ -1492,7 +1532,13 @@ def test_full_deploy_rejects_image_tree_a_claiming_git_contract_b(tmp_path: Path
         "#!/usr/bin/env python3\n"
         "import hashlib, pathlib, sys\n"
         "path = pathlib.Path(sys.argv[-1])\n"
-        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+        "if sys.argv[1:] == ['--strict', '--status', '-c', 'crawler-deploy-tools.sha256']:\n"
+        "    for line in path.read_text().splitlines():\n"
+        "        digest, name = line.split('  ')\n"
+        "        if hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() != digest:\n"
+        "            sys.exit(1)\n"
+        "else:\n"
+        "    print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
     )
     harness = "\n".join(
         (
@@ -1901,7 +1947,13 @@ def test_csv_host_rejects_archive_digest_mismatch_and_live_env_drift(
         "#!/usr/bin/env python3\n"
         "import hashlib, pathlib, sys\n"
         "path = pathlib.Path(sys.argv[-1])\n"
-        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+        "if sys.argv[1:] == ['--strict', '--status', '-c', 'crawler-deploy-tools.sha256']:\n"
+        "    for line in path.read_text().splitlines():\n"
+        "        digest, name = line.split('  ')\n"
+        "        if hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() != digest:\n"
+        "            sys.exit(1)\n"
+        "else:\n"
+        "    print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
     )
     bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
     command = [
@@ -3759,7 +3811,12 @@ def _install_release_verifier_tools(binary_dir: Path) -> None:
         "import hashlib\n"
         "import sys\n"
         "path = Path(sys.argv[-1])\n"
-        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+        "if sys.argv[1:] == ['--strict', '--status', '-c', 'crawler-deploy-tools.sha256']:\n"
+        "    for line in path.read_text().splitlines():\n"
+        "        digest, name = line.split('  ')\n"
+        "        if hashlib.sha256(Path(name).read_bytes()).hexdigest() != digest: sys.exit(1)\n"
+        "else:\n"
+        "    print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
     )
     _write_executable(
         binary_dir / "stat",
@@ -3879,3 +3936,86 @@ def test_alloy_state_migrates_before_compose_can_recreate_it() -> None:
     assert "chown -R 0:0 /data-alloy && chmod 0700 /data-alloy" in script
     assert "grafana/alloy:latest" not in script
     assert "http://127.0.0.1:12346/-/ready" in script
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["source", "compiled", "digest", "missing", "symlink", "helper-symlink", "extra-manifest"],
+)
+def test_csv_runner_rejects_unbound_native_artifacts_before_publication(
+    tmp_path: Path, native_csv_tools_directory: Path, fault: str
+) -> None:
+    tools = tmp_path / "tools"
+    shutil.copytree(native_csv_tools_directory, tools)
+    environment = {
+        **os.environ,
+        "JOBSEEK_DEPLOY_DIR": str(tmp_path),
+        "JOBSEEK_CSV_NATIVE_TOOL_DIR": str(tools),
+    }
+    first = tools / "crawler-deploy-tools-amd64"
+    manifest = tools / "crawler-deploy-tools.sha256"
+    if fault == "source":
+        environment["JOBSEEK_CSV_TOOL_REVISION"] = "d" * 40
+    elif fault == "compiled":
+        environment["JOBSEEK_CSV_TOOL_REVISION"] = "d" * 40
+        (tools / "crawler-deploy-tools.source").write_text("d" * 40 + "\n")
+    elif fault == "digest":
+        with first.open("ab") as output:
+            output.write(b"changed")
+    elif fault == "missing":
+        first.unlink()
+    elif fault == "symlink":
+        first.unlink()
+        first.symlink_to(native_csv_tools_directory / first.name)
+    elif fault == "helper-symlink":
+        helper = tools / "native-deploy-tools.sh"
+        helper.unlink()
+        helper.symlink_to(native_csv_tools_directory / helper.name)
+    else:
+        with manifest.open("a") as output:
+            output.write("0" * 64 + "  unexpected\n")
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _install_release_verifier_tools(binaries)
+    environment["PATH"] = f"{binaries}:{os.environ['PATH']}"
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [bash, str(CSV_SYNC_HOST), "--recover-only"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "deployment" in result.stderr
+    assert not (tmp_path / ".crawler-data-publication.env").exists()
+    assert not (tmp_path / ".crawler-active-release").exists()
+
+
+def test_csv_native_artifacts_bind_trusted_runner_not_requested_data_revision() -> None:
+    workflow = yaml.safe_load(SYNC_DATA_WORKFLOW.read_text())
+    job = workflow["jobs"]["sync"]
+    assert job["env"]["JOBSEEK_CSV_TOOL_REVISION"] == "${{ github.sha }}"
+    steps = {step["name"]: step for step in job["steps"]}
+    trusted = steps["Check out trusted CSV sync runner"]["with"]
+    assert trusted["ref"] == "${{ github.sha }}"
+    assert "apps/crawler/go/deploy-tools" in trusted["sparse-checkout"]
+    assert (
+        steps["Check out revision-pinned CSV data"]["with"]["ref"]
+        == "${{ inputs.revision || github.sha }}"
+    )
+    build = steps["Build source-bound native CSV verification tools"]["run"]
+    assert 'build-deploy-tools.sh "$GITHUB_SHA" scripts' in build
+    assert "SYNC_REVISION" not in build
+    copied = steps["Copy locked CSV release-evidence helpers to Hetzner"]["with"]["source"].split(
+        ","
+    )
+    for name in (
+        "native-deploy-tools.sh",
+        "crawler-deploy-tools-amd64",
+        "crawler-deploy-tools-arm64",
+        "crawler-deploy-tools.source",
+        "crawler-deploy-tools.sha256",
+    ):
+        assert f"scripts/{name}" in copied
+    assert "JOBSEEK_CSV_TOOL_REVISION" in steps["Run sync via SSH"]["with"]["envs"].split(",")

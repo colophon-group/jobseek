@@ -2,19 +2,20 @@
 # Sourced by the selected deployment; immutable binaries arrive with its specs.
 initialize_native_deploy_tools() {
   local architecture directory expected name
+  local expected_revision="${2:-${JOBSEEK_DEPLOY_REVISION:-}}"
   case "$(uname -m)" in
     x86_64) architecture=amd64 ;;
     aarch64 | arm64) architecture=arm64 ;;
     *) echo "ERROR: native deployment tool architecture is unsupported" >&2; return 1 ;;
   esac
-  directory="$INCOMING_DIR/scripts"
+  directory="${1:-$INCOMING_DIR/scripts}"
   for name in crawler-deploy-tools.source crawler-deploy-tools.sha256 crawler-deploy-tools-amd64 crawler-deploy-tools-arm64; do
     [[ -f "$directory/$name" && ! -L "$directory/$name" ]] || {
       echo "ERROR: native deployment artifact is unavailable or unsafe" >&2; return 1;
     }
   done
   expected="$(cat "$directory/crawler-deploy-tools.source")"
-  [[ "$expected" =~ ^[0-9a-f]{40}$ && "$expected" == "$JOBSEEK_DEPLOY_REVISION" ]] || {
+  [[ "$expected" =~ ^[0-9a-f]{40}$ && "$expected" == "$expected_revision" ]] || {
     echo "ERROR: native deployment tool source differs" >&2; return 1;
   }
   # Only the two reviewed artifact names may be verified from this manifest.

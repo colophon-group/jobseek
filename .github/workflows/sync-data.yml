@@ -29,6 +29,7 @@ jobs:
     environment: production
     env:
       SYNC_REVISION: ${{ inputs.revision || github.sha }}
+      JOBSEEK_CSV_TOOL_REVISION: ${{ github.sha }}
 
     steps:
       # Keep the executable runner bound to the trusted workflow revision.
@@ -44,6 +45,9 @@ jobs:
             scripts/derive-crawler-runtime-contract.mjs
             .github/scripts/ensure-company-og-prewarm.sh
             scripts/verify-crawler-release-bridge.py
+            apps/crawler/go/deploy-tools
+            apps/crawler/scripts/build-deploy-tools.sh
+            apps/crawler/scripts/native-deploy-tools.sh
           sparse-checkout-cone-mode: false
 
       - name: Check out revision-pinned CSV data
@@ -127,6 +131,20 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: bash .github/scripts/ensure-company-og-prewarm.sh
 
+      - name: Set up native CSV deployment toolchain
+        if: steps.runtime_contract.outputs.run_sync == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/deploy-tools/go.mod
+          cache: false
+
+      - name: Build source-bound native CSV verification tools
+        if: steps.runtime_contract.outputs.run_sync == 'true'
+        run: |
+          set -euo pipefail
+          bash apps/crawler/scripts/build-deploy-tools.sh "$GITHUB_SHA" scripts
+          install -m 0755 apps/crawler/scripts/native-deploy-tools.sh scripts/native-deploy-tools.sh
+
       - name: Build immutable CSV candidate
         if: steps.runtime_contract.outputs.run_sync == 'true'
         id: candidate
@@ -140,25 +158,13 @@ jobs:
             find . -type f -name '*.csv' -print0 | LC_ALL=C sort -z |
               tar --null -T - -cf -
           ) | tar -C "$candidate_dir/data" -xf -
-          python3 - "$candidate_dir/data" "$candidate_dir/data-files.sha256" <<'PY'
-          import hashlib
-          import pathlib
-          import sys
-
-          root = pathlib.Path(sys.argv[1])
-          output = pathlib.Path(sys.argv[2])
-          rows = sorted(
-              (path.relative_to(root).as_posix(), hashlib.sha256(path.read_bytes()).hexdigest())
-              for path in root.rglob("*.csv")
-              if path.is_file() and not path.is_symlink()
-          )
-          if not rows:
-              raise SystemExit("CSV snapshot is empty")
-          output.write_text(
-              "".join(f"{digest}  {relative}\n" for relative, digest in rows),
-              encoding="utf-8",
-          )
-          PY
+          case "$(uname -m)" in
+            x86_64) native_arch=amd64 ;;
+            aarch64 | arm64) native_arch=arm64 ;;
+            *) exit 1 ;;
+          esac
+          env -i "scripts/crawler-deploy-tools-$native_arch" csv-manifest \
+            "$candidate_dir/data" "$candidate_dir/data-files.sha256"
           tar -C "$candidate_dir" -cf "$candidate_dir/csv-snapshot.tar" \
             data data-files.sha256
           archive_sha256="$(sha256sum "$candidate_dir/csv-snapshot.tar" | awk '{print $1}')"
@@ -183,7 +189,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-csv-sync-host.sh,scripts/verify-crawler-release-bridge.py
+          source: scripts/crawler-csv-sync-host.sh,scripts/verify-crawler-release-bridge.py,scripts/native-deploy-tools.sh,scripts/crawler-deploy-tools-amd64,scripts/crawler-deploy-tools-arm64,scripts/crawler-deploy-tools.source,scripts/crawler-deploy-tools.sha256
           target: /home/deploy/csv-sync-runner/
           strip_components: 1
 
@@ -214,7 +220,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256,SYNC_DATA_CONTRACT_SHA256,SYNC_CANDIDATE_ID,SYNC_ARCHIVE_SHA256
+          envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256,SYNC_DATA_CONTRACT_SHA256,SYNC_CANDIDATE_ID,SYNC_ARCHIVE_SHA256,JOBSEEK_CSV_TOOL_REVISION
           # 50 minutes waiting for the compatible release, then up to 25
           # minutes for the mutation lock and 30 minutes for the sync itself.
           command_timeout: 2h

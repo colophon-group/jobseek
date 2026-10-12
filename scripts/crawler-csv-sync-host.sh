@@ -15,7 +15,14 @@ PUBLICATION_KEEP_GENERATIONS=${JOBSEEK_PUBLICATION_KEEP_GENERATIONS:-5}
 PUBLICATION_GRACE_SECONDS=${JOBSEEK_PUBLICATION_GRACE_SECONDS:-172800}
 OWNER=${JOBSEEK_OWNER:-colophon-group}
 RUNTIME_ENV_ROOT=${JOBSEEK_RUNTIME_ENV_ROOT:-/run/lock}
-BRIDGE_VERIFIER=${JOBSEEK_BRIDGE_VERIFIER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/verify-crawler-release-bridge.py}
+CSV_NATIVE_TOOL_DIR=${JOBSEEK_CSV_NATIVE_TOOL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
+CSV_NATIVE_TOOL_REVISION=${JOBSEEK_CSV_TOOL_REVISION:-${JOBSEEK_DEPLOY_REVISION:-}}
+[[ -f "$CSV_NATIVE_TOOL_DIR/native-deploy-tools.sh" && ! -L "$CSV_NATIVE_TOOL_DIR/native-deploy-tools.sh" ]] || {
+  echo "ERROR: native CSV deployment helper is unavailable or unsafe" >&2
+  exit 1
+}
+source "$CSV_NATIVE_TOOL_DIR/native-deploy-tools.sh"
+initialize_native_deploy_tools "$CSV_NATIVE_TOOL_DIR" "$CSV_NATIVE_TOOL_REVISION"
 ACTIVE_RELEASE=""
 ACTIVE_RELEASE_FORMAT=""
 ACTIVE_DATA_DIR=""
@@ -43,33 +50,8 @@ verify_runtime_attestation_file() {
     echo "ERROR: previous-runtime attestation is unavailable or unsafe" >&2
     return 1
   }
-  python3 - \
-    "$attestation" "$previous_revision" "$runtime_contract" "$compatible_revision" <<'PY'
-import pathlib
-import re
-import sys
-
-path = pathlib.Path(sys.argv[1])
-expected_previous, expected_contract, compatible_revision = sys.argv[2:]
-lines = path.read_text(encoding="utf-8").splitlines()
-if len(lines) < 4:
-    raise SystemExit("previous-runtime attestation is incomplete")
-if lines[0] != "RUNTIME_ATTESTATION_FORMAT_VERSION=1":
-    raise SystemExit("previous-runtime attestation format is unsupported")
-if lines[1] != f"PREVIOUS_REVISION={expected_previous}":
-    raise SystemExit("previous-runtime attestation revision is mismatched")
-if lines[2] != f"RUNTIME_CONTRACT_SHA256={expected_contract}":
-    raise SystemExit("previous-runtime attestation contract is mismatched")
-revisions = []
-for line in lines[3:]:
-    if not re.fullmatch(r"COMPATIBLE_REVISION=[0-9a-f]{40}", line):
-        raise SystemExit("previous-runtime attestation contains an unexpected field")
-    revisions.append(line.removeprefix("COMPATIBLE_REVISION="))
-if not revisions or revisions[0] != expected_previous or len(revisions) != len(set(revisions)):
-    raise SystemExit("previous-runtime attestation revision epoch is invalid")
-if compatible_revision and compatible_revision not in revisions:
-    raise SystemExit("active legacy revision is outside the attested runtime epoch")
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" runtime-attestation \
+    "$attestation" "$previous_revision" "$runtime_contract" "$compatible_revision"
 }
 
 verify_snapshot_file() {
@@ -94,38 +76,7 @@ verify_exact_csv_tree() {
     echo "ERROR: committed crawler CSV snapshot is unavailable or unsafe" >&2
     return 1
   }
-  python3 - "$data_dir" "$files_manifest" <<'PY'
-import hashlib
-import os
-import pathlib
-import re
-import stat
-import sys
-
-root = pathlib.Path(sys.argv[1])
-manifest = pathlib.Path(sys.argv[2])
-rows = []
-for directory, dirnames, filenames in os.walk(root, followlinks=False):
-    directory_path = pathlib.Path(directory)
-    for name in list(dirnames):
-        path = directory_path / name
-        if path.is_symlink():
-            raise SystemExit(f"unsafe symlink in CSV snapshot: {path}")
-    for name in filenames:
-        path = directory_path / name
-        mode = path.lstat().st_mode
-        if not stat.S_ISREG(mode) or path.is_symlink():
-            raise SystemExit(f"unsafe file in CSV snapshot: {path}")
-        relative = path.relative_to(root).as_posix()
-        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
-            raise SystemExit(f"unexpected file in CSV snapshot: {relative}")
-        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
-if not rows:
-    raise SystemExit("CSV snapshot is empty")
-actual = "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows))
-if manifest.read_text(encoding="utf-8") != actual:
-    raise SystemExit("CSV snapshot file manifest does not match exact tree")
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" csv-verify "$data_dir" "$files_manifest"
 }
 
 resolve_active_release() {
@@ -240,8 +191,7 @@ verify_release_generation_evidence() (
       [[ ! -e "$generation/rollback-images.override.yml" && \
         ! -L "$generation/rollback-images.override.yml" ]] || return 1
     fi
-    [[ -f "$BRIDGE_VERIFIER" && ! -L "$BRIDGE_VERIFIER" ]] || return 1
-    python3 "$BRIDGE_VERIFIER" --generation "$generation" --owner "$OWNER" \
+    env -i "$NATIVE_DEPLOY_TOOLS" release-bridge "$generation" "$OWNER" \
       >/dev/null || return 1
   fi
 )
@@ -630,50 +580,13 @@ PY
 
 activate_release_generation() {
   local generation="$1"
-  python3 - "$generation" "$ACTIVE_RELEASE_POINTER" "$DEPLOY_DIR" <<'PY'
-import os
-import secrets
-import sys
-
-generation, active, parent = sys.argv[1:]
-candidate = f"{active}.{secrets.token_hex(16)}"
-os.symlink(generation, candidate)
-os.replace(candidate, active)
-fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" release-activate \
+    "$generation" "$ACTIVE_RELEASE_POINTER" "$DEPLOY_DIR"
 }
 
 fsync_generation() {
   local generation="$1"
-  python3 - "$generation" <<'PY'
-import os
-import pathlib
-import sys
-
-generation = pathlib.Path(sys.argv[1])
-for directory, dirnames, filenames in os.walk(generation, topdown=False):
-    for name in filenames:
-        path = pathlib.Path(directory) / name
-        fd = os.open(path, os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-    fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
-fd = os.open(generation.parent, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(fd)
-finally:
-    os.close(fd)
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" release-fsync "$generation"
 }
 
 build_runtime_env() {
@@ -835,85 +748,8 @@ verify_candidate_archive_contract() {
     echo "ERROR: CSV candidate archive digest mismatch" >&2
     return 1
   }
-  python3 - "$archive" "$data_contract" "$revision" "$runtime_contract" <<'PY'
-import hashlib
-import pathlib
-import re
-import tarfile
-import sys
-
-archive = pathlib.Path(sys.argv[1])
-expected_contract = sys.argv[2]
-expected_revision = sys.argv[3]
-expected_runtime = sys.argv[4]
-rows = []
-provided_manifest = None
-runtime_attestation = None
-seen_files = set()
-with tarfile.open(archive, "r:") as bundle:
-    members = bundle.getmembers()
-    if not members:
-        raise SystemExit("empty CSV candidate archive")
-    for member in members:
-        path = pathlib.PurePosixPath(member.name)
-        if path.is_absolute() or ".." in path.parts:
-            raise SystemExit("unsafe CSV candidate archive path")
-        if member.isdir():
-            if path != pathlib.PurePosixPath("data") and (
-                not path.parts or path.parts[0] != "data"
-            ):
-                raise SystemExit("unexpected CSV candidate directory")
-            continue
-        if not member.isfile() or member.name in seen_files:
-            raise SystemExit("unsafe or duplicate CSV candidate archive entry")
-        seen_files.add(member.name)
-        extracted = bundle.extractfile(member)
-        if extracted is None:
-            raise SystemExit("CSV candidate archive entry is unreadable")
-        content = extracted.read()
-        if path == pathlib.PurePosixPath("data-files.sha256"):
-            provided_manifest = content
-            continue
-        if path == pathlib.PurePosixPath("runtime-attestation.env"):
-            runtime_attestation = content
-            continue
-        if not path.parts or path.parts[0] != "data":
-            raise SystemExit("unexpected CSV candidate file")
-        relative = pathlib.PurePosixPath(*path.parts[1:]).as_posix()
-        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
-            raise SystemExit("unexpected CSV candidate file")
-        rows.append((relative, hashlib.sha256(content).hexdigest()))
-if not rows or provided_manifest is None:
-    raise SystemExit("CSV candidate archive is incomplete")
-actual_manifest = "".join(
-    f"{digest}  {relative}\n" for relative, digest in sorted(rows)
-).encode()
-if provided_manifest != actual_manifest:
-    raise SystemExit("CSV candidate manifest does not match its exact tree")
-actual_contract = hashlib.sha256(actual_manifest).hexdigest()
-if actual_contract != expected_contract:
-    raise SystemExit("CSV candidate data contract does not match its exact tree")
-if expected_runtime:
-    if runtime_attestation is None:
-        raise SystemExit("previous-runtime attestation is missing from CSV candidate")
-    try:
-        lines = runtime_attestation.decode("utf-8").splitlines()
-    except UnicodeDecodeError as error:
-        raise SystemExit("previous-runtime attestation is not UTF-8") from error
-    if len(lines) < 4 or lines[:3] != [
-        "RUNTIME_ATTESTATION_FORMAT_VERSION=1",
-        f"PREVIOUS_REVISION={expected_revision}",
-        f"RUNTIME_CONTRACT_SHA256={expected_runtime}",
-    ]:
-        raise SystemExit("previous-runtime attestation identity is mismatched")
-    revisions = []
-    for line in lines[3:]:
-        if not re.fullmatch(r"COMPATIBLE_REVISION=[0-9a-f]{40}", line):
-            raise SystemExit("previous-runtime attestation contains an unexpected field")
-        revisions.append(line.removeprefix("COMPATIBLE_REVISION="))
-    if not revisions or revisions[0] != expected_revision or len(revisions) != len(set(revisions)):
-        raise SystemExit("previous-runtime attestation revision epoch is invalid")
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" csv-archive-verify \
+    "$archive" "$data_contract" "$revision" "$runtime_contract"
 }
 
 verify_legacy_runtime_evidence() {
@@ -1085,36 +921,9 @@ prepare_candidate_generation() {
     printf 'JOBSEEK_RUNTIME_CONTRACT_SHA256=%s\n' "$runtime_contract" \
       >>"$generation/success.env" || return 1
   fi
-  python3 - "$archive" "$generation" <<'PY' || extraction_status=$?
-import pathlib
-import tarfile
-import sys
-
-archive = pathlib.Path(sys.argv[1])
-destination = pathlib.Path(sys.argv[2])
-with tarfile.open(archive, "r:") as bundle:
-    members = bundle.getmembers()
-    if not members:
-        raise SystemExit("empty CSV candidate archive")
-    for member in members:
-        path = pathlib.PurePosixPath(member.name)
-        if path.is_absolute() or ".." in path.parts:
-            raise SystemExit("unsafe CSV candidate archive path")
-        if member.isdir():
-            if path != pathlib.PurePosixPath("data") and path.parts[0] != "data":
-                raise SystemExit("unexpected CSV candidate directory")
-        elif member.isfile():
-            if path in (
-                pathlib.PurePosixPath("data-files.sha256"),
-                pathlib.PurePosixPath("runtime-attestation.env"),
-            ):
-                continue
-            if path.parts[0] != "data" or path.suffix != ".csv":
-                raise SystemExit("unexpected CSV candidate file")
-        else:
-            raise SystemExit("unsafe CSV candidate archive entry")
-    bundle.extractall(destination, filter="data")
-PY
+  env -i "$NATIVE_DEPLOY_TOOLS" csv-unpack \
+    "$archive" "$generation" "$data_contract" "$revision" "$runtime_contract" \
+    || extraction_status=$?
   (( extraction_status == 0 )) || return "$extraction_status"
   if (( ! bridge_required )); then
     rm -f -- "$generation/runtime-attestation.env" || return 1
