@@ -12,6 +12,9 @@ import (
 var sourceRevision = "unbuilt"
 
 func run(args []string) error {
+	if len(args) >= 12 && args[0] == "publication-prune" {
+		return prunePublications(args[1:], time.Now())
+	}
 	if len(args) == 4 && args[0] == "journal-publish" {
 		return publishJournal(args[1], args[2], args[3])
 	}

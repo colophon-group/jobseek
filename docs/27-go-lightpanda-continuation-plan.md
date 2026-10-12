@@ -83,10 +83,11 @@ backlog remain follow-up work, not successful freshness/cost evidence.
    but need appropriate qualification. Preserve held Hitachi Energy/Implenia until
    complete fresh evidence passes; compilation alone grants no ownership.
 5. Continue the separate **0.13.1027** publication journal/filesystem follow-up.
-   Four original CSV consumers now use the source-bound Go host tools: durable
+   Five original CSV consumers now use the source-bound Go host tools: durable
    journal replacement, journal-removal fsync, failed-generation fsync and
-   bootstrap-candidate fsync. All71 original deployment regressions pass,
-   including interrupted-publication recovery and retained rollback evidence;
+   bootstrap-candidate fsync and publication retention. All71 original deployment regressions pass,
+   including interrupted-publication recovery, active/journal/inflight retention,
+   malformed-journal refusal and three distinct runtime image-pair retention;
    Go race/vet and seven refusal cases preserve the existing journal bytes.
    This local candidate has no production authority. See the
    [candidate evidence](evidence/go-native-publication-journal-candidate-2026-10-12.json).
