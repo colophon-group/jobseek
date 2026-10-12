@@ -1,5 +1,14 @@
 # Go and Lightpanda migration delivery plan
 
+### Latest delivered checkpoint — source0.13.1036, 2026-10-12
+
+PR #10454 merged as `6670f75a2dcf71fcbd7c712175ef2aa0edd84177`. The original full crawler workflow38290807476 succeeded on its supported retry after receipt-bound recovery; renderer workflow38293226656 succeeded on its original attempt. The source1035 retirement failure was an omitted historical Accenture/Candidatus profile. Real before/after PostgreSQL/Redis regressions proved the repair; the original immutable compatibility-admin prepull and unchanged wrapper completed retirement, B0 reversal, locked selector clearing and independent cold302 verification without editing leases or receipts.
+
+Source1036 B0 and ordinary activation succeeded at epoch303. The fresh all7885-board and1,683,044-posting route census preserved the7804/7683 floor and admitted Bunge plus GE Vernova Menk/King details, yielding7805 monitor boards and7685 detail boards. Independent serving verification found all10 actors running with exact images,8 healthy endpoints, matching SQL/Redis/receipts,19 completed native monitor tasks and66 completed native detail tasks. New-board natural effects remain to be observed. Exact final-head required CI, image contracts, Linux conformance, pilot tests and16 ARM whole-lane arms passed with exact cleanup/effects; measured density ratios were4.98–10.45. Lightpanda1.0.0 remains the latest official release and is pinned immutably.
+
+Continue with grouped remaining monitor/detail contracts. The fresh monitor frontier contains80 boards outside ordinary ownership, including separately-owned B0: DOM54, API13, inline4, RSS3, BrassRing4, Njoyn1 and sitemap1. Next research groups PDF deadline/ownership listing controls across the three Swiss embassy boards, World Gymnastics and FIH; classify the actual remaining unsupported options before adding runtime code. Retain origin failures and cache mismatches as unqualified evidence. Full migration still requires remaining profile coverage, maintenance consumers, complete fleet freshness/conservation and attributable whole-lane cost, supported reversal/rollback window, then retirement of production Python/Playwright/Chromium while preserving useful offline Python.
+
+
 ## Current checkpoint — source1034 deployed; grouped native activation completed299
 
 PR10448 merged as `915d34ac84adbda9be528171cd0936660725bb6f`, version0.13.1034.
