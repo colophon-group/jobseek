@@ -127,7 +127,6 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
 ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
-CLAIMANT_CREDENTIAL_INSTALLER="$INCOMING_DIR/scripts/lightpanda-claimant-credentials.py"
 CLAIMANT_CREDENTIAL_ROOT="$DEPLOY_DIR/.local/share/jobseek-lightpanda-claimant/credentials"
 ACTIVE_RELEASE_ROOT="$DEPLOY_DIR/.crawler-release-generations"
 ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"
@@ -436,12 +435,11 @@ prepare_claimant_credential_generation() {
       --security-opt no-new-privileges:true \
       --user "${deploy_uid}:${deploy_gid}" \
       --tmpfs /tmp:rw,noexec,nosuid,nodev,size=1m,mode=1777 \
-      --entrypoint /app/.venv/bin/python \
+      --entrypoint /usr/local/bin/go-lightpanda-claimant-credentials \
       --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ARCHIVE,target=/transport/claimant-credentials.tar,readonly" \
-      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_INSTALLER,target=/installer.py,readonly" \
       --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ROOT,target=/credentials" \
       "$CRAWLER_IMAGE_REF" \
-      /installer.py prepare \
+      prepare \
       --archive /transport/claimant-credentials.tar \
       --archive-sha256 "$JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256" \
       --revision "$JOBSEEK_DEPLOY_REVISION" \

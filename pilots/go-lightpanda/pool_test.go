@@ -561,7 +561,8 @@ func TestCanonicalTargetOrigin(t *testing.T) {
 		{raw: "http://127.0.0.1:8123/jobs", want: "http://127.0.0.1:8123"},
 		{raw: "https://user@example.test/jobs", wantErr: true},
 		{raw: "file:///tmp/jobs", wantErr: true},
-		{raw: "https://example.test/jobs#fragment", wantErr: true},
+		{raw: "https://example.test/jobs#fragment", want: "https://example.test"},
+		{raw: "https://example.test/jobs#%zz", wantErr: true},
 	} {
 		t.Run(test.raw, func(t *testing.T) {
 			t.Parallel()

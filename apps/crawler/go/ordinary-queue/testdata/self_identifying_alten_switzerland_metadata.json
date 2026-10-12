@@ -1,0 +1,46 @@
+{
+  "wait": "networkidle",
+  "proxy": true,
+  "render": true,
+  "stealth": true,
+  "timeout": 30000,
+  "url_filter": "^https?://(?:www\\.)?alten\\.ch/(?:de/|fr/|en/)?jobs/[0-9]+-[^/?#]+/?$",
+  "scraper_type": "dom",
+  "scraper_config": {
+    "wait": "domcontentloaded",
+    "proxy": true,
+    "steps": [
+      {
+        "tag": "h1",
+        "field": "title"
+      },
+      {
+        "html": true,
+        "stop": "Stelle als PDF herunterladen",
+        "field": "description",
+        "optional": true
+      },
+      {
+        "from": 0,
+        "field": "date_posted",
+        "offset": 1,
+        "optional": true,
+        "match_regex": "^Job Details$",
+        "date_input_format": "%d/%m/%Y"
+      },
+      {
+        "from": 0,
+        "field": "locations",
+        "offset": 2,
+        "match_regex": "^Job Details$"
+      }
+    ],
+    "render": true,
+    "stealth": true,
+    "timeout": 30000,
+    "resource_policy": "none",
+    "transport_attempts": 3
+  },
+  "resource_policy": "none",
+  "transport_attempts": 3
+}

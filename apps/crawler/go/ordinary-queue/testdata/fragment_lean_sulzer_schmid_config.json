@@ -1,0 +1,31 @@
+{
+  "board_url": "https://www.sulzerschmid.ch/about-sulzer-schmid/#4_jobs",
+  "metadata": {
+    "render": true,
+    "scraper_config": {
+      "steps": [
+        {
+          "field": "title",
+          "regex": "^(.*?) - Sulzer",
+          "tag": "title"
+        },
+        {
+          "field": "locations",
+          "regex": "in ([A-Za-z\\s]+am See)",
+          "text": "Oetwil"
+        },
+        {
+          "field": "description",
+          "from": 0,
+          "html": true,
+          "stop": "How to apply",
+          "tag": "h4",
+          "text": "Overview"
+        }
+      ]
+    },
+    "scraper_type": "dom",
+    "url_filter": "/jobs/"
+  },
+  "scraper_needs_browser": "0"
+}

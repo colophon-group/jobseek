@@ -58,6 +58,11 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			delete(options, key)
 		}
 	}
+	if selfIdentifying && options["resource_policy"] == "lean" {
+		// The exact source retains lean in its immutable ownership binding;
+		// the pinned engine requests neither fonts nor media.
+		options["resource_policy"] = "none"
+	}
 	if err := normalizeDOMLightpandaResourceOptions(options); err != nil {
 		return fail()
 	}

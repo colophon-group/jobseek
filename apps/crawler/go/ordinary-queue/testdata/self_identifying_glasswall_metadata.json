@@ -1,0 +1,41 @@
+{
+  "wait": "networkidle",
+  "proxy": true,
+  "render": true,
+  "stealth": true,
+  "timeout": 30000,
+  "url_filter": "-[0-9]+/?$",
+  "scraper_type": "dom",
+  "scraper_config": {
+    "wait": "networkidle",
+    "proxy": true,
+    "steps": [
+      {
+        "tag": "h1",
+        "field": "title"
+      },
+      {
+        "text": "Location",
+        "field": "locations",
+        "offset": 1
+      },
+      {
+        "text": "Apply Now"
+      },
+      {
+        "text": "Download File"
+      },
+      {
+        "tag": "p",
+        "html": true,
+        "stop": "Apply Now",
+        "field": "description"
+      }
+    ],
+    "render": true,
+    "stealth": true,
+    "timeout": 30000,
+    "transport_attempts": 3
+  },
+  "transport_attempts": 3
+}

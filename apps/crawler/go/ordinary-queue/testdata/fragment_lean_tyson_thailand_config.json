@@ -1,0 +1,44 @@
+{
+  "board_url": "https://www.jobthai.com/en/company/125727",
+  "metadata": {
+    "link_selector": "a[href^=\"/en/job/\"]",
+    "render": true,
+    "resource_policy": "lean",
+    "scraper_config": {
+      "steps": [
+        {
+          "field": "title",
+          "tag": "h1"
+        },
+        {
+          "attr": "id=job-update-at",
+          "date_input_format": "%b %d, %Y",
+          "field": "date_posted"
+        },
+        {
+          "attr": "id=location-text",
+          "field": "location"
+        },
+        {
+          "field": "description",
+          "html": true,
+          "offset": 1,
+          "stop": "Qualifications",
+          "text": "Job Descriptions"
+        },
+        {
+          "field": "qualifications",
+          "html": true,
+          "offset": 1,
+          "stop": "Benefits",
+          "text": "Qualifications"
+        }
+      ]
+    },
+    "scraper_type": "dom",
+    "timeout": 30000,
+    "url_filter": "/en/job/[0-9]+$",
+    "wait": "domcontentloaded"
+  },
+  "scraper_needs_browser": "0"
+}

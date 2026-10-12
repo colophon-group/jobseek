@@ -86,7 +86,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 
 func inspectDOMMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	u, err := url.Parse(config["board_url"])
-	if err != nil || len(config["board_url"]) > 8192 || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" || !validHost(u.Hostname()) || u.Port() != "" {
+	if err != nil || len(config["board_url"]) > 8192 || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" && !(config["monitor_needs_browser"] == "1" && selfIdentifyingDOMSource(config, md)) || !validHost(u.Hostname()) || u.Port() != "" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if _, err := FeedMonitorURLRules(config); err != nil {

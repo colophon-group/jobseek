@@ -1,0 +1,43 @@
+{
+  "schema": "jobseek.native-claimant-installer-candidate/v1",
+  "candidate_version": "0.13.1032",
+  "parent_local_candidate_head": "93736f1893e2f3637658a7244a97863bf7ea9e4d",
+  "parent_open_pr": 10443,
+  "production_authority": false,
+  "production_consumer": "Original quiesced full deployment claimant credential prepare command",
+  "native_command": "go-lightpanda-claimant-credentials prepare",
+  "offline_python_retained": "Bundle creation, validation oracle and historical rollback scripts",
+  "original_native_checks": 99,
+  "original_native_checks_log_sha256": "13f7ed809717d22a16d4b2067c9d1d717188ef9713bcc271f9f6fa5767cd5223",
+  "native_equivalence_checks": 6,
+  "native_equivalence_log_sha256": "e0a91a60b590843e6dde20d0ad8212bb8821db6cf8b8cee699184922cd01c7a6",
+  "go_race_and_vet_passed": true,
+  "linux_cli_and_tests_cross_compiled": [
+    "amd64",
+    "arm64"
+  ],
+  "actual_linux_sealed_owner_execution_pending": false,
+  "preserved": [
+    "Exact complete transport archive, mode, size and digest",
+    "Canonical P-256/SHA-256 CA/client/server PKI, SAN/EKU/usage/validity/signatures and three pins",
+    "Original six-file generation and source/archive identity",
+    "No-follow inode and complete read checks",
+    "File/directory modes, sealed claimant owner10001 retry, foreign owner refusal",
+    "Candidate write and fsync, atomic rename, parent fsync and original failure recovery boundaries",
+    "Network-none, read-only, cap-drop ALL, no-new-privileges and unprivileged installer container",
+    "Private transport cleanup and existing finalization/rollback contract"
+  ],
+  "validation_limits": [
+    "Native sealed-owner retry is exercised by the root Linux image build; the warm exact-head image build passed, while final rebased installed-image/CI and deployment checks remain required",
+    "Native installed image, final exact-head CI and original whole rollout still required",
+    "Full migration, remaining enabled routes and sustained fleet freshness/cost remain incomplete"
+  ],
+  "combines_with_four_more_rendered_monitor_candidates": true,
+  "full_migration_complete": false,
+  "parent_merged_source1030": "3bedb97f20179901fb6730e5acd72be0d061a5c1",
+  "candidate_pr": 10444,
+  "warm_original_arm_image_build_run": 38220620409,
+  "warm_original_arm_image_build_head": "3fcf86fef803ea4eacf3348ee3ce814ac0b42b48",
+  "warm_image_build_passed": true,
+  "final_rebased_head_qualification_pending": true
+}

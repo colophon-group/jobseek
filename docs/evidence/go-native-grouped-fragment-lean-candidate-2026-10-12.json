@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.grouped-fragment-lean-candidate/v1",
+  "candidate_version": "0.13.1033",
+  "parent_candidate_head": "e2fafeb1deac9178f3ebeafa073c0bf808e84155",
+  "parent_pr": 10444,
+  "observed_at_utc": "2026-10-12T12:13:08.810270+00:00",
+  "production_authority": false,
+  "lightpanda_release": "1.0.0",
+  "new_original_jobs": {
+    "axis-bank-careers": 10,
+    "sulzer-schmid-careers": 1,
+    "tyson-foods-thailand": 17
+  },
+  "new_original_urls": 28,
+  "combined_followup_monitor_additions": 7,
+  "combined_followup_original_urls": 89,
+  "actual_go_runtime_pool_adapter_engine_canonical_result_cases": 3,
+  "actual_runtime_physical_postgres_redis_cases_including_previous_group": 44,
+  "actual_runtime_physical_original_urls_including_previous_group": 183,
+  "proof_sha256": {
+    "physical_runtime": "96fe943cc39b2066a635d16c9343be3ac961e9d07e3f98c58783f8ff6cb7606c",
+    "actual_runtime_pg_redis": "1347d55e8972864141bef1008198c4f73b60a15d84066c5f66b51bd9ac5da977",
+    "typed_proxy_source_binding": "6f8cefb21a374673612d4eb165b18692114b6526f46ad8c4f8031bc577cec9b1",
+    "adapter_client": "5fecf484692da44eb8b738f197ca611960b86adb73a48154d451644c105ffef4",
+    "supervisor": "09c575a5babbcb5a41cf3b7147ca85e85f9fff89d15449a56b5783f28dd8f919",
+    "executor": "0cc5175205038ed90428bdf4744f4be128d5817707ae6fe6e67a71055e6b030e"
+  },
+  "preserved": [
+    "Exact initial URL fragments and immutable static source metadata",
+    "Source-bound DOM fragment/lean authority; generic unproved metadata remains refused",
+    "Absolute HTTP(S) URL bounds, userinfo refusal, malformed escapes and whitespace refusal in pool",
+    "Original detail queue workers: Axis browser, Sulzer/Tyson simple; no new detail replacement authority",
+    "Complete HTML digest/manifest and publisher-policy checks, incomplete and unproved-empty refusal",
+    "Claim/deadline/settlement and actual canonical URL insertions"
+  ],
+  "reference_refresh": "Axis current ten job identifiers differ from the earlier snapshot; fresh original and actual runtime inventories match exactly. The historical failure is retained; no exception weakens inventory equality.",
+  "remaining": [
+    "Final committed-head required CI/gate/image/Linux/ARM qualification",
+    "Original full deploy and preserved source1030 admission",
+    "Natural new-board effects and sustained fleet freshness/resources/cost",
+    "Remaining production Python and enabled legacy routes"
+  ],
+  "full_migration_complete": false
+}

@@ -1,6 +1,141 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1029 merged; cold296; original rollouts running
+## Current checkpoint — source1030 serving297; six monitors admitted; source1032 qualified
+
+Source1030 is deployed at `3bedb97f20179901fb6730e5acd72be0d061a5c1`
+through successful original crawler run38221957465 and renderer run38222023557.
+Independent incoming cold296, deployed native host tools, full CSV contract,
+matching renderer and successful exporter progress checks passed. Original B0
+and ordinary activation succeeded; routing epoch297 owns **7,794 monitors /
+7,683 detail boards**, preserving the entire previous7,788 /7,683 floor and
+adding Trip, CMA/AirBelgium, ArcelorMittal Ukraine, and Alten Portugal, Spain,
+and Finland together. Lightpanda remains the latest verified stable1.0.0.
+
+The source-bound full census reconciled7,885 enabled boards and1,673,739 actual
+scheduled posting routes. Exact activated identities:
+
+- Ordinary plan: `f81b8fcfc76b37ba1c2a3f7fae40a1b0194e15409953193b1ec485aa54497921`.
+- Redis projection: `2105e40d47ea7d4e990297ef0e1409fd74d9781f`.
+- B0 receipt: `e1338fd16a3d8294e0c1d29e99743fa6f78d0be8690430e867a082be050b9eca`.
+- Ordinary active receipt: `c5d54f3816089218beda83e3a0d345f6b0d6c73144799406caff47fa2a4aa2a6`.
+
+At11:33UTC, independent SQL/Redis/host/HTTP observations confirmed one active
+plan, matching queue projection, all10 service containers running,8 healthy
+HTTP endpoints,32 completed native monitor receipts and12 completed native
+detail receipts.31 monitor receipts had their exact committed recurring
+schedule; one retained completion lease remains visible. Early ordinary-worker
+resource observation was216.4MiB /1GiB,512MiB Go target,~100% of its one CPU,
+zero restarts and no OOM. These observations establish early serving, **not
+sustained fleet freshness, complete new-board effects or production cost**.
+The six new monitors retain natural schedules; do not force claims for evidence.
+
+PR10444, source1032 at final head`e2fafeb1deac9178f3ebeafa073c0bf808e84155`,
+combines four more rendered monitors (Alten Italy44, Netherlands10,
+Switzerland3 and Glasswall4 original URLs) with the Go production claimant
+credential installer. Exact-head core CI/image/Linux/gate and all16 ARM
+comparison arms passed. CI run38222198431 attempt2 retried only Migration Drift
+after a public ECR image-pull rate limit; no code changed and successful worker
+suites were not repeated. Manual ARM run38222197276 retained a clean matching
+candidate/renderer report, admission true, no reasons, density ratios5.074–12.236.
+The native installer preserves original archive/PKI/pins/modes/atomic publication
+and retry contracts, including actual unprivileged sealed-key retry in Linux
+image checks. Source1031 is folded into this batch. **Source1032 is qualified,
+not yet merged or deployed.**
+
+Continue in this order:
+
+1. Observe source1030 natural effects, exact recurring deadlines, freshness and
+   resource behavior, keeping incomplete evidence explicit.
+2. Use the original quiesced ordinary retirement/B0 rollback and locked selector
+   clearing before source1032's full rollout. Re-read incoming merge authority,
+   exact head/base/main, required CI and Gate, holds and operator decisions;
+   bind the merge to that head. Verify exact original images and merged SDK,
+   then admit the preserved source1030 floor plus four monitors together.
+3. Continue grouped monitor/detail and production-consumer ports. The latest
+   census has91 monitor rows outside the ordinary cohort (including three
+   separately B0-owned rows), concentrated in DOM64, API-sniffer14, inline4,
+   RSS3, Njoyn1, BrassRing4 and sitemap1;202 detail rows remain outside it.
+   These counts include unproved existing profiles, not only missing types.
+4. For the next DOM group, Axis10 and Sulzer-Schmid1 need full fragment navigation
+   and result/publisher-policy qualification; Tyson17 needs explicit lean resource
+   qualification. Complete physical engine observations are research only and
+   grant no profile, persistence or production ownership authority.
+5. Finish native schema/activation/rollback consumers and remaining enabled
+   legacy execution. Establish whole-fleet freshness and comparable whole-lane
+   resources/cost plus the supported rollback window before retiring production
+   Python, Playwright and Chromium. Preserve useful offline Python tooling.
+
+**The full migration remains incomplete.**
+
+## Following combined candidate — source1033, seven monitors and native credentials
+
+Fold the source1033 fragment/lean group into pending PR10444 rather than publish
+source1032 separately. The final candidate is **0.13.1033**, seven monitor
+additions: the previous Alten Italy/Netherlands/Switzerland and Glasswall61 URLs,
+plus Axis10, Sulzer-Schmid1 and Tyson Thailand17 = **89 original URLs**. The Go
+credential installer remains in this same full release. Preserve source1030's
+7,794 /7,683 floor; the prospective monitor target is7,801, with zero new detail
+replacement authority.
+
+For the three additional sources, fresh original references match current
+inventories. Actual bounded Go pool → navigation adapter → pinned Lightpanda1.0.0
+→ canonical complete result/publisher policy → worker → PostgreSQL/Redis checks
+passed.11 DOM inventories/183 exact original URLs and44 canonical/policy/failure
+cases include the previous rendered groups. Fragment navigation and result
+validation retain the exact requested/final URI, anonymous absolute HTTP(S)
+constraints and malformed escape/authority refusal; only exact static DOM source
+hashes gain the new fragment/lean profile authority. Original metadata remains
+in ownership hashes. Axis detail routing stays browser; Sulzer/Tyson stay simple.
+Generic unproved DOM fragments and lean configurations remain refused.
+
+The fresh Axis job identifiers changed from the earlier snapshot. The real
+runtime and freshly observed original inventories agree exactly; old failure
+logs remain evidence, and no identity-equality exception was introduced.
+Sulzer's verified same-publisher path redirect is captured independently while
+its requested/final fragment remains unchanged. Both raw and typed physical
+engine paths prove child cleanup. Candidate evidence is
+`docs/evidence/go-native-grouped-fragment-lean-candidate-2026-10-12.json`.
+
+Commit and qualify the combined final head once through Required CI, Gate,
+image parity, Linux and exact-head ARM report; then use the supported original
+full rollout and fresh merged-SDK/source/receipt-bound admission. The source1032
+`e2fafeb...` qualification is retained historical component evidence and cannot
+authorize this changed head. **No source1033 production authority exists yet;
+full migration remains incomplete.**
+
+## Historical checkpoint — source1030 merged; original rollouts running; six monitors next
+
+[PR #10443](https://github.com/colophon-group/jobseek/pull/10443) merged as
+`3bedb97f20179901fb6730e5acd72be0d061a5c1`, **0.13.1030 /204 profiles**.
+Final candidate `ed22d3a320d47c1bbb7f8be79bb16260a041d5af` passed Required CI,
+installed-image contracts, both Linux pilots, Crawler Deploy Gate and all16
+[exact-head ARM whole-lane arms](https://github.com/colophon-group/jobseek/actions/runs/38217551903).
+The earlier registry proxy assertion failure is retained; its narrow correction
+verifies the three qualified Alten direct browser replacements while preserving
+strict HTTP proxy coverage for every other row.
+
+The fresh source1029 cold296 proof followed scheduled Typesense reconciliation;
+zero active ownership plans, no projections/receipts/tokens, seven restored base
+writers and six healthy endpoints remained verified before the guarded merge.
+The [original full crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38221957465)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38222023557)
+are running. After independently verifying their actual source/images, CSV tree,
+host tools, renderer and exporter, activate original B0, reconcile every actual
+scheduled posting route and stage/activate **7,794 monitor owners /7,683 detail
+owners**. This adds all six Trip/Air Belgium/Alten/ArcelorMittal monitors in one
+activation while preserving the entire **7,788 /7,683** prior floor. No source1030
+native ownership is claimed yet; natural serving/freshness proof remains required.
+
+The combined follow-up is [PR #10444](https://github.com/colophon-group/jobseek/pull/10444):
+four more rendered monitors (61 original URLs) plus Go production credential
+installation, version **0.13.1032**. Its original committed-head ARM image build
+passed, including native credential tests in the root Go build stage; both Linux
+pilots and renderer image also passed. Rebase to the actual merged source1030 and
+qualify the final head before delivery. Offline Python bundle creation is retained.
+Production Python/Playwright/Chromium retirement, every enabled route, sustained
+freshness/resources/cost and the rollback window remain incomplete.
+
+## Historical checkpoint — source1029 deployed; cold296; six-monitor activation next
 
 [PR #10441](https://github.com/colophon-group/jobseek/pull/10441) merged as
 `3bbd9e3fa258d1cfcbf8cf60fd86dc8471af588e`, **0.13.1029 /204 profiles**.
@@ -17,13 +152,19 @@ schema0040 and seven restored restart-armed base services with six healthy
 endpoints. See the [cold reversal evidence](evidence/go-native-source1029-cold-reversal-2026-10-12.json).
 The exact-head/base guarded merge followed this fresh proof.
 
-The original full crawler rollout and matching renderer rollout are running.
+The [original full crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38215022486)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38215037550)
+succeeded at attempt1. Independent selected-image/cold/host-artifact/CSV/renderer
+and exporter verification passed. See the
+[production evidence](evidence/go-native-source1029-production-2026-10-12.json).
 After both succeed, independently verify their immutable source/images, native
-host artifacts, actual CSV tree and exporter progress. Activate B0 through its
-original wrapper, capture every actual scheduled posting route, and admit the
-two qualified Trip/Air Belgium monitors while preserving **7,788 monitors and
-7,683 detail boards**. Verify the resulting **7,790 monitor owners /7,683 detail
-owners**, canonical effects, natural recurring settlement and freshness.
+host artifacts, actual CSV tree and exporter progress. Keep source1029 cold while
+source1030 qualifies and deploys. Then activate B0 through its original wrapper,
+capture every actual scheduled posting route, and admit all six qualified
+Trip/Air Belgium and grouped rendered monitors while preserving **7,788 monitor
+owners and 7,683 detail-board owners**. Verify the resulting **7,794 monitor
+owners /7,683 detail owners**, canonical effects, recurring settlement and
+freshness. This consolidates ownership activation across both batches.
 No source1029 owner activation is claimed yet.
 
 The four-board rendered follow-up is [PR #10443](https://github.com/colophon-group/jobseek/pull/10443).
@@ -34,6 +175,43 @@ perform its original full rollout and one fresh grouped admission. Its detail
 replacements remain unqualified. Production Python/Playwright/Chromium
 retirement, every enabled route and sustained whole-fleet freshness/cost remain
 required. **The full migration remains incomplete.**
+
+## Following combined source1032 — four monitors and native credential installation
+
+The next local candidate combines source1031's four additional rendered monitors
+with Go credential preparation in the original full deployment. The original
+Python bundle builder remains an offline CI/reference tool. Production prepare
+uses the Go binary from the exact immutable crawler image, with the existing
+network-none/read-only/cap-drop/unprivileged container and unchanged finalization.
+
+Go preserves archive identity/metadata, canonical PKI and pins, six-file modes,
+sealed claimant-owned retry, no-follow reads and the original atomic/fsync
+publication boundaries. All99 original/native checks and six native equivalence
+checks pass; Go race tests and vet pass, and both Linux architectures compile.
+Actual sealed-owner retry executes in the root Linux image build; that check,
+installed-image qualification and the original rollout remain pending. See the
+[candidate evidence](evidence/go-native-claimant-installer-candidate-2026-10-12.json).
+
+Complete source1030's consolidated six-monitor activation before qualifying and
+delivering this combined follow-up against its actual merged base. This candidate
+grants no ownership authority and does not complete the full migration.
+
+## Following source1031 — four more rendered controls qualified locally
+
+Alten Italy, Netherlands and Switzerland plus Glasswall match all61 original
+URLs with physical Lightpanda1.0.0. PostgreSQL/Redis race replay verifies61 new
+canonical insertions, browser detail routing, committed deadlines and lease
+settlement. All16 new physical cases and32 portable cases including the parent
+group pass. Original proxy/stealth/transport controls remain in the ownership
+hash; only the four exact static configurations select the verified-TLS direct
+replacement. Configuration drift and foreign-source refusal tests pass.
+See the [candidate evidence](evidence/go-native-grouped-rendered-controls-candidate-2026-10-12.json).
+
+The twelve-board reference pass retains its two zeros, one original failure,
+one unsupported native action and four other physical/parser gaps. These are
+not admissions. Continue source1030's final qualification and consolidated
+six-monitor serving first; then rebase and qualify this next batch against the
+actual merged base. Detail replacements and full migration remain incomplete.
 
 ## Historical checkpoint — source1028 deployed; full ordinary ownership active295
 

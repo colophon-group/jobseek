@@ -73,12 +73,16 @@ func TestSharedHTTPProxyCurrentRegistryCoverage(t *testing.T) {
 	}
 	supported := map[string]bool{"dom": true, "api_sniffer": true, "inline": true, "sitemap": true, "eightfold": true, "phenom": true}
 	monitors, details, pending := map[string]int{}, map[string]int{}, map[string]int{}
-	// These three original proxy configurations now have source-bound direct
+	// These original proxy configurations now have source-bound direct
 	// browser replacements. Keep HTTP proxy coverage strict for every other row.
 	qualifiedRendered := map[string]bool{
-		"https://www.alten.pt/pt/career/jobs/":       true,
-		"https://www.alten.es/unete-a-alten/empleo/": true,
-		"https://www.alten.fi/en/career/jobs/":       true,
+		"https://www.alten.it/career/jobs/?per_page=100&sortby=date": true,
+		"https://www.alten.nl/werken-bij-alten/career-nl/":           true,
+		"https://www.alten.ch/de/career/jobs/":                       true,
+		"https://careers.glasswall.com/":                             true,
+		"https://www.alten.pt/pt/career/jobs/":                       true,
+		"https://www.alten.es/unete-a-alten/empleo/":                 true,
+		"https://www.alten.fi/en/career/jobs/":                       true,
 	}
 	rendered := map[string]int{}
 	for _, row := range rows[1:] {

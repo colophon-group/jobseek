@@ -159,7 +159,7 @@ func TestPolicyManifestRejectsUnexpectedUnknownAndCorruptOutput(t *testing.T) {
 		func(s *runtimev1.BrowserSuccess) {
 			s.Html.Chunks[0].ProtoReflect().SetUnknown([]byte{0x80, 0x01, 0x01})
 		},
-		func(s *runtimev1.BrowserSuccess) { s.FinalUrl += "#fragment" },
+		func(s *runtimev1.BrowserSuccess) { s.FinalUrl += "#%zz" },
 		func(s *runtimev1.BrowserSuccess) { s.Captures = []*runtimev1.CapturedValue{{CaptureId: "unexpected"}} },
 	} {
 		result := &runtimev1.BrowserResult{}
