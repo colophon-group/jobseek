@@ -54,7 +54,10 @@ Final qualification exposed an aging Eightfold integration replay: its recorded
 clock crossed the weekly refresh boundary, triggering a full crawl outside the
 declared incremental HTTP responses. Integration fixtures now preserve their
 recorded watermark ages against the live pipeline clock; production refresh
-logic is unchanged. Direct and proxy canonical-effect checks remain required.
+logic is unchanged. The fixture uses the original microsecond precision, with
+an explicit nanosecond-clock regression proving that terminal patches retain
+the timestamp rather than appearing to roll it back. Direct and proxy
+canonical-effect checks remain required.
 
 Continue in this order:
 
