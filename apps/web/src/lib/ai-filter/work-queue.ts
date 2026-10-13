@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { paidEntitlementCondition } from "@/lib/paid-entitlement";
+import { aiFilterRepairDueCondition } from "./refresh-cadence";
 
 export type WorkTarget = {
   ownerId: string;
@@ -52,13 +53,28 @@ export async function enqueueAiFilterWork(input: {
   return { runId: `demand:${rows[0].query_version_id}:${kind}` };
 }
 
-/** A single slot plus a persisted cadence prevents overlapping/rapid dispatch. */
+/** Admit only ready demand or due repair; keep idle ticks to one SQL statement. */
 export async function claimAiFilterWorker(): Promise<string | null> {
   const leaseOwner = `shared-worker:${randomUUID()}`;
+  const now = new Date();
   const rows = await db.execute(sql`
     UPDATE ai_filter_worker SET lease_owner=${leaseOwner},lease_expires_at=now()+interval '70 seconds',next_tick_at=now()+interval '55 seconds'
     WHERE id=1 AND (lease_expires_at IS NULL OR lease_expires_at<=now())
-      AND next_tick_at<=now() AND (blocked_until IS NULL OR blocked_until<=now()) RETURNING id
+      AND next_tick_at<=now() AND (blocked_until IS NULL OR blocked_until<=now())
+      AND EXISTS (
+        SELECT 1 FROM ai_filter_configuration c
+        JOIN ai_filter_query_version q ON q.configuration_id=c.id AND q.revision=c.current_revision
+        WHERE c.status='enabled' AND ${paidEntitlementCondition(sql`c.owner_id`, now)}
+          AND (
+            ${aiFilterRepairDueCondition(sql`c.refresh_requested_at`, now)}
+            OR EXISTS (
+              SELECT 1 FROM ai_filter_work w
+              WHERE w.watchlist_id=c.watchlist_id AND w.owner_id=c.owner_id AND w.query_version_id=q.id
+                AND w.status<>'idle' AND w.available_at<=now()
+                AND (w.lease_expires_at IS NULL OR w.lease_expires_at<=now())
+            )
+          )
+      ) RETURNING id
   `);
   return rows.length ? leaseOwner : null;
 }
