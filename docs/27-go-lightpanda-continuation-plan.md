@@ -9,7 +9,10 @@ microsecond cases are rejected as legacy_state_corrupt. The numeric parser now
 accepts bounded positive exponent notation while preserving the exact rollback
 score. All1000 cases and five supported activation/rollback precision cases pass;
 schedule-kind and claimant-transition guards remain intact. Lua digest consumers
-are updated together. Renew all exact-head CI/Linux/image/ARM qualification before
+are updated together. Exact-head CI caught an omitted embedded B0 audit copy;
+that copy is now synchronized with production Lua. The byte-equality guard and
+real first-ownership executable activation, retirement and compatibility tests
+pass against PostgreSQL/Redis. Renew all exact-head CI/Linux/image/ARM qualification before
 supported outgoing retirement, full rollout and fresh7805/7685-preserving admission.
 Source1036 remains serving; incoming additions still UKPDF+Daiichiinline plusRSSrepair.
 
