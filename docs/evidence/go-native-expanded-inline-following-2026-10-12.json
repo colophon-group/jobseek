@@ -86,9 +86,10 @@
     "actual_canonical_log_sha256": "2b37ffb0729d14478a5c348f4220ddeb3b24e1fa51e56688b370e6364b77618e",
     "repository_canonical_race_cases": 5,
     "repository_canonical_log_sha256": "39f684586237db86682b3a19f52780de61ca8cbae72419ddc5375a1294e0b3e9",
-    "real_engine_fixture_cases": 6,
+    "real_engine_fixture_cases": 7,
     "real_engine_fixture_platform": "verified macOS arm64 pinned binary and loopback fixture overlay; Linux immutable-image qualification still required",
-    "real_engine_fixture_log_sha256": "3e256b3ad601c9c4ad34e1eda49340971c6484bd107108414a87d4536a21cf74"
+    "real_engine_fixture_log_sha256": "1ac3b49286d1751fab3a55f11bbb2468db6d5811d5c9f11ea259996a71442bb4",
+    "publisher_empty_page_precedence": "pass before waiting for controls"
   },
   "verification": {
     "contracts_full": "pass",

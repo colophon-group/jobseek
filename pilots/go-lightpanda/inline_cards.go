@@ -41,6 +41,13 @@ func collectInlineCards(ctx context.Context, c actions.InlineCards, reload func(
 	if !c.Valid() || reload == nil || check == nil {
 		return "", nil, actions.ErrActions
 	}
+	reserved, err := check()
+	if err != nil {
+		return "", nil, err
+	}
+	if reserved {
+		return "", nil, errInlineCardsReserved
+	}
 	args, _ := json.Marshal([]string{c.ControlSelector, c.IdentitySelector, c.IdentityAttribute})
 	read := func() ([]string, error) {
 		var row struct {

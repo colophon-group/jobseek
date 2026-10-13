@@ -23,16 +23,20 @@ import (
 
 func TestLightpandaInlineCardsCompleteIdentityAndPublisherBoundary(t *testing.T) {
 	binary := integrationBinary(t)
-	for _, mode := range []string{"isolated-five", "identity-shift", "duplicate-identity", "missing-detail", "publisher-before", "publisher-after"} {
+	for _, mode := range []string{"isolated-five", "identity-shift", "duplicate-identity", "missing-detail", "publisher-before", "publisher-empty", "publisher-after"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var navigations atomic.Int32
 			origin := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				n := navigations.Add(1)
-				if mode == "publisher-before" {
+				if mode == "publisher-before" || mode == "publisher-empty" {
 					w.Header().Set("Tdm-Reservation", "1")
 				}
 				w.Header().Set("Content-Type", "text/html")
+				if mode == "publisher-empty" {
+					_, _ = io.WriteString(w, "<html><body>Publisher reserved</body></html>")
+					return
+				}
 				var body strings.Builder
 				body.WriteString(`<!doctype html><html><head></head><body><section id="detail"></section>`)
 				for i := 0; i < 5; i++ {

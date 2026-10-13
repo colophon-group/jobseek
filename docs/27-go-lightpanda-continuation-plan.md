@@ -42,7 +42,7 @@ title, normalized description and location matches. Salesforce patches main-worl
 selectors; the controller uses an isolated world without modifying publisher code.
 A validated session budget covers navigation, original actions and bounded expansion.
 Five real PostgreSQL/Redis cases prove complete persistence and refuse missing or
-duplicate identities, truncated results and publisher reservations. Six real engine
+duplicate identities, truncated results and publisher reservations. Seven real engine
 fixtures prove reload identity drift, duplicates, missing details and policy stopping.
 
 CACI's1856 captured Workday routes retain the configured Eightfold JSON-LD fast
