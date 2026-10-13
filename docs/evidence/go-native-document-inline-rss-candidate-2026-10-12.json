@@ -56,5 +56,24 @@
       "jobseek-native1037-fractional-rollback4.log": "6f8d289ec1c554ddd17d7b6d6fa35a911946834ae61029c1fba6d8551d7323d9",
       "jobseek-native1037-fractional-stress-after2.log": "415e9f7ebd7d8a4013c672c36fbb4337b787297db61c9066a56805d73e5e89a9"
     }
+  },
+  "contained_retirement_recovery": {
+    "observed_at_utc": "2026-10-13T10:59:29.920874+00:00",
+    "selected_source": "6670f75a2dcf71fcbd7c712175ef2aa0edd84177",
+    "routing_epoch": 303,
+    "receipt_state": "retiring",
+    "retained_receipt_sha256": "90b71f556cb2148bda01035a5f6115569bc8312c2cee52db1ba1ace01beb95e2",
+    "original_wrapper_attempts": 2,
+    "failure_phase": "canonical-restoration",
+    "failure_reason": "deadline",
+    "cause": "15-second cold transaction limit covers full fleet configuration and retained detail receipt validation",
+    "repair": "Fixed 2-minute snapshot-only administrative budget and matching idle ceiling; requires live checked host scope. Other cold/runtime transaction caps and statement timeouts unchanged.",
+    "real_postgresql_old_deadline_and_new_held_barriers": "pass",
+    "regression_log_sha256": "ee3b3e3d4ae3f4b468bd5ffd78a2ada3377f162760e937d475990ac7d06c9d10",
+    "cold_retirement_regressions": "pass",
+    "cold_retirement_race_log_sha256": "1196c80c8f1af01590613fc673263a9627728aae1baf4217b9da1262fdcba83e",
+    "next": "Renew exact-source qualification; merge reviewed compatibility admin; original immutable admin prepull and unchanged supported retirement wrapper before cold304/full deployment retry",
+    "admission_authority": false,
+    "qualification_restart_required": true
   }
 }

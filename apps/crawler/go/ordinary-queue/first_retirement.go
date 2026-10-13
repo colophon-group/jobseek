@@ -46,7 +46,7 @@ func firstRetirementMembers(ctx context.Context, pool *pgxpool.Pool, client *Cli
 		return "", ErrAuthorityLost
 	}
 	members := make([]firstRetirementMember, 0, plan.MemberCount())
-	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
+	err := coldCanonicalSnapshotTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		authority := &Authority{queue: client}
 		ids := make([]string, 0, plan.MemberCount())
 		for _, member := range plan.document.Members {

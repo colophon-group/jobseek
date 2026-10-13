@@ -1,20 +1,37 @@
 # Go and Lightpanda migration delivery plan
 
-### Current candidate correction — source1037, 2026-10-13
+### Current candidate and contained recovery — source1037, 2026-10-13
 
-PR10456's old head1d18 passed all CI/image/Linux/Gate checks, but original ARM
-38300130824 failed its last candidate transfer. Real Redis reproduces the exact
-failure for valid fractional epoch scores returned in scientific notation:2of1000
-microsecond cases are rejected as legacy_state_corrupt. The numeric parser now
-accepts bounded positive exponent notation while preserving the exact rollback
-score. All1000 cases and five supported activation/rollback precision cases pass;
-schedule-kind and claimant-transition guards remain intact. Lua digest consumers
-are updated together. Exact-head CI caught an omitted embedded B0 audit copy;
-that copy is now synchronized with production Lua. The byte-equality guard and
-real first-ownership executable activation, retirement and compatibility tests
-pass against PostgreSQL/Redis. Renew all exact-head CI/Linux/image/ARM qualification before
-supported outgoing retirement, full rollout and fresh7805/7685-preserving admission.
-Source1036 remains serving; incoming additions still UKPDF+Daiichiinline plusRSSrepair.
+Source1037 groups Daiichi Vietnam inline navigation, the UK embassy PDF listing
+and RSS Unicode identity repair. Its valid fractional Redis epoch scores now
+accept scientific notation, with exact rollback preservation and production/
+embedded audit Lua synchronized. The preceding head45fd passes CI, installed-image
+contracts, Linux and Gate; all16 ARM arms pass with exact effects and cleanup.
+ARM tested immutable preview21d8, whose full Git tree equals head45fd and whose
+parents are the exact base6670 and head45fd. All actual image/source identities
+are retained. This proof does not qualify subsequent recovery changes.
+
+The original source1036 retirement wrapper timed out twice in canonical restoration
+and intentionally contained every crawler writer, retaining its retiring receipt
+at303. No leases, receipts or runtime selectors were edited. The legacy lease wait
+completed; the failure is the15-second cold transaction budget over thousands of
+bound monitor/detail configurations and retained receipts. Full-cohort snapshot
+validation now has its own fixed two-minute administrative budget and matching SQL
+idle ceiling. It requires the live checked exclusive host scope; runtime and other
+cold transition limits stay at15seconds and statement timeouts stay at10seconds.
+A real PostgreSQL regression reproduces the old15-second cutoff and proves the new
+snapshot survives16seconds of client-side work while every writer barrier remains
+held. Unscoped calls, cancellation and escaped scope still refuse authority.
+
+Renew required checks and immutable qualification, merge the reviewed repair with
+fresh bound-head authority, and use the original deployment workflow build plus
+`crawler-native-admin-prepull.yml` to obtain the immutable compatibility admin.
+The deployment must refuse retained ownership. Run the unchanged ordinary wrapper
+with that exact admin source/image, then B0 reversal, original locked selector clear
+and independent cold304 verification before retrying the full original deployment.
+After source1037's complete rollout, fresh full routes must preserve7805/7685 and
+admit the two qualified monitors together. Current selected release remains
+source1036; it is contained, not serving. Full migration is incomplete.
 
 ### Latest delivered checkpoint — source0.13.1036, 2026-10-12
 

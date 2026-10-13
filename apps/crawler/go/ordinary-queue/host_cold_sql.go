@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -204,6 +205,10 @@ func (s *HostColdSQL) observe(ctx context.Context) error {
 }
 
 func hostColdSQLTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context, pgx.Tx) error) (bool, error) {
+	return hostColdSQLTransactionWithin(ctx, pool, 15*time.Second, fn)
+}
+
+func hostColdSQLTransactionWithin(ctx context.Context, pool *pgxpool.Pool, budget time.Duration, fn func(context.Context, pgx.Tx) error) (bool, error) {
 	s, ok := ctx.Value(hostColdSQLKey{}).(*HostColdSQL)
 	if !ok {
 		return false, nil
@@ -217,7 +222,7 @@ func hostColdSQLTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(con
 		if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout='10s'"); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, "SET LOCAL idle_in_transaction_session_timeout='15s'"); err != nil {
+		if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL idle_in_transaction_session_timeout='%dms'", budget.Milliseconds())); err != nil {
 			return err
 		}
 		return fn(ctx, tx)
@@ -229,19 +234,33 @@ func hostColdSQLTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(con
 }
 
 func coldTransitionTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context, pgx.Tx) error) error {
+	return coldTransitionTransactionWithin(ctx, pool, 15*time.Second, fn)
+}
+
+// Full-cohort retirement validates thousands of configs and retained receipts
+// while the original exclusive host barriers remain held. It needs a separate
+// bounded administrative budget; runtime transactions retain their short cap.
+func coldCanonicalSnapshotTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context, pgx.Tx) error) error {
+	if scope, ok := ctx.Value(hostColdSQLKey{}).(*HostColdSQL); !ok || scope == nil {
+		return ErrAuthorityLost
+	}
+	return coldTransitionTransactionWithin(ctx, pool, 2*time.Minute, fn)
+}
+
+func coldTransitionTransactionWithin(ctx context.Context, pool *pgxpool.Pool, budget time.Duration, fn func(context.Context, pgx.Tx) error) error {
 	if pool == nil {
 		return ErrConfiguration
 	}
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
-	if scoped, err := hostColdSQLTransaction(ctx, pool, fn); scoped {
+	if scoped, err := hostColdSQLTransactionWithin(ctx, pool, budget, fn); scoped {
 		return err
 	}
 	return authorityError(pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout='10s'"); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, "SET LOCAL idle_in_transaction_session_timeout='15s'"); err != nil {
+		if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL idle_in_transaction_session_timeout='%dms'", budget.Milliseconds())); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", OrdinaryLeaseBarrier); err != nil {
