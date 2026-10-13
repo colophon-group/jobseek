@@ -13,15 +13,18 @@ import (
 )
 
 func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
-	for _, provider := range []string{"darwinbox", "bytedance"} {
+	for _, provider := range []string{"darwinbox", "bytedance", "brassring"} {
 		for _, mode := range []string{"complete", "truncated", "partial", "reserved", "failed", "wrong-binding", "gone"} {
-			if provider == "bytedance" && (mode == "partial" || mode == "gone") {
+			if provider != "darwinbox" && (mode == "partial" || mode == "gone") {
 				continue
 			}
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				board := "https://airtel.darwinbox.in/ms/candidate/careers"
 				if provider == "bytedance" {
 					board = "https://joinbytedance.com/search"
+				}
+				if provider == "brassring" {
+					board = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=6007"
 				}
 				f := privateRichPipelineFixtureURL(t, provider, `{"scraper_type":"skip"}`, board, queue.Browser)
 				ctx := context.Background()
@@ -37,6 +40,9 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 					jobURL := "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/" + f.company
 					if provider == "bytedance" {
 						jobURL = "https://joinbytedance.com/search/" + f.company
+					}
+					if provider == "brassring" {
+						jobURL = board + "&jobid=123456"
 					}
 					r := replay.Response{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: p.EffectiveConfigSHA256, Outcome: "success", Inventory: json.RawMessage(fmt.Sprintf(`{"Jobs":[{"url":%q,"title":"Senior Software Engineer","description":"&lt;p&gt;Build Go services in Zurich.&lt;/p&gt;","locations":["Zurich"],"metadata":{"department":"Engineering"},"employment_type":"Full time","date_posted":"2024-02-03"}],"Truncated":%t}`, jobURL, mode == "truncated"))}
 					switch mode {

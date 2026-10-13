@@ -13,6 +13,7 @@ import (
 
 const Protocol = "jobseek.lightpanda.api-replay/v1"
 const RequestLimit = 128 << 10
+
 // Complete public inventories such as TikTok exceed 8 MiB after field
 // projection. This API-specific frame bound remains below the existing
 // 64 MiB provider document bound; DOM and child V8 limits are independent.
@@ -35,7 +36,7 @@ type Request struct {
 func (Request) String() string   { return "API replay request" }
 func (Request) GoString() string { return "API replay request" }
 func (r Request) Valid() bool {
-	if r.Provider != "" && r.Provider != "darwinbox" && r.Provider != "bytedance" {
+	if r.Provider != "" && r.Provider != "darwinbox" && r.Provider != "bytedance" && r.Provider != "brassring" && r.Provider != "njoyn" {
 		return false
 	}
 	u, err := url.Parse(r.BoardURL)

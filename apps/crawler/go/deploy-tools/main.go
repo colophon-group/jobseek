@@ -12,6 +12,31 @@ import (
 var sourceRevision = "unbuilt"
 
 func run(args []string) error {
+	if len(args) == 7 && args[0] == "b0-receipt-identity" || len(args) == 10 && args[0] == "b0-receipt-attest" {
+		reply, err := b0ReceiptReply(args[1:], args[0] == "b0-receipt-attest")
+		if err != nil {
+			return err
+		}
+		fmt.Println(reply)
+		return nil
+	}
+	if len(args) == 2 && args[0] == "b0-epoch-reserve-reply" || len(args) == 3 && args[0] == "b0-epoch-attest-reply" {
+		expected := ""
+		if len(args) == 3 {
+			expected = args[2]
+		}
+		reply, err := b0EpochReply(args[1], expected)
+		if err != nil {
+			return err
+		}
+		if reply != "" {
+			fmt.Println(reply)
+		}
+		return nil
+	}
+	if len(args) == 3 && args[0] == "b0-path-fsync" {
+		return b0PathSync(args[1], args[2])
+	}
 	if len(args) >= 12 && args[0] == "publication-prune" {
 		return prunePublications(args[1:], time.Now())
 	}

@@ -65,7 +65,7 @@ def test_alten_spain_uses_live_inventory_and_optional_upstream_location() -> Non
     assert location_step["optional"] is True
 
 
-def test_sage_browser_replay_uses_stealth_and_proxy() -> None:
+def test_sage_http_route_retains_the_complete_api_projection() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         row = next(
@@ -73,10 +73,23 @@ def test_sage_browser_replay_uses_stealth_and_proxy() -> None:
         )
 
     monitor_config = json.loads(row["monitor_config"])
-    assert monitor_config["browser"] is True
-    assert monitor_config["stealth"] is True
-    assert monitor_config["proxy"] is True
-    assert monitor_config["transport_attempts"] == 3
+    assert row["monitor_type"] == "api_sniffer"
+    assert row["scraper_type"] == "skip"
+    assert not {"browser", "stealth", "proxy"}.intersection(monitor_config)
+    assert monitor_config.get("transport_attempts", 3) == 3
+    assert monitor_config["api_url"] == (
+        "https://www.sage.com/api/sagedotcom/CareerSearch/GetCareerSearchData/"
+    )
+    assert monitor_config["json_path"] == "vacancies.Records"
+    assert monitor_config["url_field"] == "Url"
+    assert monitor_config["fields"] == {
+        "title": "Name",
+        "description": "Description",
+        "locations": "OfficeLocation",
+        "date_posted": "ActiveDate",
+        "metadata.department": "Function",
+        "metadata.country": "Country",
+    }
 
 
 def test_hd_centre_browser_paths_retry_blocked_proxy_exits() -> None:

@@ -32,7 +32,11 @@ func secondaryRichJob(fields map[string]any) (RichMonitorJob, error) {
 	metadata, _ := fields["metadata"].(map[string]any)
 	extras, _ := fields["extras"].(map[string]any)
 	source, _ := fields["url"].(string)
-	return RichMonitorJob{URL: source, Title: title, Description: description, Locations: locations, Metadata: metadata, Extras: extras, DatePosted: fields["date_posted"], Language: fields["language"], EmploymentType: fields["employment_type"], JobLocationType: fields["job_location_type"]}, nil
+	salary, err := normalizeDiscoveredSalary(fields["base_salary"])
+	if err != nil {
+		return RichMonitorJob{}, err
+	}
+	return RichMonitorJob{URL: source, Title: title, Description: description, Locations: locations, Metadata: metadata, Extras: extras, DatePosted: fields["date_posted"], BaseSalary: salary, Language: fields["language"], EmploymentType: fields["employment_type"], JobLocationType: fields["job_location_type"]}, nil
 }
 
 // UKG and BambooHR use the existing shared three-attempt JSON-page contract.

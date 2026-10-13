@@ -19,6 +19,28 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--migrate-local" {
+		if len(os.Args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: --migrate-local")
+			os.Exit(2)
+		}
+		if err := runLocalMigrate(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "--b0-epoch" {
+		if len(os.Args) != 3 || os.Args[2] != "reserve-epoch" && os.Args[2] != "attest-epoch" {
+			fmt.Fprintln(os.Stderr, "usage: --b0-epoch reserve-epoch|attest-epoch")
+			os.Exit(2)
+		}
+		if err := runB0Epoch(os.Args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) >= 2 && os.Args[1] == "--redis-capacity" {
 		if err := runCapacity(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)

@@ -18,6 +18,7 @@ type RichMonitorJob struct {
 	Language                             any
 	LocalizedTitles, LocalizationLocales []string
 	DatePosted                           any
+	BaseSalary                           any
 	Metadata                             map[string]any
 	Extras                               map[string]any
 	EmploymentType, JobLocationType      any

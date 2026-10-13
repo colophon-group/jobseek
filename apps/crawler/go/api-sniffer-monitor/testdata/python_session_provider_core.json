@@ -1,0 +1,1554 @@
+{
+  "brass_boards": [
+    {
+      "source": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998",
+      "expected": [
+        "25416",
+        "5998"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "source": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerId=25416&siteId=5998",
+      "expected": [
+        "25416",
+        "5998"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "source": "https://example.com/jobs?partnerid=1&siteid=2",
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "source": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=bad&siteid=5998",
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "source": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=",
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "source": "http://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998",
+      "expected": [
+        "25416",
+        "5998"
+      ],
+      "error": false,
+      "snapshot_change": false
+    }
+  ],
+  "brass_jobs": [
+    {
+      "name": "rich",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "fallback-description",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": ""
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          },
+          {
+            "QuestionName": "formtext3",
+            "Value": "<p>Global description</p>"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<p>Global description</p>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "optional-description",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": null
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": null,
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "non-string-description",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": 1
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": null,
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "numeric-zero-description",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": 0
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          },
+          {
+            "QuestionName": "formtext3",
+            "Value": "Fallback"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "Fallback",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "no-title",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": ""
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "numeric-id",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": 3383626
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "bad-id",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "x"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=x"
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "empty-id",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": ""
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid="
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "unicode-space",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "A\u001cB C"
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "A B C",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "casefold-location",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Straße"
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "STRASSE"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": ""
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Straße"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "fallback-location",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": ""
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": null
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": ""
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          },
+          {
+            "QuestionName": "location",
+            "Value": "Geneva &amp; Zürich"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Geneva & Zürich"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "missing-location",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": ""
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": ""
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": ""
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": null,
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "invalid-date",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "not a date"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": null,
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "lowercase-date",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626",
+          "department": "Sales"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "blank-department",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": " "
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": {
+        "url": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=3383626",
+        "title": "Engineer & Support",
+        "description": "<strong>Build</strong><ul><li>Help</li></ul>",
+        "locations": [
+          "Evansville, IN - Indiana, US"
+        ],
+        "date_posted": "2026-08-12",
+        "metadata": {
+          "provider": "brassring",
+          "requisition_id": "3383626"
+        }
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "nonobject",
+      "row": [],
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "wrong-link-id",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998&jobid=other"
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "foreign-tenant",
+      "row": {
+        "Questions": [
+          {
+            "QuestionName": "reqid",
+            "Value": "3383626"
+          },
+          {
+            "QuestionName": "jobtitle",
+            "Value": "  Engineer &amp; Support  "
+          },
+          {
+            "QuestionName": "jobdescription",
+            "Value": "<strong>Build</strong><ul><li>Help</li></ul>"
+          },
+          {
+            "QuestionName": "formtext8",
+            "Value": "Evansville "
+          },
+          {
+            "QuestionName": "formtext9",
+            "Value": "IN - Indiana"
+          },
+          {
+            "QuestionName": "formtext10",
+            "Value": "US"
+          },
+          {
+            "QuestionName": "lastupdated",
+            "Value": "12-Aug-2026"
+          },
+          {
+            "QuestionName": "department",
+            "Value": "Sales"
+          }
+        ],
+        "Link": "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=3&PageType=JobDetails&jobid=3383626"
+      },
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    }
+  ],
+  "brass_details": [
+    {
+      "name": "location",
+      "body": "<input id=\"preLoadJSON\" value=\"{&quot;JobId&quot;: &quot;3383626&quot;, &quot;Jobdetails&quot;: {&quot;JobDetailQuestions&quot;: [{&quot;VerityZone&quot;: &quot;location&quot;, &quot;AnswerValue&quot;: &quot;Plant &amp; Z\\u00fcrich&quot;}]}}\">",
+      "expected": [
+        "Plant & Zürich"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "components",
+      "body": "<input id=\"preLoadJSON\" value=\"{&quot;JobId&quot;: 3383626, &quot;Jobdetails&quot;: {&quot;JobDetailQuestions&quot;: [{&quot;VerityZone&quot;: &quot;FORMTEXT8&quot;, &quot;AnswerValue&quot;: &quot;Stra\\u00dfe&quot;}, {&quot;VerityZone&quot;: &quot;formtext9&quot;, &quot;AnswerValue&quot;: &quot;STRASSE&quot;}, {&quot;VerityZone&quot;: &quot;formtext10&quot;, &quot;AnswerValue&quot;: &quot;DE&quot;}]}}\">",
+      "expected": [
+        "Straße, DE"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "foreign-id",
+      "body": "<input id=\"preLoadJSON\" value=\"{&quot;JobId&quot;: &quot;foreign&quot;, &quot;Jobdetails&quot;: {&quot;JobDetailQuestions&quot;: []}}\">",
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "missing-questions",
+      "body": "<input id=\"preLoadJSON\" value=\"{&quot;JobId&quot;: &quot;3383626&quot;}\">",
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "missing-location",
+      "body": "<input id=\"preLoadJSON\" value=\"{&quot;JobId&quot;: &quot;3383626&quot;, &quot;Jobdetails&quot;: {&quot;JobDetailQuestions&quot;: []}}\">",
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    }
+  ],
+  "brass_pages": [
+    {
+      "payload": {
+        "JobsCount": 0
+      },
+      "expected": [
+        0,
+        []
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": 0,
+        "Jobs": {
+          "Job": []
+        }
+      },
+      "expected": [
+        0,
+        []
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": 1,
+        "Jobs": {
+          "Job": [
+            {}
+          ]
+        }
+      },
+      "expected": [
+        1,
+        [
+          {}
+        ]
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": true
+      },
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": 1.0
+      },
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": -1
+      },
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": "1"
+      },
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": {
+        "JobsCount": 1,
+        "Jobs": {
+          "Job": null
+        }
+      },
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": [],
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "payload": null,
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    }
+  ],
+  "njoyn_urls": [
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": true
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=jobdetails&Jobid=J1&BRID=1&lang=1",
+      "expected": true
+    },
+    {
+      "source": "http://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://user@cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com:444/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=22002&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&CLID=22002&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=&BRID=1&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=&lang=1",
+      "expected": false
+    },
+    {
+      "source": "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobListing",
+      "expected": false
+    }
+  ],
+  "njoyn_snapshots": [
+    {
+      "name": "first",
+      "text": "Search Results (3,071) Page 1 of 62",
+      "pageNumber": "1",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobListing"
+      ],
+      "expected": {
+        "urls": [
+          "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+          "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1"
+        ],
+        "total": 3071,
+        "page_number": 1,
+        "page_count": 62
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "empty",
+      "text": "Search Results (0) Page 1 of 1",
+      "pageNumber": "1",
+      "links": [],
+      "expected": {
+        "urls": [],
+        "total": 0,
+        "page_number": 1,
+        "page_count": 1
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "duplicate-link",
+      "text": "Search Results (1) Page 1 of 1",
+      "pageNumber": "1",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+      ],
+      "expected": {
+        "urls": [
+          "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+        ],
+        "total": 1,
+        "page_number": 1,
+        "page_count": 1
+      },
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "missing-count",
+      "text": "Current opportunities Page 1 of 1",
+      "pageNumber": "1",
+      "links": [],
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "missing-pages",
+      "text": "Search Results (1)",
+      "pageNumber": "1",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "numeric-page-missing",
+      "text": "Search Results (1) Page 1 of 1",
+      "pageNumber": "",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "page-mismatch",
+      "text": "Search Results (1) Page 2 of 2",
+      "pageNumber": "1",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "over-cap",
+      "text": "Search Results (50,001) Page 1 of 1001",
+      "pageNumber": "1",
+      "links": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1"
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    }
+  ],
+  "njoyn_shapes": [
+    {
+      "name": "full",
+      "total": 5,
+      "page_number": 1,
+      "page_count": 3,
+      "count": 2,
+      "size": 2,
+      "limit": 200,
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "tail",
+      "total": 5,
+      "page_number": 3,
+      "page_count": 3,
+      "count": 1,
+      "size": 2,
+      "limit": 200,
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "bad-tail",
+      "total": 5,
+      "page_number": 3,
+      "page_count": 3,
+      "count": 2,
+      "size": 2,
+      "limit": 200,
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "empty",
+      "total": 0,
+      "page_number": 1,
+      "page_count": 1,
+      "count": 0,
+      "size": 0,
+      "limit": 200,
+      "expected": null,
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "false-empty",
+      "total": 0,
+      "page_number": 1,
+      "page_count": 1,
+      "count": 1,
+      "size": 1,
+      "limit": 200,
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "cap",
+      "total": 5,
+      "page_number": 1,
+      "page_count": 3,
+      "count": 2,
+      "size": 2,
+      "limit": 2,
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "no-links",
+      "total": 5,
+      "page_number": 1,
+      "page_count": 3,
+      "count": 0,
+      "size": 0,
+      "limit": 200,
+      "expected": null,
+      "error": true,
+      "snapshot_change": false
+    },
+    {
+      "name": "bad-pages",
+      "total": 5,
+      "page_number": 1,
+      "page_count": 2,
+      "count": 2,
+      "size": 2,
+      "limit": 200,
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    }
+  ],
+  "njoyn_reconcile": [
+    {
+      "name": "exact",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "first_totals": [
+        3
+      ],
+      "second_totals": [
+        3
+      ],
+      "expected": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "head-churn",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J4&BRID=4&lang=1"
+      ],
+      "first_totals": [
+        3
+      ],
+      "second_totals": [
+        3
+      ],
+      "expected": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J4&BRID=4&lang=1"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "one-growth",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J4&BRID=4&lang=1"
+      ],
+      "first_totals": [
+        3
+      ],
+      "second_totals": [
+        4
+      ],
+      "expected": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J4&BRID=4&lang=1"
+      ],
+      "error": false,
+      "snapshot_change": false
+    },
+    {
+      "name": "too-much-churn",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J4&BRID=4&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J5&BRID=5&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J6&BRID=6&lang=1"
+      ],
+      "first_totals": [
+        3
+      ],
+      "second_totals": [
+        3
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "total-drift",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J3&BRID=3&lang=1"
+      ],
+      "first_totals": [
+        3
+      ],
+      "second_totals": [
+        6
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "inventory-gap",
+      "first_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1"
+      ],
+      "second_urls": [
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J1&BRID=1&lang=1",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=J2&BRID=2&lang=1"
+      ],
+      "first_totals": [
+        4
+      ],
+      "second_totals": [
+        4
+      ],
+      "expected": null,
+      "error": true,
+      "snapshot_change": true
+    },
+    {
+      "name": "empty",
+      "first_urls": [],
+      "second_urls": [],
+      "first_totals": [
+        0
+      ],
+      "second_totals": [
+        0
+      ],
+      "expected": [],
+      "error": false,
+      "snapshot_change": false
+    }
+  ],
+  "normalizations": {
+    "<strong>Build</strong><ul><li>Help</li></ul>": "<strong>Build</strong><ul><li>Help</li></ul>",
+    "<p>Global description</p>": "<p>Global description</p>",
+    "": null,
+    "Fallback": "Fallback"
+  }
+}

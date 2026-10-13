@@ -12,6 +12,17 @@ func TestRequestAndResponseBindInventoryToOneCleanedReservation(t *testing.T) {
 	if !r.Valid() || strings.Contains(fmt.Sprintf("%+v %#v", r, r), "private-fixture") {
 		t.Fatal("request bounds/privacy invalid")
 	}
+	for _, provider := range []string{"darwinbox", "bytedance", "brassring", "njoyn"} {
+		r.Provider = provider
+		if !r.Valid() {
+			t.Fatal("fixed provider protocol rejected", provider)
+		}
+	}
+	r.Provider = "arbitrary"
+	if r.Valid() {
+		t.Fatal("arbitrary provider protocol accepted")
+	}
+	r.Provider = ""
 	for _, outcome := range []string{"success", "publisher_reserved", "invalid_config", "failed"} {
 		response := Response{Protocol: Protocol, RequestID: r.RequestID, ConfigFingerprint: r.ConfigFingerprint, Outcome: outcome}
 		if outcome == "success" {

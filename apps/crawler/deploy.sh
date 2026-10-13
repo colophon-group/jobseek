@@ -2064,22 +2064,23 @@ docker compose up -d redis
 # ── Quiesce every local-Postgres writer before schema cutover ──────
 # Migrations may introduce a database/runtime protocol (for example the
 # shared-writer/oldest-writer-floor CDC boundary). Stop both sides before
-# Alembic so no old process can write or advance a cursor in the interval
+# schema migration so no old process can write or advance a cursor in the interval
 # between the schema change and the new containers starting. `--timeout 60`
 # matches the app's 30s bounded drain with headroom before Docker sends
 # SIGKILL. Redis and Alloy remain available throughout.
 docker compose stop --timeout 30 lightpanda-claimant
 docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
 
-# ── Run Alembic migrations on local Postgres ─────────────────────────
+# ── Run native migrations on local Postgres ─────────────────────────
 docker run --rm \
+  --entrypoint /usr/local/bin/go-typesense-exporter \
   -e LOCAL_DATABASE_URL \
   -e CRAWLER_DB_ROLE=deploy-migrate \
   --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-migrate \
   "$CRAWLER_IMAGE_REF" \
-  uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+  --migrate-local
 
 # Revision 0022 changes durable Umantis identity before Redis is repaired.
 # From this point, every rollback must restore the previous CSV config and run

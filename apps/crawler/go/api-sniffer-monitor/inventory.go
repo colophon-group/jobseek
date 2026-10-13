@@ -23,6 +23,7 @@ type Job struct {
 	EmploymentType  any            `json:"employment_type"`
 	JobLocationType any            `json:"job_location_type"`
 	DatePosted      any            `json:"date_posted"`
+	BaseSalary      any            `json:"base_salary,omitempty"`
 	Locations       []string       `json:"locations"`
 	Metadata        map[string]any `json:"metadata"`
 	Extras          map[string]any `json:"extras"`
@@ -689,7 +690,10 @@ func project(d *Document, row map[string]any, o Options, join JoinURL) (Job, boo
 			job.Extras[target] = value
 		case "valid_through":
 			job.Extras[target] = value
-		case "base_salary": // Canonical rich writes derive salary from description, as Python does.
+		case "base_salary":
+			// Preserve discovery output; canonical salary columns retain the
+			// original description-derived rich-monitor policy.
+			job.BaseSalary = value
 		default:
 			job.Metadata[strings.TrimPrefix(target, "metadata.")] = value
 		}

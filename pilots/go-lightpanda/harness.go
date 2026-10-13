@@ -974,6 +974,11 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+		if task.APIReplay.nativeProvider == "brassring" {
+			apiCapture.fixedMatches = func(source, method string) bool {
+				return apisniffer.BrassRingAjaxMatches(task.APIReplay.boardURL, source, method)
+			}
+		}
 		defer apiCapture.erase()
 		chromedp.ListenTarget(targetCtx, apiCapture.observe)
 	}

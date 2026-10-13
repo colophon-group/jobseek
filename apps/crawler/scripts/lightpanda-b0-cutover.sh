@@ -295,163 +295,41 @@ extract_rollback_digest() {
   echo "$digest"
 }
 
-fsync_path() {
-  local kind=$1 path=$2
-  python3 - "$kind" "$path" <<'PY'
-import os
-import sys
+native_b0_host_tool() {
+  [[ -f "$DEPLOY_DIR/scripts/native-deploy-tools.sh" && ! -L "$DEPLOY_DIR/scripts/native-deploy-tools.sh" ]] || {
+    echo "ERROR: selected native B0 host tools are unavailable or unsafe" >&2
+    return 1
+  }
+  # shellcheck disable=SC1090
+  source "$DEPLOY_DIR/scripts/native-deploy-tools.sh"
+  initialize_native_deploy_tools "$DEPLOY_DIR/scripts" "$JOBSEEK_DEPLOY_REVISION" || return 1
+  env -i "$NATIVE_DEPLOY_TOOLS" "$@"
+}
 
-kind, path = sys.argv[1:]
-flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-if kind == "directory":
-    flags |= getattr(os, "O_DIRECTORY", 0)
-elif kind != "file":
-    raise SystemExit("invalid fsync path kind")
-descriptor = os.open(path, flags)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
-PY
+fsync_path() {
+  native_b0_host_tool b0-path-fsync "$1" "$2"
 }
 
 load_receipt_identity() {
-  python3 - "$RECEIPT" "$COHORT" "$LIGHTPANDA_B0_QUEUE_NAMESPACE" \
-    "$LIGHTPANDA_B0_SHARD_ID" "$CRAWLER_IMAGE_REF" "$JOBSEEK_DEPLOY_REVISION" <<'PY'
-import os
-import re
-import stat
-import sys
-
-path, cohort, namespace, shard_id, image_ref, revision = sys.argv[1:]
-
-def reject() -> None:
-    print("ERROR: B0 activation receipt identity is incomplete or unsafe", file=sys.stderr)
-    raise SystemExit(1)
-
-try:
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
-    try:
-        metadata = os.fstat(descriptor)
-        payload = os.read(descriptor, 4097)
-    finally:
-        os.close(descriptor)
-except OSError:
-    reject()
-if (
-    not stat.S_ISREG(metadata.st_mode)
-    or stat.S_IMODE(metadata.st_mode) != 0o600
-    or metadata.st_uid != os.geteuid()
-    or metadata.st_nlink != 1
-    or len(payload) > 4096
-):
-    reject()
-try:
-    text = payload.decode("ascii")
-except UnicodeDecodeError:
-    reject()
-if not text.endswith("\n") or "\r" in text or "\x00" in text:
-    reject()
-lines = text[:-1].split("\n")
-if any(line.count("=") != 1 for line in lines):
-    reject()
-pairs = [line.split("=", 1) for line in lines]
-values = dict(pairs)
-state = values.get("state")
-expected_keys = {
-    "schema", "state", "cohort", "namespace", "shard_id", "routing_epoch",
-    "plan_digest", "compose_digest", "crawler_image_ref", "deploy_revision",
-    "activated_at_epoch",
-}
-if state in {"rollback-pending", "rollback-cleared"}:
-    expected_keys.update({
-        "source_receipt_state", "source_receipt_sha256", "retirement_routing_epoch",
-    })
-if len(values) != len(pairs) or set(values) != expected_keys:
-    reject()
-epoch_text = values["routing_epoch"]
-if (
-    values["schema"] != "jobseek.lightpanda-b0-active/v1"
-    or state not in {"active", "pending", "rollback-pending", "rollback-cleared"}
-    or values["cohort"] != cohort
-    or values["namespace"] != namespace
-    or values["shard_id"] != shard_id
-    or values["crawler_image_ref"] != image_ref
-    or values["deploy_revision"] != revision
-    or re.fullmatch(r"[1-9][0-9]{0,12}", epoch_text) is None
-    or int(epoch_text) > 9_999_999_999_999
-    or re.fullmatch(r"[0-9a-f]{64}", values["plan_digest"]) is None
-    or re.fullmatch(r"[0-9a-f]{64}", values["compose_digest"]) is None
-    or re.fullmatch(r"[1-9][0-9]*", values["activated_at_epoch"]) is None
-):
-    reject()
-retirement = values.get("retirement_routing_epoch", "-")
-source_state = values.get("source_receipt_state", "-")
-source_sha = values.get("source_receipt_sha256", "-")
-if state in {"rollback-pending", "rollback-cleared"}:
-    retirement_valid = retirement == "unreserved" or (
-        re.fullmatch(r"[1-9][0-9]{0,12}", retirement) is not None
-        and int(retirement) <= 9_999_999_999_999
-        and int(retirement) > int(epoch_text)
-    )
-    if (
-        source_state not in {"active", "pending"}
-        or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
-        or not retirement_valid
-        or (state == "rollback-cleared" and retirement == "unreserved")
-    ):
-        reject()
-print(state, epoch_text, retirement, source_state, source_sha, values["plan_digest"], sep="\t")
-PY
+  native_b0_host_tool b0-receipt-identity "$RECEIPT" "$COHORT" \
+    "$LIGHTPANDA_B0_QUEUE_NAMESPACE" "$LIGHTPANDA_B0_SHARD_ID" \
+    "$CRAWLER_IMAGE_REF" "$JOBSEEK_DEPLOY_REVISION"
 }
 
 reserve_routing_epoch() {
   local output
-  output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps worker-1 \
-    uv run --no-sync lightpanda-b0-activation reserve-epoch)" || return 1
-  python3 - "$output" <<'PY'
-import json
-import sys
-
-try:
-    document = json.loads(sys.argv[1])
-except (IndexError, json.JSONDecodeError):
-    raise SystemExit("invalid routing epoch allocator reply")
-if set(document) != {"routing_epoch"}:
-    raise SystemExit("invalid routing epoch allocator reply")
-epoch = document["routing_epoch"]
-if isinstance(epoch, bool) or not isinstance(epoch, int) or not 1 <= epoch <= 9_999_999_999_999:
-    raise SystemExit("invalid routing epoch allocator reply")
-print(epoch)
-PY
+  output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps \
+    --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-epoch reserve-epoch)" || return 1
+  native_b0_host_tool b0-epoch-reserve-reply "$output"
 }
 
 attest_routing_epoch() {
   local output
   output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps \
-    "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation attest-epoch)" || return 1
-  python3 - "$output" "$LIGHTPANDA_B0_ROUTING_EPOCH" <<'PY'
-import json
-import sys
-
-try:
-    document = json.loads(sys.argv[1])
-    expected = int(sys.argv[2])
-except (IndexError, json.JSONDecodeError, ValueError):
-    raise SystemExit("invalid routing epoch attestation reply")
-if set(document) != {"routing_epoch", "current"}:
-    raise SystemExit("invalid routing epoch attestation reply")
-epoch = document["routing_epoch"]
-if (
-    isinstance(epoch, bool)
-    or not isinstance(epoch, int)
-    or epoch != expected
-    or document["current"] is not True
-):
-    raise SystemExit("invalid routing epoch attestation reply")
-PY
+    "${route_environment[@]}" --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-epoch attest-epoch)" || return 1
+  native_b0_host_tool b0-epoch-attest-reply "$output" "$LIGHTPANDA_B0_ROUTING_EPOCH"
 }
 
 write_receipt() {
@@ -525,125 +403,11 @@ attest_receipt() {
     echo "ERROR: current B0 Compose digest could not be computed" >&2
     return 1
   fi
-  attestation="$(python3 - \
+  attestation="$(native_b0_host_tool b0-receipt-attest \
     "$RECEIPT" "$COHORT" "$LIGHTPANDA_B0_QUEUE_NAMESPACE" \
     "$LIGHTPANDA_B0_SHARD_ID" "$LIGHTPANDA_B0_ROUTING_EPOCH" \
     "$CRAWLER_IMAGE_REF" "$JOBSEEK_DEPLOY_REVISION" "$compose_digest" \
-    "$expected_state" <<'PY'
-import hashlib
-import os
-import re
-import stat
-import sys
-
-path, cohort, namespace, shard_id, routing_epoch, image_ref, revision, compose_digest, state = (
-    sys.argv[1:]
-)
-expected_keys = {
-    "schema",
-    "state",
-    "cohort",
-    "namespace",
-    "shard_id",
-    "routing_epoch",
-    "plan_digest",
-    "compose_digest",
-    "crawler_image_ref",
-    "deploy_revision",
-    "activated_at_epoch",
-}
-if state in {"rollback-pending", "rollback-cleared"}:
-    expected_keys.update({
-        "source_receipt_state", "source_receipt_sha256", "retirement_routing_epoch",
-    })
-
-def reject() -> None:
-    print("ERROR: B0 activation receipt is incomplete, unsafe, or drifted", file=sys.stderr)
-    raise SystemExit(1)
-
-
-try:
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
-    try:
-        metadata = os.fstat(descriptor)
-        payload = os.read(descriptor, 4097)
-    finally:
-        os.close(descriptor)
-except OSError:
-    reject()
-if (
-    not stat.S_ISREG(metadata.st_mode)
-    or stat.S_IMODE(metadata.st_mode) != 0o600
-    or metadata.st_uid != os.geteuid()
-    or len(payload) > 4096
-):
-    reject()
-try:
-    text = payload.decode("ascii")
-except UnicodeDecodeError:
-    reject()
-if not text.endswith("\n") or "\r" in text or "\x00" in text:
-    reject()
-lines = text[:-1].split("\n")
-if len(lines) != len(expected_keys) or any(line.count("=") != 1 for line in lines):
-    reject()
-pairs = [line.split("=", 1) for line in lines]
-values = dict(pairs)
-if len(values) != len(pairs) or set(values) != expected_keys:
-    reject()
-expected_values = {
-    "schema": "jobseek.lightpanda-b0-active/v1",
-    "state": state,
-    "cohort": cohort,
-    "namespace": namespace,
-    "shard_id": shard_id,
-    "routing_epoch": routing_epoch,
-    "compose_digest": compose_digest,
-    "crawler_image_ref": image_ref,
-    "deploy_revision": revision,
-}
-if any(values[key] != value for key, value in expected_values.items()):
-    reject()
-if (
-    re.fullmatch(r"[0-9a-f]{64}", values["plan_digest"]) is None
-    or re.fullmatch(r"[0-9a-f]{64}", values["compose_digest"]) is None
-    or re.fullmatch(r"[1-9][0-9]*", values["activated_at_epoch"]) is None
-    or re.fullmatch(r"[1-9][0-9]{0,12}", values["routing_epoch"]) is None
-    or int(values["routing_epoch"]) > 9_999_999_999_999
-    or re.fullmatch(r"[0-9a-f]{40}", values["deploy_revision"]) is None
-    or re.fullmatch(
-        r"ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}",
-        values["crawler_image_ref"],
-    )
-    is None
-):
-    reject()
-retirement = values.get("retirement_routing_epoch", "-")
-source_state = values.get("source_receipt_state", "-")
-source_sha = values.get("source_receipt_sha256", "-")
-if state in {"rollback-pending", "rollback-cleared"}:
-    retirement_valid = retirement == "unreserved" or (
-        re.fullmatch(r"[1-9][0-9]{0,12}", retirement) is not None
-        and int(retirement) <= 9_999_999_999_999
-        and int(retirement) > int(values["routing_epoch"])
-    )
-    if (
-        source_state not in {"active", "pending"}
-        or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
-        or not retirement_valid
-        or (state == "rollback-cleared" and retirement == "unreserved")
-    ):
-        reject()
-print(
-    hashlib.sha256(payload).hexdigest(),
-    values["plan_digest"],
-    source_sha,
-    retirement,
-    source_state,
-    sep="\t",
-)
-PY
+    "$expected_state"
   )" || return 1
   IFS=$'\t' read -r ATTESTED_RECEIPT_SHA256 ATTESTED_PLAN_DIGEST ATTESTED_SOURCE_RECEIPT_SHA256 ATTESTED_RETIREMENT_ROUTING_EPOCH ATTESTED_SOURCE_RECEIPT_STATE <<<"$attestation"
   [[ "$ATTESTED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ &&

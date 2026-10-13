@@ -1,5 +1,134 @@
 # Go and Lightpanda migration delivery plan
 
+### Current deployed checkpoint — source1039, 2026-10-13
+
+[PR #10487](https://github.com/colophon-group/jobseek/pull/10487) is merged and
+source `a5ecb5e9da5057cf8b6348f6cb203628347b5fc7` (0.13.1039) is deployed.
+Original crawler workflow 38444899737 and renderer workflow 38445298587 both
+passed on attempt 1. Required CI and Crawler Deploy Gate passed on the reviewed
+head; all 16 ARM arms passed with exact effects and cleanup. Lightpanda 1.0.0
+remains the latest official stable release verified on October 13 and is pinned
+immutably. The delivered tree equals the qualified preview and reviewed tree.
+
+Supported retirement, B0 rollback and selector clearing completed the outgoing
+source1038 reversal. Independent cold306 verification retained 7,877 receipts.
+Source1039 B0 and ordinary activation then completed at epoch 307, after existing
+SQL leases expired naturally. The initial ordinary staging lock refusal made no
+ownership change; the unchanged wrapper succeeded on retry. No leases, receipts,
+selectors or mutation locks were edited outside their original supported paths.
+
+The full 7,885-board census reconciles 1,717,881 scheduled detail routes. Native
+ownership preserves all 7,808 previous monitors and 7,685 detail boards and adds
+Midea and Kroger: **7,810 monitor boards / 7,685 detail boards**, covering
+1,594,687 scheduled routes. The active plan is
+`6d92f8ac0379d2f95c09b50eeadca94021663b6b892173de4e3388952ba3af7e`,
+projection `4988faf9ce8f935a8e9edb7926ceb4dd74cd97cb`. At 19:20 UTC, independent
+checks prove all ten actors, eight healthy endpoints and matching SQL/Redis/host
+receipts. Seven monitor and 66 detail completions are natural scheduled work.
+At 19:41 UTC, 185 monitor and 1,598 detail receipts are completed. Both new
+monitors have successful natural native checks: Midea refreshed all 58 canonical
+postings; Kroger refreshed 2,143 current postings. Both have zero consecutive
+failures and zero empty-check counts, with the next canonical deadlines retained.
+Completed detail receipts include normal failure/backoff handling and are not a
+claim that every detail fetch succeeded.
+At 21:46 UTC, the independent pre-candidate observation again verifies all
+actors, endpoints and exact source/receipt identities. Natural completed receipts
+have reached 793 monitors and 5,558 details; Midea and Kroger remain successful.
+The freshness backlog is material: 6,717 native monitors are over one hour late,
+3,208 over six hours late and 38 over 24 hours late. The claim/settlement changes
+need production measurement after qualification; local query reduction alone
+does not establish a fleet freshness improvement.
+The deployed legacy foreign-relist correction uses the canonical posting owner
+for future queue publications; the existing King cached mismatch still needs
+supported reconciliation before detail readmission. Full fleet freshness and
+comparable production cost remain unproved. See the
+[portable active checkpoint](evidence/go-lightpanda-active1039-2026-10-13.json).
+
+The combined 0.13.1040 candidate now ports BrassRing rich session inventory and
+Njoyn form pagination through the existing renderer protocol and worker authority.
+The 73 original Python core cases, 12 physical pinned-release race fixtures,
+canonical PostgreSQL/Redis settlement and cold-retirement tests pass. Njoyn remains
+URL-only and conserves browser detail scheduling. The candidate also replaces the
+B0 reserve/attest database commands with the existing Go administration binary,
+using the original advisory barrier, local principal/startup guards and exact
+high-water reply. Real PostgreSQL and compiled CLI tests pass; the 98 B0 wrapper
+cases pass after the switch. The earlier host/claim component remains part of this
+same unmerged release candidate.
+
+The grouped candidate also moves Sage and McKinsey from browser controls to the
+existing sealed Go HTTP collector. Fresh original inventories contain 181 and
+611 jobs; all 792 native URLs and original fields match. McKinsey's configured
+salary field exposed a dropped discovery-envelope value. The shared Go API paths
+now preserve it and normalize string salaries through the existing ported salary
+parser. Canonical SQL salary continues to derive from descriptions, exactly as
+the original CPU/R2 path does. Published config routing, complete settlement,
+late failure/publisher-reservation prefix rejection and cold retirement pass.
+These two routes are candidates for fresh full-floor admission after release
+qualification; neither has production ownership yet.
+
+Forward deployment now calls `go-typesense-exporter --migrate-local` inside the
+existing writer quiescence and immutable maintenance-image contract. The native
+runner freezes all 40 actual Alembic revisions and retains their emitted
+transaction/autocommit boundaries, bounded phantom repair and conditional
+concurrent-index replacement. A compiled CLI creates the same 474 schema catalog
+entries as actual Alembic. Unknown/multiple heads, transaction rollback and a
+failed concurrent-index operation followed by retry pass. CI verifies source
+identity, deterministic offline regeneration and real PostgreSQL parity. The
+Python generator remains useful offline; historical rollback consumers remain
+until their supported generations expire. See the
+[combined provider and schema checkpoint](evidence/go-grouped-api-http-and-native-schema-candidate-2026-10-13.json).
+
+Public qualification for the session families is still held. All four original
+BrassRing inventories are
+complete (48 + 128 + 541 + 309 = 1,026 jobs), but all four native public sessions
+fail after clicking search. The response timeout reproduces the earlier source1035
+subsequent-document/403/XHR-cancellation finding. The shared mouse sequence did
+not qualify this route and failed synthetic cases, so that experiment was reverted.
+Njoyn's original transport returns a typed origin challenge and its native direct
+candidate also fails; proxy/stealth/headful/persistent settings still refuse
+admission. **Neither session family adds production owners.** Continue the other
+API/RSS/inline/DOM groups while pursuing a bounded HTTP/API route or demonstrated
+engine correction for these two families. Static profile support cannot qualify
+them. See the [combined component checkpoint](evidence/go-session-provider-and-b0-epoch-component-2026-10-13.json).
+
+Continue from active307, keeping it serving during implementation:
+
+1. Finish the next grouped runtime and provider candidate. The remaining ordinary
+   monitor frontier is 72 boards across DOM (49), API (13), RSS (3), inline (2),
+   BrassRing (4) and Njoyn (1). Combine shared contracts and several types in each
+   release, with original inventory/field comparisons and failure/empty cases.
+   Static profile support alone grants no admission. Keep Alaska/Lifepoint
+   mismatched inventories and unverified empties/timeouts outside new ownership.
+2. Resolve measured lease-barrier contention without weakening per-task receipt,
+   source, epoch or retirement ordering. Local prototypes reduce 64 detail
+   candidate observations from 65 SQL queries to one and let completed receipt
+   settlement share the global reaper barrier while locking its exact canonical
+   rows and receipt. Real PostgreSQL/Redis race, expiry, reaping and retirement
+   checks pass. The same local component replaces all five embedded B0 host
+   Python helpers with selected source/digest-verified Go deployment tools.
+   Native reference parity/race tests, 98 host-wrapper cases and 173 related
+   deployment/activation/ordinary-cutover cases pass. These changes are unmerged
+   and have no production authority. Combine this component with further
+   provider/consumer work in the next multi-type migration release.
+3. Use the existing native scheduler rebuild contract for bounded canonical cache
+   reconciliation, preserving quiescence and queue/lease authority; prove King
+   route identity before readmission. Port remaining B0 activation/rollback
+   administration and retained rollback sync path to Go. Deliver the now-ported
+   native schema consumer through the same combined release. Retain useful
+   isolated offline Python tooling.
+4. Refresh complete canonical/cache/actual-route admission for the combined
+   candidate, preserving the full active floor. Deliver through required checks,
+   immutable original workflows and supported cold cutover; verify natural new
+   routes, canonical content, exact deadlines and queue conservation.
+5. Prove complete monitor/detail freshness and comparable attributable resources
+   and cost, exercise the supported complete reversal, and retain its rollback
+   window before removing production Python, Playwright and Chromium assets.
+   The full delivery goal remains active; this checkpoint is not completion.
+
+The source1038 checkpoint below is completed history and does not supersede
+active307.
+
+
 ### Current deployed checkpoint — source1038, 2026-10-13
 
 Production runs source1038 (`e50f24a1ac342d7232e1137e4a0e0b3e7b06789d`),
