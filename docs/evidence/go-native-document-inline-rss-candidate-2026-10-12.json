@@ -36,5 +36,25 @@
     "Skechers": "originalzeroprooffailure",
     "MediaMarkt": "original5jobs verified; interactiveLightpanda/parser/canonical path not yetported"
   },
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "arm_attempt1_failure": {
+    "run": 38300130824,
+    "arms_retained": 15,
+    "completed_pairs": 7,
+    "failed_arm": "c4-p5 candidate transfer",
+    "failure": "Valid legacy fractional score serialized by Redis as scientific notation; decimal_seconds rejected legacy_state_corrupt before processing",
+    "no_rollout_authority": true
+  },
+  "fractional_schedule_repair": {
+    "observed_at_utc": "2026-10-13T08:27:12.726023+00:00",
+    "before": "1000 real Redis microsecond epoch cases reproduce2 rejected valid schedules",
+    "after": "All1000 pass; five exact activation and supported rollback score cases pass; schedule-kind and claimant-transition regressions pass",
+    "lua_sha256": "81327c30281b99f1e3495bed6be8b79cb0a01f7af70987bde6ffe6cedd19557f",
+    "renew_exact_head_qualification": true,
+    "evidence_sha256": {
+      "jobseek-native1037-fractional-activation3.log": "998e184e0499986b7d415ee51b0b2ffc85d72391a1f69a11c286a157d224e612",
+      "jobseek-native1037-fractional-rollback4.log": "6f8d289ec1c554ddd17d7b6d6fa35a911946834ae61029c1fba6d8551d7323d9",
+      "jobseek-native1037-fractional-stress-after2.log": "415e9f7ebd7d8a4013c672c36fbb4337b787297db61c9066a56805d73e5e89a9"
+    }
+  }
 }

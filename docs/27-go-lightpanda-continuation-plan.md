@@ -1,5 +1,18 @@
 # Go and Lightpanda migration delivery plan
 
+### Current candidate correction — source1037, 2026-10-13
+
+PR10456's old head1d18 passed all CI/image/Linux/Gate checks, but original ARM
+38300130824 failed its last candidate transfer. Real Redis reproduces the exact
+failure for valid fractional epoch scores returned in scientific notation:2of1000
+microsecond cases are rejected as legacy_state_corrupt. The numeric parser now
+accepts bounded positive exponent notation while preserving the exact rollback
+score. All1000 cases and five supported activation/rollback precision cases pass;
+schedule-kind and claimant-transition guards remain intact. Lua digest consumers
+are updated together. Renew all exact-head CI/Linux/image/ARM qualification before
+supported outgoing retirement, full rollout and fresh7805/7685-preserving admission.
+Source1036 remains serving; incoming additions still UKPDF+Daiichiinline plusRSSrepair.
+
 ### Latest delivered checkpoint — source0.13.1036, 2026-10-12
 
 PR #10454 merged as `6670f75a2dcf71fcbd7c712175ef2aa0edd84177`. The original full crawler workflow38290807476 succeeded on its supported retry after receipt-bound recovery; renderer workflow38293226656 succeeded on its original attempt. The source1035 retirement failure was an omitted historical Accenture/Candidatus profile. Real before/after PostgreSQL/Redis regressions proved the repair; the original immutable compatibility-admin prepull and unchanged wrapper completed retirement, B0 reversal, locked selector clearing and independent cold302 verification without editing leases or receipts.
