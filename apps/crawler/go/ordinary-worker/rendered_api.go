@@ -91,7 +91,7 @@ func parseAPIReplayResponse(profile queue.GreenhouseMonitorProfile, response rep
 			}
 		}
 		if queue.NativeBrowserProfile(profile.Profile) && profile.Profile != "njoyn.session-urls/v1" {
-			value, err := secondaryRichJob(map[string]any{"url": job.URL, "title": job.Title, "description": job.Description, "locations": job.Locations, "metadata": job.Metadata, "extras": job.Extras, "date_posted": job.DatePosted, "employment_type": job.EmploymentType, "job_location_type": job.JobLocationType})
+			value, err := secondaryRichJob(map[string]any{"url": job.URL, "title": job.Title, "description": job.Description, "locations": job.Locations, "metadata": job.Metadata, "extras": job.Extras, "date_posted": job.DatePosted, "base_salary": job.BaseSalary, "employment_type": job.EmploymentType, "job_location_type": job.JobLocationType})
 			if err != nil {
 				return RichDiscovery{}, err
 			}
@@ -106,7 +106,11 @@ func parseAPIReplayResponse(profile queue.GreenhouseMonitorProfile, response rep
 		if err != nil {
 			return RichDiscovery{}, err
 		}
-		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, URLOnly: inventory.URLOnly, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
+		salary, err := normalizeDiscoveredSalary(job.BaseSalary)
+		if err != nil {
+			return RichDiscovery{}, err
+		}
+		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, URLOnly: inventory.URLOnly, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, BaseSalary: salary, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
 	}
 	if response.Outcome == "partial" {
 		if len(result.Jobs) == 0 || result.Truncated {

@@ -31,6 +31,13 @@ postings; Kroger refreshed 2,143 current postings. Both have zero consecutive
 failures and zero empty-check counts, with the next canonical deadlines retained.
 Completed detail receipts include normal failure/backoff handling and are not a
 claim that every detail fetch succeeded.
+At 21:46 UTC, the independent pre-candidate observation again verifies all
+actors, endpoints and exact source/receipt identities. Natural completed receipts
+have reached 793 monitors and 5,558 details; Midea and Kroger remain successful.
+The freshness backlog is material: 6,717 native monitors are over one hour late,
+3,208 over six hours late and 38 over 24 hours late. The claim/settlement changes
+need production measurement after qualification; local query reduction alone
+does not establish a fleet freshness improvement.
 The deployed legacy foreign-relist correction uses the canonical posting owner
 for future queue publications; the existing King cached mismatch still needs
 supported reconciliation before detail readmission. Full fleet freshness and
@@ -48,14 +55,38 @@ high-water reply. Real PostgreSQL and compiled CLI tests pass; the 98 B0 wrapper
 cases pass after the switch. The earlier host/claim component remains part of this
 same unmerged release candidate.
 
-Public qualification is still held. All four original BrassRing inventories are
+The grouped candidate also moves Sage and McKinsey from browser controls to the
+existing sealed Go HTTP collector. Fresh original inventories contain 181 and
+611 jobs; all 792 native URLs and original fields match. McKinsey's configured
+salary field exposed a dropped discovery-envelope value. The shared Go API paths
+now preserve it and normalize string salaries through the existing ported salary
+parser. Canonical SQL salary continues to derive from descriptions, exactly as
+the original CPU/R2 path does. Published config routing, complete settlement,
+late failure/publisher-reservation prefix rejection and cold retirement pass.
+These two routes are candidates for fresh full-floor admission after release
+qualification; neither has production ownership yet.
+
+Forward deployment now calls `go-typesense-exporter --migrate-local` inside the
+existing writer quiescence and immutable maintenance-image contract. The native
+runner freezes all 40 actual Alembic revisions and retains their emitted
+transaction/autocommit boundaries, bounded phantom repair and conditional
+concurrent-index replacement. A compiled CLI creates the same 474 schema catalog
+entries as actual Alembic. Unknown/multiple heads, transaction rollback and a
+failed concurrent-index operation followed by retry pass. CI verifies source
+identity, deterministic offline regeneration and real PostgreSQL parity. The
+Python generator remains useful offline; historical rollback consumers remain
+until their supported generations expire. See the
+[combined provider and schema checkpoint](evidence/go-grouped-api-http-and-native-schema-candidate-2026-10-13.json).
+
+Public qualification for the session families is still held. All four original
+BrassRing inventories are
 complete (48 + 128 + 541 + 309 = 1,026 jobs), but all four native public sessions
 fail after clicking search. The response timeout reproduces the earlier source1035
 subsequent-document/403/XHR-cancellation finding. The shared mouse sequence did
 not qualify this route and failed synthetic cases, so that experiment was reverted.
 Njoyn's original transport returns a typed origin challenge and its native direct
 candidate also fails; proxy/stealth/headful/persistent settings still refuse
-admission. **This candidate adds zero production owners.** Continue the other
+admission. **Neither session family adds production owners.** Continue the other
 API/RSS/inline/DOM groups while pursuing a bounded HTTP/API route or demonstrated
 engine correction for these two families. Static profile support cannot qualify
 them. See the [combined component checkpoint](evidence/go-session-provider-and-b0-epoch-component-2026-10-13.json).
@@ -82,8 +113,9 @@ Continue from active307, keeping it serving during implementation:
 3. Use the existing native scheduler rebuild contract for bounded canonical cache
    reconciliation, preserving quiescence and queue/lease authority; prove King
    route identity before readmission. Port remaining B0 activation/rollback
-   administration, Alembic deployment consumer and retained
-   rollback sync path to Go. Retain useful isolated offline Python tooling.
+   administration and retained rollback sync path to Go. Deliver the now-ported
+   native schema consumer through the same combined release. Retain useful
+   isolated offline Python tooling.
 4. Refresh complete canonical/cache/actual-route admission for the combined
    candidate, preserving the full active floor. Deliver through required checks,
    immutable original workflows and supported cold cutover; verify natural new

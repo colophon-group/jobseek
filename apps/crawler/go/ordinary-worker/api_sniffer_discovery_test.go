@@ -20,6 +20,21 @@ func configuredAPIFixture(metadata string) (queue.GreenhouseMonitorProfile, map[
 	return queue.GreenhouseMonitorProfile{Provider: "api_sniffer", Profile: "api_sniffer.http-items/v1", Endpoint: o.Endpoint}, c
 }
 
+func TestConfiguredAPIPreservesAndNormalizesDiscoveredSalary(t *testing.T) {
+	p, c := configuredAPIFixture(`{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title","base_salary":["=Salary range: ","salary"]}}`)
+	client := &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"jobs":[{"url":"/jobs/1","title":"Engineer","salary":"$192,000 - $192,000"}]}`)), Request: r}, nil
+	})}
+	result, e := discoverAPISnifferInventory(context.Background(), client, p, c)
+	if e != nil || len(result.Jobs) != 1 {
+		t.Fatal(e)
+	}
+	salary, ok := result.Jobs[0].BaseSalary.(map[string]any)
+	if !ok || salary["currency"] != "USD" || salary["min"] != float64(192000) || salary["max"] != float64(192000) || salary["unit"] != "year" {
+		t.Fatal("configured salary lost before canonical preparation")
+	}
+}
+
 func TestConfiguredAPIUsesDeclaredPOSTBodyHeadersAndOperationCookies(t *testing.T) {
 	p, c := configuredAPIFixture(`{"api_url":"https://example.com/api","method":"POST","post_data":{"search":{"offset":0}},"json_path":"jobs","url_field":"url","fields":{"title":"name","description":"body","skills":"skills"},"pagination":{"param_name":"search.offset","location":"body","style":"offset","start_value":0,"increment":1,"max_pages":2},"request_headers":{"X-Required":"fixture"}}`)
 	calls := 0

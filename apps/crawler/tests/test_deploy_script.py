@@ -312,7 +312,14 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     script = DEPLOY_SH.read_text()
 
     quiesce = script.index("docker compose stop --timeout 60")
-    migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
+    migrate = script.index("  --migrate-local\n")
+    migration_command = script[script.rfind("docker run --rm", 0, migrate) : migrate]
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter" in migration_command
+    assert "-e LOCAL_DATABASE_URL" in migration_command
+    assert "-e CRAWLER_DB_ROLE=deploy-migrate" in migration_command
+    assert '"${MAINTENANCE_PROVENANCE_LABELS[@]}"' in migration_command
+    assert '"$CRAWLER_IMAGE_REF"' in migration_command
+    assert "alembic -c src/migrations/alembic.ini upgrade head" not in script
     migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
     typesense_schema = script.index("go-typesense-exporter --setup-schemas")
     sync = script.index("go-typesense-exporter --sync-registry", typesense_schema)
