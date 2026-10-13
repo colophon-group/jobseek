@@ -13,6 +13,10 @@ import (
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
+type eightfoldPolicyRoute struct{ api.EightfoldDetailRoute }
+
+func (eightfoldPolicyRoute) PublisherPolicyOnStatus() bool { return true }
+
 func fetchEightfoldDetail(ctx context.Context, client *http.Client, source string, config map[string]any) (map[string]any, *policy.Reservation, error) {
 	if !jsonld.ValidPublicEndpoint(source) || client == nil {
 		return nil, nil, queue.ErrConfiguration
@@ -21,8 +25,9 @@ func fetchEightfoldDetail(ctx context.Context, client *http.Client, source strin
 	if routeErr != nil {
 		route = api.EightfoldDetailRoute{SourceURL: source}
 	}
+	resources := eightfoldPolicyRoute{route}
 	content := map[string]any{"title": nil, "description": nil, "locations": nil, "employment_type": nil, "job_location_type": nil, "date_posted": nil, "base_salary": nil, "language": nil, "extras": nil, "metadata": nil}
-	raw, _, e := fetchProviderResource(ctx, client, route, source, nil, nil, 64<<20)
+	raw, _, e := fetchProviderResource(ctx, client, resources, source, nil, nil, 64<<20)
 	if ctx.Err() != nil {
 		return nil, nil, ctx.Err()
 	}
@@ -47,7 +52,7 @@ func fetchEightfoldDetail(ctx context.Context, client *http.Client, source strin
 		// Only the HTML request opts into redirects in the reference scraper.
 		apiClient := *client
 		apiClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-		raw, _, e = fetchProviderResource(ctx, &apiClient, route, route.APIURL, nil, http.Header{"Accept": []string{"application/json"}}, 64<<20)
+		raw, _, e = fetchProviderResource(ctx, &apiClient, resources, route.APIURL, nil, http.Header{"Accept": []string{"application/json"}}, 64<<20)
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()
 		}

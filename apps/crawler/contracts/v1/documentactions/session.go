@@ -14,6 +14,7 @@ import (
 
 const Protocol = "jobseek.lightpanda.document-actions/v1"
 const RequestLimit = 128 << 10
+
 // The JSON envelope base64-encodes the typed, chunked two-million-byte HTML.
 const ResponseLimit = 3 << 20
 const ResultLimit = 2 << 20
@@ -177,28 +178,40 @@ func Parse(raw any) ([]Action, error) {
 }
 
 type Request struct {
-	Protocol          string   `json:"protocol"`
-	RequestID         string   `json:"request_id"`
-	ConfigFingerprint string   `json:"config_fingerprint"`
-	Input             []byte   `json:"input"`
-	Actions           []Action `json:"actions"`
+	Protocol          string       `json:"protocol"`
+	RequestID         string       `json:"request_id"`
+	ConfigFingerprint string       `json:"config_fingerprint"`
+	Input             []byte       `json:"input"`
+	Actions           []Action     `json:"actions"`
+	InlineCards       *InlineCards `json:"inline_cards,omitempty"`
 }
 
 func (Request) String() string   { return "document action request" }
 func (Request) GoString() string { return "document action request" }
 func (r Request) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && Valid(r.Actions)
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && (Valid(r.Actions) || len(r.Actions) == 0 && r.InlineCards != nil) && (r.InlineCards == nil || r.InlineCards.Valid())
 }
 
 type Response struct {
-	Protocol          string `json:"protocol"`
-	RequestID         string `json:"request_id"`
-	ConfigFingerprint string `json:"config_fingerprint"`
-	Result            []byte `json:"result"`
+	Protocol          string   `json:"protocol"`
+	RequestID         string   `json:"request_id"`
+	ConfigFingerprint string   `json:"config_fingerprint"`
+	Result            []byte   `json:"result"`
+	InlineIdentities  []string `json:"inline_identities,omitempty"`
 }
 
 func (r Response) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Result) > 0 && len(r.Result) <= ResultLimit
+	if r.Protocol != Protocol || !digest.MatchString(r.RequestID) || !digest.MatchString(r.ConfigFingerprint) || len(r.Result) == 0 || len(r.Result) > ResultLimit || len(r.InlineIdentities) > 500 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, identity := range r.InlineIdentities {
+		if identity == "" || len([]rune(identity)) > 512 || seen[identity] {
+			return false
+		}
+		seen[identity] = true
+	}
+	return true
 }
 func Decode(body []byte, limit int, out any) error { return replay.Decode(body, limit, out) }
 

@@ -44,6 +44,9 @@ func (r *Reservation) DocumentActions(ctx context.Context, request replay.Reques
 	if err != nil || replay.Decode(body, replay.ResponseLimit, &response) != nil || !response.Valid() || response.RequestID != request.RequestID || response.ConfigFingerprint != request.ConfigFingerprint {
 		return replay.Response{}, replay.ErrActions
 	}
+	if request.InlineCards == nil && len(response.InlineIdentities) != 0 || request.InlineCards != nil && len(response.InlineIdentities) > int(request.InlineCards.Maximum) {
+		return replay.Response{}, replay.ErrActions
+	}
 	var trailing [1]byte
 	if n, err := r.connection.Read(trailing[:]); n != 0 || err != io.EOF {
 		return replay.Response{}, replay.ErrActions
@@ -52,5 +55,9 @@ func (r *Reservation) DocumentActions(ctx context.Context, request replay.Reques
 }
 
 func documentActionBudget(request replay.Request) time.Duration {
-	return 260*time.Second + replay.Budget(request.Actions)
+	budget := 260*time.Second + replay.Budget(request.Actions)
+	if request.InlineCards != nil {
+		budget += time.Duration(request.InlineCards.TimeoutMS) * time.Millisecond
+	}
+	return budget
 }

@@ -33,6 +33,32 @@ After source1037's complete rollout, fresh full routes must preserve7805/7685 an
 admit the two qualified monitors together. Current selected release remains
 source1036; it is contained, not serving. Full migration is incomplete.
 
+### Following grouped candidate — source1038, 2026-10-13
+
+The following batch combines MediaMarkt's expanded inline monitor with Eightfold
+scraping of retained Workday URLs. The actual Go renderer, pinned Lightpanda1.0.0
+at128MiB, returns all five MediaMarkt identities after cleanup. Every original URL,
+title, normalized description and location matches. Salesforce patches main-world
+selectors; the controller uses an isolated world without modifying publisher code.
+A validated session budget covers navigation, original actions and bounded expansion.
+Five real PostgreSQL/Redis cases prove complete persistence and refuse missing or
+duplicate identities, truncated results and publisher reservations. Six real engine
+fixtures prove reload identity drift, duplicates, missing details and policy stopping.
+
+CACI's1856 captured Workday routes retain the configured Eightfold JSON-LD fast
+path, with no Workday API substitution or configuration changes. Original replay and
+verified-TLS live comparisons match three original results: two complete jobs and
+one empty result. Nine real canonical cases preserve success, empty-result failure,
+reservation and transient deadlines/leases. Publisher reservations on404/429/503
+stop both original HTML and any fallback API request. Final exact-source CI, Linux,
+ARM, deployed full route capture/admission and natural fleet effects remain required.
+The preceding PR10456 now includes the fixed administrative snapshot budget at
+head64ddaf0b0, with renewed exact-source qualification. Source1036 remains selected
+at303 with7805/7685 ownership and its retiring receipt; every crawler writer is
+contained by the original wrapper until supported recovery completes. Full fleet
+freshness remains unproved.
+See the [grouped following proof](evidence/go-native-expanded-inline-following-2026-10-12.json).
+
 ### Latest delivered checkpoint — source0.13.1036, 2026-10-12
 
 PR #10454 merged as `6670f75a2dcf71fcbd7c712175ef2aa0edd84177`. The original full crawler workflow38290807476 succeeded on its supported retry after receipt-bound recovery; renderer workflow38293226656 succeeded on its original attempt. The source1035 retirement failure was an omitted historical Accenture/Candidatus profile. Real before/after PostgreSQL/Redis regressions proved the repair; the original immutable compatibility-admin prepull and unchanged wrapper completed retirement, B0 reversal, locked selector clearing and independent cold302 verification without editing leases or receipts.

@@ -214,6 +214,7 @@ type Adapter struct {
 	privacy         EvaluationPrivacy
 	renderOnly      bool
 	navigationWaits bool
+	sessionBudget   time.Duration
 }
 
 // New rejects missing dependencies rather than providing implicit behavior.
@@ -281,7 +282,7 @@ func (adapter *Adapter) Execute(
 		return contextFailureResult(err)
 	}
 
-	runnerCtx, cancelRunner := context.WithTimeout(ctx, NavigationExecutionBudget(bound.input.Plan.Navigation))
+	runnerCtx, cancelRunner := context.WithTimeout(ctx, NavigationExecutionBudget(bound.input.Plan.Navigation)+adapter.sessionBudget)
 	outcome, runnerPanicked := runOnce(adapter.runner, runnerCtx, bound)
 	runnerContextErr := runnerCtx.Err()
 	cancelRunner()

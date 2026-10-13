@@ -67,6 +67,11 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	case <-ctx.Done():
 		return result, ctx.Err()
 	}
+	if profile.Provider == "inline" {
+		if cards, cardErr := queue.InlineCardOptions(config); cardErr == nil {
+			return r.fetchInlineCards(ctx, profile, config, options, cards)
+		}
+	}
 	if profile.Provider == "inline" && len(inlineOptions.Candidates) > 1 {
 		return collectRenderedInlineCandidates(ctx, profile, config, inlineOptions, func(p queue.GreenhouseMonitorProfile, attempt int) (*runtimev1.BrowserResult, error) {
 			return r.executeMonitorNavigation(ctx, p, options, attempt)
@@ -305,6 +310,10 @@ func parseHeldNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorP
 }
 
 func parseHeldRenderedMonitor(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, value *runtimev1.BrowserResult) (RichDiscovery, error) {
+	return parseHeldRenderedMonitorWithInlineIdentities(ctx, profile, config, value, nil)
+}
+
+func parseHeldRenderedMonitorWithInlineIdentities(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, value *runtimev1.BrowserResult, identities []string) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	if value == nil || value.GetSuccess() == nil || value.GetSuccess().ResourcePolicy == nil {
 		return result, policy.ErrSignals
@@ -339,6 +348,16 @@ func parseHeldRenderedMonitor(ctx context.Context, profile queue.GreenhouseMonit
 		o, _, err := queue.RenderedInlineMonitorOptions(config)
 		if err != nil {
 			return result, err
+		}
+		if identities != nil {
+			classification, e := dom.ClassifyDocument(source, dom.Object{}, o.BoardURL)
+			if e != nil {
+				return result, e
+			}
+			if classification["classification"] == "challenge" {
+				return result, executor.ErrBotChallenge
+			}
+			return parseInlineInventoryWithIdentities(ctx, result, o, source, time.Now(), identities)
 		}
 		return parseInlineInventoryDocument(ctx, result, o, source, time.Now())
 	}
