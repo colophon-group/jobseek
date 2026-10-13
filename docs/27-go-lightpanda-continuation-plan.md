@@ -35,7 +35,15 @@ GOMEMLIMIT remains 512 MiB and the CPU limit is two cores. At 14:33 UTC, cumulat
 57 monitor tasks average 13.05 seconds total / 6.54 seconds execution; 463 detail
 tasks average 9.31 seconds total, with 454 executions averaging 1.59 seconds.
 Workload mix differs from source1036, so these early observations do not prove a
-sustained speedup or attributable whole-lane cost. Full migration remains incomplete.
+sustained speedup or attributable whole-lane cost. At 15:12 UTC, cumulative
+284 monitor tasks average 24.15 seconds total / 9.61 seconds execution, and
+2,128 detail tasks average 14.99 seconds total; 1,786 executions average 1.45
+seconds. Three SQL samples show four of five native authority connections waiting
+on the existing lease barrier; a further sample identifies native settlement's
+exclusive barrier queued behind native shared transactions. Preserve that ordering
+contract and shorten measured transaction work before increasing concurrency.
+At 15:09 UTC, memory is 185.3 MiB, with no restart or OOM. Full migration remains
+incomplete.
 
 The outgoing source1036 recovery below is completed history. Its original
 unchanged retirement wrapper used the protected immutable source1038 admin,

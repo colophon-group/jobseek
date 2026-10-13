@@ -35,6 +35,9 @@ func actionKeyAllowed(kind, key string) bool {
 }
 
 func interactionSelector(s string, optional bool) bool {
+	if !utf8.ValidString(s) || len(s) > 4096 || strings.ContainsRune(s, 0) {
+		return false
+	}
 	if s == "" {
 		return optional
 	}
@@ -53,7 +56,7 @@ func interactionSelector(s string, optional bool) bool {
 		return false
 	}
 	// Cross-frame locators retain their existing owner until separately qualified.
-	return utf8.ValidString(s) && len(s) <= 4096 && !strings.ContainsRune(s, 0) && !strings.Contains(s, ":visible") && !strings.Contains(s, ">>")
+	return !strings.Contains(s, ":visible") && !strings.Contains(s, ">>")
 }
 
 func interactionWait(ms float64) bool {

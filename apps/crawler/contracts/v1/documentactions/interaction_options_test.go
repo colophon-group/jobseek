@@ -2,6 +2,7 @@ package documentactions
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -55,7 +56,7 @@ func TestTerminalVisibleInteractionSelectors(t *testing.T) {
 			t.Fatal("terminal visibility predicate lost", err)
 		}
 	}
-	for _, selector := range []string{`:visible`, `a:visible span`, `a:visible:visible`, `a,b:visible`, `a:visible, b`} {
+	for _, selector := range []string{`:visible`, `a:visible span`, `a:visible:visible`, `a,b:visible`, `a:visible, b`, strings.Repeat("a", 4090) + ":visible"} {
 		if interactionSelector(selector, false) {
 			t.Fatal("ancestor, union or repeated visibility predicate admitted")
 		}

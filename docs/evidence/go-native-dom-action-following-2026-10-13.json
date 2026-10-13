@@ -37,7 +37,10 @@
     "cold_retirement_sql_redis_cases": 24,
     "foreign_relist_and_batch_python_cases": 296,
     "python_lint": "pass",
-    "python_typecheck": "Two diagnostics also present in immutable source1038; no new diagnostic"
+    "python_typecheck": "Two diagnostics also present in immutable source1038; no new diagnostic",
+    "foreign_relist_and_browser_batch_python_cases": 467,
+    "capability_census_regressions": 57,
+    "data_validation_regressions": 12
   },
   "remaining": [
     "Exact-head Required CI, Crawler Deploy Gate, Linux and ARM image qualification",
@@ -61,5 +64,19 @@
     },
     "original_empty_count": 4,
     "original_timeout_count": 2
+  },
+  "active_source1038_observation": {
+    "observed_at_utc": "2026-10-13T15:12:19Z",
+    "task_monitor_count": 284,
+    "task_monitor_mean_seconds": 24.152,
+    "execution_monitor_mean_seconds": 9.61,
+    "task_detail_count": 2128,
+    "task_detail_mean_seconds": 14.992,
+    "execution_detail_count": 1786,
+    "execution_detail_mean_seconds": 1.452,
+    "advisory_wait_samples": 3,
+    "blocking_contract": "OrdinaryLeaseBarrier shared native transactions delay exclusive native settlement; queued exclusive settlement delays following shared native claims",
+    "freshness_proved": false,
+    "optimization_delivered": false
   }
 }
