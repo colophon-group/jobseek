@@ -80,7 +80,9 @@
     "ordinary_worker_full_race": "running",
     "offline_asset_regeneration_lint_format": "passed",
     "ci_workflow_contract_cases": 91,
-    "renderer_full_race_and_vet": "passed 13.326s"
+    "renderer_full_race_and_vet": "passed 13.326s",
+    "source_csv_data_validation": "passed after deterministic census regeneration",
+    "lightpanda_census_cases": 57
   },
   "remaining": [
     "required CI/Crawler Deploy Gate/Linux/ARM and immutable original workflows",
@@ -193,7 +195,8 @@
     "apps/crawler/go/typesense-exporter/local-migrations/phantom-chunks.sql": "d32fd55f0845830f759f9e6654901a343bdbb6625952b433b4b81c44f143b5c9",
     "apps/crawler/go/typesense-exporter/local_migrate.go": "087787ba7cb4a7441ff7d21aba2956a24cd4f9c299c57cf01b55bbb0dc668890",
     "apps/crawler/go/typesense-exporter/local_migrate_test.go": "72cf504357784f2ab642866d487b56d8d97ac274db1244725479812942ab857f",
-    "apps/crawler/go/typesense-exporter/testdata/generate_local_migrations.py": "1732eae844823eb7f3878a20366f4ba81ea448dc982015d9f7efde9a7ec0909e"
+    "apps/crawler/go/typesense-exporter/testdata/generate_local_migrations.py": "1732eae844823eb7f3878a20366f4ba81ea448dc982015d9f7efde9a7ec0909e",
+    "apps/crawler/tests/lightpanda/fixtures/census.json": "0e90fc86298475a1026db146c18a9d4b6195e3a3a2f9baea6ea7c64db4a6cfb6"
   },
   "independent_active_floor_observation": {
     "observed_at_utc": "2026-10-13T21:46:41.352036+00:00",
@@ -214,5 +217,7 @@
     "native_monitor_overdue_6h": 3208,
     "native_monitor_overdue_24h": 38,
     "production_freshness_improvement_proved": false
-  }
+  },
+  "checkpoint_at_utc": "2026-10-13T21:51:14.312918+00:00",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10490"
 }
