@@ -35,15 +35,28 @@ func actionKeyAllowed(kind, key string) bool {
 }
 
 func interactionSelector(s string, optional bool) bool {
+	if !utf8.ValidString(s) || len(s) > 4096 || strings.ContainsRune(s, 0) {
+		return false
+	}
 	if s == "" {
 		return optional
+	}
+	// A terminal visibility predicate applies to the final selected element.
+	// Ancestor predicates and selector unions require a broader locator engine.
+	if strings.Contains(s, ":visible") {
+		if !strings.HasSuffix(s, ":visible") || strings.Contains(s, ",") {
+			return false
+		}
+		s = strings.TrimSuffix(s, ":visible")
+		if s == "" || strings.Contains(s, ":visible") {
+			return false
+		}
 	}
 	if strings.Contains(s, ":has-text(") && !textInteractionSelector.MatchString(s) {
 		return false
 	}
-	// Layout-dependent Playwright selectors and cross-frame locators retain
-	// their existing owner until separately qualified in the native engine.
-	return utf8.ValidString(s) && len(s) <= 4096 && !strings.ContainsRune(s, 0) && !strings.Contains(s, ":visible") && !strings.Contains(s, ">>")
+	// Cross-frame locators retain their existing owner until separately qualified.
+	return !strings.Contains(s, ":visible") && !strings.Contains(s, ">>")
 }
 
 func interactionWait(ms float64) bool {

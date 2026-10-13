@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7885,
-    "boards_sha256": "acc58f14046c6cb4dac15156cbb979e13a7a0bb0df79390cdbeed2d0d3e3e6d1",
+    "boards_sha256": "846c2231afc50da33771341516e0cb53e23283babf23b6dc76f76125e2043bbb",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "9b1417596533eb92701a618c3eba639ca48680f805f2cf0f337d7817fbe1bdf2",
+  "manifest_sha256": "2b8ae9a27994ae44e208a99fa6c7f7d6fda433e51fe3336490d9bb35261cf83e",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -3166,6 +3166,32 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "action.evaluate",
+        "action.wait",
+        "cdp.navigation",
+        "dom.snapshot",
+        "javascript.evaluate",
+        "navigation.wait.networkidle",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "javascript_execution",
+      "config_shape_sha256": "2c3bb0baf82b52f6c64cf8bf46f114fe0aa19e19931165ba597855d5f14aede2",
+      "crawler_type": "dom",
+      "digest_sha256": "b51510029c4af7f450d714bc1c43bd562537a1b23eff0d6d73f1159fbf7a358d",
+      "fixture": "synthetic.javascript_execution.v1",
+      "id": "profile.monitor.dom.68f7bed3e730d519",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "dce7d8af6e979d4bf3cd6a9d1d75593fc6c570c42c26b619861b3201af68f8d4",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "action.dismiss_overlays",
         "action.evaluate",
         "action.repeat",
@@ -3492,30 +3518,6 @@
         "cdp.navigation",
         "dom.snapshot",
         "javascript.evaluate",
-        "navigation.wait.domcontentloaded"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "javascript_execution",
-      "config_shape_sha256": "df0c47ec3f6c1a05d7aaf36d087b23ced1de9ed5ac8ee82eeab046e7572ef328",
-      "crawler_type": "dom",
-      "digest_sha256": "aaa89a5bbb02105682d583ec5c4f31645696c1eff4c14512150930829cced248",
-      "fixture": "synthetic.javascript_execution.v1",
-      "id": "profile.monitor.dom.8699f259af05eeff",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "3970144b56600dc5337d1d5864059fbe6b0e273fe91988320f1f8323622b50b9",
-      "status": "pending_replay",
-      "surface": "monitor"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "action.evaluate",
-        "cdp.navigation",
-        "dom.snapshot",
-        "javascript.evaluate",
         "navigation.wait_fallback"
       ],
       "chain_role": "primary",
@@ -3615,23 +3617,21 @@
       "browser_required": true,
       "capabilities": [
         "action.evaluate",
-        "action.wait",
         "cdp.navigation",
         "dom.snapshot",
         "javascript.evaluate",
-        "navigation.wait.networkidle",
-        "navigation.wait_fallback"
+        "navigation.wait.domcontentloaded"
       ],
       "chain_role": "primary",
       "compatibility_class": "javascript_execution",
-      "config_shape_sha256": "bebae0691dfbd3236598478707804eba3174b528d9ad6d986e37551ed220b9ac",
+      "config_shape_sha256": "5b7664e630341f91e70fedff63a3a2b7fa59ab48326c1cb27dbd700be61e8474",
       "crawler_type": "dom",
-      "digest_sha256": "92dbe2ddb8fc99b7a6fe95cda20ae83dc89c175a73fa4d2b69f84eb49bf6a99b",
+      "digest_sha256": "ef7ebae5d8f5e9b7b6ad7d5ca4fb0d569352ebe7d6bb9c91f506a42b2788af9e",
       "fixture": "synthetic.javascript_execution.v1",
-      "id": "profile.monitor.dom.9803fc069972c089",
+      "id": "profile.monitor.dom.93a02f506187ba8e",
       "profile_kind": "configured",
       "source_count": 1,
-      "source_refs_sha256": "dce7d8af6e979d4bf3cd6a9d1d75593fc6c570c42c26b619861b3201af68f8d4",
+      "source_refs_sha256": "3970144b56600dc5337d1d5864059fbe6b0e273fe91988320f1f8323622b50b9",
       "status": "pending_replay",
       "surface": "monitor"
     },

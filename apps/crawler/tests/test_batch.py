@@ -2969,6 +2969,16 @@ class TestDuplicateSourceUrl:
                     r2_hash=123,
                 )
             ],
+            [
+                {
+                    "id": "canonical-posting-id",
+                    "board_id": "canonical-board-id",
+                    "source_url": foreign,
+                    "description_r2_hash": 123,
+                    "crawler_type": "sitemap",
+                    "metadata": {},
+                }
+            ],
             [],  # MARK_GONE
         ]
 
@@ -2992,10 +3002,10 @@ class TestDuplicateSourceUrl:
                     "r2_hash": 123,
                 }
             ],
-            "board-1",
+            "canonical-board-id",
             {},
             ANY,
-            crawler_type="greenhouse",
+            crawler_type="sitemap",
         )
         assert _counter_value(monitor_dedup_total, path="cross_board") - before_dedup == 1
         assert (

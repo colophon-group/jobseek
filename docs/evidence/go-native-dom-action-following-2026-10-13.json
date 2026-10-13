@@ -1,0 +1,82 @@
+{
+  "schema": "jobseek.native-following-work/v1",
+  "base_source_revision": "e50f24a1ac342d7232e1137e4a0e0b3e7b06789d",
+  "candidate_version": "0.13.1039",
+  "observed_at_utc": "2026-10-13T15:07:14.502505+00:00",
+  "scope": "Required bounded script inventories, terminal visible selectors, and canonical foreign-relist detail queue owner correction",
+  "physical_lightpanda_version": "1.0.0",
+  "physical_engine_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+  "admission_authority": false,
+  "public_candidate_results": [
+    {
+      "board_slug": "midea-group-careers-global",
+      "original_and_native_jobs": 58,
+      "all_original_persistence_URLs_equal": true,
+      "comparison": "existing canonical worker URL rules applied to both original raw inventory and native raw inventory",
+      "capture_sha256": [
+        "4022259c8b08aa255e5c6d7c1e9e92eab78ac2b7829c429bab505cbe2c7f69ea",
+        "56d98ce14e6833397905cbfb87fc5490bb17dcfebfecffeecd7c220ee0aeab2b"
+      ]
+    },
+    {
+      "board_slug": "kroger-harris-teeter",
+      "original_and_native_jobs": 2101,
+      "all_original_persistence_URLs_equal": true,
+      "comparison": "existing canonical worker URL rules applied to both original raw inventory and native raw inventory",
+      "capture_sha256": [
+        "ae1d8e04e0b43b8d48efad5f07ddf6cd26140c5c551f42011a9dad4a156f73e5",
+        "2aff6d6665474c080b63c077d279a39cd8f886e51324427907dcf1869696b4de"
+      ]
+    }
+  ],
+  "verification": {
+    "documentactions_lightpandaadapter_lightpandaclient_race": "pass",
+    "renderer_full_race": "pass",
+    "physical_interaction_fixture_cases": 15,
+    "canonical_sql_redis_cases": 24,
+    "cold_retirement_sql_redis_cases": 24,
+    "foreign_relist_and_batch_python_cases": 296,
+    "python_lint": "pass",
+    "python_typecheck": "Two diagnostics also present in immutable source1038; no new diagnostic",
+    "foreign_relist_and_browser_batch_python_cases": 467,
+    "capability_census_regressions": 57,
+    "data_validation_regressions": 12
+  },
+  "remaining": [
+    "Exact-head Required CI, Crawler Deploy Gate, Linux and ARM image qualification",
+    "Fresh full route/config/cache census and supported whole deployment/admission",
+    "Remaining enabled profiles and native runtime consumers",
+    "Complete fleet freshness, comparable attributable cost, supported reversal and rollback window before Python runtime retirement"
+  ],
+  "unqualified_public_cases": {
+    "alaska-airlines-careers": {
+      "original_jobs": 20,
+      "native_attempts": [
+        10,
+        27
+      ],
+      "reason": "Independently captured repeat inventories differ; no ownership grant"
+    },
+    "lifepoint-health-provider-careers": {
+      "original_jobs": 186,
+      "native_first_jobs": 255,
+      "reason": "Full URL inventories differ; no ownership grant"
+    },
+    "original_empty_count": 4,
+    "original_timeout_count": 2
+  },
+  "active_source1038_observation": {
+    "observed_at_utc": "2026-10-13T15:12:19Z",
+    "task_monitor_count": 284,
+    "task_monitor_mean_seconds": 24.152,
+    "execution_monitor_mean_seconds": 9.61,
+    "task_detail_count": 2128,
+    "task_detail_mean_seconds": 14.992,
+    "execution_detail_count": 1786,
+    "execution_detail_mean_seconds": 1.452,
+    "advisory_wait_samples": 3,
+    "blocking_contract": "OrdinaryLeaseBarrier shared native transactions delay exclusive native settlement; queued exclusive settlement delays following shared native claims",
+    "freshness_proved": false,
+    "optimization_delivered": false
+  }
+}

@@ -49,7 +49,7 @@ func Valid(actions []Action) bool {
 	var budget uint64
 	for _, a := range actions {
 		limit := uint64(120000)
-		if a.Kind == "repeat" || a.Kind == "paginate_collect" {
+		if a.Kind == "evaluate" || a.Kind == "repeat" || a.Kind == "paginate_collect" {
 			limit = 300000
 		}
 		if a.TimeoutMS == 0 || a.TimeoutMS > limit {
@@ -134,7 +134,7 @@ func Parse(raw any) ([]Action, error) {
 		if v, exists := m["timeout"]; exists {
 			n, yes := v.(float64)
 			limit := float64(120)
-			if a.Kind == "repeat" || a.Kind == "paginate_collect" {
+			if a.Kind == "evaluate" || a.Kind == "repeat" || a.Kind == "paginate_collect" {
 				limit = 300
 			}
 			if !yes || math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > limit || n*1000 != math.Trunc(n*1000) {

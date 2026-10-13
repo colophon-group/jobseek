@@ -13,16 +13,22 @@ import (
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 )
 
-// Selector strings remain data. Only the CSS and quoted has-text subset used by
-// the qualified interaction profiles is interpreted here.
+// Selector strings remain data. Interpret CSS, quoted has-text and a terminal
+// visible predicate. Visibility keeps Playwright's nonempty-box/style rule;
+// opacity zero remains visible (https://playwright.dev/docs/actionability#visible).
 const interactionPickerJS = `function pick(selector) {
  const texts=[];
- const css=selector.replace(/:has-text\(\s*("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)/g,(_,raw)=>{
+ const visible=selector.endsWith(':visible');
+ const base=visible?selector.slice(0,-8):selector;
+ const css=base.replace(/:has-text\(\s*("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)/g,(_,raw)=>{
   let text=raw[0]==='"'?JSON.parse(raw):raw.slice(1,-1).replace(/\\(['"\\])/g,'$1');
   texts.push(text.replace(/\s+/g,' ').trim().toLowerCase());return '';
  });
- if(css.includes(':has-text('))throw new Error('unsupported selector');
- return Array.from(document.querySelectorAll(css)).find(n=>texts.every(t=>(n.textContent||'').replace(/\s+/g,' ').trim().toLowerCase().includes(t)))||null;
+ if(css.includes(':has-text(')||css.includes(':visible'))throw new Error('unsupported selector');
+ return Array.from(document.querySelectorAll(css)).find(n=>{
+  if(visible){const style=getComputedStyle(n);const rect=n.getBoundingClientRect();if(style.visibility==='hidden'||style.visibility==='collapse'||style.display==='none'||rect.width<=0||rect.height<=0)return false;}
+  return texts.every(t=>(n.textContent||'').replace(/\s+/g,' ').trim().toLowerCase().includes(t));
+ })||null;
 }`
 
 func interactionValue(ctx context.Context, expression string, value any) error {

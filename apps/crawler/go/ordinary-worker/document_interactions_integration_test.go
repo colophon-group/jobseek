@@ -11,7 +11,7 @@ import (
 )
 
 func TestRealDocumentInteractionsInventoryAndAtomicFailure(t *testing.T) {
-	for _, kind := range []string{"click", "wait_for", "repeat", "paginate_collect", "long-pipeline"} {
+	for _, kind := range []string{"click", "wait_for", "repeat", "paginate_collect", "long-pipeline", "visible-repeat", "long-evaluate", "required-evaluate"} {
 		t.Run(kind, func(t *testing.T) {
 			for _, mode := range []string{"complete", "failed", "reserved"} {
 				t.Run(mode, func(t *testing.T) {
@@ -22,6 +22,17 @@ func TestRealDocumentInteractionsInventoryAndAtomicFailure(t *testing.T) {
 					if kind == "paginate_collect" {
 						delete(action, "selector")
 						action["next_selector"] = "a.next"
+					}
+					switch kind {
+					case "visible-repeat":
+						action["action"], action["selector"] = "repeat", "button:visible"
+					case "long-evaluate", "required-evaluate":
+						delete(action, "selector")
+						action["action"], action["script"], action["required"] = "evaluate", "Promise.resolve(true)", true
+						action["timeout"] = 300
+						if kind == "required-evaluate" {
+							action["timeout"] = 60
+						}
 					}
 					pipeline := []any{action}
 					if kind == "long-pipeline" {

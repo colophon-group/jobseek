@@ -116,11 +116,25 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 				}
 				t.Fatal("original complete inventory did not reproduce", "error", failure, "native_code", value.GetError().GetError().GetCode(), "navigation_calls", calls)
 			}
+			// Compare the URLs granted persistence authority by the existing worker
+			// rules. Session parameters may differ between independent captures.
+			nativeJobs, err := applyFeedMonitorURLs(context.Background(), row.Canonical, found.Jobs)
+			if err != nil {
+				t.Fatal("native URL rules failed", err)
+			}
+			originalJobs := make([]RichMonitorJob, len(original.Jobs))
+			for i, job := range original.Jobs {
+				originalJobs[i] = RichMonitorJob{URL: job.URL, URLOnly: true}
+			}
+			originalJobs, err = applyFeedMonitorURLs(context.Background(), row.Canonical, originalJobs)
+			if err != nil {
+				t.Fatal("original URL rules failed", err)
+			}
 			want, got := []string{}, []string{}
-			for _, job := range original.Jobs {
+			for _, job := range originalJobs {
 				want = append(want, job.URL)
 			}
-			for _, job := range found.Jobs {
+			for _, job := range nativeJobs {
 				if !job.URLOnly {
 					t.Fatal("URL inventory changed representation")
 				}

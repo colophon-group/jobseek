@@ -1,11 +1,55 @@
 # Go and Lightpanda migration delivery plan
 
-### Current contained recovery and consolidated candidate — source1038, 2026-10-13
+### Current deployed checkpoint — source1038, 2026-10-13
 
-Production remains source1036 (`6670f75a2dcf71fcbd7c712175ef2aa0edd84177`),
-contained at303 with the exact retiring ordinary receipt. All10 writers are
-independently stopped and restart-disabled. Processing is paused. No leases,
-receipts or runtime selectors were edited; full migration is incomplete.
+Production runs source1038 (`e50f24a1ac342d7232e1137e4a0e0b3e7b06789d`),
+version 0.13.1038, delivered in merged [PR #10485](https://github.com/colophon-group/jobseek/pull/10485).
+Original crawler workflow 38403048354 passed on attempt 2; matching renderer
+workflow 38407466262 passed on attempt 1. All 3,407 merged SDK files match the
+qualified head. Independent checks prove the selected images, native deployment
+tools, selected CSV contract and exporter progress. Lightpanda 1.0.0 remains the
+latest official stable release, rechecked on 2026-10-13, and is pinned immutably.
+
+Supported B0 and ordinary activation completed at epoch 305. The complete census
+reconciles 7,885 enabled boards and 1,699,333 scheduled detail routes. The active
+plan owns 7,808 monitors and 7,685 detail boards, covering 1,577,941 scheduled
+routes: `f06ec267f88fc5a60f148d4b2c83f5caeb96581418ff222c56f2e1063847c87c`,
+projection `8646aa357f202bc91c638d4a8472ea2b5668a68f`. Independent serving
+verification finds all ten actors running, eight healthy endpoints and matching
+SQL/Redis/receipt identities. At 15:00 UTC, natural receipts show 214 completed
+monitors and 1,722 completed details. Daiichi Vietnam has a successful natural
+monitor check. MediaMarkt and the UK embassy still lack a completed natural check
+in that observation. Full fleet freshness remains unproved: 4,753 native monitors
+are over one hour late, 4,283 over six hours late, and seven over 24 hours late.
+
+All 7,805 prior monitors remain owned. One previously owned detail board,
+`king-careers`, stays enabled on its existing Python route: one canonical King
+posting is cached under sibling `activision-blizzard-king`. The first full-floor
+admission refused this mismatch. The active plan explicitly excludes only that
+previous detail board and adds CACI details, preserving 7,684 previous detail
+owners. No profile, source, queue or ownership predicate was relaxed. Correct the
+legacy foreign-relist cache routing and prove current identity before readmission.
+
+At 14:31 UTC the ordinary worker uses 166.2 MiB of 1 GiB, with no restart or OOM;
+GOMEMLIMIT remains 512 MiB and the CPU limit is two cores. At 14:33 UTC, cumulative
+57 monitor tasks average 13.05 seconds total / 6.54 seconds execution; 463 detail
+tasks average 9.31 seconds total, with 454 executions averaging 1.59 seconds.
+Workload mix differs from source1036, so these early observations do not prove a
+sustained speedup or attributable whole-lane cost. At 15:12 UTC, cumulative
+284 monitor tasks average 24.15 seconds total / 9.61 seconds execution, and
+2,128 detail tasks average 14.99 seconds total; 1,786 executions average 1.45
+seconds. Three SQL samples show four of five native authority connections waiting
+on the existing lease barrier; a further sample identifies native settlement's
+exclusive barrier queued behind native shared transactions. Preserve that ordering
+contract and shorten measured transaction work before increasing concurrency.
+At 15:09 UTC, memory is 185.3 MiB, with no restart or OOM. Full migration remains
+incomplete.
+
+The outgoing source1036 recovery below is completed history. Its original
+unchanged retirement wrapper used the protected immutable source1038 admin,
+then original B0 reversal and locked selector clearing completed cold304.
+No leases or receipts were edited. Activation305 waited for legacy SQL leases
+to expire naturally; the latest observed expiry was 14:26:12 UTC.
 
 PR10456 merged source1037 as `4f55033cffa7286e2c0ff421d4932bf4705ab092` after
 fresh head/base/hold/operator checks and green Required CI/Gate, installed-image
@@ -45,22 +89,38 @@ epoch and lease barriers remain held. Six first-time/recurring cases and existin
 forged-source, concurrent-token and board-lock regressions pass. Production
 throughput and freshness improvements remain to be measured.
 
-Finish exact-source required checks and immutable qualification; merge the
-consolidated reviewed repair with fresh bound-head authority. Use the original
-deployment build and protected compatibility-admin prepull. The unchanged ordinary
-wrapper must retire the retained source1036 receipt, followed by original B0
-reversal, original locked selector clearing and independent cold304 verification.
-Restore the complete outgoing stack, then perform one consolidated full original
-rollout and fresh grouped admission preserving the7805-monitor/7685-detail floor.
-Do not retry the failed admin or publish an intermediate native ownership plan.
+Continue from the active305 checkpoint:
 
-After recovery, prove natural queue effects and complete fleet freshness,
-conservation and comparable attributable resources/cost. Continue remaining
-monitor/detail/browser profiles and native maintenance/deploy consumers in
-multi-type batches. Exercise supported reversal and establish the rollback window
-before retiring production Python/Playwright/Chromium, retaining useful offline
-Python and every enabled board. Lightpanda1.0.0 remains the latest verified official
-release and the production immutable pin.
+1. Observe natural Daiichi/UK/MediaMarkt monitor and CACI detail effects, claim
+   latency, queue conservation, complete monitor/detail ages and resource pressure.
+   Keep the active cohort serving while the next grouped candidate is prepared.
+2. Deliver the grouped DOM action contracts and canonical-owner queue correction.
+   Candidate source1039 makes the Midea 300-second collector required and fixes
+   Kroger's seconds/milliseconds timeout error to 60 seconds, also required.
+   Actual native Go renderer documents and worker URL rules reproduce all 58
+   Midea and 2,101 Kroger original persistence URLs. Midea's ephemeral session
+   parameters are removed by the existing canonical URL transform on both sides.
+   Fifteen real Lightpanda 1.0.0 fixtures, 24 canonical PostgreSQL/Redis cases and
+   24 cold reversal cases pass. Terminal visible selectors have fixture coverage;
+   Alaska's independently captured inventories are 20 original versus 10/27
+   native, and Lifepoint is 186 versus 255. Keep those boards, four original
+   empties and two LTIMindtree timeout failures outside new admission until their
+   complete inventories are proven. The portable candidate evidence is
+   [DOM action batch](evidence/go-native-dom-action-following-2026-10-13.json).
+3. Include the legacy canonical-owner correction and bounded cache restoration
+   in that batch, then prove King detail identity before readmission. The local
+   correction passes368 focused/batch tests and lint; two type-check diagnostics
+   are identical in immutable source1038. It is not yet merged or deployed.
+4. Finish the remaining enabled monitor/detail/browser contracts and mandatory
+   native maintenance/deployment consumers in multi-type batches. Refresh the
+   complete canonical/cache/actual-route census before each ownership change;
+   keep unsupported or mismatched routes on their enabled existing path.
+5. Prove complete fleet freshness/conservation and comparable attributable
+   resources/cost. Exercise the supported full reversal and establish the rollback
+   window before removing production Python/Playwright/Chromium runtime assets.
+   Retain useful isolated offline Python tooling. The delivery goal remains active.
+
+Historical checkpoints and evidence follow; they do not supersede active305.
 
 ### Latest delivered checkpoint — source0.13.1036, 2026-10-12
 
