@@ -64,7 +64,8 @@
       "0027 conditional concurrent location index replacement"
     ],
     "deployment_contract": "existing writer quiescence, image/provenance labels and local database principal; migration cutover flag and restart ordering preserved",
-    "offline_python_retained": true
+    "offline_python_retained": true,
+    "build_contract": "Go exporter build stage includes original migration sources, so embedded asset source identity is verified during the immutable image build."
   },
   "checks": {
     "actual_public_http_original_field_parity_jobs": 792,
@@ -196,7 +197,8 @@
     "apps/crawler/go/typesense-exporter/local_migrate.go": "087787ba7cb4a7441ff7d21aba2956a24cd4f9c299c57cf01b55bbb0dc668890",
     "apps/crawler/go/typesense-exporter/local_migrate_test.go": "72cf504357784f2ab642866d487b56d8d97ac274db1244725479812942ab857f",
     "apps/crawler/go/typesense-exporter/testdata/generate_local_migrations.py": "1732eae844823eb7f3878a20366f4ba81ea448dc982015d9f7efde9a7ec0909e",
-    "apps/crawler/tests/lightpanda/fixtures/census.json": "0e90fc86298475a1026db146c18a9d4b6195e3a3a2f9baea6ea7c64db4a6cfb6"
+    "apps/crawler/tests/lightpanda/fixtures/census.json": "0e90fc86298475a1026db146c18a9d4b6195e3a3a2f9baea6ea7c64db4a6cfb6",
+    "apps/crawler/Dockerfile": "c04437c7693c03fc03e97b874792c8736dd07add657faa96e5f094fc391c8fa8"
   },
   "independent_active_floor_observation": {
     "observed_at_utc": "2026-10-13T21:46:41.352036+00:00",
@@ -218,6 +220,6 @@
     "native_monitor_overdue_24h": 38,
     "production_freshness_improvement_proved": false
   },
-  "checkpoint_at_utc": "2026-10-13T21:51:14.312918+00:00",
+  "checkpoint_at_utc": "2026-10-13T21:59:34.604084+00:00",
   "pull_request": "https://github.com/colophon-group/jobseek/pull/10490"
 }
