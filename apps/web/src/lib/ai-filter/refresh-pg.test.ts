@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   client: null as Sql | null,
   postings: [] as Array<{ id: string; firstSeenAt: string }>,
   classify: vi.fn(),
+  statements: [] as string[],
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/db", async () => {
@@ -38,6 +39,9 @@ vi.mock("@/db", async () => {
     prepare: false,
     connection: { TimeZone: "UTC" },
     onnotice: () => {},
+    debug: (_connection, query) => {
+      mocks.statements.push(query);
+    },
   });
   return { db: drizzle(mocks.client, { schema }) };
 });
@@ -249,11 +253,73 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       expect(after!.target_offset).toBe(1000);
     });
     it("permits one worker at a fixed cadence even with concurrent host/manual requests", async () => {
+      await fixture();
       const owners = await Promise.all(
         Array.from({ length: 10 }, () => claimAiFilterWorker()),
       );
       expect(owners.filter(Boolean)).toHaveLength(1);
       await releaseAiFilterWorker(owners.find(Boolean)!, false);
+      expect(await claimAiFilterWorker()).toBeNull();
+    });
+    it.each([1, 10, 100])(
+      "leaves the singleton untouched with %i scopes when no work or repair is due",
+      async (count) => {
+        for (let index = 0; index < count; index++)
+          await fixture(`recent-${index}`);
+        await sql()`UPDATE ai_filter_work SET status='idle'`;
+        await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+        const [before] = await sql()`SELECT *,xmin::text AS version FROM ai_filter_worker`;
+        mocks.statements = [];
+        expect(await runAiFilterRefreshSweep()).toMatchObject({ claimed: 0, started: 0, failed: 0 });
+        expect(mocks.statements).toHaveLength(1);
+        expect((await sql()`SELECT *,xmin::text AS version FROM ai_filter_worker`)[0]).toEqual(before);
+        expect(mocks.classify).not.toHaveBeenCalled();
+        // Skipping an empty tick must not delay newly committed foreground demand.
+        const [scope] = await sql()`SELECT owner_id,watchlist_id FROM ai_filter_configuration`;
+        await enqueueAiFilterWork({
+          ownerId: scope.owner_id,
+          watchlistId: scope.watchlist_id,
+          kind: "historical",
+          demandTargetOffset: 20,
+        });
+        expect(await claimAiFilterWorker()).toBeTruthy();
+      },
+    );
+    it("admits a due repair even when every demand row is idle", async () => {
+      await fixture();
+      await sql()`UPDATE ai_filter_work SET status='idle'`;
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()-interval '6 minutes'`;
+      expect(await claimAiFilterWorker()).toBeTruthy();
+    });
+    it("admits abandoned work only after its work lease expires", async () => {
+      await fixture();
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+      await sql()`UPDATE ai_filter_work SET status='processing',lease_owner='abandoned',lease_expires_at=now()+interval '1 minute'`;
+      expect(await claimAiFilterWorker()).toBeNull();
+      await sql()`UPDATE ai_filter_work SET lease_expires_at=now()-interval '1 second'`;
+      expect(await claimAiFilterWorker()).toBeTruthy();
+    });
+    it("honors queued availability and paused retry backoff without spending idle leases", async () => {
+      await fixture();
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+      await sql()`UPDATE ai_filter_work SET available_at=now()+interval '5 minutes'`;
+      expect(await claimAiFilterWorker()).toBeNull();
+      await sql()`UPDATE ai_filter_work SET status='paused'`;
+      expect(await claimAiFilterWorker()).toBeNull();
+      await sql()`UPDATE ai_filter_work SET available_at=now()-interval '1 second'`;
+      expect(await claimAiFilterWorker()).toBeTruthy();
+    });
+    it("ignores disabled, unentitled and obsolete-revision demand", async () => {
+      const input = await fixture();
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+      await sql()`UPDATE subscription SET status='cancelled'`;
+      expect(await claimAiFilterWorker()).toBeNull();
+      await sql()`UPDATE subscription SET status='active'`;
+      await sql()`UPDATE ai_filter_configuration SET status='disabled',disabled_at=now()`;
+      expect(await claimAiFilterWorker()).toBeNull();
+      await putAiFilterConfiguration({ ...input, query: "new criteria", candidateLanguages: ["en"] });
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+      await sql()`UPDATE ai_filter_work SET status=CASE WHEN query_version_id=${input.queryVersionId}::uuid THEN 'queued' ELSE 'idle' END`;
       expect(await claimAiFilterWorker()).toBeNull();
     });
     it.each([1, 10, 100])(

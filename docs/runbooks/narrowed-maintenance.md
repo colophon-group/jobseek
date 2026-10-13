@@ -123,6 +123,13 @@ The project worker admits at most one tick per 55 seconds, at most five serial
 five-candidate checkpoints and one repair scope per tick. It has a 42-second
 work deadline and 70-second crash leases. Three consecutive failures open a
 15-minute shared circuit; per-work retries back off 5 minutes to 1 hour.
+Admission checks current, enabled, entitled demand and due five-minute repair
+in the same statement that claims the singleton. When neither is ready, the
+tick performs one SQL statement without writing the worker row or advancing
+its cadence. Ready demand on either lane and expired work leases still admit
+the next tick; idle rows, future retry times and live work leases do not. The
+repair cutoff is shared with the rotating repair selector. A skipped idle
+tick does not reset the persisted failure circuit.
 The host HTTP runner has separate systemd CPU/memory/task limits and no database
 credentials or Docker socket. No crawler writers are restarted.
 

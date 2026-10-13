@@ -16,6 +16,7 @@ import {
 import { readAiFilterRuntimePolicy } from "./policy";
 import { runAiFilterCatchupStep } from "./catchup-service";
 import { aiFilterHistoricalHorizonStart, aiFilterHorizonEnd } from "./horizon";
+import { aiFilterRepairDueCondition } from "./refresh-cadence";
 import {
   claimAiFilterWorker,
   claimAiFilterWork,
@@ -25,7 +26,6 @@ import {
   markAiFilterRepairCaughtUp,
 } from "./work-queue";
 
-const REPAIR_INTERVAL_MS = 5 * 60_000;
 const MAX_WORK_ITEMS = 5;
 
 type RefreshTarget = {
@@ -67,7 +67,7 @@ export async function claimAiFilterRefreshTargets(
         and(
           eq(aiFilterConfiguration.status, "enabled"),
           paidEntitlementCondition(aiFilterConfiguration.ownerId, now),
-          sql`(${aiFilterConfiguration.refreshRequestedAt} IS NULL OR ${aiFilterConfiguration.refreshRequestedAt}<${new Date(now.getTime() - REPAIR_INTERVAL_MS).toISOString()}::timestamptz)`,
+          aiFilterRepairDueCondition(aiFilterConfiguration.refreshRequestedAt, now),
         ),
       )
       .orderBy(
