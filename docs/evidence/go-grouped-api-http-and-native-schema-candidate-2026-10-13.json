@@ -78,12 +78,13 @@
     "go_vet_and_tidy": "passed",
     "deployment_contract_tests": 71,
     "registry_and_cutover_tests": 21,
-    "ordinary_worker_full_race": "running",
+    "ordinary_worker_full_race": "passed 943.720s",
     "offline_asset_regeneration_lint_format": "passed",
     "ci_workflow_contract_cases": 91,
     "renderer_full_race_and_vet": "passed 13.326s",
     "source_csv_data_validation": "passed after deterministic census regeneration",
-    "lightpanda_census_cases": 57
+    "lightpanda_census_cases": 57,
+    "updated_sage_and_alten_config_cases": 4
   },
   "remaining": [
     "required CI/Crawler Deploy Gate/Linux/ARM and immutable original workflows",
@@ -198,7 +199,8 @@
     "apps/crawler/go/typesense-exporter/local_migrate_test.go": "72cf504357784f2ab642866d487b56d8d97ac274db1244725479812942ab857f",
     "apps/crawler/go/typesense-exporter/testdata/generate_local_migrations.py": "1732eae844823eb7f3878a20366f4ba81ea448dc982015d9f7efde9a7ec0909e",
     "apps/crawler/tests/lightpanda/fixtures/census.json": "0e90fc86298475a1026db146c18a9d4b6195e3a3a2f9baea6ea7c64db4a6cfb6",
-    "apps/crawler/Dockerfile": "c04437c7693c03fc03e97b874792c8736dd07add657faa96e5f094fc391c8fa8"
+    "apps/crawler/Dockerfile": "c04437c7693c03fc03e97b874792c8736dd07add657faa96e5f094fc391c8fa8",
+    "apps/crawler/tests/test_alten_boards.py": "deb8b0560d31434c9c45e1fc4852ff9dcf5f4f891a9edeef2a35952e2e118f5e"
   },
   "independent_active_floor_observation": {
     "observed_at_utc": "2026-10-13T21:46:41.352036+00:00",
@@ -220,6 +222,6 @@
     "native_monitor_overdue_24h": 38,
     "production_freshness_improvement_proved": false
   },
-  "checkpoint_at_utc": "2026-10-13T21:59:34.604084+00:00",
+  "checkpoint_at_utc": "2026-10-13T22:15:03.785587+00:00",
   "pull_request": "https://github.com/colophon-group/jobseek/pull/10490"
 }
