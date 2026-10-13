@@ -172,7 +172,9 @@ end
 local function decimal_seconds(text, maximum)
     if type(text) ~= "string" or #text == 0 then return nil end
     if string.match(text, "^[0-9]+$") == nil
-        and string.match(text, "^[0-9]+%.[0-9]+$") == nil then
+        and string.match(text, "^[0-9]+%.[0-9]+$") == nil
+        and string.match(text, "^[0-9]+[eE][+-]?[0-9]+$") == nil
+        and string.match(text, "^[0-9]+%.[0-9]+[eE][+-]?[0-9]+$") == nil then
         return nil
     end
     local value = tonumber(text)

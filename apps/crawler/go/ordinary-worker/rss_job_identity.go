@@ -89,7 +89,9 @@ func resolveRSSJobInviteIdentity(ctx context.Context, client *http.Client, profi
 			if status == 301 || status == 302 || status == 303 || status == 307 || status == 308 {
 				next, err := pythonJoinURL(job.URL, observed.location)
 				u, parseErr := url.Parse(next)
-				if err != nil || parseErr != nil || observed.location == "" || !queue.RSSDetailMonitorResourceMatches(profile, next) || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+				// Validate the escaped resource form while retaining urllib’s original
+				// Unicode path for the configured canonical transform and locale ranking.
+				if err != nil || parseErr != nil || observed.location == "" || !queue.RSSDetailMonitorResourceMatches(profile, u.String()) || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 					cancel()
 					return job, observed, queue.ErrConfiguration
 				}

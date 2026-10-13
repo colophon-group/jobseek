@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
 
 func TestRealRSSJobInviteIdentityPreservesWholeInventoryAndLease(t *testing.T) {
-	for _, mode := range []string{"resolved", "foreign", "nonredirect", "reserved", "late-invalid"} {
+	for _, mode := range []string{"resolved", "unicode", "foreign", "nonredirect", "reserved", "late-invalid"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := `{"preset":"successfactors","resolve_job_invite_identity":true,"scraper_type":"skip","url_transform":{"find":"^https://example\\.com/job/[^/?#]+/([1-9]\\d{0,11})-[a-z]{2}_[A-Z]{2}/$","replace":"https://example.com/job-invite/\\1/","collision_policy":"prefer_source_pattern","collision_stream_buffer_limit":2000,"collision_identity_metadata_key":"job_invite_id","collision_canonical_identity_regex":"^https://example\\.com/job-invite/([1-9]\\d{0,11})/$","collision_preferred_source_patterns":["-de_DE/$","-en_US/$"]}}`
 			f := privateRichPipelineFixture(t, "rss", metadata)
@@ -31,6 +32,9 @@ func TestRealRSSJobInviteIdentityPreservesWholeInventoryAndLease(t *testing.T) {
 				location := "/job/Engineer/123-de_DE/"
 				if r.URL.Path == "/job/Alias/2/" {
 					location = "/job/Engineer/456-en_US/"
+				}
+				if mode == "unicode" {
+					location = strings.Replace(location, "Engineer", "München-Großprojekt", 1)
 				}
 				switch mode {
 				case "foreign":
@@ -63,7 +67,7 @@ func TestRealRSSJobInviteIdentityPreservesWholeInventoryAndLease(t *testing.T) {
 			if err = f.pg.QueryRow(ctx, "SELECT consecutive_failures,tdm_reserved FROM job_board WHERE id=$1::uuid", f.board).Scan(&failures, &reserved); err != nil {
 				t.Fatal(err)
 			}
-			if mode == "resolved" {
+			if mode == "resolved" || mode == "unicode" {
 				if count != 3 || result.Batches.Inserted != 2 || active || failures != 0 || calls.Load() != 2 {
 					t.Fatal("resolved canonical inventory lost", result, count, failures, calls.Load())
 				}

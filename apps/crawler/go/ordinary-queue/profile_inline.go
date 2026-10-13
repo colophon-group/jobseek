@@ -69,6 +69,13 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 			options[key] = v
 		}
 	}
+	// This exact original configuration matches a direct verified-TLS document
+	// from pinned Lightpanda. Keep stealth in the ownership hash, while the
+	// qualified replacement uses the engine’s normal navigation.
+	qualifiedDirect := config["board_url"] == "https://www.daiichisankyo.com.vn/vn/doi-ngu-nhan-su/co-hoi-nghe-nghiep/" && sourceMetadataMatches(md, "2a2342c8f74642cc14338568be5e0dc7d28aef023e777a0cc1194b60d0707f46")
+	if qualifiedDirect {
+		delete(options, "stealth")
+	}
 	if validateRenderedNavigation(options, true) != nil {
 		return fail()
 	}
@@ -80,6 +87,9 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 	clone := map[string]json.RawMessage{}
 	for key, raw := range md {
 		clone[key] = raw
+	}
+	if qualifiedDirect {
+		delete(clone, "stealth")
 	}
 	for key := range options {
 		delete(clone, key)

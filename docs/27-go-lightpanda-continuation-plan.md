@@ -1,5 +1,47 @@
 # Go and Lightpanda migration delivery plan
 
+### Current candidate and contained recovery — source1037, 2026-10-13
+
+Source1037 groups Daiichi Vietnam inline navigation, the UK embassy PDF listing
+and RSS Unicode identity repair. Its valid fractional Redis epoch scores now
+accept scientific notation, with exact rollback preservation and production/
+embedded audit Lua synchronized. The preceding head45fd passes CI, installed-image
+contracts, Linux and Gate; all16 ARM arms pass with exact effects and cleanup.
+ARM tested immutable preview21d8, whose full Git tree equals head45fd and whose
+parents are the exact base6670 and head45fd. All actual image/source identities
+are retained. This proof does not qualify subsequent recovery changes.
+
+The original source1036 retirement wrapper timed out twice in canonical restoration
+and intentionally contained every crawler writer, retaining its retiring receipt
+at303. No leases, receipts or runtime selectors were edited. The legacy lease wait
+completed; the failure is the15-second cold transaction budget over thousands of
+bound monitor/detail configurations and retained receipts. Full-cohort snapshot
+validation now has its own fixed two-minute administrative budget and matching SQL
+idle ceiling. It requires the live checked exclusive host scope; runtime and other
+cold transition limits stay at15seconds and statement timeouts stay at10seconds.
+A real PostgreSQL regression reproduces the old15-second cutoff and proves the new
+snapshot survives16seconds of client-side work while every writer barrier remains
+held. Unscoped calls, cancellation and escaped scope still refuse authority.
+
+Renew required checks and immutable qualification, merge the reviewed repair with
+fresh bound-head authority, and use the original deployment workflow build plus
+`crawler-native-admin-prepull.yml` to obtain the immutable compatibility admin.
+The deployment must refuse retained ownership. Run the unchanged ordinary wrapper
+with that exact admin source/image, then B0 reversal, original locked selector clear
+and independent cold304 verification before retrying the full original deployment.
+After source1037's complete rollout, fresh full routes must preserve7805/7685 and
+admit the two qualified monitors together. Current selected release remains
+source1036; it is contained, not serving. Full migration is incomplete.
+
+### Latest delivered checkpoint — source0.13.1036, 2026-10-12
+
+PR #10454 merged as `6670f75a2dcf71fcbd7c712175ef2aa0edd84177`. The original full crawler workflow38290807476 succeeded on its supported retry after receipt-bound recovery; renderer workflow38293226656 succeeded on its original attempt. The source1035 retirement failure was an omitted historical Accenture/Candidatus profile. Real before/after PostgreSQL/Redis regressions proved the repair; the original immutable compatibility-admin prepull and unchanged wrapper completed retirement, B0 reversal, locked selector clearing and independent cold302 verification without editing leases or receipts.
+
+Source1036 B0 and ordinary activation succeeded at epoch303. The fresh all7885-board and1,683,044-posting route census preserved the7804/7683 floor and admitted Bunge plus GE Vernova Menk/King details, yielding7805 monitor boards and7685 detail boards. Independent serving verification found all10 actors running with exact images,8 healthy endpoints, matching SQL/Redis/receipts,19 completed native monitor tasks and66 completed native detail tasks. New-board natural effects remain to be observed. Exact final-head required CI, image contracts, Linux conformance, pilot tests and16 ARM whole-lane arms passed with exact cleanup/effects; measured density ratios were4.98–10.45. Lightpanda1.0.0 remains the latest official release and is pinned immutably.
+
+Continue with grouped remaining monitor/detail contracts. The fresh monitor frontier contains80 boards outside ordinary ownership, including separately-owned B0: DOM54, API13, inline4, RSS3, BrassRing4, Njoyn1 and sitemap1. Next research groups PDF deadline/ownership listing controls across the three Swiss embassy boards, World Gymnastics and FIH; classify the actual remaining unsupported options before adding runtime code. Retain origin failures and cache mismatches as unqualified evidence. Full migration still requires remaining profile coverage, maintenance consumers, complete fleet freshness/conservation and attributable whole-lane cost, supported reversal/rollback window, then retirement of production Python/Playwright/Chromium while preserving useful offline Python.
+
+
 ## Current checkpoint — source1034 deployed; grouped native activation completed299
 
 PR10448 merged as `915d34ac84adbda9be528171cd0936660725bb6f`, version0.13.1034.
@@ -3097,3 +3139,9 @@ Source0.13.1035 (`5a98c747aec1834d157151e46ff2489ee2275024`, PR #10450) passed i
 The outgoing ordinary retirement then refused eligibility and contained the complete writer lane, retaining the exact source1035 retiring receipt. Read-only diagnosis proved one historical source1034/epoch299 monitor receipt belongs to the immutable retired plan with profile `accenture.http-items/v1`; retirement’s historical browser-profile allowlist omitted that supported profile. Current epoch/plan, B0 boards, and current scrape bindings matched; there were no conflicting plans or future receipts. Candidatus has the same omission. Real PostgreSQL/Redis regressions reproduce both failures after a fresh owner has its own interrupted claim. Add only the two supported profiles to historical recognition, retain all receipts, and verify cold reversal and revoked old/current write authority.
 
 Recovery uses the existing compatibility-admin workflow: qualify and merge the corrected mixed batch at its exact final head, obtain its immutable crawler image from the original workflow build (deployment must refuse retained ordinary/B0 receipts), cache that image through `crawler-native-admin-prepull.yml`, then invoke the unchanged installed ordinary wrapper with the approved admin source/image. Keep source1035 selected until full supported retirement, B0 rollback, selector clearing, and independent cold302 verification succeed. Retry the original full deployment only after that recovery. No SQL/Redis receipt edits, lease clearing, partial restarts, or wrapper replacement. Full migration remains incomplete.
+
+### Grouped document, inline and RSS candidate — source0.13.1037
+
+The next mixed iteration repairs SuccessFactors Unicode redirect recognition while preserving the original pre-transform URL, and qualifies Daiichi Vietnam’s exact inline configuration through normal pinned Lightpanda navigation. The original and physical-engine Go parser return the same complete zero-job inventory; host/parser/proxy drift still refuses. The UK embassy PDF listing also matches original replay and actual verified-TLS Go zero results through existing support.
+
+Implenia’s complete original capture matches343 jobs,344 requests and compared fields after the Unicode repair. Its fresh method capture hitHTTP429 and remains unqualified for live admission. FIH’s physical document exceeds the existing rendered2,000,000-byte contract despite fitting the8MiB wire frame; keep it outside ownership. MediaMarkt’s original interactive path produces5 jobs and still needs implementation/physical/canonical proofs. Other grouped original failures remain retained. Required exact-head CI/image/Linux/ARM qualification, a fresh full census preserving7805/7685, supported reversal and original full rollout still precede activation. See the portable candidate evidence JSON.
