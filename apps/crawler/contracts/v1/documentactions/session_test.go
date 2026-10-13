@@ -7,6 +7,25 @@ import (
 	"time"
 )
 
+func TestLongEvaluateKeepsBoundedAggregateAndDefaults(t *testing.T) {
+	var raw any
+	if json.Unmarshal([]byte(`[{"action":"evaluate","script":"async () => {}","timeout":300},{"action":"evaluate","script":"() => {}"}]`), &raw) != nil {
+		t.Fatal("fixture")
+	}
+	parsed, err := Parse(raw)
+	if err != nil || len(parsed) != 2 || parsed[0].TimeoutMS != 300000 || parsed[1].TimeoutMS != 10000 {
+		t.Fatal("explicit long evaluation or original default changed", err)
+	}
+	for _, body := range []string{`[{"action":"evaluate","script":"x","timeout":300.001}]`, `[{"action":"evaluate","script":"x","timeout":60000}]`, `[{"action":"evaluate","script":"x","timeout":300},{"action":"evaluate","script":"x","timeout":300},{"action":"wait"}]`} {
+		if json.Unmarshal([]byte(body), &raw) != nil {
+			t.Fatal("fixture")
+		}
+		if _, err := Parse(raw); err == nil {
+			t.Fatal("per-action or aggregate deadline widened without bounds")
+		}
+	}
+}
+
 func TestParseSequentialPythonDefaultsAndExplicitFailurePolicy(t *testing.T) {
 	var raw any
 	if json.Unmarshal([]byte(`[{"action":"evaluate","script":"() => window.ready = true","required":true,"timeout":0.125},{"action":"wait"},{"action":"wait","ms":0}]`), &raw) != nil {

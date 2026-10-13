@@ -46,7 +46,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		address = "127.0.0.1"
 	}
-	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "delegated-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
+	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "visible-repeat", "visible-publisher", "has-text-click", "mouse-down-click", "delegated-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var mu sync.Mutex
@@ -77,6 +77,14 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 					}
 				case "repeat":
 					html += `<button id="more" onclick="window.n=(window.n||0)+1;const a=document.createElement('a');a.href='/jobs/added'+window.n;document.body.appendChild(a);if(window.n===2)this.remove()">More</button>`
+				case "visible-repeat", "visible-publisher":
+					html += `<button class="more" style="visibility:hidden;width:80px;height:24px" onclick="document.body.dataset.bad='1'">Hidden</button><button class="more" style="display:none;width:80px;height:24px" onclick="document.body.dataset.bad='1'">None</button><button class="more" style="width:0;height:0;padding:0;border:0;font-size:0" onclick="document.body.dataset.bad='1'"></button>`
+					policy := ""
+					if mode == "visible-publisher" {
+						policy = `const m=document.createElement('meta');m.name='tdm-reservation';m.content='1';document.head.appendChild(m);`
+					}
+					// Opacity zero still satisfies the original visibility rule.
+					html += `<button class="more" style="opacity:0;width:80px;height:24px" onclick="window.n=(window.n||0)+1;const a=document.createElement('a');a.href='/jobs/added'+window.n;document.body.appendChild(a);` + policy + `if(window.n===2)this.remove()">More</button>`
 				case "has-text-click":
 					html += `<button onclick="document.body.dataset.wrong='1'">Other</button><button onclick="document.body.dataset.clicked='1'">  Load   MORE </button>`
 				case "mouse-down-click":
@@ -107,6 +115,11 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				pipeline[0].MaxPages = 1
 			case "repeat":
 				pipeline = []actions.Action{{Kind: "repeat", Selector: "#more", Maximum: 5, WaitMS: 5, TimeoutMS: 5000, Required: true}}
+			case "visible-repeat", "visible-publisher":
+				pipeline = []actions.Action{{Kind: "repeat", Selector: ".more:visible", Maximum: 5, WaitMS: 5, TimeoutMS: 5000, Required: true}}
+				if mode == "visible-publisher" {
+					pipeline = append(pipeline, actions.Action{Kind: "evaluate", Script: `()=>document.body.dataset.late='1'`, TimeoutMS: 1000, Required: true})
+				}
 			case "has-text-click":
 				pipeline = []actions.Action{{Kind: "click", Selector: `button:has-text("load more")`, TimeoutMS: 5000, Required: true}}
 			case "mouse-down-click":
@@ -160,6 +173,14 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			case "repeat":
 				if !strings.Contains(html, "/jobs/added1") || !strings.Contains(html, "/jobs/added2") {
 					t.Fatal("repeat stopped before link growth terminated")
+				}
+			case "visible-repeat":
+				if !strings.Contains(html, "/jobs/added1") || !strings.Contains(html, "/jobs/added2") || strings.Contains(html, `data-bad="1"`) {
+					t.Fatal("visibility lost eligible opacity-zero controls or clicked hidden/zero-size controls")
+				}
+			case "visible-publisher":
+				if !strings.Contains(html, "/jobs/added1") || strings.Contains(html, "/jobs/added2") || strings.Contains(html, `data-late="1"`) || !strings.Contains(html, `name="tdm-reservation"`) {
+					t.Fatal("visible interaction continued past publisher reservation")
 				}
 			case "has-text-click":
 				if !strings.Contains(html, `data-clicked="1"`) || strings.Contains(html, `data-wrong="1"`) {

@@ -1346,6 +1346,40 @@ async def _enqueue_scrapes_for_relisted(
         board_log.info("batch.enqueued_scrapes", count=count, relisted=True)
 
 
+async def _enqueue_foreign_relisted_scrapes(
+    pool: asyncpg.Pool,
+    relisted: list[dict],
+    board_log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Refresh a sibling's relist using its current canonical detail owner."""
+    if not relisted:
+        return
+    expected = {row["id"]: row["url"] for row in relisted}
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT p.id::text AS id, p.board_id::text AS board_id,
+                  p.source_url, p.description_r2_hash, b.crawler_type, b.metadata
+           FROM job_posting p JOIN job_board b ON b.id = p.board_id
+           WHERE p.id = ANY($1::uuid[]) AND p.is_active
+             AND p.next_scrape_at IS NOT NULL AND b.is_enabled AND NOT b.tdm_reserved
+           ORDER BY p.id""",
+            sorted(expected),
+        )
+    for row in rows:
+        # A changed source or completed/withdrawn posting invalidates the old
+        # discovery intent. Never copy the discovering board's cached route.
+        if expected.get(row["id"]) != row["source_url"]:
+            continue
+        r2_hash = row["description_r2_hash"]
+        await _enqueue_scrapes_for_relisted(
+            [{"id": row["id"], "url": row["source_url"], "r2_hash": r2_hash}],
+            row["board_id"],
+            _parse_metadata(row["metadata"]),
+            board_log,
+            crawler_type=row["crawler_type"],
+        )
+
+
 async def _enqueue_scrapes_for_touched_missing(
     touched: list[dict],
     board_id: str,
@@ -2480,15 +2514,15 @@ async def _process_one_board_streaming(
                         new_urls.append(row["url"])
                     elif action in {"relisted", "foreign_relisted"}:
                         r2h = row["description_r2_hash"]
-                        relisted.append(
-                            {
-                                "id": row["id"],
-                                "url": row["url"],
-                                "r2_hash": int(r2h) if r2h is not None else None,
-                            }
-                        )
+                        relisted_row = {
+                            "id": row["id"],
+                            "url": row["url"],
+                            "r2_hash": int(r2h) if r2h is not None else None,
+                        }
                         if action == "foreign_relisted":
+                            relisted_row["canonical_owner_required"] = True
                             n_foreign_relisted += 1
+                        relisted.append(relisted_row)
                     elif action == "touched":
                         r2h = row["description_r2_hash"]
                         touched.append(
@@ -2771,14 +2805,18 @@ async def _process_one_board_streaming(
                         inserted, board_id, metadata, board_log, crawler_type=crawler_type
                     )
 
+                foreign_relisted = [r for r in relisted if r.get("canonical_owner_required")]
+                await _enqueue_foreign_relisted_scrapes(pool, foreign_relisted, board_log)
                 if not is_rich_no_scrape:
-                    await _enqueue_scrapes_for_relisted(
-                        relisted,
-                        board_id,
-                        metadata,
-                        board_log,
-                        crawler_type=crawler_type,
-                    )
+                    own_relisted = [r for r in relisted if not r.get("canonical_owner_required")]
+                    if own_relisted:
+                        await _enqueue_scrapes_for_relisted(
+                            own_relisted,
+                            board_id,
+                            metadata,
+                            board_log,
+                            crawler_type=crawler_type,
+                        )
                     await _enqueue_scrapes_for_touched_missing(
                         touched,
                         board_id,
