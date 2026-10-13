@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import atexit
+import functools
 import hashlib
 import importlib.util
 import json
@@ -9,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 from pathlib import Path
 from types import ModuleType
@@ -27,6 +30,72 @@ WORKFLOW = ROOT / ".github/workflows/deploy-crawler-browser.yml"
 BUNDLE_SCRIPT = CRAWLER / "scripts/lightpanda-claimant-credentials.py"
 
 
+@functools.lru_cache(maxsize=4)
+def _native_b0_host_tools_binary(revision: str = "unbuilt") -> Path:
+    directory = Path(tempfile.mkdtemp(prefix="jobseek-b0-host-tools-"))
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    binary = directory / "crawler-deploy-tools"
+    subprocess.run(
+        ["go", "build", "-ldflags", f"-X main.sourceRevision={revision}", "-o", str(binary), "."],
+        cwd=CRAWLER / "go/deploy-tools",
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
+    return binary
+
+
+def _stage_native_b0_host_wrapper(source: str, deploy_dir: Path) -> str:
+    values = dict(
+        line.split("=", 1)
+        for line in (deploy_dir / ".env").read_text(encoding="utf-8").splitlines()
+        if "=" in line
+    )
+    revision = values["JOBSEEK_DEPLOY_REVISION"]
+    binary = _native_b0_host_tools_binary(revision)
+    directory = deploy_dir / "scripts"
+    directory.mkdir(exist_ok=True)
+    shutil.copyfile(
+        CRAWLER / "scripts/native-deploy-tools.sh", directory / "native-deploy-tools.sh"
+    )
+    digest = _sha256(binary)
+    for architecture in ("amd64", "arm64"):
+        destination = directory / f"crawler-deploy-tools-{architecture}"
+        shutil.copyfile(binary, destination)
+        destination.chmod(0o755)
+    (directory / "crawler-deploy-tools.source").write_text(revision + "\n", encoding="utf-8")
+    (directory / "crawler-deploy-tools.sha256").write_text(
+        "".join(f"{digest}  crawler-deploy-tools-{arch}\n" for arch in ("amd64", "arm64")),
+        encoding="utf-8",
+    )
+    # Existing Compose mocks must not emit a fake checksum into an epoch reply.
+    # Selected native artifact checks use real hashes, including on macOS.
+    source = source.replace(
+        "sha256sum() { ",
+        'sha256sum() { if [[ "${1:-}" == --strict && "${2:-}" == --status '
+        '&& "${3:-}" == -c ]]; then '
+        'native_fixture_sha256_check "$@"; return; fi; ',
+    )
+    source = source.replace(
+        "set -euo pipefail", "set -euo pipefail\n" + _native_fixture_checksum_functions(), 1
+    )
+    return source.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+
+
+def _native_fixture_checksum_functions() -> str:
+    return """native_fixture_sha256_check() {
+  if type -P sha256sum >/dev/null; then
+    command sha256sum "$@"
+  elif [[ "${1:-}" == --strict && "${2:-}" == --status && "${3:-}" == -c ]]; then
+    shasum -a 256 -c "$4" >/dev/null
+  else
+    shasum -a 256 "$@"
+  fi
+}
+sha256sum() { native_fixture_sha256_check "$@"; }
+"""
+
+
 def _shell_function(source: str, name: str) -> str:
     start = source.index(f"{name}() {{")
     if name == "attest_receipt":
@@ -35,7 +104,62 @@ def _shell_function(source: str, name: str) -> str:
         end = source.index("\n}\n\nreserve_routing_epoch", start)
     else:
         end = source.index("\n}\n", start)
-    return source[start : end + 3]
+    function = source[start : end + 3]
+    if name in {
+        "fsync_path",
+        "attest_receipt",
+        "load_receipt_identity",
+        "reserve_routing_epoch",
+        "attest_routing_epoch",
+    }:
+        # Function-level harnesses run the real native parser/fsync binary.
+        # Full wrapper tests retain their existing cold-stack containment mocks.
+        binary = _native_b0_host_tools_binary()
+        function = f'native_b0_host_tool() {{ env -i "{binary}" "$@"; }}\n' + function
+    return function
+
+
+@pytest.mark.parametrize(
+    "change", ["none", "source", "digest", "helper-symlink", "compiled-source"]
+)
+def test_b0_host_helpers_require_selected_native_artifacts(tmp_path: Path, change: str) -> None:
+    revision = "c" * 40
+    (tmp_path / ".env").write_text(f"JOBSEEK_DEPLOY_REVISION={revision}\n", encoding="utf-8")
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    _stage_native_b0_host_wrapper(wrapper, tmp_path)
+    directory = tmp_path / "scripts"
+    if change == "source":
+        (directory / "crawler-deploy-tools.source").write_text("d" * 40 + "\n", encoding="utf-8")
+    elif change == "digest":
+        manifest = directory / "crawler-deploy-tools.sha256"
+        manifest.write_text(
+            manifest.read_text().replace(_sha256(_native_b0_host_tools_binary(revision)), "d" * 64),
+            encoding="utf-8",
+        )
+    elif change == "helper-symlink":
+        helper = directory / "native-deploy-tools.sh"
+        original = helper.read_text()
+        helper.unlink()
+        target = directory / "helper-target"
+        target.write_text(original, encoding="utf-8")
+        helper.symlink_to(target)
+    elif change == "compiled-source":
+        revision = "d" * 40
+        (directory / "crawler-deploy-tools.source").write_text(revision + "\n", encoding="utf-8")
+    harness = "\n".join(
+        (
+            "set -eu",
+            _native_fixture_checksum_functions(),
+            f'DEPLOY_DIR="{tmp_path}"',
+            f"JOBSEEK_DEPLOY_REVISION={revision}",
+            _shell_function(wrapper, "native_b0_host_tool"),
+            "native_b0_host_tool b0-epoch-reserve-reply '{\"routing_epoch\":307}'",
+        )
+    )
+    result = subprocess.run(["bash", "-c", harness], check=False, capture_output=True, text=True)
+    assert (result.returncode == 0) == (change == "none"), result.stderr
+    if change == "none":
+        assert result.stdout == "307\n"
 
 
 def _load_bundle_module() -> ModuleType:
@@ -1195,7 +1319,7 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, deploy_dir)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1347,7 +1471,7 @@ def test_active_e2_replay_cannot_bless_unhealthy_restored_e1_authority(tmp_path:
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, deploy_dir)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1418,7 +1542,7 @@ def test_stale_receipt_epoch_exits_before_enabled_compose_or_service_mutation(
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, tmp_path)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock",
         f'LOCK="{tmp_path / "mutation.lock"}"',
@@ -1486,7 +1610,7 @@ def test_pending_activation_retry_preserves_receipt_for_recovery(tmp_path: Path)
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, tmp_path)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1547,7 +1671,7 @@ def test_allocator_failure_cannot_reach_enabled_compose_or_service_mutation(
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, tmp_path)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1611,7 +1735,7 @@ def test_failure_after_reservation_burns_epoch_before_retry(tmp_path: Path) -> N
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, tmp_path)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1788,7 +1912,7 @@ def _run_pending_recovery_wrapper(
         )
     )
     wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
-    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = _stage_native_b0_host_wrapper(wrapper, deploy_dir)
     wrapper = wrapper.replace(
         "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
     )
@@ -1803,6 +1927,7 @@ def _run_pending_recovery_wrapper(
         capture_output=True,
         text=True,
     )
+    assert log.exists(), result.stderr
     return result, log.read_text(encoding="utf-8").splitlines(), receipt
 
 

@@ -1,0 +1,108 @@
+{
+  "schema": "jobseek.go-lightpanda.delivered-checkpoint/v1",
+  "source_revision": "a5ecb5e9da5057cf8b6348f6cb203628347b5fc7",
+  "version": "0.13.1039",
+  "merged_pr": "https://github.com/colophon-group/jobseek/pull/10487",
+  "qualified_head": "c2a3aebd20d40be3d895f95d0ef99fe9af148352",
+  "routing_epoch": 307,
+  "lightpanda": "1.0.0",
+  "crawler_workflow": 38444899737,
+  "renderer_workflow": 38445298587,
+  "workflow_attempts": 1,
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "a5ecb5e9da5057cf8b6348f6cb203628347b5fc7",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:4f1c3e3f5189ac3ed0ab517bc1afebbdddf2a9072c3611d97d8fbad7a91a1a7d",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:dff5d7485da78ed11a49dea9e078ebb50682f49b33001cf61b8c8eccffbcbf21"
+  },
+  "ordinary_plan_sha256": "6d92f8ac0379d2f95c09b50eeadca94021663b6b892173de4e3388952ba3af7e",
+  "projection_sha1": "4988faf9ce8f935a8e9edb7926ceb4dd74cd97cb",
+  "b0_receipt_sha256": "fbfcc505192f8d793a64134c209678cf76d214d0505b0749c9cd37a933c00572",
+  "ordinary_receipt_sha256": "18e2905dc85bbe99e72528f4e68844d72a8ce8ba50068bf6ad882e3d72a91751",
+  "enabled_boards": 7885,
+  "monitor_boards": 7810,
+  "detail_boards": 7685,
+  "scheduled_routes_reconciled": 1717881,
+  "owned_scheduled_routes": 1594687,
+  "prior_monitor_floor": 7808,
+  "prior_detail_floor": 7685,
+  "new_monitors": [
+    "midea-group-careers-global",
+    "kroger-harris-teeter"
+  ],
+  "new_details": 0,
+  "observed_at": "2026-10-13T19:41:28.712922+00:00",
+  "actors_running": 10,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "natural_receipts": [
+    {
+      "task_kind": "monitor",
+      "state": "active",
+      "count": 1
+    },
+    {
+      "task_kind": "monitor",
+      "state": "completed",
+      "count": 185
+    },
+    {
+      "task_kind": "scrape",
+      "state": "active",
+      "count": 8
+    },
+    {
+      "task_kind": "scrape",
+      "state": "completed",
+      "count": 1598
+    }
+  ],
+  "new_board_natural_checks": [
+    {
+      "board_slug": "kroger-harris-teeter",
+      "crawler_type": "dom",
+      "last_checked_at": "2026-10-13T19:38:32.862121+00:00",
+      "next_check_at": "2026-10-13T20:39:54.422611+00:00",
+      "consecutive_failures": 0,
+      "empty_check_count": 0,
+      "native_receipt_state": "completed",
+      "native_receipt_updated_at": "2026-10-13T19:39:55.257083+00:00",
+      "active_postings": 2147,
+      "active_seen_since_native_activation_started": 2143
+    },
+    {
+      "board_slug": "midea-group-careers-global",
+      "crawler_type": "dom",
+      "last_checked_at": "2026-10-13T19:35:24.91246+00:00",
+      "next_check_at": "2026-10-13T20:35:55.510584+00:00",
+      "consecutive_failures": 0,
+      "empty_check_count": 0,
+      "native_receipt_state": "completed",
+      "native_receipt_updated_at": "2026-10-13T19:35:55.628444+00:00",
+      "active_postings": 58,
+      "active_seen_since_native_activation_started": 58
+    }
+  ],
+  "outgoing_source1038_supported_reversal": "Original retirement/B0 rollback/selector clear passed; independent cold306 verification; 7877 retained receipts",
+  "remaining_ordinary_monitors": 72,
+  "remaining_types": {
+    "dom": 49,
+    "api_sniffer": 13,
+    "rss": 3,
+    "njoyn": 1,
+    "brassring": 4,
+    "inline": 2
+  },
+  "full_fleet_freshness_proved": false,
+  "comparable_production_cost_proved": false,
+  "production_python_removed": false,
+  "full_migration_complete": false,
+  "protected_proof_sha256": "7aeac4c12265c8a413faeeeba10c7cf307f0675334933facba4a97febbac6878"
+}

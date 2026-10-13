@@ -16,7 +16,8 @@ import (
 )
 
 // OrdinaryLeaseBarrier orders native database commits before lease-ending
-// transitions. Reapers/settlements take it exclusively, writers/claims share it.
+// transitions. Reapers take it exclusively; writers, claims and receipt-fenced
+// settlements share it. Settlement locks its completed receipt before ACK.
 // A Redis read alone cannot provide this cross-system ordering.
 const OrdinaryLeaseBarrier int64 = 7544422533504811010
 
@@ -544,13 +545,15 @@ func (a *Authority) writeWithDetailHandoff(ctx context.Context, claim *Claim, te
 	return receipt, nil
 }
 
-// Settle serializes lease removal with every native database writer. It accepts
-// only a committed/recovered receipt and rechecks the canonical deadline.
+// Settle orders lease removal with the exact task's receipt and canonical rows.
+// It accepts only a committed/recovered receipt, rechecks the canonical deadline
+// and shares the global barrier so unrelated tasks can keep writing. Reapers and
+// ownership retirement still take that barrier exclusively.
 func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) error {
 	if !a.valid(claim) || receipt == nil || receipt.claim != claim {
 		return ErrConfiguration
 	}
-	return a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
+	return a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
 		if err := a.requireOwnership(ctx, tx, claim); err != nil {
 			return err
 		}

@@ -85,22 +85,11 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 		if profile.EffectiveBoardSHA256 != member.EffectiveConfigHash {
 			return ErrAuthorityLost
 		}
-		var actual string
-		// Candidate discovery grants no lease. Retaining row locks for every
-		// losing candidate serializes independent claimers before a pop.
-		// The selected posting is locked and revalidated immediately below
-		// the final selection, while the same board/epoch barriers remain held.
-		err = tx.QueryRow(ctx, "SELECT source_url FROM job_posting WHERE id=$1::uuid AND board_id=$2::uuid", id, board).Scan(&actual)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if source != actual {
-			return nil
-		}
-		admitted, err := inspectDetail(board, boardConfig, actual, worker)
+		// Losing candidates grant no lease or write authority. Validate their
+		// route shape from the current queue snapshot; claimOwnedFiltered locks
+		// only the chosen canonical posting and requires its exact source to
+		// match this snapshot immediately before the atomic Redis pop.
+		admitted, err := inspectDetail(board, boardConfig, source, worker)
 		if err != nil || admitted.Profile != binding.Profile || !detailDomainMatches(binding.Domain, admitted) || admitted.Domain != domain {
 			return nil
 		}

@@ -1,0 +1,47 @@
+{
+  "schema": "jobseek.go-lightpanda.local-component/v1",
+  "candidate_version": "0.13.1040",
+  "base_source": "a5ecb5e9da5057cf8b6348f6cb203628347b5fc7",
+  "status": "Local validated component, unmerged and not production-qualified",
+  "contracts": [
+    "Completed receipt settlement shares global lease barrier while retaining exact receipt/canonical row locks; reapers and retirement remain exclusive",
+    "Dense detail candidate observation grants no SQL posting lock or Redis lease; exact chosen canonical source remains locked/revalidated before pop",
+    "B0 host receipt identity and attestation, epoch reply parsing and file/directory fsync use existing source/digest-verified native deploy-tools"
+  ],
+  "sql_query_budget": {
+    "candidates": 64,
+    "baseline_queries": 65,
+    "prototype_queries": 1,
+    "production_speedup_proved": false
+  },
+  "validation": {
+    "real_postgres_redis_race_and_authority_seconds": 66.6,
+    "broader_ownership_retirement_race_seconds": 275.376,
+    "host_wrapper_tests": 98,
+    "related_deployment_activation_cutover_tests": 173,
+    "native_original_receipt_comparisons": 184,
+    "native_original_epoch_comparisons": 26,
+    "native_deploy_tools_race": "passed",
+    "go_vet": "passed",
+    "python_lint_format": "passed"
+  },
+  "remaining_python": [
+    "B0 database activation/rollback administration",
+    "Alembic deployment migration consumer",
+    "Retained rollback sync command",
+    "Enabled legacy monitor/detail workers for unsupported routes"
+  ],
+  "next": "Fold into a grouped provider and consumer candidate; run complete required qualification before any production transition",
+  "files_sha256": {
+    "apps/crawler/go/ordinary-queue/authority.go": "9490872e81eb91af154bf4f64939adc7548205d761b49a793bcfa5127c576500",
+    "apps/crawler/go/ordinary-queue/selection_workday_detail.go": "b72d24af19c8117e7dda256de4cd13d6a217e2aab6050809509651a639197821",
+    "apps/crawler/go/ordinary-queue/settlement_barrier_test.go": "450902c723e72b9fea798b2b6579d507c4e8f84d3eebea50c4cff3167aea6034",
+    "apps/crawler/go/ordinary-queue/selection_observation_budget_test.go": "4681f7f86f1292a36f179e47ca6b455bc0ebf71b90c7bf6cd26a1263b9349dd9",
+    "apps/crawler/go/deploy-tools/main.go": "4b109a4f253aa031be7837ea736bc7a54875bc587f67df6824f510b9678981e5",
+    "apps/crawler/go/deploy-tools/b0_receipt.go": "112c29b196271006e672b2cfd80acebe13ffbaf1250121db86244add55760a93",
+    "apps/crawler/go/deploy-tools/b0_receipt_test.go": "9bcf85c796a7577f4217857b42a79dcee26988cf2b84620de209fa83de06def8",
+    "apps/crawler/go/deploy-tools/testdata/b0_host_helpers_source1039.json": "0efc9888c9c67753a18879dd4bb1567413780600edfc68459d015fb0e30f11d1",
+    "apps/crawler/scripts/lightpanda-b0-cutover.sh": "ed154ba138a7ab1fbab19e9575da0699a831f5a74f49478182380b0230265a0c",
+    "apps/crawler/tests/test_lightpanda_claimant_deployment.py": "ed8b5b36ab0f29369614b3aa34f272ba37faf0803082a760cd3de4b8ceb46b87"
+  }
+}
