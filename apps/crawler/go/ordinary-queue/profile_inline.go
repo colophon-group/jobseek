@@ -79,8 +79,9 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 	if validateRenderedNavigation(options, true) != nil {
 		return fail()
 	}
+	_, cardErr := InlineCardOptions(config)
 	for _, key := range []string{"fetch_json_path", "detail_click_selector", "detail_content_selector", "detail_identity_selector", "detail_identity_attribute", "detail_identity_regex"} {
-		if raw, ok := md[key]; ok && string(raw) != "null" {
+		if raw, ok := md[key]; ok && string(raw) != "null" && (key == "fetch_json_path" || cardErr != nil) {
 			return fail()
 		}
 	}
@@ -90,6 +91,9 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 	}
 	if qualifiedDirect {
 		delete(clone, "stealth")
+	}
+	if cardErr == nil {
+		inlineCardParserClone(config, clone)
 	}
 	for key := range options {
 		delete(clone, key)

@@ -1,0 +1,130 @@
+{
+  "schema": "jobseek.native-following-work/v1",
+  "base_candidate": "4f55033cffa7286e2c0ff421d4932bf4705ab092",
+  "scope": "Consolidated expandable inline and Eightfold Workday detail ports, bounded canonical retirement receipt pages, and chosen-posting claim locks; final qualification/admission pending",
+  "physical_lightpanda_version": "1.0.0",
+  "physical_heap_limit_mib": 128,
+  "original_jobs": 5,
+  "all_original_physical_fields_equal": true,
+  "capture_sha256": "d957278a6605b00208bc5cd0f5b6a0a40a48cb9a0a8adeb152cf53de055dfe1f",
+  "implemented": "Bounded isolated-world native Go renderer collection, controller identity wire, original configuration binding, parser and held worker projection",
+  "remaining": [
+    "Final exact-source CI/Linux/ARM and fresh deployed full route admission",
+    "Natural queue effects and full fleet freshness/conservation",
+    "Comparable attributable whole-lane cost and supported rollback window before Python retirement"
+  ],
+  "admission_authority": false,
+  "freshness_observation": {
+    "source": "6670f75a2dcf71fcbd7c712175ef2aa0edd84177",
+    "epoch": 303,
+    "at_utc": "2026-10-12T20:00:27Z",
+    "completed_monitors": 426,
+    "completed_details": 524,
+    "native_due_monitors": 6309,
+    "native_overdue_1h": 5360,
+    "native_overdue_6h": 1811,
+    "freshness_proved": false
+  },
+  "caci_detail_research": {
+    "samples": 3,
+    "all_original_fields_replay_and_verified_tls_live_equal": true,
+    "canonical_claim_qualified": true,
+    "actual_scheduled_route_hosts": {
+      "caci.wd1.myworkdayjobs.com": 1856
+    },
+    "configured_scraper": "eightfold",
+    "reason": "Native profile now binds canonical Workday source to existing Eightfold HTML JSON-LD semantics. Two originals produce content, one is empty and remains a failed canonical scrape; no route or config rewrite.",
+    "replay_sha256": "232f2b887b9b2e89d957275ed51e1bacd5bd6241217cea83eeb0f3d087777a8a",
+    "live_sha256": "abe7905040c976f9b89d268a653ed3063d1d5c7adfd3a24c2c1503984f2bc7a8",
+    "admission_authority": false,
+    "canonical_cases": 9,
+    "canonical_log_sha256": "c36c7a24dddc2282555ea16988440e81ced5a95ba54f5b494ae9c3cb549b35ee",
+    "publisher_status_regressions": 6,
+    "publisher_log_sha256": "ef5ad08991e16db191fcef477ec3a0735ff874e2159bb4d238bd8c099c590077"
+  },
+  "parser_verification": {
+    "existing_inline_regressions_and_expanded_conservation": "pass",
+    "physical_all_original_fields": "pass",
+    "go_vet": "pass",
+    "test_log_sha256": "3c4692f27bc5eee3311a1b082b029ac8f871eb4dc84456dc353febf37a48c041"
+  },
+  "remaining_detail_frontier": {
+    "outside_current_cohort": 200,
+    "unsupported_configuration": 150,
+    "cache_mismatch": 42,
+    "actual_route_unsupported": 1,
+    "supported_unqualified_including_three_B0_and_three_zero_route": 7
+  },
+  "incoming_source1037_qualification": {
+    "pr": 10456,
+    "head": "64ddaf0b08377599459c9fec117cd3069ae331cf",
+    "ci": 38387215340,
+    "image_contracts": 38387215470,
+    "gate": 38387212548,
+    "arm": 38387215603,
+    "status": "Recovery snapshot budget added; new exact-source qualification pending",
+    "serving_source": "6670f75a2dcf71fcbd7c712175ef2aa0edd84177",
+    "production_mutation_this_continuation": false,
+    "retained_rejected_heads": [
+      "1d18ca83ca667850a1351921c737cae5c7ae0ddc",
+      "222b29a879955a79fa91257e34b08aea98f834bf"
+    ],
+    "selected_source_contained": true
+  },
+  "candidate_version": "0.13.1038",
+  "observed_at_utc": "2026-10-13T12:33:15.848495+00:00",
+  "native_media_markt": {
+    "physical_response_sha256": "b44a907c088c985180461cb5ee31ab0a4b32f771da4a0b24207fd9fe9144a22d",
+    "engine_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+    "engine": "1.0.0",
+    "heap_limit_mib": 128,
+    "returned_identities": 5,
+    "cleanup_proved": true,
+    "all_original_fields_equal": true,
+    "all_fields_log_sha256": "2c4bfab4d56b58e35b15767e2b3c035b0c17c4a4c855031744d26b1df145a11b",
+    "actual_canonical_cases": 5,
+    "actual_canonical_log_sha256": "2b37ffb0729d14478a5c348f4220ddeb3b24e1fa51e56688b370e6364b77618e",
+    "repository_canonical_race_cases": 5,
+    "repository_canonical_log_sha256": "39f684586237db86682b3a19f52780de61ca8cbae72419ddc5375a1294e0b3e9",
+    "real_engine_fixture_cases": 7,
+    "real_engine_fixture_platform": "verified macOS arm64 pinned binary and loopback fixture overlay; Linux immutable-image qualification still required",
+    "real_engine_fixture_log_sha256": "1ac3b49286d1751fab3a55f11bbb2468db6d5811d5c9f11ea259996a71442bb4",
+    "publisher_empty_page_precedence": "pass before waiting for controls"
+  },
+  "verification": {
+    "contracts_full": "pass",
+    "renderer_full": "pass",
+    "worker_inline_eightfold_rendered_race": "pass",
+    "queue_original_card_and_foreign_workday_route_race": "pass",
+    "worker_race_log_sha256": "42d00a5c47742df3e87dab362b3819fe36f552cbeaf3b4b95bfe769d6427de0e",
+    "queue_race_log_sha256": "3e11f4e35520d77478fa6c8e0e766415cdd4576f8480863e7123902ce0b997b2",
+    "retained_fixture_interference": "First parallel PostgreSQL suites shared fixture authority and failed. Serial rerun and isolated canonical cases passed; do not parallelize modules against the same fixture database."
+  },
+  "canonical_retirement_paging": {
+    "receipt_rows": 12148,
+    "pages": 48,
+    "page_limit": 256,
+    "all_original_fields_equal": true,
+    "complete_receipts_sha256": "3d7d5ae8e6b19a3c95d0baad19579b21ab6f7f6cd53328cf8909a22d77cf9d2b",
+    "max_page_query_client_seconds": 0.16304541658610106,
+    "repository_rows": 513,
+    "zero_uuid_preserved": true,
+    "repository_race_log_sha256": "ac59e34dd315b71fe66a4eba9e5cb7170217a7f9cb45a0994b440073ccb0f1b4"
+  },
+  "claim_candidate_contention": {
+    "old_losing_candidate_lock_reproduced": true,
+    "chosen_posting_source_revalidated_under_exclusive_lock": true,
+    "first_time_and_recurring_cases": 6,
+    "race_log_sha256": "73ec9cca9860a70c05d58a86609a9dd652cb1cbd052d106f5c9006c547ffeb33",
+    "production_improvement_proved": false
+  },
+  "source1037_compatibility_recovery": {
+    "merge_revision": "4f55033cffa7286e2c0ff421d4932bf4705ab092",
+    "deployment_run": 38393152044,
+    "prepull_run": 38394982659,
+    "original_owner_refusal": true,
+    "retirement_success": false,
+    "failure": "10s statement timeout in full retained-detail receipt join",
+    "selected_source_still_contained": true
+  }
+}

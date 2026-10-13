@@ -15,6 +15,7 @@ import (
 	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
 	workable "github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor"
+	workday "github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor"
 )
 
 const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
@@ -212,7 +213,14 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	} else if scraper == "eightfold" {
 		route, e := apisniffer.EightfoldDetailRouteForSource(source)
 		if e != nil {
-			return fail()
+			// Eightfold inventories can retain Workday posting URLs. The
+			// configured scraper first parses their HTML JSON-LD and, without
+			// an Eightfold job ID, makes no position API request. Preserve that
+			// original route; do not substitute Workday API semantics.
+			if _, _, e := workday.DetailAPIURL(source); e != nil {
+				return fail()
+			}
+			route = apisniffer.EightfoldDetailRoute{SourceURL: source, APIURL: source}
 		}
 		jsonldOptions = map[string]any{}
 		for key, raw := range options {

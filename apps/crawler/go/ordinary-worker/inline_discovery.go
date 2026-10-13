@@ -122,7 +122,17 @@ func parseInlineInventoryDocument(ctx context.Context, result RichDiscovery, o a
 	if classification["classification"] == "challenge" {
 		return result, executor.ErrBotChallenge
 	}
-	inventory, err := api.ParseInlineDocument(ctx, source, o.BoardURL, o.InlineOptions, now)
+	return parseInlineInventoryWithIdentities(ctx, result, o, source, now, nil)
+}
+
+func parseInlineInventoryWithIdentities(ctx context.Context, result RichDiscovery, o api.InlineMonitorOptions, source string, now time.Time, identities []string) (RichDiscovery, error) {
+	var inventory api.InlineInventory
+	var err error
+	if identities == nil {
+		inventory, err = api.ParseInlineDocument(ctx, source, o.BoardURL, o.InlineOptions, now)
+	} else {
+		inventory, err = api.ParseExpandedInlineDocument(ctx, source, o.BoardURL, o.InlineOptions, now, identities)
+	}
 	if err != nil {
 		return result, err
 	}

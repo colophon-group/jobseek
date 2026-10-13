@@ -253,6 +253,21 @@ func (a *Authority) claimOwnedFiltered(ctx context.Context, tx pgx.Tx, worker Wo
 		role, cached := "native", candidate.cached
 		if candidate.postingID != "" {
 			role = "native_detail"
+			// Only the chosen candidate needs an exclusive posting lock. A
+			// busy row cannot consume every claim connection while other due
+			// postings remain available. Board configuration stays protected
+			// by the discovery snapshot's shared canonical board lock.
+			var actual string
+			err := tx.QueryRow(ctx, "SELECT source_url FROM job_posting WHERE id=$1::uuid AND board_id=$2::uuid FOR UPDATE SKIP LOCKED", candidate.postingID, candidate.member.BoardID).Scan(&actual)
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue
+			}
+			if err != nil {
+				return nil, err
+			}
+			if actual != cached["source_url"] {
+				continue
+			}
 		} else {
 			profile, observed, err := a.observeGreenhouseMonitor(ctx, tx, candidate.member.BoardID)
 			if err != nil {

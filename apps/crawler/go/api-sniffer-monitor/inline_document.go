@@ -148,7 +148,7 @@ func inlineScopedElements(source string, start, end dom.Object, includeHidden bo
 	return elements, nil
 }
 
-func inlineWalkRows(elements []dom.Element, steps []dom.Object, item dom.Object) ([]dom.Object, bool, error) {
+func inlineWalkRows(elements []dom.Element, steps []dom.Object, item dom.Object, strictCards ...bool) ([]dom.Object, bool, error) {
 	rows := []dom.Object{}
 	var err error
 	cursor, processed := 0, 0
@@ -191,6 +191,9 @@ func inlineWalkRows(elements []dom.Element, steps []dom.Object, item dom.Object)
 			break
 		}
 		if !detailTruthy(result["title"]) {
+			if len(strictCards) > 0 && strictCards[0] {
+				return nil, false, ErrInventory
+			}
 			if item == nil {
 				break
 			}

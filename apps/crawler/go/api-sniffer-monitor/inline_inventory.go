@@ -237,6 +237,26 @@ func inlineFallback(a, b any) any {
 // ParseInlineDocument is pure inventory assembly. Transport ownership, cookies,
 // publisher policy and canonical writes stay with the sealed native worker.
 func ParseInlineDocument(ctx context.Context, source, boardURL string, o InlineOptions, now time.Time) (InlineInventory, error) {
+	return parseInlineDocument(ctx, source, boardURL, o, now, nil)
+}
+
+// ParseExpandedInlineDocument consumes identities captured by the browser
+// controller before expansion. Provider fragment markup cannot supply them.
+func ParseExpandedInlineDocument(ctx context.Context, source, boardURL string, o InlineOptions, now time.Time, identities []string) (InlineInventory, error) {
+	if len(identities) == 0 || len(identities) > 500 || o.SourceSelector != "" || o.SourceURLSelector != "" || o.StableField != "" || o.Positions != 1 || len(o.Item) != 1 || o.Item["tag"] != "jobseek-inline-detail" {
+		return InlineInventory{}, ErrOptions
+	}
+	seen := map[string]bool{}
+	for _, identity := range identities {
+		if identity == "" || len([]rune(identity)) > 512 || seen[identity] {
+			return InlineInventory{}, ErrInventory
+		}
+		seen[identity] = true
+	}
+	return parseInlineDocument(ctx, source, boardURL, o, now, identities)
+}
+
+func parseInlineDocument(ctx context.Context, source, boardURL string, o InlineOptions, now time.Time, expandedIdentities []string) (InlineInventory, error) {
 	result := InlineInventory{Jobs: []Job{}}
 	if ctx.Err() != nil {
 		return result, ctx.Err()
@@ -274,12 +294,12 @@ func ParseInlineDocument(ctx context.Context, source, boardURL string, o InlineO
 	if authoritativeEmpty && !o.EmptyRequiresNoJobs {
 		return result, nil
 	}
-	rows, truncated, err := inlineWalkRows(elements, o.Steps, o.Item)
+	rows, truncated, err := inlineWalkRows(elements, o.Steps, o.Item, expandedIdentities != nil)
 	if err != nil {
 		return result, err
 	}
 	if len(rows) == 0 {
-		if o.EmptyText != "" || o.RequireZeroProof {
+		if expandedIdentities != nil || o.EmptyText != "" || o.RequireZeroProof {
 			return result, ErrInventory
 		}
 		return result, nil
@@ -297,6 +317,12 @@ func ParseInlineDocument(ctx context.Context, source, boardURL string, o InlineO
 			return InlineInventory{}, ErrInventory
 		}
 		var id, sourceURL string
+		if expandedIdentities != nil {
+			if i >= len(expandedIdentities) {
+				return InlineInventory{}, ErrInventory
+			}
+			id = expandedIdentities[i]
+		}
 		if o.SourceSelector != "" {
 			if i >= len(ids) {
 				return InlineInventory{}, ErrInventory
@@ -413,7 +439,7 @@ func ParseInlineDocument(ctx context.Context, source, boardURL string, o InlineO
 			break
 		}
 	}
-	if o.SourceSelector != "" && processed != len(ids) || o.SourceURLSelector != "" && processed != len(urls) {
+	if expandedIdentities != nil && (truncated || processed != len(expandedIdentities)) || o.SourceSelector != "" && processed != len(ids) || o.SourceURLSelector != "" && processed != len(urls) {
 		return InlineInventory{}, ErrInventory
 	}
 	if len(result.Jobs) == 0 {

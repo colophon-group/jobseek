@@ -30,11 +30,15 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	}
 	// Reuse the same strict navigation adapter and cleanup sanitizer. Actions are
 	// attached only after navigation input validation, and never to B1 evaluation.
-	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...)})
+	var identities []string
+	adapter, err := lightpandaadapter.NewDocumentSessionRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities}, request.Actions, request.InlineCards)
 	if err != nil {
 		return response, err
 	}
 	result := sanitizeRuntimeV1Result(adapter.Execute(ctx, input))
+	if result.GetSuccess() != nil {
+		response.InlineIdentities = identities
+	}
 	response.Result, err = proto.MarshalOptions{Deterministic: true}.Marshal(result)
 	if err != nil || !response.Valid() {
 		return actions.Response{}, actions.ErrActions
@@ -46,7 +50,7 @@ func (service *runtimeV1Service) handleDocumentActions(parent context.Context, c
 	if !ok {
 		return
 	}
-	budget := 260*time.Second + actions.Budget(request.Actions)
+	budget := 260*time.Second + actions.Budget(request.Actions) + inlineCardBudget(request.InlineCards)
 	_ = conn.SetDeadline(time.Now().Add(budget + 15*time.Second))
 	ctx, cancel := context.WithTimeout(parent, budget)
 	done := make(chan runtimeV1PostMarkerRead, 1)

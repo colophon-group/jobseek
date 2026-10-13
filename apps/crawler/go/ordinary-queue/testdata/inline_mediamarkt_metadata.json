@@ -1,0 +1,64 @@
+{
+  "wait": "domcontentloaded",
+  "steps": [
+    {
+      "tag": "p",
+      "field": "title",
+      "match_regex": ".+"
+    },
+    {
+      "tag": "p",
+      "field": "location",
+      "regex": "^Location:\\s*(.+)",
+      "optional": true,
+      "match_regex": "^Location:"
+    },
+    {
+      "tag": "p",
+      "html": true,
+      "field": "description",
+      "to_end": true
+    }
+  ],
+  "render": true,
+  "actions": [
+    {
+      "ms": 10000,
+      "action": "wait"
+    }
+  ],
+  "timeout": 30000,
+  "defaults": {
+    "locations": [
+      "Germany"
+    ]
+  },
+  "scraper_type": "skip",
+  "suspect_streak": 0,
+  "defaults_by_title": {
+    "Sales-Expert (m/w/d) TZ – Store & Video": {
+      "locations": [
+        "Hamburg, Germany"
+      ]
+    },
+    "Sales-Expert (m/w/d) VZ/TZ – Store & Video": {
+      "locations": [
+        "Cologne, Germany"
+      ]
+    }
+  },
+  "detail_click_selector": "span[part=\"formatted-rich-text\"] u",
+  "detail_identity_regex": "^(a7u[A-Za-z0-9]{15})-.+$",
+  "detail_content_selector": "flowruntime-flow span[part=\"formatted-rich-text\"] >> nth=1",
+  "detail_identity_selector": "label[for^=\"a7u\"]",
+  "preserve_single_location": true,
+  "recent_discovered_counts": [
+    5,
+    5,
+    5,
+    5,
+    5
+  ],
+  "detail_identity_attribute": "for",
+  "_monitor_config_fingerprint": "b3a10530384ab0ed4c8449f75b5c91aa1eb68436cfb4b49a80c05707efd15d69"
+}

@@ -77,6 +77,7 @@ var (
 type Task struct {
 	URL               string
 	Actions           []actions.Action
+	InlineCards       *actions.InlineCards
 	Evaluation        *TaskEvaluation
 	Navigation        *navigationOptions
 	Dayforce          *dayforceTask
@@ -94,6 +95,7 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
+	InlineIdentities        []string `json:"-"`
 	feedSessionSettled      bool
 	apiReplaySessionSettled bool
 	ResourcePolicy          *runtimev1.ResourcePolicySignals `json:"-"`
@@ -269,6 +271,10 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.InlineCards != nil && (!task.InlineCards.Valid() || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
+		return actions.ErrActions
+	}
+
 	if len(task.Actions) > 0 && (!actions.Valid(task.Actions) || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
 		return actions.ErrActions
 	}
@@ -335,6 +341,13 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 }
 
 func validateResult(task Task, result Result) error {
+	if task.InlineCards == nil && len(result.InlineIdentities) > 0 {
+		return actions.ErrActions
+	}
+	if task.InlineCards != nil && len(result.InlineIdentities) > int(task.InlineCards.Maximum) {
+		return actions.ErrActions
+	}
+
 	if task.APIReplay != nil {
 		if !result.apiReplaySessionSettled {
 			return errReplayCapture
@@ -363,7 +376,7 @@ func validateResult(task Task, result Result) error {
 		return errors.New("main-document outerHTML is missing")
 	}
 	htmlLimit := maxHTMLBytes
-	if len(task.Actions) > 0 {
+	if len(task.Actions) > 0 || task.InlineCards != nil {
 		htmlLimit = 2_000_000
 	}
 	if task.Dayforce != nil || task.APIReplay != nil {
@@ -1052,7 +1065,8 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 	if err := chromedp.Run(targetCtx, navigate, snapshotDocument); err != nil {
 		return Result{}, err
 	}
-	if len(task.Actions) > 0 {
+	var inlineIdentities []string
+	if len(task.Actions) > 0 || task.InlineCards != nil {
 		check := func() (bool, error) {
 			if err := chromedp.Run(targetCtx, snapshotDocument); err != nil {
 				return false, err
@@ -1080,8 +1094,31 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			}
 			return executeDocumentAction(ctx, action)
 		}
-		if err := runDocumentActions(targetCtx, task.Actions, execute, check); err != nil {
-			return Result{}, err
+		if len(task.Actions) > 0 {
+			if err := runDocumentActions(targetCtx, task.Actions, execute, check); err != nil {
+				return Result{}, err
+			}
+		}
+		if task.InlineCards != nil {
+			cardCtx, cancelCards := context.WithTimeout(targetCtx, inlineCardBudget(task.InlineCards))
+			reload := func() error {
+				if err := chromedp.Run(cardCtx, navigate, snapshotDocument); err != nil {
+					return err
+				}
+				if len(task.Actions) > 0 {
+					return runDocumentActions(cardCtx, task.Actions, execute, check)
+				}
+				return nil
+			}
+			collected, ids, err := collectInlineCards(cardCtx, *task.InlineCards, reload, check)
+			cancelCards()
+			if err != nil && !errors.Is(err, errInlineCardsReserved) {
+				return Result{}, err
+			}
+			if err == nil {
+				html = collected
+				inlineIdentities = ids
+			}
 		}
 	}
 
@@ -1154,13 +1191,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 	}
 
 	return Result{
-		Status:         int(mainStatus),
-		ResourcePolicy: capturedResponse.resourcePolicy,
-		FinalURL:       finalURL,
-		HTML:           html,
-		HTMLPresent:    true,
-		ResponseBody:   responseBody,
-		Expression:     expression,
+		InlineIdentities: inlineIdentities,
+		Status:           int(mainStatus),
+		ResourcePolicy:   capturedResponse.resourcePolicy,
+		FinalURL:         finalURL,
+		HTML:             html,
+		HTMLPresent:      true,
+		ResponseBody:     responseBody,
+		Expression:       expression,
 	}, nil
 }
 
