@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-following-work/v1",
-  "base_candidate": "64ddaf0b08377599459c9fec117cd3069ae331cf",
-  "scope": "Grouped expanded inline monitor and Eightfold configured Workday details; final release/admission pending",
+  "base_candidate": "4f55033cffa7286e2c0ff421d4932bf4705ab092",
+  "scope": "Consolidated expandable inline and Eightfold Workday detail ports, bounded canonical retirement receipt pages, and chosen-posting claim locks; final qualification/admission pending",
   "physical_lightpanda_version": "1.0.0",
   "physical_heap_limit_mib": 128,
   "original_jobs": 5,
@@ -72,7 +72,7 @@
     "selected_source_contained": true
   },
   "candidate_version": "0.13.1038",
-  "observed_at_utc": "2026-10-13T09:22:12.527813+00:00",
+  "observed_at_utc": "2026-10-13T12:33:15.848495+00:00",
   "native_media_markt": {
     "physical_response_sha256": "b44a907c088c985180461cb5ee31ab0a4b32f771da4a0b24207fd9fe9144a22d",
     "engine_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
@@ -99,5 +99,32 @@
     "worker_race_log_sha256": "42d00a5c47742df3e87dab362b3819fe36f552cbeaf3b4b95bfe769d6427de0e",
     "queue_race_log_sha256": "3e11f4e35520d77478fa6c8e0e766415cdd4576f8480863e7123902ce0b997b2",
     "retained_fixture_interference": "First parallel PostgreSQL suites shared fixture authority and failed. Serial rerun and isolated canonical cases passed; do not parallelize modules against the same fixture database."
+  },
+  "canonical_retirement_paging": {
+    "receipt_rows": 12148,
+    "pages": 48,
+    "page_limit": 256,
+    "all_original_fields_equal": true,
+    "complete_receipts_sha256": "3d7d5ae8e6b19a3c95d0baad19579b21ab6f7f6cd53328cf8909a22d77cf9d2b",
+    "max_page_query_client_seconds": 0.16304541658610106,
+    "repository_rows": 513,
+    "zero_uuid_preserved": true,
+    "repository_race_log_sha256": "ac59e34dd315b71fe66a4eba9e5cb7170217a7f9cb45a0994b440073ccb0f1b4"
+  },
+  "claim_candidate_contention": {
+    "old_losing_candidate_lock_reproduced": true,
+    "chosen_posting_source_revalidated_under_exclusive_lock": true,
+    "first_time_and_recurring_cases": 6,
+    "race_log_sha256": "73ec9cca9860a70c05d58a86609a9dd652cb1cbd052d106f5c9006c547ffeb33",
+    "production_improvement_proved": false
+  },
+  "source1037_compatibility_recovery": {
+    "merge_revision": "4f55033cffa7286e2c0ff421d4932bf4705ab092",
+    "deployment_run": 38393152044,
+    "prepull_run": 38394982659,
+    "original_owner_refusal": true,
+    "retirement_success": false,
+    "failure": "10s statement timeout in full retained-detail receipt join",
+    "selected_source_still_contained": true
   }
 }

@@ -184,27 +184,62 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		nextHash                               *int64
 	}
 	items := map[string]observation{}
-	rows, err := tx.Query(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,
+	// Bound each receipt/posting join independently of the fleet's retained
+	// receipt count. The original host scope keeps every writer barrier held
+	// across these pages; receipts remain unchanged audit evidence.
+	var cursor *string
+	for {
+		rows, err := tx.Query(ctx, `SELECT f.task_id::text FROM ordinary_worker_write_fence f
+ WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])
+ AND ($3::uuid IS NULL OR f.task_id>$3::uuid) ORDER BY f.task_id LIMIT 256`, plan.Epoch(), boards, cursor)
+		if err != nil {
+			return nil, err
+		}
+		ids := make([]string, 0, 256)
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			ids = append(ids, id)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, err
+		}
+		if len(ids) == 0 {
+			break
+		}
+		last := ids[len(ids)-1]
+		cursor = &last
+		rows, err = tx.Query(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,
  CASE WHEN p.is_active AND b.is_enabled THEN p.next_scrape_at END,
  f.state,f.config_sha256,COALESCE(f.learned_egress_host,''),f.next_detail_step,f.next_detail_at,f.next_detail_description_hash
  FROM ordinary_worker_write_fence f JOIN job_posting p ON p.id=f.task_id AND p.board_id=f.board_id
  JOIN job_board b ON b.id=p.board_id
- WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])`, plan.Epoch(), boards)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var item observation
-		if err := rows.Scan(&item.id, &item.board, &item.source, &item.due, &item.state, &item.digest, &item.host, &item.nextStep, &item.nextAt, &item.nextHash); err != nil {
-			rows.Close()
+ WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.task_id=ANY($2::uuid[])
+ AND f.board_id=ANY($3::uuid[])`, plan.Epoch(), ids, boards)
+		if err != nil {
 			return nil, err
 		}
-		items[item.id] = item
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return nil, err
+		for rows.Next() {
+			var item observation
+			if err := rows.Scan(&item.id, &item.board, &item.source, &item.due, &item.state, &item.digest, &item.host, &item.nextStep, &item.nextAt, &item.nextHash); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			items[item.id] = item
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, err
+		}
+		if len(ids) < 256 {
+			break
+		}
 	}
 	type routedLease struct {
 		worker WorkerType

@@ -86,7 +86,11 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			return ErrAuthorityLost
 		}
 		var actual string
-		err = tx.QueryRow(ctx, "SELECT source_url FROM job_posting WHERE id=$1::uuid AND board_id=$2::uuid FOR UPDATE", id, board).Scan(&actual)
+		// Candidate discovery grants no lease. Retaining row locks for every
+		// losing candidate serializes independent claimers before a pop.
+		// The selected posting is locked and revalidated immediately below
+		// the final selection, while the same board/epoch barriers remain held.
+		err = tx.QueryRow(ctx, "SELECT source_url FROM job_posting WHERE id=$1::uuid AND board_id=$2::uuid", id, board).Scan(&actual)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}

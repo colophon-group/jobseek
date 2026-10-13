@@ -1,63 +1,66 @@
 # Go and Lightpanda migration delivery plan
 
-### Current candidate and contained recovery — source1037, 2026-10-13
+### Current contained recovery and consolidated candidate — source1038, 2026-10-13
 
-Source1037 groups Daiichi Vietnam inline navigation, the UK embassy PDF listing
-and RSS Unicode identity repair. Its valid fractional Redis epoch scores now
-accept scientific notation, with exact rollback preservation and production/
-embedded audit Lua synchronized. The preceding head45fd passes CI, installed-image
-contracts, Linux and Gate; all16 ARM arms pass with exact effects and cleanup.
-ARM tested immutable preview21d8, whose full Git tree equals head45fd and whose
-parents are the exact base6670 and head45fd. All actual image/source identities
-are retained. This proof does not qualify subsequent recovery changes.
+Production remains source1036 (`6670f75a2dcf71fcbd7c712175ef2aa0edd84177`),
+contained at303 with the exact retiring ordinary receipt. All10 writers are
+independently stopped and restart-disabled. Processing is paused. No leases,
+receipts or runtime selectors were edited; full migration is incomplete.
 
-The original source1036 retirement wrapper timed out twice in canonical restoration
-and intentionally contained every crawler writer, retaining its retiring receipt
-at303. No leases, receipts or runtime selectors were edited. The legacy lease wait
-completed; the failure is the15-second cold transaction budget over thousands of
-bound monitor/detail configurations and retained receipts. Full-cohort snapshot
-validation now has its own fixed two-minute administrative budget and matching SQL
-idle ceiling. It requires the live checked exclusive host scope; runtime and other
-cold transition limits stay at15seconds and statement timeouts stay at10seconds.
-A real PostgreSQL regression reproduces the old15-second cutoff and proves the new
-snapshot survives16seconds of client-side work while every writer barrier remains
-held. Unscoped calls, cancellation and escaped scope still refuse authority.
+PR10456 merged source1037 as `4f55033cffa7286e2c0ff421d4932bf4705ab092` after
+fresh head/base/hold/operator checks and green Required CI/Gate, installed-image
+contracts, Linux and all16 ARM arms. All3,390 merged SDK files match its qualified
+head. Original deployment38393152044 built immutable images and intentionally
+refused retained ownership; protected admin prepull38394982659 passed. The
+unchanged retirement wrapper then failed canonical restoration. Dedicated
+PostgreSQL logs identify a10-second statement timeout in the retained-detail
+receipt join. The separate two-minute administrative snapshot budget works;
+ordinary runtime transaction limits remain15seconds and statement limits10seconds.
 
-Renew required checks and immutable qualification, merge the reviewed repair with
-fresh bound-head authority, and use the original deployment workflow build plus
-`crawler-native-admin-prepull.yml` to obtain the immutable compatibility admin.
-The deployment must refuse retained ownership. Run the unchanged ordinary wrapper
-with that exact admin source/image, then B0 reversal, original locked selector clear
-and independent cold304 verification before retrying the full original deployment.
-After source1037's complete rollout, fresh full routes must preserve7805/7685 and
-admit the two qualified monitors together. Current selected release remains
-source1036; it is contained, not serving. Full migration is incomplete.
+The join resolves12,148 retained receipts against posting rows and takes12.3seconds
+in an independent read-only comparison. Source1038 pages receipt UUIDs and their
+canonical joins in batches of256 inside the same held transaction and host writer
+barriers. A complete read-only comparison proves all12,148 original rows/fields
+equal across48 pages; the slowest query takes163ms including client/connection
+startup. A real SQL/Redis regression restores513 completed-before-ACK attempts
+across three pages, including the zero UUID, preserving canonical content,
+retained receipts and exact deadlines. Statement limits stay10seconds.
 
-### Following grouped candidate — source1038, 2026-10-13
+Consolidated PR10485 keeps Daiichi Vietnam inline navigation, UK embassy PDF
+controls and RSS Unicode identities inherited from source1037, and ports
+MediaMarkt expandable inline cards plus CACI's configured Eightfold Workday
+details. MediaMarkt's actual native renderer matches all five original records;
+seven pinned Lightpanda1.0.0 engine cases prove complete identity, failure-prefix
+refusal and publisher precedence even without controls. CACI keeps1,856 actual
+Workday source URLs and its original Eightfold HTML semantics. Nine real canonical
+cases preserve successful, reserved and transient effects, including an original
+empty detail that remains a failure.
 
-The following batch combines MediaMarkt's expanded inline monitor with Eightfold
-scraping of retained Workday URLs. The actual Go renderer, pinned Lightpanda1.0.0
-at128MiB, returns all five MediaMarkt identities after cleanup. Every original URL,
-title, normalized description and location matches. Salesforce patches main-world
-selectors; the controller uses an isolated world without modifying publisher code.
-A validated session budget covers navigation, original actions and bounded expansion.
-Five real PostgreSQL/Redis cases prove complete persistence and refuse missing or
-duplicate identities, truncated results and publisher reservations. Seven real engine
-fixtures prove reload identity drift, duplicates, missing details and policy stopping.
+The same batch fixes claim contention. Candidate discovery locked losing posting
+rows before choosing one, so a locked later candidate blocked an unlocked oldest
+posting. A real baseline reproduces this. Discovery now grants no posting lock or
+lease; the chosen available posting is exclusively locked and its current source
+revalidated before the existing atomic Redis pop. Busy rows are skipped. Board,
+epoch and lease barriers remain held. Six first-time/recurring cases and existing
+forged-source, concurrent-token and board-lock regressions pass. Production
+throughput and freshness improvements remain to be measured.
 
-CACI's1856 captured Workday routes retain the configured Eightfold JSON-LD fast
-path, with no Workday API substitution or configuration changes. Original replay and
-verified-TLS live comparisons match three original results: two complete jobs and
-one empty result. Nine real canonical cases preserve success, empty-result failure,
-reservation and transient deadlines/leases. Publisher reservations on404/429/503
-stop both original HTML and any fallback API request. Final exact-source CI, Linux,
-ARM, deployed full route capture/admission and natural fleet effects remain required.
-The preceding PR10456 now includes the fixed administrative snapshot budget at
-head64ddaf0b0, with renewed exact-source qualification. Source1036 remains selected
-at303 with7805/7685 ownership and its retiring receipt; every crawler writer is
-contained by the original wrapper until supported recovery completes. Full fleet
-freshness remains unproved.
-See the [grouped following proof](evidence/go-native-expanded-inline-following-2026-10-12.json).
+Finish exact-source required checks and immutable qualification; merge the
+consolidated reviewed repair with fresh bound-head authority. Use the original
+deployment build and protected compatibility-admin prepull. The unchanged ordinary
+wrapper must retire the retained source1036 receipt, followed by original B0
+reversal, original locked selector clearing and independent cold304 verification.
+Restore the complete outgoing stack, then perform one consolidated full original
+rollout and fresh grouped admission preserving the7805-monitor/7685-detail floor.
+Do not retry the failed admin or publish an intermediate native ownership plan.
+
+After recovery, prove natural queue effects and complete fleet freshness,
+conservation and comparable attributable resources/cost. Continue remaining
+monitor/detail/browser profiles and native maintenance/deploy consumers in
+multi-type batches. Exercise supported reversal and establish the rollback window
+before retiring production Python/Playwright/Chromium, retaining useful offline
+Python and every enabled board. Lightpanda1.0.0 remains the latest verified official
+release and the production immutable pin.
 
 ### Latest delivered checkpoint — source0.13.1036, 2026-10-12
 
