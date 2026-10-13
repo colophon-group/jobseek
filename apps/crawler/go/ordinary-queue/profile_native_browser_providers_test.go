@@ -6,7 +6,7 @@ import (
 )
 
 func TestNativeBrowserProviderConfigurationAndResourceBinding(t *testing.T) {
-	for _, provider := range []string{"darwinbox", "bytedance"} {
+	for _, provider := range []string{"darwinbox", "bytedance", "brassring"} {
 		config := profileConfig()
 		config["crawler_type"] = provider
 		config["monitor_needs_browser"] = "1"
@@ -14,6 +14,9 @@ func TestNativeBrowserProviderConfigurationAndResourceBinding(t *testing.T) {
 		config["board_url"] = "https://airtel.darwinbox.in/ms/candidate/careers"
 		if provider == "bytedance" {
 			config["board_url"] = "https://jobs.bytedance.com/experienced/position"
+		}
+		if provider == "brassring" {
+			config["board_url"] = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=6007"
 		}
 		p, e := InspectRichMonitor(profileBoardID, config)
 		if e != nil || MonitorWorker(p) != Browser || !NativeBrowserProfile(p.Profile) {

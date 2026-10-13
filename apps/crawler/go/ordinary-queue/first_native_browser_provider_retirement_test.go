@@ -11,7 +11,14 @@ func firstNativeBrowserProviderFixture(t *testing.T, provider string) firstOwner
 	if provider == "bytedance" {
 		board = "https://jobs.bytedance.com/experienced/position"
 	}
+	if provider == "brassring" {
+		board = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=6007"
+	}
 	metadata := `{"scraper_type":"skip"}`
+	if provider == "njoyn" {
+		board = "https://cgi.njoyn.com/corp/xweb/xweb.asp?clid=21001&page=joblisting"
+		metadata = `{"scraper_type":"json-ld","page_wait_ms":0}`
+	}
 	if provider == "accenture" {
 		board = "https://www.accenture.com/us-en/careers/jobsearch"
 		metadata = `{"country":"USA","language":"en","site":"us-en","scraper_type":"skip"}`
@@ -41,7 +48,7 @@ func firstNativeBrowserProviderFixture(t *testing.T, provider string) firstOwner
 	return p
 }
 func TestRealNativeBrowserProviderColdRetirement(t *testing.T) {
-	testProviderColdRetirement(t, []string{"darwinbox", "bytedance"}, firstNativeBrowserProviderFixture)
+	testProviderColdRetirement(t, []string{"darwinbox", "bytedance", "brassring", "njoyn"}, firstNativeBrowserProviderFixture)
 }
 
 func TestRealAccentureHTTPColdRetirement(t *testing.T) {

@@ -72,10 +72,34 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 		response.Outcome = "invalid_config"
 		return response, nil
 	}
+	if request.Provider == "brassring" || request.Provider == "njoyn" {
+		task.APIReplay.sessionConverse = func(ctx context.Context, capture *replayCapture) error {
+			var err error
+			if request.Provider == "brassring" {
+				inventory, err = discoverBrassRingSession(ctx, task.APIReplay, capture)
+			} else {
+				inventory, err = discoverNjoynSession(ctx, task.APIReplay)
+			}
+			collected = err == nil
+			return err
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(request.TimeoutMS)*time.Millisecond)
+	defer cancel()
 	config := execution.dayforceConfig
 	config.TaskTimeout = time.Duration(request.TimeoutMS) * time.Millisecond
 	// The runner returns only after its existing child-group/port cleanup proof.
 	result, err := execution.dayforceRun(ctx, config, task)
+	if request.Provider == "brassring" && sessionSnapshotRetry(err) && ctx.Err() == nil {
+		if waitErr := sessionWait(ctx, time.Second); waitErr != nil {
+			return response, nil
+		}
+		inventory, collected = api.Inventory{}, false
+		if deadline, ok := ctx.Deadline(); ok {
+			config.TaskTimeout = time.Until(deadline)
+		}
+		result, err = execution.dayforceRun(ctx, config, task)
+	}
 	if err != nil {
 		var reservation *policy.Reservation
 		if !errors.Is(err, errCleanupUnproved) && errors.As(err, &reservation) {

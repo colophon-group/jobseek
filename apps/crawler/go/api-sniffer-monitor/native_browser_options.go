@@ -8,6 +8,9 @@ import (
 // Fixed provider requests use the existing held browser controller. Lifecycle
 // metadata stays bound to the caller's fingerprint and never becomes a request.
 func NativeBrowserOptions(provider, board, raw string) (BrowserReplayOptions, string, error) {
+	if provider == "brassring" || provider == "njoyn" {
+		return SessionBrowserOptions(provider, board, raw)
+	}
 	o := BrowserReplayOptions{Wait: "load", TimeoutMS: 20000, ResponseBodyLimit: 16 << 20}
 	m, e := DecodeInlineMetadata(raw)
 	if e != nil {
@@ -59,6 +62,10 @@ func NativeBrowserOptions(provider, board, raw string) (BrowserReplayOptions, st
 	return o, "", ErrOptions
 }
 func NativeBrowserRequestMatches(provider, board, metadata string, r Request) bool {
+	// Session providers grant fixed UI/form controls, never an injected replay.
+	if provider == "brassring" || provider == "njoyn" {
+		return false
+	}
 	_, _, e := NativeBrowserOptions(provider, board, metadata)
 	if e != nil {
 		return false
@@ -103,6 +110,13 @@ func NativeBrowserResourceMatches(provider, board, metadata, resource string) bo
 	}
 	if resource == listing {
 		return true
+	}
+	if provider == "brassring" {
+		return BrassRingAjaxMatches(board, resource, "POST") || BrassRingDetailMatches(board, resource)
+	}
+	if provider == "njoyn" {
+		b, e := NjoynBoardFromURL(board)
+		return e == nil && NjoynDetailMatches(b, resource)
 	}
 	if provider == "darwinbox" {
 		b, e := DarwinboxBoardFromURL(board)

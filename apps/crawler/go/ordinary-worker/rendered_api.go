@@ -74,8 +74,23 @@ func parseAPIReplayResponse(profile queue.GreenhouseMonitorProfile, response rep
 		return result, executor.ErrRenderedResult
 	}
 	result.Truncated = inventory.Truncated
+	if profile.Profile == "njoyn.session-urls/v1" && (!inventory.URLOnly || inventory.Truncated) {
+		return RichDiscovery{}, executor.ErrRenderedResult
+	}
+	if profile.Profile == "brassring.session-items/v1" && inventory.URLOnly {
+		return RichDiscovery{}, executor.ErrRenderedResult
+	}
 	for _, job := range inventory.Jobs {
-		if queue.NativeBrowserProfile(profile.Profile) {
+		if profile.Profile == "brassring.session-items/v1" && (!api.BrassRingDetailMatches(profile.Endpoint, job.URL) || len(job.Locations) == 0) {
+			return RichDiscovery{}, executor.ErrRenderedResult
+		}
+		if profile.Profile == "njoyn.session-urls/v1" {
+			board, err := api.NjoynBoardFromURL(profile.Endpoint)
+			if err != nil || !api.NjoynDetailMatches(board, job.URL) {
+				return RichDiscovery{}, executor.ErrRenderedResult
+			}
+		}
+		if queue.NativeBrowserProfile(profile.Profile) && profile.Profile != "njoyn.session-urls/v1" {
 			value, err := secondaryRichJob(map[string]any{"url": job.URL, "title": job.Title, "description": job.Description, "locations": job.Locations, "metadata": job.Metadata, "extras": job.Extras, "date_posted": job.DatePosted, "employment_type": job.EmploymentType, "job_location_type": job.JobLocationType})
 			if err != nil {
 				return RichDiscovery{}, err

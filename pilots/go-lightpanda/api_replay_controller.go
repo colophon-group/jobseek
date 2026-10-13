@@ -28,6 +28,7 @@ type apiReplayTask struct {
 	fallback                       api.Fetch
 	fallbackFactory                func(api.BrowserReplayOptions) (api.Fetch, func(), error)
 	nativeProvider, nativeMetadata string
+	sessionConverse                func(context.Context, *replayCapture) error
 	domLinks                       api.DOMLinks
 }
 
@@ -59,11 +60,14 @@ func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, 
 }
 
 func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capture *replayCapture, status int, finalURL, html string, signals *runtimev1.ResourcePolicySignals) error {
-	if task == nil || capture == nil || status < 200 || status >= 300 {
+	if task == nil || capture == nil {
 		return errReplayCapture
 	}
 	if err := policy.Check(signals, html, finalURL); err != nil {
 		return err
+	}
+	if status < 200 || status >= 300 {
+		return errReplayCapture
 	}
 	if task.nativeProvider != "" {
 		if task.nativeProvider == "darwinbox" {
@@ -78,7 +82,15 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 		if capturedFailure != nil {
 			return capturedFailure
 		}
-		failure := executeNativeBrowserConversation(ctx, task, finalURL)
+		var failure error
+		if task.sessionConverse != nil {
+			if !api.SessionListingMatches(task.nativeProvider, task.boardURL, finalURL) {
+				return errReplayCapture
+			}
+			failure = task.sessionConverse(ctx, capture)
+		} else {
+			failure = executeNativeBrowserConversation(ctx, task, finalURL)
+		}
 		capture.mu.Lock()
 		capturedFailure = capture.failure
 		capture.mu.Unlock()

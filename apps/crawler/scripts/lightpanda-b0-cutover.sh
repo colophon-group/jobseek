@@ -318,16 +318,17 @@ load_receipt_identity() {
 
 reserve_routing_epoch() {
   local output
-  output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps worker-1 \
-    uv run --no-sync lightpanda-b0-activation reserve-epoch)" || return 1
+  output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps \
+    --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-epoch reserve-epoch)" || return 1
   native_b0_host_tool b0-epoch-reserve-reply "$output"
 }
 
 attest_routing_epoch() {
   local output
   output="$(bounded 30s "${compose_base[@]}" run --rm --no-deps \
-    "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation attest-epoch)" || return 1
+    "${route_environment[@]}" --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-epoch attest-epoch)" || return 1
   native_b0_host_tool b0-epoch-attest-reply "$output" "$LIGHTPANDA_B0_ROUTING_EPOCH"
 }
 

@@ -6,12 +6,22 @@ import (
 )
 
 func NativeBrowserProvider(provider string) bool {
-	return provider == "darwinbox" || provider == "bytedance" || provider == "accenture" || provider == "candidatus"
+	return provider == "darwinbox" || provider == "bytedance" || provider == "accenture" || provider == "candidatus" || provider == "brassring" || provider == "njoyn"
 }
 func NativeBrowserProfile(profile string) bool {
-	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "accenture.http-items/v1" || profile == CandidatusHTTPProfile
+	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "accenture.http-items/v1" || profile == CandidatusHTTPProfile || profile == "brassring.session-items/v1" || profile == "njoyn.session-urls/v1"
 }
 func inspectNativeBrowserMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "njoyn" {
+		if config["monitor_needs_browser"] != "1" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		_, listing, err := api.NativeBrowserOptions("njoyn", config["board_url"], config["metadata"])
+		if err != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "njoyn", "njoyn.session-urls/v1", "njoyn", listing)
+	}
 	if config["monitor_needs_browser"] != "1" || config["scraper_needs_browser"] != "0" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -42,6 +52,9 @@ func inspectNativeBrowserMonitor(boardID string, config map[string]string, md ma
 	profile := "bytedance.partition-items/v1"
 	if config["crawler_type"] == "darwinbox" {
 		profile = "darwinbox.session-items/v1"
+	}
+	if config["crawler_type"] == "brassring" {
+		profile = "brassring.session-items/v1"
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, config["crawler_type"], profile, config["crawler_type"], listing)
 }

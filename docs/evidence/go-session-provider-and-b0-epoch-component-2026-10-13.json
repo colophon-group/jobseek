@@ -1,0 +1,127 @@
+{
+  "schema": "jobseek.go-lightpanda-component/v1",
+  "candidate_version": "0.13.1040",
+  "base_component": "cc6225f77004e1ddf21cf08af0e2b6c2a9b1c916",
+  "reference_source_revision": "a5ecb5e9da5057cf8b6348f6cb203628347b5fc7",
+  "state": "local combined candidate; unmerged and not production qualified",
+  "production_mutation": false,
+  "production_ownership_additions": 0,
+  "latest_stable_lightpanda": {
+    "release": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "verified_date": "2026-10-13",
+    "physical_macos_arm64_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d"
+  },
+  "provider_ports": [
+    "brassring.session-items/v1",
+    "njoyn.session-urls/v1"
+  ],
+  "checks": {
+    "python_original_core_cases": 73,
+    "physical_pinned_release_fixture_cases": 12,
+    "physical_fixture_race_passed": true,
+    "canonical_postgresql_redis_settlement_passed": true,
+    "cold_retirement_postgresql_redis_passed": true,
+    "native_b0_epoch_real_postgresql_and_compiled_cli_passed": true,
+    "b0_host_wrapper_cases": 98,
+    "public_original_brassring_boards": 4,
+    "public_original_brassring_jobs": 1026,
+    "public_native_complete_brassring_boards": 0,
+    "public_original_njoyn_complete": false,
+    "public_native_complete_njoyn": false,
+    "compiled_worker_startup_owner_identity_assets_metrics_and_signal_drain_passed": true,
+    "api_renderer_typesense_full_local_race_and_vet_passed": true,
+    "densitybench_tagged_suite_passed": true,
+    "runtime_contract_node_cases_passed": 13
+  },
+  "public_boards": [
+    {
+      "slug": "adm-early-careers-na",
+      "provider": "brassring",
+      "original_status": "succeeded",
+      "original_jobs": 48,
+      "original_failure_class": null,
+      "original_capture_sha256": "f9cd207f94e9073d2ad2347c909d6ee4372132a412cd6c9698cb3bfa81e06d32",
+      "native_public_capture_sha256": "09148bbe59e86e318dbaba2c057f2d0b97c658c81334148a46ca305c4a35d7ab",
+      "production_admitted": false
+    },
+    {
+      "slug": "caterpillar-progressrail-us",
+      "provider": "brassring",
+      "original_status": "succeeded",
+      "original_jobs": 128,
+      "original_failure_class": null,
+      "original_capture_sha256": "07ad9b240cbcd382d94bb8d53f8169f8a44a8776e420fea2b578a4295c755272",
+      "native_public_capture_sha256": "9418f2d6f1224d85ad4be6281931fc97a4bcfc9eff134027d86d0dd5a70ec444",
+      "production_admitted": false
+    },
+    {
+      "slug": "adm-us",
+      "provider": "brassring",
+      "original_status": "succeeded",
+      "original_jobs": 541,
+      "original_failure_class": null,
+      "original_capture_sha256": "3a638df6b4130b894f8a5370eb58770bd645efbc8fcadff4257a60c2b0fff06a",
+      "native_public_capture_sha256": "7811fee6dd40c110750a025c9a9913276907e31b3cb1cde3acc994018404a5f0",
+      "production_admitted": false
+    },
+    {
+      "slug": "adm-global",
+      "provider": "brassring",
+      "original_status": "succeeded",
+      "original_jobs": 309,
+      "original_failure_class": null,
+      "original_capture_sha256": "47c57b1332430bd5a51ea7839473dbb41dfeddbe632c1cfee6a6696a101b42dc",
+      "native_public_capture_sha256": "d22c961dd0bfae9928d6caf61d5d37d148a147d4806a4e8d6fa63991b1aa656d",
+      "production_admitted": false
+    },
+    {
+      "slug": "cgi-global-njoyn",
+      "provider": "njoyn",
+      "original_status": "failed",
+      "original_jobs": 0,
+      "original_failure_class": "BotChallengeError",
+      "original_capture_sha256": "49cebf673b019466e9c948f4595ee2f47970572f4a8dafe5011af4f8c0a69a8c",
+      "native_public_capture_sha256": "80aaa3da66063eef5abe0ea095fe1fbf08d3098f048f1649e7f0463436bd40fc",
+      "production_admitted": false
+    }
+  ],
+  "holds": [
+    "BrassRing native public search response times out after its UI click. Previous source1035 diagnostic observed a subsequent 403 document navigation and cancelled matching XHR. Rechecking the shared mouse sequence did not qualify this route; it also failed the synthetic fixture and was reverted. No admission.",
+    "Njoyn original run raises BotChallengeError. Native direct candidate also fails, and proxy/stealth/headful/persistent controls remain explicitly unsupported. No admission."
+  ],
+  "native_b0_epoch_consumer": {
+    "binary": "/usr/local/bin/go-typesense-exporter",
+    "commands": [
+      "--b0-epoch reserve-epoch",
+      "--b0-epoch attest-epoch"
+    ],
+    "scope": "replace original one-off epoch commands; same selected compose service and LOCAL_DATABASE_URL principal, original advisory transaction barrier and exact PostgreSQL high-water reply",
+    "remaining_python": [
+      "B0 plan/apply/rollback/settlement administration",
+      "Alembic deployment",
+      "retained rollback consumers",
+      "remaining original worker/browser lanes"
+    ]
+  },
+  "next_actions": [
+    "Keep source1039 active307 while completing the combined candidate.",
+    "Use a bounded Go HTTP/API alternative or a demonstrated engine fix for BrassRing; preserve all four boards until full inventory and canonical fields match. Avoid repeating the already-failed document-navigation hypothesis.",
+    "Prove Njoyn replacement transport before accepting original browser controls.",
+    "Continue the other API/RSS/inline/DOM families in parallel within one release iteration, without requiring success on these two blocked public providers first.",
+    "Fold the existing claim/settlement/B0-host component, epoch consumer and qualified provider families into required CI/Gate/Linux/ARM qualification, fresh full-floor census and immutable original deployment."
+  ],
+  "files": {
+    "apps/crawler/go/api-sniffer-monitor/brassring.go": "775e86064cb7b777372a6727a0ea1593b69c23ba328027e1e61a09367c3317aa",
+    "apps/crawler/go/api-sniffer-monitor/njoyn.go": "d2ed3a1b7f451d707d5a85374be65dab79caf5d72e7d752c2f6f61f1a6551f8d",
+    "apps/crawler/go/api-sniffer-monitor/session_browser_options.go": "fcc8bdc3fc2bcf9d1ba5618f1388b1f39f1e4efe6510f36ef3fdbb78a42de880",
+    "apps/crawler/go/api-sniffer-monitor/session_provider_test.go": "8855fbc91fc6df27887eeca1b07589ddc8317eaeabf52b0f37e28c086246ba57",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_session_provider_core.json": "103793ccde63cce34bb662e01ef4756187c0cbb442253b0e15cf1469d411ce53",
+    "pilots/go-lightpanda/session_browser_providers.go": "b3e9bd36ceae457cce2885860a4805565be697daac0910c9c0993977ba849a6e",
+    "pilots/go-lightpanda/session_browser_provider_integration_test.go": "f49e6ab9ce123ef8da702ac1555dc99634f1763693b4e1c1be5c0905c684dfd6",
+    "apps/crawler/go/ordinary-worker/njoyn_integration_test.go": "3ba0b4e6d24480c427b7ac013497483747bf08b082cebf830aeaa46c2a96cd7e",
+    "apps/crawler/go/typesense-exporter/b0_epoch.go": "f7e53d7cf84759b59347fced0f15ff1c09f0ef7135b0dce07de69556764da49f",
+    "apps/crawler/go/typesense-exporter/b0_epoch_test.go": "005119d4a3c401647b7e867789b4ad16a8dd0e9adca3ebc7ce51a1f24515475b",
+    "apps/crawler/scripts/lightpanda-b0-cutover.sh": "791a93eb34a4302fc061e3b1ad3d842fa61d713f9497c715865a7984e01d062f"
+  }
+}

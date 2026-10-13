@@ -37,6 +37,29 @@ supported reconciliation before detail readmission. Full fleet freshness and
 comparable production cost remain unproved. See the
 [portable active checkpoint](evidence/go-lightpanda-active1039-2026-10-13.json).
 
+The combined 0.13.1040 candidate now ports BrassRing rich session inventory and
+Njoyn form pagination through the existing renderer protocol and worker authority.
+The 73 original Python core cases, 12 physical pinned-release race fixtures,
+canonical PostgreSQL/Redis settlement and cold-retirement tests pass. Njoyn remains
+URL-only and conserves browser detail scheduling. The candidate also replaces the
+B0 reserve/attest database commands with the existing Go administration binary,
+using the original advisory barrier, local principal/startup guards and exact
+high-water reply. Real PostgreSQL and compiled CLI tests pass; the 98 B0 wrapper
+cases pass after the switch. The earlier host/claim component remains part of this
+same unmerged release candidate.
+
+Public qualification is still held. All four original BrassRing inventories are
+complete (48 + 128 + 541 + 309 = 1,026 jobs), but all four native public sessions
+fail after clicking search. The response timeout reproduces the earlier source1035
+subsequent-document/403/XHR-cancellation finding. The shared mouse sequence did
+not qualify this route and failed synthetic cases, so that experiment was reverted.
+Njoyn's original transport returns a typed origin challenge and its native direct
+candidate also fails; proxy/stealth/headful/persistent settings still refuse
+admission. **This candidate adds zero production owners.** Continue the other
+API/RSS/inline/DOM groups while pursuing a bounded HTTP/API route or demonstrated
+engine correction for these two families. Static profile support cannot qualify
+them. See the [combined component checkpoint](evidence/go-session-provider-and-b0-epoch-component-2026-10-13.json).
+
 Continue from active307, keeping it serving during implementation:
 
 1. Finish the next grouped runtime and provider candidate. The remaining ordinary
@@ -58,8 +81,8 @@ Continue from active307, keeping it serving during implementation:
    provider/consumer work in the next multi-type migration release.
 3. Use the existing native scheduler rebuild contract for bounded canonical cache
    reconciliation, preserving quiescence and queue/lease authority; prove King
-   route identity before readmission. Port the remaining B0 receipt/epoch helpers,
-   activation/rollback administration, Alembic deployment consumer and retained
+   route identity before readmission. Port remaining B0 activation/rollback
+   administration, Alembic deployment consumer and retained
    rollback sync path to Go. Retain useful isolated offline Python tooling.
 4. Refresh complete canonical/cache/actual-route admission for the combined
    candidate, preserving the full active floor. Deliver through required checks,

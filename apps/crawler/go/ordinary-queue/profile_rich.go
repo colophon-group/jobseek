@@ -27,6 +27,14 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "brassring":
+		for _, key := range []string{"partner_id", "site_id", "wait", "timeout", "proxy", "stealth", "persistent_context", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "njoyn":
+		for _, key := range []string{"wait", "timeout", "proxy", "stealth", "persistent_context", "channel", "headless", "page_wait_ms", "page_change_timeout_ms", "max_pages", "snapshot_attempts", "transport_attempts", "direct_fallback_on_origin_block", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "amazon":
 		for _, key := range []string{"country", "category", "business_category", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

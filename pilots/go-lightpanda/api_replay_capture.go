@@ -27,6 +27,7 @@ type replayPending struct {
 	signals        *runtimev1.ResourcePolicySignals
 	response       bool
 	sequence       int
+	status         int
 }
 
 // A capture belongs to one fresh browser target. CDP listeners only correlate
@@ -43,6 +44,7 @@ type replayCapture struct {
 	failure          error
 	closed           bool
 	responseSequence int
+	fixedMatches     func(string, string) bool
 }
 
 func (*replayCapture) String() string               { return "private API browser capture" }
@@ -57,6 +59,9 @@ func newReplayCapture(o api.BrowserReplayOptions) (*replayCapture, error) {
 	return &replayCapture{endpoint: endpoint, options: o, method: o.Inventory.Method, bodyLimit: replayBodyLimit(o), pending: map[network.RequestID]replayPending{}, completed: make(chan network.RequestID, replayCaptureLimit)}, nil
 }
 func (c *replayCapture) matches(source, method string) bool {
+	if c.fixedMatches != nil {
+		return c.fixedMatches(source, method)
+	}
 	u, e := url.Parse(source)
 	return e == nil && u.User == nil && u.Scheme == c.endpoint.Scheme && u.Host == c.endpoint.Host && (u.EscapedPath() == c.endpoint.EscapedPath() && method == c.method || c.options.LiveURLMatches(source, method))
 }
@@ -111,11 +116,16 @@ func (c *replayCapture) observe(event any) {
 			return
 		}
 		// Publisher denial is terminal and never falls through to another replay.
-		if err := policy.Check(signals, "", c.options.PublicCaptureResource(pending.source)); err != nil {
+		resource := c.options.PublicCaptureResource(pending.source)
+		if c.fixedMatches != nil {
+			resource = pending.source
+		}
+		if err := policy.Check(signals, "", resource); err != nil {
 			c.failure = err
 			return
 		}
 		pending.signals = signals
+		pending.status = int(e.Response.Status)
 		pending.response = true
 		c.responseSequence++
 		pending.sequence = c.responseSequence

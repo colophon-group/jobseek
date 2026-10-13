@@ -1341,6 +1341,10 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     assert not any(" --clear-activation-sentinel" in event for event in events)
     reserve = next(index for index, event in enumerate(events) if " reserve-epoch" in event)
     attest = next(index for index, event in enumerate(events) if " attest-epoch" in event)
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter" in events[reserve]
+    assert "--b0-epoch reserve-epoch" in events[reserve]
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter" in events[attest]
+    assert "--b0-epoch attest-epoch" in events[attest]
     enabled_config = next(
         index
         for index, event in enumerate(events)
