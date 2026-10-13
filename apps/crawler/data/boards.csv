@@ -3123,6 +3123,7 @@ goody,goody-ashby,https://jobs.ashbyhq.com/goody,ashby,"{""token"": ""goody""}",
 google,google-careers,https://www.google.com/about/careers/applications/jobs/results/,sitemap,"{""sitemap_url"": ""https://www.google.com/about/careers/applications/jobs/sitemap.xml"", ""urls"": 3984}",embedded,"{""pattern"": ""AF_initDataCallback\\(\\{key:\\s*'ds:0'.*?data:"", ""path"": ""[0]"", ""fields"": {""title"": ""[1]"", ""description"": ""[10][1]"", ""locations"": ""[9][*][0]"", ""qualifications"": ""[4][1]"", ""responsibilities"": ""[3][1]""}}"
 goop,goop-greenhouse,https://job-boards.greenhouse.io/goop,greenhouse,"{""token"": ""goop""}",skip,
 gopuff,gopuff-lever,https://jobs.lever.co/gopuff,lever,"{""token"": ""gopuff""}",skip,
+gordon-food-service,gordon-food-service-careers,https://gfs.wd5.myworkdayjobs.com/usjobs-gen-gfs,workday,,workday,
 gore-mutual-insurance,gore-mutual-insurance-greenhouse,https://job-boards.greenhouse.io/goremutualinsurance,greenhouse,"{""token"": ""goremutualinsurance""}",skip,
 gorgias,gorgias-ashby,https://jobs.ashbyhq.com/gorgias,ashby,"{""token"": ""gorgias""}",skip,
 gorgias,gorgias-recruitee,https://gorgias.recruitee.com,recruitee,"{""token"": ""gorgias""}",skip,
