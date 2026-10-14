@@ -2,7 +2,7 @@
   "schema": "jobseek.rendered-detail-enrichment-candidate/v1",
   "observed_at_utc": "2026-10-14T04:48:51.015638+00:00",
   "version": "0.13.1045",
-  "parent_candidate": "PR10495 ate017fb0ff75fe5ee0b911b9a96421a01d63f301b",
+  "parent_candidate": "PR10495 at290501ae457d597714977023e56c56bdaec2d6cd",
   "behavior": "Rendered DOM, JSON-LD and embedded/Next.js details reuse existing typed canonical field selection; navigation permissions remain unchanged",
   "local_evidence": {
     "held_document_real_pg_redis_selected_field_cases": 10,
@@ -13,14 +13,29 @@
     "retained_source1042_eligible_boards": 7,
     "complete_retained_routes_eligible": 9380
   },
-  "physical_live_samples": "not yet qualified",
+  "physical_live_samples": {
+    "official_lightpanda_version": "1.0.0",
+    "official_local_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+    "actual_public_documents": 11,
+    "successful_navigation_and_cleanup": 11,
+    "full_original_parser_fields_match_on_same_physical_documents": 11,
+    "usable_selected_document_samples": 9,
+    "usable_sample_boards": 5,
+    "retained_routes_on_those_five_boards": 1001,
+    "bajaj_original_browser_populated_but_lightpanda_empty_shell": 2,
+    "bajaj_8379_routes_admission_held": true,
+    "rsm_zero_scheduled_routes": true,
+    "physical_navigation_seconds": 45.816,
+    "actual_full_field_parser_race_seconds": 2.114,
+    "limitation": "same-document original Python/Go parser equality proves field handling; Bajaj actual browser mismatch remains unresolved; no production admission"
+  },
   "exact_head_remote_checks": "not yet qualified",
   "production_admitted": false,
   "full_migration_complete": false,
   "next_actions": [
     "Qualify parent PR10495 final combined provider/output-ABI head; original installed-image expectation is fixed at207 profiles",
     "Verify supported source1043 recovery, then deliver10495 and this group through exact required checks and supported full-lane deployment",
-    "Compare original actual rendered fields for all seven candidate boards, then fresh full-floor census/admission; retained SDK eligibility is not ownership authority",
+    "Admit only physically qualified boards after fresh full-floor evidence. Resolve Bajaj original-browser/Lightpanda mismatch through proved public upstream data; RSM has no scheduled sample. Retained SDK eligibility is not ownership authority.",
     "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
   ]
 }
