@@ -38,6 +38,23 @@ func StaticProviderDetailOptionsForSource(provider, source string) (StaticProvid
 	}
 	host := strings.ToLower(u.Hostname())
 	switch provider {
+	case "onlyfy":
+		if u.Port() != "" || !strings.HasSuffix(host, ".onlyfy.jobs") || !jazzDetailTenant.MatchString(strings.TrimSuffix(host, ".onlyfy.jobs")) {
+			return o, ErrOptions
+		}
+		candidate, _, _, err := OnlyfyDetailURLs(source, "")
+		if err != nil {
+			return o, err
+		}
+		o.Endpoint = candidate
+	case "tupu360":
+		if TupuDetailIdentity(source) == "" {
+			return o, ErrOptions
+		}
+	case "phuketall":
+		if employer, _ := PhuketDetailIdentity(source); employer == "" {
+			return o, ErrOptions
+		}
 	case "paycor":
 		q, err := url.ParseQuery(p.Query)
 		if host != "recruitingbypaycor.com" || u.Port() != "" || p.Path != "/career/JobIntroduction.action" || err != nil || len(q["id"]) != 1 || !regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`).MatchString(q["id"][0]) || p.Fragment != "" {

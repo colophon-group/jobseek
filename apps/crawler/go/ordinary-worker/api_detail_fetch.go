@@ -38,6 +38,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 		content, reservation, err = fetchLastHTTPDetail(ctx, &client, profile, pauseRich)
 	case "johdi.api-detail/v1", "headhunter.api-detail/v1", "headhunter.proxy-api-detail/v1":
 		content, reservation, err = fetchRemainingHTTPDetail(ctx, &client, profile, pauseRich)
+	case "onlyfy.public-detail/v1", "tupu360.public-detail/v1", "phuketall.public-detail/v1":
+		content, reservation, err = fetchLastStaticDetail(ctx, &client, profile, pauseRich)
 	case "paycor.public-detail/v1", "recruiterbox.public-detail/v1", "veryeast.public-detail/v1":
 		content, reservation, err = fetchFinalStaticDetail(ctx, &client, profile, pauseRich)
 	case "jobconvo.public-detail/v1":

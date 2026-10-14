@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.last-static-provider-worker-candidate/v1",
+  "observed_at_utc": "2026-10-14T08:33:33.518882+00:00",
+  "version": "0.13.1046",
+  "providers": [
+    "onlyfy",
+    "phuketall",
+    "tupu360"
+  ],
+  "stage": "complete native SDK/HTTP dispatch and original canonical worker integration; production admission pending",
+  "new_services": 0,
+  "retained_scheduled_routes_bound": 196,
+  "actual_captured_live_complete_canonical_field_matches": 10,
+  "worker_live_parity_race_seconds": 2.881,
+  "original_parser_cases": 68,
+  "original_HTTP_traces": 55,
+  "original_HTTP_retry_and_field_race_seconds": 2.418,
+  "real_PG_Redis_complete_failure_policy_foreign_source_cases": 18,
+  "real_worker_and_original_HTTP_race_seconds": 6.256,
+  "all_three_cold_retirement_modes_per_provider": 6,
+  "cold_retirement_and_registry_race_seconds": 24.066,
+  "complete_API_module_race_seconds": 12.694,
+  "affected_final_static_and_new_batch_worker_race_seconds": 12.033,
+  "installed_executable_startup_identity_signal_and_canonical_assets_race_seconds": 5.353,
+  "installed_profiles": 210,
+  "onlyfy_zero_route_workday_misconfiguration": "Flex JetCool is excluded from Onlyfy ownership; no configuration was invented",
+  "canonical_HTML_limitation": "Original raw attribute order can differ; actual Python/Go canonical description normalization agrees exactly",
+  "original_HTTP_corpus_sha256": "5a3f24ffda34fe42b921ecf1a2cfaf722e55c446b8e0f0d3c883957fef1b8dff",
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "remaining": [
+    "Exact final-head Required CI, installed image and Lightpanda/ARM qualification",
+    "Supported ordinary/B0 outgoing retirement and original whole publication/deployment",
+    "Fresh full-floor census and qualified live-source admission",
+    "Global freshness/conservation, resource/cost comparisons, final rollback window and production Python retirement"
+  ],
+  "real_worker_full_and_description_only_settlement_race_seconds": 6.28,
+  "original_affected_tests": {
+    "passed": 118,
+    "skipped_requires_external_fixture": 11,
+    "seconds": 2.06
+  },
+  "original_HTTP_corpus_regeneration": "exact"
+}

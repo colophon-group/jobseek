@@ -1,0 +1,1547 @@
+{
+  "requests": [
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "failed": false,
+      "name": "200",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "failed": false,
+      "name": "201",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 201,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "failed": false,
+      "name": "204",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 204,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "400",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 400,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "403",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 403,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "404",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 404,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "410",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 410,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "429-200",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 429,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "503-200",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 503,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "500-500-500",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "0-200",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 0,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "failed": false,
+      "name": "empty-exhaustion",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de/job/abc123"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": null
+      },
+      "failed": false,
+      "name": "empty-recovery",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de/job/abc123"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "failed": false,
+      "name": "oversized",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body_size": 2097153,
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body_size": 2097153,
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de/job/abc123"
+        },
+        {
+          "body_size": 2097153,
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "200",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "201",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 201,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "204",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 204,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "400",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 400,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "403",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 403,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "404",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 404,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "410",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 410,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "429-200",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 429,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "503-200",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 503,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "500-500-500",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 2
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "0-200",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 0,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "empty-exhaustion",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 2
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "empty-recovery",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "oversized",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body_size": 2097153,
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "failed": false,
+      "name": "200",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "201",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 201,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "204",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 204,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "400",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 400,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "403",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 403,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "404",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 404,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "410",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 410,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "failed": false,
+      "name": "429-200",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 429,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "failed": false,
+      "name": "503-200",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 503,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "500-500-500",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 500,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 2
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "failed": false,
+      "name": "0-200",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 0,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "empty-exhaustion",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 2
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "failed": false,
+      "name": "empty-recovery",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        },
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 1
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "oversized",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body_size": 2097153,
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "failed": false,
+      "name": "shell-source-listing",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de/job/abc123"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "failed": false,
+      "name": "substantive-shell-listing",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body": "<html><script>self.__next_f.push([1,\"5:[\\\"$\\\", \\\"$L1\\\", null, {\\\"jobsData\\\": {\\\"data\\\": [{\\\"jobAdUrl\\\": \\\"https://example.onlyfy.jobs/job/abc123\\\", \\\"cityName\\\": \\\"Hof\\\"}]}}]\\n\"])</script></html>",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": null
+      },
+      "failed": false,
+      "name": "source-404-listing",
+      "provider": "onlyfy",
+      "requests": [
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate"
+        },
+        {
+          "body": "",
+          "location": "",
+          "method": "GET",
+          "status": 404,
+          "url": "https://example.onlyfy.jobs/de/job/abc123"
+        },
+        {
+          "body": "<html><script>self.__next_f.push([1,\"5:[\\\"$\\\", \\\"$L1\\\", null, {\\\"jobsData\\\": {\\\"data\\\": [{\\\"jobAdUrl\\\": \\\"https://example.onlyfy.jobs/job/abc123\\\", \\\"cityName\\\": \\\"Hof\\\"}]}}]\\n\"])</script></html>",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://example.onlyfy.jobs/de"
+        }
+      ],
+      "source": "https://example.onlyfy.jobs/de/job/abc123",
+      "waits": 0
+    },
+    {
+      "config": {
+        "listing_enrichment": false
+      },
+      "content": null,
+      "failed": true,
+      "name": "listing-location-False",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {
+        "listing_enrichment": true
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "failed": false,
+      "name": "listing-location-True",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "foreign-position",
+      "provider": "tupu360",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"000000000000000000000000\">\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+        }
+      ],
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "trusted-redirect",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "redirect-limit",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "foreign-redirect",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://foreign.example/job",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "different-job-redirect",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/jobs/057289-213283-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "missing-location",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    },
+    {
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "failed": false,
+      "name": "transient-redirect-recovery",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 503,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html",
+          "method": "GET",
+          "status": 302,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 503,
+          "url": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html"
+        },
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 2
+    },
+    {
+      "config": {},
+      "content": null,
+      "failed": true,
+      "name": "foreign-document",
+      "provider": "phuketall",
+      "requests": [
+        {
+          "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-999999-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+          "location": "",
+          "method": "GET",
+          "status": 200,
+          "url": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+        }
+      ],
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+      "waits": 0
+    }
+  ],
+  "sources": {
+    "onlyfy": "https://example.onlyfy.jobs/de/job/abc123",
+    "phuketall": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+    "tupu360": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+  }
+}

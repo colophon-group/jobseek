@@ -25,11 +25,20 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		scraper := row[h["scraper_type"]]
-		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1"}[scraper]
+		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1", "onlyfy": "onlyfy.public-detail/v1", "tupu360": "tupu360.public-detail/v1", "phuketall": "phuketall.public-detail/v1"}[scraper]
 		if want == "" {
 			continue
 		}
 		t.Run(row[h["board_slug"]], func(t *testing.T) {
+			if row[h["board_slug"]] == "flex-ltd-jetcool" {
+				c := profileConfig()
+				c["board_url"] = row[h["board_url"]]
+				c["metadata"] = `{"scraper_type":"onlyfy","scraper_config":{"language":"en"}}`
+				if _, err := inspectDetailOwnership(profileBoardID, c); err == nil {
+					t.Fatal("Workday board gained Onlyfy ownership")
+				}
+				return
+			}
 			md := map[string]any{}
 			if raw := row[h["monitor_config"]]; raw != "" && json.Unmarshal([]byte(raw), &md) != nil {
 				t.Fatal("monitor config")
@@ -50,6 +59,9 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 				t.Fatal(p, err)
 			}
 			source := p.Endpoint
+			if scraper == "onlyfy" {
+				source = "https://fixture.onlyfy.jobs/en/job/fixture"
+			}
 			if scraper == "jobconvo" {
 				source = "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/"
 			}
@@ -90,7 +102,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2, "onlyfy": 6, "tupu360": 2, "phuketall": 1}) {
 		t.Fatal("registry changed", counts)
 	}
 }

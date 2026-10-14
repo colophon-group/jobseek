@@ -21,6 +21,10 @@ import (
 // Follow the existing public redirect contract while checking publisher signals
 // on each response, including redirects, status failures and incomplete bodies.
 func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint string, limit int64, singleRequest ...api.Request) ([]byte, int, string, *policy.Reservation, error) {
+	return staticProviderDetailPageLocation(ctx, client, endpoint, limit, nil, singleRequest...)
+}
+
+func staticProviderDetailPageLocation(ctx context.Context, client *http.Client, endpoint string, limit int64, location *string, singleRequest ...api.Request) ([]byte, int, string, *policy.Reservation, error) {
 	if len(singleRequest) > 1 || len(singleRequest) == 1 && (singleRequest[0].URL != endpoint || singleRequest[0].Method != "GET" || singleRequest[0].Body != "") {
 		return nil, 0, endpoint, nil, queue.ErrConfiguration
 	}
@@ -46,6 +50,9 @@ func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint
 		if response.Request == nil || response.Request.URL == nil || response.Request.URL.String() != current {
 			response.Body.Close()
 			return nil, 0, current, nil, queue.ErrConfiguration
+		}
+		if location != nil {
+			*location = response.Header.Get("Location")
 		}
 		status := response.StatusCode
 		reservation, policyURL := response.Header.Get("TDM-Reservation"), response.Header.Get("TDM-Policy")

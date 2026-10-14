@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-### Current checkpoint — source1044 deployed; native activation and reversal verified
+### Current checkpoint — source1044 native cohort active; next three providers verified
 
 [PR #10495](https://github.com/colophon-group/jobseek/pull/10495) merged as
 `85ce92d457df37d56e0a70a3ae8bcf935c2c96b4` (0.13.1044). Required CI, deployment
@@ -21,8 +21,29 @@ no lock was bypassed. The existing selector helper cleared the exact staged sele
 Independent cold317 readback proves all seven base actors restored/armed, six healthy
 endpoints, no ownership receipts/plans/projections/native claim tokens, no live one-offs
 and stopped native actors. All four formerly Python plan/apply consumers have now
-completed their supported production exercise. Ordinary ownership remains absent;
-fresh full-floor admission must precede its next activation.
+completed their supported production exercise. Fresh supported admission and activation
+restored B0 and ordinary ownership at epoch318: **7,815 monitor /7,690 detail boards**,
+preserving every prior member and adding five qualified detail boards. All ten actors
+are independently verified running and armed, with matching SQL/Redis receipts and
+immutable images. The 08:19 UTC readback observed162 monitor and513 detail completed
+fences; these are processed terminal states, not a blanket claim of successful jobs.
+
+The next grouped native HTTP batch implements **Onlyfy, PhuketAll and Tupu360** through
+the existing worker and canonical writer (0.13.1046 candidate). All55 original HTTP
+traces match request order, retries, failures and complete parser fields. Ten captured
+actual live samples match all original canonical fields through the SDK and worker;
+all196 retained URLs bind. Real PostgreSQL/Redis settlement, policy/foreign-source
+rejection and all six cold-retirement scenarios per provider pass. Native and Python
+ownership consumers and the installed210-profile identity are updated together.
+The zero-route Flex JetCool board declares Onlyfy with a Workday board URL and remains
+excluded from Onlyfy ownership pending a separately evidenced configuration correction.
+No source1046 production admission or full migration completion is claimed.
+
+PR10496 Required CI recovered on attempt3 after the registry data-limit failures.
+Its exact-head installed image contracts and deploy gate are green; explicit unchanged
+ARM64 whole-lane and two-architecture Lightpanda qualification are running before
+supported retirement, exact merge and original whole deployment. Source1044 remains
+active while this qualification runs.
 
 [PR #10494](https://github.com/colophon-group/jobseek/pull/10494) merged as
 `7e746615839975cd9848feea0e30dd30b10351f5` (0.13.1043). The original whole crawler
@@ -53,11 +74,10 @@ image/ARM qualification must cover the combined final change before deployment.
 
 Continue in this order:
 
-1. Source1043 serving recovery is complete; preserve the terminal activation failure.
-2. Qualify and deploy source1044 through the original whole crawler/renderer workflows.
-   Exercise native activation and cold reversal through the unchanged wrappers.
-3. Rebuild admission from fresh canonical/cache/route evidence, preserving the prior
-   7,815 monitor /7,685 detail board floor and admitting qualified additions only.
+1. Source1043 serving recovery and source1044 activation/reversal are complete.
+2. Preserve the verified source1044 epoch318 active cohort while qualifying following batches.
+3. Each following release must preserve the **7,815 monitor /7,690 detail board** floor
+   using fresh canonical/cache/route evidence and qualified additions only.
 4. Rebase and qualify [PR #10496](https://github.com/colophon-group/jobseek/pull/10496):
    selective enrichment across DOM, JSON-LD and embedded Next-data details; currently
    seven held boards /9,380 routes. Eleven physical Lightpanda1.0.0 documents match
