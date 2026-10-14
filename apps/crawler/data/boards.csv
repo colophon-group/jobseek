@@ -4906,6 +4906,7 @@ neuraflash-part-of-accenture,neuraflash-part-of-accenture-greenhouse,https://job
 neural-concept,neural-concept-careers,https://jobs.ashbyhq.com/neuralconcept,ashby,,skip,
 neural-frames,neural-frames-join,https://join.com/companies/neuralframescom,join,"{""slug"": ""neuralframescom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 neuralink,neuralink-greenhouse,https://job-boards.greenhouse.io/neuralink,greenhouse,"{""token"": ""neuralink""}",skip,
+neurosoft-bioelectronics,neurosoft-bioelectronics-careers,https://join.com/companies/neurosoft-bio2,join,"{""slug"": ""neurosoft-bio2""}",json-ld,
 new-era-technology,new-era-technology-greenhouse,https://job-boards.greenhouse.io/neweratech,greenhouse,"{""token"": ""neweratech""}",skip,
 new-leaf-energy-inc,new-leaf-energy-inc-greenhouse,https://job-boards.greenhouse.io/newleafenergy,greenhouse,"{""token"": ""newleafenergy""}",skip,
 new-relic,new-relic-greenhouse,https://job-boards.greenhouse.io/newrelic,greenhouse,"{""token"": ""newrelic""}",skip,
