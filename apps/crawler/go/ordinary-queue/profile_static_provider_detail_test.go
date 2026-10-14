@@ -25,7 +25,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		scraper := row[h["scraper_type"]]
-		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile}[scraper]
+		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1"}[scraper]
 		if want == "" {
 			continue
 		}
@@ -90,7 +90,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2}) {
 		t.Fatal("registry changed", counts)
 	}
 }

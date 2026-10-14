@@ -17,6 +17,15 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "paycor" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"paycor"}`, "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc", "recruitingbypaycor.com")
+	}
+	if requested == "recruiterbox" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"recruiterbox"}`, "https://fixture.hire.trakstar.com/jobs/abc/", "fixture.hire.trakstar.com")
+	}
+	if requested == "veryeast" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"veryeast"}`, "https://job.veryeast.cn/123/456", "job.veryeast.cn")
+	}
 	if requested == "dom/ssl-exception" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"dom","scraper_config":{"skip_ssl":true,"steps":[{"tag":"h1","field":"title"}]}}`, "https://careers.example.net/job/123", "careers.example.net")
 	}

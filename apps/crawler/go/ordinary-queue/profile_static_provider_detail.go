@@ -43,7 +43,7 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	if json.Unmarshal(metadata["scraper_type"], &scraper) != nil {
 		return fail()
 	}
-	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile}[scraper]
+	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1"}[scraper]
 	if profile == "" {
 		return fail()
 	}
@@ -72,7 +72,7 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 		return fail()
 	}
 	if ownership {
-		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1", "jobconvo": "https://app.jobconvo.com/job/fixture/11111111-2222-3333-4444-555555555555/"}[scraper]
+		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1", "jobconvo": "https://app.jobconvo.com/job/fixture/11111111-2222-3333-4444-555555555555/", "paycor": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=fixture", "recruiterbox": "https://fixture.hire.trakstar.com/jobs/fixture/", "veryeast": "https://job.veryeast.cn/1/1"}[scraper]
 	}
 	if !utf8.ValidString(source) || strings.ContainsRune(source, 0) {
 		return fail()

@@ -84,7 +84,8 @@ COPY go/workday-monitor/ ../workday-monitor/
 COPY src/lua/ /workspace/apps/crawler/src/lua/
 COPY src/migrations/ /workspace/apps/crawler/src/migrations/
 COPY src/lightpanda/activation.py /workspace/apps/crawler/src/lightpanda/activation.py
-RUN apk add --no-cache redis \
+COPY scripts/lightpanda-b0-cutover.sh /workspace/apps/crawler/scripts/lightpanda-b0-cutover.sh
+RUN apk add --no-cache redis bash \
     && go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-typesense-exporter .

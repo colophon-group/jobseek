@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"io"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -144,5 +144,34 @@ func runB0PlanApply(args []string) error {
 		result["operation"] = o.Operation
 		result["cohort"] = o.Cohort
 	}
-	return json.NewEncoder(os.Stdout).Encode(result)
+	return writeB0OperatorReply(os.Stdout, result)
+}
+
+// The original shell caller consumes Python json.dumps' single-line spaced
+// reply. Keep that wire format separate from the compact canonical digest.
+func writeB0OperatorReply(w io.Writer, result map[string]any) error {
+	body, err := b0task.CanonicalJSON(result, true)
+	if err != nil {
+		return err
+	}
+	spaced := make([]byte, 0, len(body)+64)
+	quoted, escaped := false, false
+	for _, c := range body {
+		spaced = append(spaced, c)
+		if quoted {
+			if escaped {
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				quoted = false
+			}
+		} else if c == '"' {
+			quoted = true
+		} else if c == ':' || c == ',' {
+			spaced = append(spaced, ' ')
+		}
+	}
+	_, err = w.Write(append(spaced, '\n'))
+	return err
 }

@@ -1,0 +1,63 @@
+{
+  "schema": "jobseek.go-final-static-detail-candidate/v1",
+  "observed_at_utc": "2026-10-14T03:56:42.091258+00:00",
+  "version": "0.13.1044",
+  "base_revision": "7e746615839975cd9848feea0e30dd30b10351f5",
+  "providers": [
+    "recruiterbox",
+    "paycor",
+    "veryeast"
+  ],
+  "enabled_boards": 5,
+  "retained_actual_scheduled_routes_accepted": 1536,
+  "original_live_samples": 15,
+  "original_complete_live_samples_native_full_fields_match": 15,
+  "actual_original_parser_vectors": 40,
+  "actual_original_http_traces": 33,
+  "original_python_tests_passed": 14,
+  "native_full_api_race_seconds": 10.688,
+  "native_worker_settlement_identity_and_affected_static_race_seconds": 11.147,
+  "native_cold_retirement_race_seconds": 24.35,
+  "preserved_contracts": [
+    "original selectors, HTML5 serialization, optional fields, location/workplace and internship handling",
+    "Paycor and Recruiterbox exact200 single request and empty fields on other statuses",
+    "VeryEast original three-attempt transient/empty-body retry and 2MiB cap",
+    "publisher-policy header and partial-body signals before failure/retry, including broken responses",
+    "canonical board/source/hash/lane binding; no IO or writes on changed posting source",
+    "independent canonical SQL settlement, schedules, Redis leases and supported cold retirement"
+  ],
+  "new_services": 0,
+  "original_fixture_regeneration": "exact",
+  "linux_amd64_arm64": "worker tests compiled; execution requires exact-head remote qualification",
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "continuation": [
+    "Qualify exact runtime images and supported ARM/Linux tests, preserve every existing ownership member",
+    "Rebased on actual merged PR10494 source7e746615; fresh exact-head qualification precedes supported deployment",
+    "Publish through original whole-lane workflows and exercise supported outgoing retirement and fresh full-floor admission",
+    "Admit these five detail boards only after fresh actual canonical/cache/route agreement; sample parity alone grants no ownership",
+    "Continue Onlyfy, PhuketAll and Tupu360 next, then remaining special browser/detail flows and supported cache reconciliation",
+    "Full freshness, global queue conservation, comparable production resource/cost and final rollback window still precede Python retirement"
+  ],
+  "rebased_after_native_b0_merge": 10494,
+  "installed_image_profile_assertion": "Exact ordered207-profile expectation matches executable; fresh installed-image qualification remains required",
+  "operator_reply_abi": {
+    "observed_failure": "source1043 native compact JSON rejected by unchanged shell extract_digest before apply/receipt",
+    "fix": "single-line ASCII Python separators outside strings; canonical plan digests unchanged",
+    "compiled_cli_original_extractors_race_seconds": 3.549,
+    "broader_exporter_race": "passed private PostgreSQL and Redis",
+    "production_fixed": false,
+    "broader_exporter_race_seconds": 29.468,
+    "all_original_plan_and_shell_extractors_race_seconds": 4.946,
+    "original_plan_corpus": "all36 accepted/rejected plans; actual activation and rollback replies consumed by unchanged shell functions",
+    "build_stage_regression_dependency": "original wrapper source and Bash included in exporter build stage; no new runtime asset"
+  },
+  "source1043_recovery": {
+    "original_workflow": 38513589355,
+    "attempt": 3,
+    "status": "successful full deploy and promotion; independently healthy complete base at epoch315",
+    "successful_exports_observed": 1275,
+    "export_errors": 0,
+    "native_activation_still_held_for_wire_fix": true
+  }
+}
