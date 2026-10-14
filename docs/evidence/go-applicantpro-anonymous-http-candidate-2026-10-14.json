@@ -1,0 +1,34 @@
+{
+  "schema": "jobseek.go-lightpanda-candidate/v1",
+  "version": "0.13.1049",
+  "status": "stacked PR10501; qualification pending, not published or owned",
+  "parent_pr": 10500,
+  "parent_head": "a997506675d85a61e48218ccac647d4c757992eb",
+  "changes": [
+    "Convert two ApplicantPro browser-capture detail boards to their verified anonymous tenant/job HTTP APIs using the existing Go API profile",
+    "Extend the original quiesced forward/reverse worker-route repair to the two explicit code-owned targets; retain Bajaj target and source/schedule/inflight/ownership bounds"
+  ],
+  "boards": [
+    "bass-pro-shops-top-of-the-rock",
+    "bass-pro-shops-wonders-of-wildlife"
+  ],
+  "retained_routes": 7,
+  "evidence": {
+    "actual_original_playwright_complete_field_matches": 4,
+    "all_anonymous_http_routes": 7,
+    "actual_sealed_go_http_complete_field_matches": 7,
+    "real_canonical_write_and_policy_cases": 8,
+    "api_404_contract": "retain active posting, record failed attempt, write no description",
+    "cold_retirement_modes_per_board": 6,
+    "real_postgres_redis_forward_reverse_repair_targets": 3,
+    "compiled_repair_cli": "passed",
+    "writer_fields": "all six original mappings retained",
+    "sanitized_census": "regenerated from changed CSV; 57 census tests passed"
+  },
+  "pending": [
+    "exact candidate commit binding and release qualification",
+    "supported publication and lane repair",
+    "fresh full cohort admission preserving every prior owner",
+    "natural outcomes and whole-fleet migration completion"
+  ]
+}
