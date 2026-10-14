@@ -11,7 +11,7 @@ import (
 )
 
 func TestRealSharedExplicitHTTPMonitorTLSExceptionCanonicalTerminalEffects(t *testing.T) {
-	for _, provider := range []string{"dom", "inline", "sitemap"} {
+	for _, provider := range []string{"dom", "inline", "sitemap", "api_sniffer"} {
 		for _, reserved := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/%t", provider, reserved), func(t *testing.T) {
 				md := map[string]any{"skip_ssl": true, "scraper_type": "json-ld"}
@@ -24,6 +24,13 @@ func TestRealSharedExplicitHTTPMonitorTLSExceptionCanonicalTerminalEffects(t *te
 				if provider == "inline" {
 					md["scraper_type"] = "skip"
 					md["steps"] = []any{map[string]any{"tag": "h1", "field": "title"}, map[string]any{"tag": "p", "field": "description", "html": true}}
+				}
+				if provider == "api_sniffer" {
+					md["api_url"] = "https://example.com/api"
+					md["json_path"] = "jobs"
+					md["url_field"] = "url"
+					md["fields"] = map[string]any{"title": "title", "description": "description"}
+					md["scraper_type"] = "skip"
 				}
 				raw, _ := json.Marshal(md)
 				f := privateRichPipelineFixture(t, provider, string(raw))
@@ -38,7 +45,10 @@ func TestRealSharedExplicitHTTPMonitorTLSExceptionCanonicalTerminalEffects(t *te
 						w.WriteHeader(503)
 						return
 					}
-					if provider == "sitemap" {
+					if provider == "api_sniffer" {
+						w.Header().Set("Content-Type", "application/json")
+						fmt.Fprint(w, `{"jobs":[{"url":"https://example.com/jobs/engineer","title":"Engineer","description":"<p>Build services</p>"}]}`)
+					} else if provider == "sitemap" {
 						fmt.Fprint(w, `<urlset><url><loc>https://example.com/jobs/engineer</loc></url></urlset>`)
 					} else if provider == "dom" {
 						fmt.Fprint(w, `<a href="/jobs/engineer">Engineer</a>`)
@@ -71,7 +81,7 @@ func TestRealSharedExplicitHTTPMonitorTLSExceptionCanonicalTerminalEffects(t *te
 					if missing != 1 || boardReserved || failures != 0 || count != 2 || result.Batches.Inserted != 1 {
 						t.Fatal("complete original inventory not preserved")
 					}
-					if provider != "inline" && f.r.ZCard(ctx, "ft_scrapes_simple:example.com").Val()+f.r.ZCard(ctx, "scrapes_simple:example.com").Val() != 1 {
+					if provider != "inline" && provider != "api_sniffer" && f.r.ZCard(ctx, "ft_scrapes_simple:example.com").Val()+f.r.ZCard(ctx, "scrapes_simple:example.com").Val() != 1 {
 						t.Fatal("monitor TLS changed independent detail work")
 					}
 				}
@@ -82,7 +92,7 @@ func TestRealSharedExplicitHTTPMonitorTLSExceptionCanonicalTerminalEffects(t *te
 }
 
 func TestRealNativeExecutableSelectsExplicitHTTPMonitorTLSException(t *testing.T) {
-	for _, provider := range []string{"dom", "inline", "sitemap"} {
+	for _, provider := range []string{"dom", "inline", "sitemap", "api_sniffer"} {
 		t.Run(provider, func(t *testing.T) {
 			md := map[string]any{"skip_ssl": true, "scraper_type": "json-ld"}
 			if provider == "sitemap" {
@@ -91,6 +101,13 @@ func TestRealNativeExecutableSelectsExplicitHTTPMonitorTLSException(t *testing.T
 			if provider == "inline" {
 				md["scraper_type"] = "skip"
 				md["steps"] = []any{map[string]any{"tag": "h1", "field": "title"}}
+			}
+			if provider == "api_sniffer" {
+				md["api_url"] = "https://example.com/api"
+				md["json_path"] = "jobs"
+				md["url_field"] = "url"
+				md["fields"] = map[string]any{"title": "title"}
+				md["scraper_type"] = "skip"
 			}
 			raw, _ := json.Marshal(md)
 			f := privateRichPipelineFixture(t, provider, string(raw))

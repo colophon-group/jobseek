@@ -1,0 +1,130 @@
+{
+  "schema": "jobseek.go-lightpanda-production-checkpoint/v1",
+  "checkpoint_at_utc": "2026-10-13T23:55:43.096421+00:00",
+  "full_migration_complete": false,
+  "production": {
+    "observed_at_utc": "2026-10-13T23:54:54.152874+00:00",
+    "state": "source1040 supported activation complete; B0 and ordinary owners independently verified serving at309",
+    "source_revision": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+    "version": "0.13.1040",
+    "b0_owner_active": true,
+    "b0_epoch": 309,
+    "b0_receipt_sha256": "99816cdf927b503a05c00bdbb45b3a6d911c58db5adeef8e8ebcead379d0e905",
+    "ordinary_owner_active": true,
+    "ordinary_receipt_sha256": "d665b4b69890f8fd1976d8ab3566706fcf4f843dcbd38950790a7a6cb025f940",
+    "plan_sha256": "482dee90407dd48b857f26c80bec098078967cb1c7a2c2be5e189868e88d111d",
+    "projection_sha1": "4602d6aaafc43d80f2bece4e6da5138773318f02",
+    "monitors": 7812,
+    "details": 7685,
+    "all_current_health_passed": true,
+    "full_migration_complete": false
+  },
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10490",
+  "reviewed_head": "5a6b8027fe6f185275a45a53ebaeced078cbc2ca",
+  "original_deployments": {
+    "crawler": 38481802928,
+    "renderer": 38482361470,
+    "conclusion": "success",
+    "attempt": 1
+  },
+  "immutable_images": {
+    "JOBSEEK_DEPLOY_REVISION": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:401ec8ffbde12c36e5f903e8ce0c2d704ec89066c9120d3d573ac2b6210c0ad7",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:957d0a2117daadf2b0ea036ca6b2829d7b8b24942a525036710acca7b64d6ef2"
+  },
+  "latest_stable_lightpanda": {
+    "release": "1.0.0",
+    "verified_at_utc": "2026-10-13T23:55:43.096421+00:00",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "admission": {
+    "enabled_boards": 7885,
+    "previous_monitor_count_preserved": 7810,
+    "previous_detail_count_preserved": 7685,
+    "qualified_monitor_additions": 2,
+    "monitor_boards": 7812,
+    "detail_boards": 7685,
+    "actual_posting_routes_reconciled": true
+  },
+  "full_census_scheduled_routes": 1731439,
+  "new_monitors": [
+    "sage-careers-search",
+    "mckinsey-careers"
+  ],
+  "native_forward_schema": {
+    "head": "0040",
+    "executed_by_original_deployment": true
+  },
+  "independent_serving_evidence_sha256": "56d2dfeb78a98f166a85d45e6b0d8dbbb00e8af5130d87e67400252db8dc749e",
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "writers_running_and_restart_armed": 10,
+  "natural_receipts_initial": {
+    "observed_at": "2026-10-13T23:54:52.645194+00:00",
+    "fences_by_task": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 4
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 12
+      },
+      {
+        "task_kind": "scrape",
+        "state": "active",
+        "count": 11
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 101
+      }
+    ],
+    "scope": "naturally scheduled active309 native claims; no replay or synthetic work injected"
+  },
+  "fleet_monitor_ages_initial": [
+    {
+      "native_owned": false,
+      "enabled": 73,
+      "unscheduled": 0,
+      "never_checked": 64,
+      "due": 18,
+      "overdue_1h": 2,
+      "overdue_6h": 0,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 4600.132468
+    },
+    {
+      "native_owned": true,
+      "enabled": 7812,
+      "unscheduled": 0,
+      "never_checked": 1905,
+      "due": 5167,
+      "overdue_1h": 4660,
+      "overdue_6h": 2772,
+      "overdue_24h": 99,
+      "oldest_due_seconds": 128476.797568
+    }
+  ],
+  "new_monitor_natural_execution_proved": false,
+  "complete_freshness_proved": false,
+  "comparable_production_cost_proved": false,
+  "remaining": [
+    "Finish every enabled monitor/detail/provider and runtime consumer port in grouped iterations.",
+    "Observe new Sage/McKinsey natural canonical receipts and exact Redis settlement.",
+    "Establish complete scheduled-detail/fleet freshness and global queue conservation.",
+    "Measure comparable whole-lane production CPU/RAM/density and attributable cost.",
+    "Exercise supported final quiesced cutover and cold reversal, establish rollback window, then retire production Python/Playwright/Chromium while retaining useful offline Python."
+  ]
+}

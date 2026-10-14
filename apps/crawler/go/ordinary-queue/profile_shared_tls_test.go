@@ -96,7 +96,7 @@ func TestSharedHTTPMonitorTLSCurrentRegistryAndRetainedSitemapTransport(t *testi
 }
 
 func TestSharedHTTPMonitorTLSExceptionRetainsUnsupportedBoundaries(t *testing.T) {
-	for _, provider := range []string{"dom", "inline", "sitemap"} {
+	for _, provider := range []string{"dom", "inline", "sitemap", "api_sniffer"} {
 		c := profileConfig()
 		c["crawler_type"] = provider
 		for _, raw := range []string{`{"skip_ssl":"true"}`, `{"skip_ssl":1}`, `{"skip_ssl":true,"skip_ssl":false}`, `{"skip_ssl":true,"proxy":true}`} {
@@ -113,10 +113,27 @@ func TestSharedHTTPMonitorTLSExceptionRetainsUnsupportedBoundaries(t *testing.T)
 	}
 	c := profileConfig()
 	c["metadata"] = `{"skip_ssl":true}`
-	for _, provider := range []string{"api_sniffer", "rss", "workday"} {
+	for _, provider := range []string{"rss", "workday"} {
 		c["crawler_type"] = provider
 		if _, e := MonitorSkipsSSL(c); e == nil {
 			t.Fatal("unqualified provider exception admitted")
 		}
+	}
+}
+
+func TestDirectAPIExplicitTLSExceptionRetainsCanonicalBinding(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"] = "api_sniffer"
+	c["metadata"] = `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","skip_ssl":true,"fields":{"title":"title"},"scraper_type":"skip"}`
+	p, err := InspectRichMonitor(profileBoardID, c)
+	skip, tlsErr := MonitorSkipsSSL(c)
+	if err != nil || tlsErr != nil || !skip || MonitorWorker(p) != Simple || ProfileRequiresProxy(p.Profile) || p.SnapshotSHA256 != configDigest(c) {
+		t.Fatal("explicit API exception lost transport/source binding", err, tlsErr)
+	}
+	plain := cloneConfig(c)
+	plain["metadata"] = `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title"},"scraper_type":"skip"}`
+	q, err := InspectRichMonitor(profileBoardID, plain)
+	if err != nil || q.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 || q.SnapshotSHA256 == p.SnapshotSHA256 {
+		t.Fatal("exception disappeared from original authority", err)
 	}
 }
