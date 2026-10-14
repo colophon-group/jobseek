@@ -217,7 +217,7 @@
     },
     {
       "path": "pilots/go-lightpanda/api_detail_integration_test.go",
-      "sha256": "675b794e26c73e13c6135e48f10d326ea7264b8315f1e055e0c0febc2c5f4fd6"
+      "sha256": "fc1f7bcb07cef0920a82f7f0ec002699979e2a2ea185efd997c6fa4d74046886"
     },
     {
       "path": "pilots/go-lightpanda/api_replay_capture.go",
@@ -298,7 +298,8 @@
     "physical_pinned_Lightpanda_1_0_0": "passed on darwin/arm64 isolated HTTPS fixture; success and publisher refusal; cleanup proved",
     "service_cleanup_policy_response_order_race": "passed 4.723s",
     "framed_service_contract_client_race": "passed",
-    "production_admission": false
+    "production_admission": false,
+    "physical_mtls_service_client": "passed race3.526s on officialMac1.0.0; real mutualTLSreservation/framing/rendererchildcleanup/publicfields andpublisherrefusal"
   },
   "worker_checks": {
     "private_pg_redis_success_reserved_failure_fingerprint_cases": "passed 3.156s race",

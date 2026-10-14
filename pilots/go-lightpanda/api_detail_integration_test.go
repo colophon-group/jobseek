@@ -61,10 +61,21 @@ func TestLightpandaSingleDetailCaptureIntegration(t *testing.T) {
 				c.EgressPolicy = defaultEgressPolicy()
 				return runTaskWithDependencies(ctx, c, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: proxy.URL, ca: ca, fixtureLoopback: strings.TrimSuffix(address, ":0")}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, task)
 			}
-			execution := &runtimeV1ServiceExecution{dayforceConfig: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, dayforceRun: runner}
+			fixture := newServiceTLSFixture(t)
+			execution, e := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary, EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy}, runner)
+			if e != nil {
+				t.Fatal(e)
+			}
+			_, serviceAddress, stop := startRuntimeV1ServiceTest(t, fixture, execution)
+			defer stop()
+			client := dayforceClientFixture(t, fixture, serviceAddress)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			response, e := execution.executeAPIReplay(ctx, replay.Request{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Operation: "detail", BoardURL: "https://jobs.dayforcehcm.com/detail", Metadata: json.RawMessage(`{"fields":{"title":"title","description":"body","locations":"location"},"settle":0.25}`), TimeoutMS: 25000})
+			held, e := client.Reserve(ctx)
+			if e != nil {
+				t.Fatal(e)
+			}
+			response, e := held.APIReplay(ctx, replay.Request{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Operation: "detail", BoardURL: "https://jobs.dayforcehcm.com/detail", Metadata: json.RawMessage(`{"fields":{"title":"title","description":"body","locations":"location"},"settle":0.25}`), TimeoutMS: 25000})
 			if e != nil || !response.Valid() {
 				t.Fatal("physical detail protocol failed", e)
 			}
