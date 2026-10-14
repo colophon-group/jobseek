@@ -128,7 +128,7 @@ def project(name: str, obj: dict, fields: dict | None = None) -> None:
     try:
         expected = asdict(_extract_from_object(obj, config))
         failed = False
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, KeyError):
         expected, failed = None, True
     projections.append(
         {"name": name, "object": obj, "fields": fields, "expected": expected, "failed": failed}
@@ -154,6 +154,15 @@ for location in _LOCATION_FIELDS:
         None,
     ):
         project(f"location-{location}-{len(projections)}", {"title": "Original", location: value})
+for value in (
+    [{"city": "Zurich"}, "Geneva"],
+    [{"city": "Zurich"}, "city"],
+    [{"city": "Zurich"}, ["Geneva"]],
+    [{"city": "Zurich"}, None],
+    [{"city": "Zurich"}, 42],
+    ["Zurich", {"city": "Geneva"}],
+):
+    project(f"mixed-location-{len(projections)}", {"title": "Original", "locations": value})
 project("location-precedence", {"title": "Original", "location": None, "locations": ["Ignored"]})
 for name, keys in (
     ("employment_type", _EMPLOYMENT_TYPE_FIELDS),

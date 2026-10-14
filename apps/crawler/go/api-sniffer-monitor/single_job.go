@@ -2,6 +2,8 @@ package apisniffer
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -183,7 +185,26 @@ func ProjectSingleJobDetail(document *Document, object map[string]any, fields ma
 					for _, item := range value {
 						location, ok := item.(map[string]any)
 						if !ok {
-							return nil, ErrField
+							// Python membership skips strings and lists without a
+							// location subkey, but indexing a matching non-object
+							// (or testing membership on a scalar) raises an error.
+							switch item := item.(type) {
+							case string:
+								for _, key := range []string{"name", "title", "city", "label", "displayName"} {
+									if strings.Contains(item, key) {
+										return nil, ErrField
+									}
+								}
+							case []any:
+								for _, value := range item {
+									if key, ok := value.(string); ok && slices.Contains([]string{"name", "title", "city", "label", "displayName"}, key) {
+										return nil, ErrField
+									}
+								}
+							default:
+								return nil, ErrField
+							}
+							continue
 						}
 						for _, key := range []string{"name", "title", "city", "label", "displayName"} {
 							if text, ok := location[key].(string); ok {

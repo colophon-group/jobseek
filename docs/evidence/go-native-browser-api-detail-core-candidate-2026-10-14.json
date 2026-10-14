@@ -5,11 +5,11 @@
   "candidate_state": "local preparation; renderer protocol, ownership and worker execution integration incomplete",
   "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
   "original_reference_selection_cases": 107,
-  "original_reference_projection_cases": 210,
+  "original_reference_projection_cases": 216,
   "selection_contract": "Stable first candidate at equal score, explicit path preference, original response/dictionary order,512 visited nodes,8 levels and50-element traversal cap",
   "actual_HeavenHR_original_all_fields_equal": true,
   "actual_HeavenHR_test_seconds": 0.222,
-  "full_API_race_suite_seconds": 11.187,
+  "full_API_race_suite_seconds": 11.207,
   "vet": "passed",
   "field_mapping_ambiguity": "Multiple heuristic title keys require explicit fields instead of depending on Python hash-set order; these inputs remain unqualified",
   "private_frontier_source": "ed1df86b74f4e4e97076c53d00a69f5e603b1861 / dataf678 / epoch326",
@@ -157,7 +157,7 @@
   "evidence": [
     {
       "path": "apps/crawler/go/api-sniffer-monitor/single_job.go",
-      "sha256": "dfe58668cc1fe30a28bebd1722298ad85b2e45cf2803c6d4962ad7737d1e6ad1"
+      "sha256": "6824267a04660e6b29659dcc5b889a028f5cf406aa61ce55a5828eb31bb6fa19"
     },
     {
       "path": "apps/crawler/go/api-sniffer-monitor/single_job_test.go",
@@ -169,7 +169,7 @@
     },
     {
       "path": "apps/crawler/go/api-sniffer-monitor/testdata/generate_python_single_job.py",
-      "sha256": "0c6f4c4b6f8e89f1cadd4eb05d5791191f93007ad7c75c9403899f5556461994"
+      "sha256": "2ec09dede3f55d27ab6ae080ec63e73d6573702a01152363a8c8c23e957d5156"
     },
     {
       "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job.json",
@@ -177,7 +177,7 @@
     },
     {
       "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job_projection.json",
-      "sha256": "a672259d05543faeb7120dc79728025a09f50427221c47eb3ae59db014d976a0"
+      "sha256": "88c2379502bf8cd2ab5dab2f7eb4710018dfb0b6146c7d5c0fbc59996b0194da"
     },
     {
       "private_input": "heavenhr-http-detail-input1.json",
@@ -191,5 +191,6 @@
     "After source1051 delivery, rebase and complete source-bound CI/Linux/ARM/renderer qualification and supported original full cutover",
     "Continue all remaining profiles/consumers, full-fleet freshness/conservation/cost proofs and final Python/Playwright/Chromium retirement"
   ],
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "mixed_location_reference_cases": 6
 }

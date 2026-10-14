@@ -2217,6 +2217,140 @@
     "failed": false
   },
   {
+    "name": "mixed-location-98",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mixed-location-99",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        "city"
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-100",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        [
+          "Geneva"
+        ]
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mixed-location-101",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        null
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-102",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        42
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-103",
+    "object": {
+      "title": "Original",
+      "locations": [
+        "Zurich",
+        {
+          "city": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        {
+          "city": "Geneva"
+        }
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
     "name": "location-precedence",
     "object": {
       "title": "Original",
