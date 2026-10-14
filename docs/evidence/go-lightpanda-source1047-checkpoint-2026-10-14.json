@@ -1,0 +1,77 @@
+{
+  "schema": "jobseek.go-lightpanda-source1047-checkpoint/v1",
+  "observed_at_utc": "2026-10-14T10:42:54.303990+00:00",
+  "source_revision": "ac21b64d9e117b87694e38f0450c37a59eeefeb9",
+  "version": "0.13.1047",
+  "merged_PRs": [
+    10498,
+    10499
+  ],
+  "qualified_heads": [
+    "3b5a6756b633ad08b143b8e7cbff1bf4fd1e0727",
+    "3d626b72eb076178f04ce7e685fc81ac7e1589c4"
+  ],
+  "both_exact_head_Required_CI_runtime_image_Lightpanda_and_ARM_qualification": "success",
+  "ARM_complete_output_pairs_equal_per_candidate": 8,
+  "original_crawler_workflow": 38546029507,
+  "original_renderer_workflow": 38546142037,
+  "original_deploy_attempts": 1,
+  "source1046_supported_B0320_activation_and_cold321_reversal": "completed via unchanged wrappers, selectors cleared and cold base independently verified",
+  "state": "active",
+  "routing_epoch": 322,
+  "monitor_boards": 7815,
+  "detail_boards": 7709,
+  "previous_floor_preserved": [
+    7815,
+    7690
+  ],
+  "new_detail_boards_admitted": 19,
+  "actors_running_and_armed": 10,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "ordinary_plan_sha256": "6be876acef3aa34d633c41988b280f01aaa428d14c97a02a7ca4e7ae1f1ccea5",
+  "ordinary_projection_sha1": "263e03761d34675c44982ea62e75352683d5ea0c",
+  "ordinary_receipt_sha256": "acf44d0cb5cbe78587ccbcc1fad70f5a8f64731a056b81460a3326fd67fd7bb9",
+  "B0_plan_sha256": "5d608e5bcfaca023ddd9d64fa71e27ee4a85955b942443f0ed6734d29d50cae5",
+  "B0_receipt_sha256": "796106de9c3410c40937375b761d4f5964017f516abef5bfb1a8ff0ab38ef2bd",
+  "crawler_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:677842ac072c42c0184c7b5e9a83231ec6c9761961962eda4c9c4085247a8144",
+  "browser_image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:4317bfc04d1dbc4e85d2e8a539fefa360dace24fce94b58301c3d9fb83dd3614",
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:4ee7c1b9a7b213a54f5be0b4ce956ad185e50a1cab456879b12aea7757153223",
+  "Lightpanda_latest_stable_reverified": "1.0.0",
+  "fresh_enabled_boards_census": 7885,
+  "fresh_scheduled_routes_reconciled": 1705638,
+  "observed_global_cache_disagreements": 14786,
+  "owned_scheduled_routes": 1588037,
+  "qualified_detail_candidates": 20,
+  "held_Bajaj_routes": 8261,
+  "held_Bajaj_reason": "previous browser-lane queue memberships remain after canonical switch to verified anonymous HTTP API; no ownership granted",
+  "held_other_candidates": "ITC location difference, empty/invalid physical documents, RSM and unsampled Onlyfy/other variants",
+  "natural_initial_completed_fences": {
+    "monitor": 9,
+    "detail": 39,
+    "scope": "processed terminal states; no synthetic replay or blanket successful-job claim"
+  },
+  "old_full_detail_freshness_baseline": {
+    "source": "0.13.1044",
+    "native_scheduled_active": 1591988,
+    "native_due": 1534267,
+    "native_overdue_24h": 1497688,
+    "scope": "single snapshot; no before/after improvement or global queue-conservation proof"
+  },
+  "next": [
+    "Fix cross-worker routing through typed bounded original quiesced publication/deployment and qualify/admit Bajaj",
+    "Batch remaining browser API capture, default embedded and document variants",
+    "Qualify remaining enabled monitors/details without losing any prior board",
+    "Prove current whole-fleet freshness/queue conservation and comparable CPU/RAM/density/cost",
+    "Complete supported rollback window and retire production Python/Playwright/Chromium, retaining useful isolated offline tooling"
+  ],
+  "full_migration_complete": false
+}
