@@ -1,0 +1,4747 @@
+[
+  {
+    "name": "empty-object",
+    "object": {},
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "plain-heuristic",
+    "object": {
+      "title": "Original",
+      "description": "A complete original job description. A complete original job description. A complete original job description. "
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "A complete original job description. A complete original job description. A complete original job description. ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-title-Original",
+    "object": {
+      "title": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-title-None",
+    "object": {
+      "title": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-title-42",
+    "object": {
+      "title": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-name-Original",
+    "object": {
+      "name": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-name-None",
+    "object": {
+      "name": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-name-42",
+    "object": {
+      "name": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-jobTitle-Original",
+    "object": {
+      "jobTitle": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-jobTitle-None",
+    "object": {
+      "jobTitle": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-jobTitle-42",
+    "object": {
+      "jobTitle": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-job_title-Original",
+    "object": {
+      "job_title": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-job_title-None",
+    "object": {
+      "job_title": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-job_title-42",
+    "object": {
+      "job_title": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-Title__c-Original",
+    "object": {
+      "Title__c": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-Title__c-None",
+    "object": {
+      "Title__c": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-Title__c-42",
+    "object": {
+      "Title__c": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-ROLE-Original",
+    "object": {
+      "ROLE": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-ROLE-None",
+    "object": {
+      "ROLE": null
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "title-ROLE-42",
+    "object": {
+      "ROLE": 42
+    },
+    "fields": null,
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-description-10",
+    "object": {
+      "title": "Original",
+      "description": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-description-11",
+    "object": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-body-10",
+    "object": {
+      "title": "Original",
+      "body": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-body-11",
+    "object": {
+      "title": "Original",
+      "body": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-content-10",
+    "object": {
+      "title": "Original",
+      "content": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-content-11",
+    "object": {
+      "title": "Original",
+      "content": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-bodyHtml-10",
+    "object": {
+      "title": "Original",
+      "bodyHtml": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-bodyHtml-11",
+    "object": {
+      "title": "Original",
+      "bodyHtml": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-body_html-10",
+    "object": {
+      "title": "Original",
+      "body_html": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-body_html-11",
+    "object": {
+      "title": "Original",
+      "body_html": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-descriptionHtml-10",
+    "object": {
+      "title": "Original",
+      "descriptionHtml": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-descriptionHtml-11",
+    "object": {
+      "title": "Original",
+      "descriptionHtml": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-description_html-10",
+    "object": {
+      "title": "Original",
+      "description_html": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-description_html-11",
+    "object": {
+      "title": "Original",
+      "description_html": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-text-10",
+    "object": {
+      "title": "Original",
+      "text": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-text-11",
+    "object": {
+      "title": "Original",
+      "text": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-details-10",
+    "object": {
+      "title": "Original",
+      "details": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-details-11",
+    "object": {
+      "title": "Original",
+      "details": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-job_description-10",
+    "object": {
+      "title": "Original",
+      "job_description": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-job_description-11",
+    "object": {
+      "title": "Original",
+      "job_description": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-jobDescription-10",
+    "object": {
+      "title": "Original",
+      "jobDescription": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-jobDescription-11",
+    "object": {
+      "title": "Original",
+      "jobDescription": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-position_description_html-10",
+    "object": {
+      "title": "Original",
+      "position_description_html": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-position_description_html-11",
+    "object": {
+      "title": "Original",
+      "position_description_html": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-summary-10",
+    "object": {
+      "title": "Original",
+      "summary": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-summary-11",
+    "object": {
+      "title": "Original",
+      "summary": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-Job_Posting_Description__c-10",
+    "object": {
+      "title": "Original",
+      "Job_Posting_Description__c": "λλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "description-Job_Posting_Description__c-11",
+    "object": {
+      "title": "Original",
+      "Job_Posting_Description__c": "λλλλλλλλλλλ"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": "λλλλλλλλλλλ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location-48",
+    "object": {
+      "title": "Original",
+      "location": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location-49",
+    "object": {
+      "title": "Original",
+      "location": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location-50",
+    "object": {
+      "title": "Original",
+      "location": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location-51",
+    "object": {
+      "title": "Original",
+      "location": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location-52",
+    "object": {
+      "title": "Original",
+      "location": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locations-53",
+    "object": {
+      "title": "Original",
+      "locations": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locations-54",
+    "object": {
+      "title": "Original",
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locations-55",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locations-56",
+    "object": {
+      "title": "Original",
+      "locations": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locations-57",
+    "object": {
+      "title": "Original",
+      "locations": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locationName-58",
+    "object": {
+      "title": "Original",
+      "locationName": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locationName-59",
+    "object": {
+      "title": "Original",
+      "locationName": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locationName-60",
+    "object": {
+      "title": "Original",
+      "locationName": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locationName-61",
+    "object": {
+      "title": "Original",
+      "locationName": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-locationName-62",
+    "object": {
+      "title": "Original",
+      "locationName": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location_name-63",
+    "object": {
+      "title": "Original",
+      "location_name": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location_name-64",
+    "object": {
+      "title": "Original",
+      "location_name": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location_name-65",
+    "object": {
+      "title": "Original",
+      "location_name": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location_name-66",
+    "object": {
+      "title": "Original",
+      "location_name": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-location_name-67",
+    "object": {
+      "title": "Original",
+      "location_name": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-office-68",
+    "object": {
+      "title": "Original",
+      "office": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-office-69",
+    "object": {
+      "title": "Original",
+      "office": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-office-70",
+    "object": {
+      "title": "Original",
+      "office": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-office-71",
+    "object": {
+      "title": "Original",
+      "office": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-office-72",
+    "object": {
+      "title": "Original",
+      "office": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-offices-73",
+    "object": {
+      "title": "Original",
+      "offices": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-offices-74",
+    "object": {
+      "title": "Original",
+      "offices": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-offices-75",
+    "object": {
+      "title": "Original",
+      "offices": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-offices-76",
+    "object": {
+      "title": "Original",
+      "offices": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-offices-77",
+    "object": {
+      "title": "Original",
+      "offices": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-city-78",
+    "object": {
+      "title": "Original",
+      "city": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-city-79",
+    "object": {
+      "title": "Original",
+      "city": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-city-80",
+    "object": {
+      "title": "Original",
+      "city": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-city-81",
+    "object": {
+      "title": "Original",
+      "city": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-city-82",
+    "object": {
+      "title": "Original",
+      "city": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-cities-83",
+    "object": {
+      "title": "Original",
+      "cities": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-cities-84",
+    "object": {
+      "title": "Original",
+      "cities": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-cities-85",
+    "object": {
+      "title": "Original",
+      "cities": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-cities-86",
+    "object": {
+      "title": "Original",
+      "cities": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-cities-87",
+    "object": {
+      "title": "Original",
+      "cities": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-place-88",
+    "object": {
+      "title": "Original",
+      "place": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-place-89",
+    "object": {
+      "title": "Original",
+      "place": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-place-90",
+    "object": {
+      "title": "Original",
+      "place": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-place-91",
+    "object": {
+      "title": "Original",
+      "place": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-place-92",
+    "object": {
+      "title": "Original",
+      "place": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-Location__c-93",
+    "object": {
+      "title": "Original",
+      "Location__c": "Zurich"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-Location__c-94",
+    "object": {
+      "title": "Original",
+      "Location__c": [
+        "Zurich",
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-Location__c-95",
+    "object": {
+      "title": "Original",
+      "Location__c": [
+        {
+          "city": "Zurich"
+        },
+        {
+          "label": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        "Geneva"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-Location__c-96",
+    "object": {
+      "title": "Original",
+      "Location__c": []
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-Location__c-97",
+    "object": {
+      "title": "Original",
+      "Location__c": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mixed-location-98",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        "Geneva"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mixed-location-99",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        "city"
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-100",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        [
+          "Geneva"
+        ]
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mixed-location-101",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        null
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-102",
+    "object": {
+      "title": "Original",
+      "locations": [
+        {
+          "city": "Zurich"
+        },
+        42
+      ]
+    },
+    "fields": null,
+    "expected": null,
+    "failed": true
+  },
+  {
+    "name": "mixed-location-103",
+    "object": {
+      "title": "Original",
+      "locations": [
+        "Zurich",
+        {
+          "city": "Geneva"
+        }
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": [
+        "Zurich",
+        {
+          "city": "Geneva"
+        }
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "location-precedence",
+    "object": {
+      "title": "Original",
+      "location": null,
+      "locations": [
+        "Ignored"
+      ]
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employment_type-Original",
+    "object": {
+      "title": "Original",
+      "employment_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employment_type-None",
+    "object": {
+      "title": "Original",
+      "employment_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employment_type-True",
+    "object": {
+      "title": "Original",
+      "employment_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employment_type-False",
+    "object": {
+      "title": "Original",
+      "employment_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employmentType-Original",
+    "object": {
+      "title": "Original",
+      "employmentType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employmentType-None",
+    "object": {
+      "title": "Original",
+      "employmentType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employmentType-True",
+    "object": {
+      "title": "Original",
+      "employmentType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-employmentType-False",
+    "object": {
+      "title": "Original",
+      "employmentType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-type-Original",
+    "object": {
+      "title": "Original",
+      "type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-type-None",
+    "object": {
+      "title": "Original",
+      "type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-type-True",
+    "object": {
+      "title": "Original",
+      "type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-type-False",
+    "object": {
+      "title": "Original",
+      "type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-job_type-Original",
+    "object": {
+      "title": "Original",
+      "job_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-job_type-None",
+    "object": {
+      "title": "Original",
+      "job_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-job_type-True",
+    "object": {
+      "title": "Original",
+      "job_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-job_type-False",
+    "object": {
+      "title": "Original",
+      "job_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-jobType-Original",
+    "object": {
+      "title": "Original",
+      "jobType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-jobType-None",
+    "object": {
+      "title": "Original",
+      "jobType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-jobType-True",
+    "object": {
+      "title": "Original",
+      "jobType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-jobType-False",
+    "object": {
+      "title": "Original",
+      "jobType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-work_type-Original",
+    "object": {
+      "title": "Original",
+      "work_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-work_type-None",
+    "object": {
+      "title": "Original",
+      "work_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-work_type-True",
+    "object": {
+      "title": "Original",
+      "work_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-work_type-False",
+    "object": {
+      "title": "Original",
+      "work_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-workType-Original",
+    "object": {
+      "title": "Original",
+      "workType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-workType-None",
+    "object": {
+      "title": "Original",
+      "workType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-workType-True",
+    "object": {
+      "title": "Original",
+      "workType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-workType-False",
+    "object": {
+      "title": "Original",
+      "workType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contract_type-Original",
+    "object": {
+      "title": "Original",
+      "contract_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contract_type-None",
+    "object": {
+      "title": "Original",
+      "contract_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contract_type-True",
+    "object": {
+      "title": "Original",
+      "contract_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contract_type-False",
+    "object": {
+      "title": "Original",
+      "contract_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contractType-Original",
+    "object": {
+      "title": "Original",
+      "contractType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": "Original",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contractType-None",
+    "object": {
+      "title": "Original",
+      "contractType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contractType-True",
+    "object": {
+      "title": "Original",
+      "contractType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "employment_type-contractType-False",
+    "object": {
+      "title": "Original",
+      "contractType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-date_posted-Original",
+    "object": {
+      "title": "Original",
+      "date_posted": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-date_posted-None",
+    "object": {
+      "title": "Original",
+      "date_posted": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-date_posted-True",
+    "object": {
+      "title": "Original",
+      "date_posted": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-date_posted-False",
+    "object": {
+      "title": "Original",
+      "date_posted": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-datePosted-Original",
+    "object": {
+      "title": "Original",
+      "datePosted": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-datePosted-None",
+    "object": {
+      "title": "Original",
+      "datePosted": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-datePosted-True",
+    "object": {
+      "title": "Original",
+      "datePosted": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-datePosted-False",
+    "object": {
+      "title": "Original",
+      "datePosted": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-posted_at-Original",
+    "object": {
+      "title": "Original",
+      "posted_at": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-posted_at-None",
+    "object": {
+      "title": "Original",
+      "posted_at": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-posted_at-True",
+    "object": {
+      "title": "Original",
+      "posted_at": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-posted_at-False",
+    "object": {
+      "title": "Original",
+      "posted_at": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-postedAt-Original",
+    "object": {
+      "title": "Original",
+      "postedAt": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-postedAt-None",
+    "object": {
+      "title": "Original",
+      "postedAt": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-postedAt-True",
+    "object": {
+      "title": "Original",
+      "postedAt": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-postedAt-False",
+    "object": {
+      "title": "Original",
+      "postedAt": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-published_at-Original",
+    "object": {
+      "title": "Original",
+      "published_at": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-published_at-None",
+    "object": {
+      "title": "Original",
+      "published_at": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-published_at-True",
+    "object": {
+      "title": "Original",
+      "published_at": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-published_at-False",
+    "object": {
+      "title": "Original",
+      "published_at": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publishedAt-Original",
+    "object": {
+      "title": "Original",
+      "publishedAt": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publishedAt-None",
+    "object": {
+      "title": "Original",
+      "publishedAt": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publishedAt-True",
+    "object": {
+      "title": "Original",
+      "publishedAt": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publishedAt-False",
+    "object": {
+      "title": "Original",
+      "publishedAt": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-created_at-Original",
+    "object": {
+      "title": "Original",
+      "created_at": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-created_at-None",
+    "object": {
+      "title": "Original",
+      "created_at": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-created_at-True",
+    "object": {
+      "title": "Original",
+      "created_at": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-created_at-False",
+    "object": {
+      "title": "Original",
+      "created_at": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-createdAt-Original",
+    "object": {
+      "title": "Original",
+      "createdAt": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-createdAt-None",
+    "object": {
+      "title": "Original",
+      "createdAt": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-createdAt-True",
+    "object": {
+      "title": "Original",
+      "createdAt": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-createdAt-False",
+    "object": {
+      "title": "Original",
+      "createdAt": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publish_date-Original",
+    "object": {
+      "title": "Original",
+      "publish_date": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "Original",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publish_date-None",
+    "object": {
+      "title": "Original",
+      "publish_date": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publish_date-True",
+    "object": {
+      "title": "Original",
+      "publish_date": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "date_posted-publish_date-False",
+    "object": {
+      "title": "Original",
+      "publish_date": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-job_location_type-Original",
+    "object": {
+      "title": "Original",
+      "job_location_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-job_location_type-None",
+    "object": {
+      "title": "Original",
+      "job_location_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-job_location_type-True",
+    "object": {
+      "title": "Original",
+      "job_location_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-job_location_type-False",
+    "object": {
+      "title": "Original",
+      "job_location_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-jobLocationType-Original",
+    "object": {
+      "title": "Original",
+      "jobLocationType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-jobLocationType-None",
+    "object": {
+      "title": "Original",
+      "jobLocationType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-jobLocationType-True",
+    "object": {
+      "title": "Original",
+      "jobLocationType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-jobLocationType-False",
+    "object": {
+      "title": "Original",
+      "jobLocationType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplace_type-Original",
+    "object": {
+      "title": "Original",
+      "workplace_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplace_type-None",
+    "object": {
+      "title": "Original",
+      "workplace_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplace_type-True",
+    "object": {
+      "title": "Original",
+      "workplace_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplace_type-False",
+    "object": {
+      "title": "Original",
+      "workplace_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplaceType-Original",
+    "object": {
+      "title": "Original",
+      "workplaceType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplaceType-None",
+    "object": {
+      "title": "Original",
+      "workplaceType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplaceType-True",
+    "object": {
+      "title": "Original",
+      "workplaceType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-workplaceType-False",
+    "object": {
+      "title": "Original",
+      "workplaceType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote_type-Original",
+    "object": {
+      "title": "Original",
+      "remote_type": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote_type-None",
+    "object": {
+      "title": "Original",
+      "remote_type": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote_type-True",
+    "object": {
+      "title": "Original",
+      "remote_type": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote_type-False",
+    "object": {
+      "title": "Original",
+      "remote_type": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-locationType-Original",
+    "object": {
+      "title": "Original",
+      "locationType": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-locationType-None",
+    "object": {
+      "title": "Original",
+      "locationType": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-locationType-True",
+    "object": {
+      "title": "Original",
+      "locationType": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-locationType-False",
+    "object": {
+      "title": "Original",
+      "locationType": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-isRemote-Original",
+    "object": {
+      "title": "Original",
+      "isRemote": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-isRemote-None",
+    "object": {
+      "title": "Original",
+      "isRemote": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-isRemote-True",
+    "object": {
+      "title": "Original",
+      "isRemote": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-isRemote-False",
+    "object": {
+      "title": "Original",
+      "isRemote": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote-Original",
+    "object": {
+      "title": "Original",
+      "remote": "Original"
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "Original",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote-None",
+    "object": {
+      "title": "Original",
+      "remote": null
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote-True",
+    "object": {
+      "title": "Original",
+      "remote": true
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "True",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "job_location_type-remote-False",
+    "object": {
+      "title": "Original",
+      "remote": false
+    },
+    "fields": null,
+    "expected": {
+      "title": "Original",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": "False",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-scalars",
+    "object": {
+      "name": "Original",
+      "body": "<p>Complete</p>",
+      "city": "Zurich"
+    },
+    "fields": {
+      "title": "name",
+      "description": "body",
+      "locations": "city"
+    },
+    "expected": {
+      "title": "Original",
+      "description": "<p>Complete</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-metadata",
+    "object": {
+      "team": "Engineering",
+      "state": "PUBLISHED"
+    },
+    "fields": {
+      "metadata.team": "team",
+      "source_status": "state"
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "team": "Engineering",
+        "source_status": "PUBLISHED"
+      }
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-extras",
+    "object": {
+      "tasks": [
+        null,
+        "",
+        " ",
+        "Build"
+      ],
+      "expires": "2026-12-01"
+    },
+    "fields": {
+      "responsibilities": "tasks",
+      "valid_through": "expires"
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "responsibilities": [
+          "Build"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-concatenation",
+    "object": {
+      "a": "<h2>Role</h2>",
+      "b": "<p>Build</p>"
+    },
+    "fields": {
+      "description": [
+        "a",
+        "b"
+      ]
+    },
+    "expected": {
+      "title": null,
+      "description": "<h2>Role</h2>\n<p>Build</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-value-translation",
+    "object": {
+      "type": "INTERN"
+    },
+    "fields": {
+      "employment_type": {
+        "path": "type",
+        "map": {
+          "INTERN": "Internship"
+        }
+      }
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "Internship",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-empty-does-not-fallback",
+    "object": {
+      "title": "Not inherited",
+      "description": "A complete original job description. A complete original job description. A complete original job description. "
+    },
+    "fields": {
+      "title": "missing"
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  },
+  {
+    "name": "mapped-empty-uses-heuristic",
+    "object": {
+      "title": "Original",
+      "description": "A complete original job description. A complete original job description. A complete original job description. "
+    },
+    "fields": {},
+    "expected": {
+      "title": "Original",
+      "description": "A complete original job description. A complete original job description. A complete original job description. ",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "failed": false
+  }
+]

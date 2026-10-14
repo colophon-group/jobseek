@@ -1,0 +1,357 @@
+{
+  "schema": "jobseek.native-browser-api-detail-core-candidate/v1",
+  "candidate_version": "0.13.1052",
+  "base_head": "bade637b4534e18f431a620a2a6493f002951572",
+  "candidate_state": "Local generic API browser detail path implemented through renderer, framed client, ordinary browser ownership, canonical writer and supported cold retirement; actual enabled-board captures and installed Linux/ARM qualification pending",
+  "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
+  "original_reference_selection_cases": 107,
+  "original_reference_projection_cases": 216,
+  "selection_contract": "Stable first candidate at equal score, explicit path preference, original response/dictionary order,512 visited nodes,8 levels and50-element traversal cap",
+  "actual_HeavenHR_original_all_fields_equal": true,
+  "actual_HeavenHR_test_seconds": 0.222,
+  "full_API_race_suite_seconds": 11.207,
+  "vet": "passed",
+  "field_mapping_ambiguity": "Multiple heuristic title keys require explicit fields instead of depending on Python hash-set order; these inputs remain unqualified",
+  "private_frontier_source": "ed1df86b74f4e4e97076c53d00a69f5e603b1861 / dataf678 / epoch326",
+  "prepublication_remaining_browser_API_detail_boards": [
+    {
+      "slug": "stantec-global-jobs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "international-olympic-committee-obs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "cedars-sinai-providence-tarzana",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "acrisure-protection-group",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields",
+        "json_path",
+        "settle",
+        "timeout",
+        "wait"
+      ]
+    },
+    {
+      "slug": "biorce-main",
+      "field_mapping_present": true,
+      "option_keys": [
+        "channel",
+        "fields",
+        "headless",
+        "proxy",
+        "stealth",
+        "transport_attempts"
+      ]
+    },
+    {
+      "slug": "firehawk-aerospace-appone",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "ibm-dejobs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "cardinal-health-specialty-alliance-support",
+      "field_mapping_present": false,
+      "option_keys": [
+        "enrich",
+        "settle",
+        "wait"
+      ]
+    },
+    {
+      "slug": "crh-careers-danucem",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "netflix-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "ntt-data-emeal",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields",
+        "settle"
+      ]
+    },
+    {
+      "slug": "solar-foods-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "ng-cash-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "banner-health-provider-opportunities",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields",
+        "settle"
+      ]
+    },
+    {
+      "slug": "cox-careers-au",
+      "field_mapping_present": false,
+      "option_keys": [
+        "enrich"
+      ]
+    },
+    {
+      "slug": "tesla-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "browser",
+        "channel",
+        "enrich",
+        "fields",
+        "headless",
+        "persistent_context",
+        "proxy",
+        "settle",
+        "timeout",
+        "wait",
+        "warmup_url"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/single_job.go",
+      "sha256": "6824267a04660e6b29659dcc5b889a028f5cf406aa61ce55a5828eb31bb6fa19"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/single_job_test.go",
+      "sha256": "a9f7e8d9f41a129923e1b50f9b8cd9be8be42522fcc9b795346981ba79b9792c"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/http_detail.go",
+      "sha256": "28526a5e2609a4659e259d373095e19fd4ee16469415becff1809f6d87a800ca"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/generate_python_single_job.py",
+      "sha256": "2ec09dede3f55d27ab6ae080ec63e73d6573702a01152363a8c8c23e957d5156"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job.json",
+      "sha256": "8b9a593bf8fb75759d949e3640082ddf36e259a413314f9e7a9aafbe535ca114"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job_projection.json",
+      "sha256": "88c2379502bf8cd2ab5dab2f7eb4710018dfb0b6146c7d5c0fbc59996b0194da"
+    },
+    {
+      "private_input": "heavenhr-http-detail-input1.json",
+      "sha256": "aebdd63d4673663303f287eff5940cc5a80540d31620b27e0de754c7c3e65e77"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_detail.go",
+      "sha256": "24b690d4fdfa5e552168a58ced3edab28865b7d5228e8377101780f53637d2f2"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_detail_test.go",
+      "sha256": "82d76fe1ae87258697a01a3b2e0488e96e196e206cdde4e09c9325d3b0344868"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/apireplay/session.go",
+      "sha256": "d8223fbb99d96d1697ee0254d08472185bf8f8ca0ef5e2f5ab2434b69af165ee"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/apireplay/session_test.go",
+      "sha256": "6616d06ce73c5c7833c684d458ce60c4ed017c249b6aa2fbda0e3894bd5c7259"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/lightpandaclient/api_replay.go",
+      "sha256": "a51ad85d3046d0925868ec8ef4afa2fd8798e10318953ba475ffc9530d73609b"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_replay.go",
+      "sha256": "b7e29897a81006c32cf0335f7fffa7f06107e236527ba57028fb4bdc809a7b87"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_service.go",
+      "sha256": "d40fd01bea8ff0aec3f5d051a18e426840378532ab497bab8c4c006963521285"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_service_test.go",
+      "sha256": "653b12042722533ae01375e7ff633b7dd8b8d17d348c0af6dd8e3e86c3f01eaa"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_integration_test.go",
+      "sha256": "fc1f7bcb07cef0920a82f7f0ec002699979e2a2ea185efd997c6fa4d74046886"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_capture.go",
+      "sha256": "c7570463e90f740423d16a5d85ca94d1da69e6bc9f127a77008dbf92d1d847fe"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_controller.go",
+      "sha256": "f7a09e2e605ab20d0951feee5b543593988ee82c62a04dcac562715cdffdef28"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_service.go",
+      "sha256": "d33c7de447b67ba5cb3a16349be28280a49f95ef884837bafab05800c38c853a"
+    },
+    {
+      "path": "pilots/go-lightpanda/harness.go",
+      "sha256": "1cd3c596ccf50feec2f499445095a385593102bbb2413e2243e9c8acfe643e43"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_browser_api_detail.go",
+      "sha256": "9b6999bc3481df2f6a1371b8b6f3895d77d42eadce4587b36a0dc3dec22ab92f"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_browser_api_detail_test.go",
+      "sha256": "11249170d48a78da170aab9db608b91dd6b272a6cf1d212c621c436d677f99f2"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/first_ownership.go",
+      "sha256": "7bd1c789620cc339f639f4063b178c3b037fd3af029a0d8e7f7903060d6aabd0"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_jsonld_detail.go",
+      "sha256": "db14850d38e3cd5b07fc572fae4b167e7f038f8e010b643b4912b16cf1ac3f09"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/rendered_api_detail.go",
+      "sha256": "4a83260f7091d9f789f79180739688aa368d6c43a782afd3d3c316284daa992b"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/rendered_api_detail_test.go",
+      "sha256": "6884b861b676306657aa7795eec6a6ef9cfbee8246ebe41be4b295bb22a333c6"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/environment.go",
+      "sha256": "4dec9b1ca5b827e416676f41494844fddd0dc0188a73503c2f95bb159fb06c47"
+    },
+    {
+      "private_input": "native1052-public-detail-input1.json",
+      "sha256": "c652d58ae369fd757e75df8d885a496f20928e47f2576a8664b63c6667665e71"
+    },
+    {
+      "private_input": "native1052-public-detail-results1.json",
+      "sha256": "425c9fe2ecd190b9338f9638cf1a47a38b1af94d820f1923ad202bd55563ce7a"
+    },
+    {
+      "private_input": "native1052-original-public-detail-results1.json",
+      "sha256": "9b491a596d5f407f94ed643ed5d68476f7e3f0c03083d53a06fd0ba432dd7417"
+    },
+    {
+      "private_input": "native1052-public-original-comparison1.json",
+      "sha256": "8ddab0f212af5a90c945987b0378961d9a200400578f07a0e7529d3f16753985"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/rendered_detail_enrichment_test.go",
+      "sha256": "7753d84f49d02b87b8c7bdc624caab09a49afcc53e7aae3ad68f86f9a937a718"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_capture.go",
+      "sha256": "994bdc4ad0faf5f782439fb34b3903fa9fc366d69b390862dc6420a75dd44ba1"
+    },
+    {
+      "path": "apps/crawler/src/ordinary_ownership.py",
+      "sha256": "423cd1b182651e01300e1421c50b043231116b712247b110114a6ca72eb3efee"
+    },
+    {
+      "path": "apps/crawler/tests/test_ordinary_ownership.py",
+      "sha256": "0a7a9fdeeb99d2b7b4d982890369f9a8ab1203c7da0241489d0116f38f53543d"
+    }
+  ],
+  "required_next": [
+    "Qualify actual enabled configurations through installedLinuxamd64/arm64images (physical detailmutualTLStest included in integrationtestimage), additionalrealroute/canonicalwriter samples and unsupported richerbrowsercontrols",
+    "Add native detail ownership/profile/runtime consumer and canonical writer/policy/lease/reversal cases for actual configurations together",
+    "Qualify actual original captures across the remaining board families; use explicit field mappings for ambiguous heuristic inputs",
+    "After source1051 delivery, rebase and complete source-bound CI/Linux/ARM/renderer qualification and supported original full cutover",
+    "Continue all remaining profiles/consumers, full-fleet freshness/conservation/cost proofs and final Python/Playwright/Chromium retirement"
+  ],
+  "full_migration_complete": false,
+  "mixed_location_reference_cases": 6,
+  "bounded_capture_configuration_parser": "Original defaults, explicit field mappings, path, wait, timeout, fractional settle and enrichment projection are tested; unsupported launch/interaction controls refused",
+  "renderer_detail_checks": {
+    "physical_pinned_Lightpanda_1_0_0": "passed on darwin/arm64 isolated HTTPS fixture; success and publisher refusal; cleanup proved",
+    "service_cleanup_policy_response_order_race": "passed 4.723s",
+    "framed_service_contract_client_race": "passed",
+    "production_admission": false,
+    "physical_mtls_service_client": "passed race3.526s on officialMac1.0.0; real mutualTLSreservation/framing/rendererchildcleanup/publicfields andpublisherrefusal"
+  },
+  "worker_checks": {
+    "private_pg_redis_success_reserved_failure_fingerprint_cases": "passed 3.156s race",
+    "private_pg_redis_ownership_cold_retirement": "passed 2.524s race",
+    "browser_admission_full_config_binding": "passed",
+    "runtime_profile_identity": "211 profiles; browser API detail included",
+    "vet": "passed queue and worker",
+    "production_admission": false,
+    "real_browser_api_selected_enrichment_masks": "four actual privatePGRedis cases passed race5.370s; preserves unselected originalcanonical fields, exactbrowserrecurringdue and nolease",
+    "actual_nine_board_canonical_writer": "passed privatePGRedis race10.724s; actual sourceconfigs and captured fields, originalbrowserqueue, exactdue andleaseclear"
+  },
+  "actual_public_comparison": {
+    "platform": "darwin/arm64 pinned Lightpanda1.0.0 vs original source1050 Python/Chromium",
+    "sample_count": 12,
+    "nonempty_all_fields_equal": [
+      "stantec-global-jobs",
+      "international-olympic-committee-obs",
+      "cedars-sinai-providence-tarzana",
+      "ibm-dejobs",
+      "cardinal-health-specialty-alliance-support",
+      "crh-careers-danucem",
+      "ntt-data-emeal",
+      "banner-health-provider-opportunities",
+      "cox-careers-au"
+    ],
+    "empty_both": [
+      "acrisure-protection-group"
+    ],
+    "navigation_failed_both": [
+      "firehawk-aerospace-appone",
+      "netflix-careers"
+    ],
+    "scope": "one actual sample per nonempty selected board, no whole-route or installed Linux qualification; no new native production admission"
+  },
+  "original_capture_replay": {
+    "cases": 10,
+    "all_original_raw_fields_equal": true,
+    "race_seconds": 4.363,
+    "scope": "actual original captured JSON response order/selection/projection including emptyresult; not productionadmission"
+  },
+  "qualification_repair": "Shared detail matcher is compiled in densitybench and runtime builds; exacthead CI rerun required",
+  "legacy_projection_reader": "Explicitbrowserdetailprofilematchesoriginalbrowserownershiprouting; compiledprofiletestchoosesbrowser; focused85passed11skipped1.35s; actualGoownership/coldretirementalreadyverified"
+}

@@ -637,7 +637,10 @@ def _compiled_native_detail_profiles():
 
 @pytest.mark.parametrize("profile", _compiled_native_detail_profiles())
 def test_detail_projection_is_independent_of_monitor_membership(profile):
-    browser = ".rendered-" in profile or profile == "skip.browser-unscheduled-detail/v1"
+    browser = ".rendered-" in profile or profile in (
+        "skip.browser-unscheduled-detail/v1",
+        "api_sniffer.browser-detail/v1",
+    )
     _, payload = expectation()
     doc = json.loads(payload)
     board = "00000000-0000-4000-8000-000000000098"

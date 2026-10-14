@@ -258,9 +258,13 @@ func ProjectHTTPDetail(d *Document, o HTTPDetailOptions) (map[string]any, error)
 	if _, ok := item.(map[string]any); !ok {
 		return map[string]any{}, nil
 	}
+	return projectSingleJobFields(d, item, o.Fields)
+}
+
+func projectSingleJobFields(d *Document, item any, fields map[string]any) (map[string]any, error) {
 	d.Root = map[string]any{}
 	values, metadata, extras := map[string]any{}, map[string]any{}, map[string]any{}
-	for k, spec := range o.Fields {
+	for k, spec := range fields {
 		v, err := d.Field(item, spec)
 		if err != nil {
 			return nil, err

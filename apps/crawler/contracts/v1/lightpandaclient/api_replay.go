@@ -46,6 +46,9 @@ func (r *Reservation) APIReplay(ctx context.Context, request replay.Request) (re
 	if err != nil || replay.Decode(body, replay.ResponseLimit, &response) != nil || !response.Valid() || response.RequestID != request.RequestID || response.ConfigFingerprint != request.ConfigFingerprint {
 		return replay.Response{}, replay.ErrProtocol
 	}
+	if request.Operation == "detail" && response.Outcome == "success" && len(response.Detail) == 0 || request.Operation != "detail" && len(response.Detail) != 0 {
+		return replay.Response{}, replay.ErrProtocol
+	}
 	var trailing [1]byte
 	if n, err := r.connection.Read(trailing[:]); n != 0 || err != io.EOF {
 		return replay.Response{}, replay.ErrProtocol

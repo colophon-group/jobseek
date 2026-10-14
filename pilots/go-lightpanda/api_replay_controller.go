@@ -30,6 +30,7 @@ type apiReplayTask struct {
 	nativeProvider, nativeMetadata string
 	sessionConverse                func(context.Context, *replayCapture) error
 	domLinks                       api.DOMLinks
+	detailConverse                 func(context.Context, []*api.Document) error
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -68,6 +69,24 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 	}
 	if status < 200 || status >= 300 {
 		return errReplayCapture
+	}
+	if task.detailConverse != nil {
+		timer := time.NewTimer(time.Duration(task.options.SettleMS) * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
+		exchanges, err := capture.exchanges(ctx, readReplayResponseBody)
+		if err != nil {
+			return err
+		}
+		documents := make([]*api.Document, 0, len(exchanges))
+		for _, exchange := range exchanges {
+			documents = append(documents, api.BrowserReplayDocument(exchange))
+		}
+		return task.detailConverse(ctx, documents)
 	}
 	if task.nativeProvider != "" {
 		if task.nativeProvider == "darwinbox" {

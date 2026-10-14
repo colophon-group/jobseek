@@ -25,6 +25,9 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 	if !request.Valid() {
 		return response, replay.ErrProtocol
 	}
+	if request.Operation == "detail" {
+		return execution.executeAPIDetail(ctx, request)
+	}
 	var task Task
 	var inventory api.Inventory
 	collected := false

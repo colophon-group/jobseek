@@ -209,7 +209,7 @@ func testIndependentDetailOwnsPosting(t *testing.T, p firstOwnerFixture, profile
 	if err := a.Settle(ctx, claim, receipt); err != nil {
 		t.Fatal(err)
 	}
-	score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+domain, claim.task.ID).Result()
+	score, err := p.f.client.redis.ZScore(ctx, "scrapes_"+string(claim.task.Worker)+":"+domain, claim.task.ID).Result()
 	if err != nil || score != seconds(*receipt.NextDue()) {
 		t.Fatal("canonical JSON-LD deadline differs", err)
 	}

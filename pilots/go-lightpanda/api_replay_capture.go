@@ -34,17 +34,18 @@ type replayPending struct {
 // events; response bodies are read outside the listener so CDP cannot deadlock.
 // Request credentials never become task, result or diagnostic fields.
 type replayCapture struct {
-	mu               sync.Mutex
-	endpoint         *url.URL
-	options          api.BrowserReplayOptions
-	method           string
-	bodyLimit        int
-	pending          map[network.RequestID]replayPending
-	completed        chan network.RequestID
-	failure          error
-	closed           bool
-	responseSequence int
-	fixedMatches     func(string, string) bool
+	mu                    sync.Mutex
+	endpoint              *url.URL
+	options               api.BrowserReplayOptions
+	method                string
+	bodyLimit             int
+	pending               map[network.RequestID]replayPending
+	completed             chan network.RequestID
+	failure               error
+	closed                bool
+	responseSequence      int
+	fixedMatches          func(string, string) bool
+	preserveResponseOrder bool
 }
 
 func (*replayCapture) String() string               { return "private API browser capture" }
@@ -210,7 +211,7 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 			exchange, e := constructor(pending.source, pending.method, pending.headers, body)
 			if e == nil {
 				at := len(out)
-				if c.options.LiveURLMatch != "" {
+				if c.options.LiveURLMatch != "" || c.preserveResponseOrder {
 					for at > 0 && sequences[at-1] > pending.sequence {
 						at--
 					}

@@ -136,6 +136,10 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 	if config["crawler_type"] == "notion" {
 		return inspectNotionDetail(boardID, config, config["board_url"], Simple, true)
 	}
+	if profile, err := inspectBrowserAPIDetail(boardID, config, config["board_url"], Browser, true); err == nil {
+		profile.Domain = "*"
+		return profile, nil
+	}
 	if profile, err := InspectRenderedDetail(boardID, config, config["board_url"], Browser); err == nil {
 		profile.Domain = "*"
 		return profile, nil
@@ -194,6 +198,9 @@ func inspectDetail(boardID string, config map[string]string, source string, work
 	}
 	if config["crawler_type"] == "notion" {
 		return InspectNotionDetail(boardID, config, source, worker)
+	}
+	if profile, err := InspectBrowserAPIDetail(boardID, config, source, worker); err == nil {
+		return profile, nil
 	}
 	if profile, err := InspectRenderedDetail(boardID, config, source, worker); err == nil {
 		return profile, nil

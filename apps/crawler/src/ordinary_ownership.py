@@ -169,6 +169,7 @@ def ownership_projection(payload: str) -> str:
                         "dom.rendered-detail/v1",
                         "jsonld.rendered-detail/v1",
                         "embedded.rendered-detail/v1",
+                        "api_sniffer.browser-detail/v1",
                         "skip.browser-unscheduled-detail/v1",
                     )
                     else "simple"
@@ -191,6 +192,7 @@ def ownership_projection(payload: str) -> str:
                     "skip.browser-unscheduled-detail/v1",
                     "embedded.direct-detail/v1",
                     "embedded.rendered-detail/v1",
+                    "api_sniffer.browser-detail/v1",
                     "api_sniffer.http-detail/v1",
                     "mokahr.encrypted-detail/v1",
                     "eightfold.jsonld-api-detail/v1",

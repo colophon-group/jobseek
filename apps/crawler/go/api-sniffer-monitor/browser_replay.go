@@ -275,3 +275,7 @@ func (o BrowserReplayOptions) PaginationLimit(first *Document, httpFallback bool
 	}
 	return limit, nil
 }
+
+// BrowserReplayDocument exposes decoded public response data to the local
+// detail selector; captured request credentials remain inaccessible.
+func BrowserReplayDocument(exchange BrowserReplayExchange) *Document { return exchange.document }
