@@ -1,0 +1,54 @@
+{
+  "scope": "local candidate, retained offline inputs; production admission pending",
+  "version": "0.13.1053",
+  "changed_paths": [
+    "PDF detail text extraction",
+    "PDF monitor text validation"
+  ],
+  "text_parity": {
+    "actual_pdf_samples": 16,
+    "equal": 16,
+    "broader_sha_verified_samples": 15,
+    "sictic_characters": 8023
+  },
+  "worker_replay": {
+    "retained_samples": 54,
+    "complete_canonical_fields_and_original_requests_equal": true,
+    "source_bindings": 74,
+    "live_http_executions": 0
+  },
+  "focused_worker_checks": [
+    "OCR and bounds",
+    "publisher policy",
+    "fingerprints and redirects",
+    "public headers",
+    "private PostgreSQL/Redis canonical writer",
+    "enrichment"
+  ],
+  "parser_limits": {
+    "input_bytes": 41943040,
+    "pages": 512,
+    "page_stream_bytes": 16777216,
+    "output_bytes": 16777216,
+    "page_operations": 1000000,
+    "worker_child_timeout_seconds": 30,
+    "go_soft_memory_target": "128MiB"
+  },
+  "pending": [
+    "exact installed Linux image qualification",
+    "broader live document samples",
+    "supported admission",
+    "global freshness and Python retirement"
+  ],
+  "monitor_text_parity": {
+    "retained_samples": 24,
+    "exact_equal": 24,
+    "repair": "restore font, decoder, size and leading with graphics state"
+  },
+  "live_sample": {
+    "publisher": "SICTIC",
+    "original_fresh_http_succeeded": true,
+    "native_sealed_verified_CA_http_all_fields_equal": true,
+    "race_seconds": 4.352
+  }
+}

@@ -582,7 +582,7 @@ jobs:
             modules: api-sniffer-monitor oracle-hcm ordinary-queue typesense-exporter
             test_timeout: 40m
           - lane: worker
-            modules: ordinary-worker
+            modules: pdf-text ordinary-worker
             test_timeout: 30m
     services:
       postgres:
@@ -628,6 +628,10 @@ jobs:
       - name: Verify first ownership, queues and executable processing
         run: |
           set -euo pipefail
+          if [[ "${{ matrix.lane }}" == worker ]]; then
+            (cd apps/crawler/go/pdf-text && go build -trimpath -o "$RUNNER_TEMP/go-pdf-text" ./cmd/pdf-text)
+            export PATH="$RUNNER_TEMP:$PATH"
+          fi
           for module in $NATIVE_GO_MODULES; do
             (cd "apps/crawler/go/$module" && go test -race -timeout "$NATIVE_GO_TEST_TIMEOUT" ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
           done

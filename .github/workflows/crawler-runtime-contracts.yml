@@ -228,6 +228,14 @@ jobs:
             exit 1
           fi
 
+      - name: Verify installed native PDF extraction without network
+        run: |
+          docker run --rm --read-only --network none --memory 256m --cpus 1 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/pdf-text/verify-installed.py,target=/tmp/verify-pdf.py,readonly" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/api-sniffer-monitor/testdata/python_pdf_binary.json,target=/tmp/pdf-reference.json,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler:runtime-v1 \
+            -I /tmp/verify-pdf.py /tmp/pdf-reference.json
+
       - name: Verify installed proxy preflight without runtime credentials or network
         run: |
           set -euo pipefail

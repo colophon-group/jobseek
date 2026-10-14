@@ -56,11 +56,11 @@ func extractListingPDFText(ctx context.Context, body []byte) (string, error) {
 	if e != nil || pages > 200 || pages < 1 {
 		return "", dom.ErrPDFProof
 	}
-	text, e := pdfCommand(bounded, 8_000_000, "pdftotext", "-enc", "UTF-8", "-nopgbrk", file, "-")
+	text, e := nativePDFText(bounded, body)
 	if e != nil {
 		return "", e
 	}
-	if !utf8.Valid(text) || utf8.RuneCount(text) > 2_000_000 {
+	if len(text) > 8_000_000 || !utf8.Valid(text) || utf8.RuneCount(text) > 2_000_000 {
 		return "", dom.ErrPDFProof
 	}
 	return strings.TrimSpace(string(text)), nil
