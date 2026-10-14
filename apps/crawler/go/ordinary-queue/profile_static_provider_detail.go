@@ -43,13 +43,20 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	if json.Unmarshal(metadata["scraper_type"], &scraper) != nil {
 		return fail()
 	}
-	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1"}[scraper]
+	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1", "onlyfy": "onlyfy.public-detail/v1", "tupu360": "tupu360.public-detail/v1", "phuketall": "phuketall.public-detail/v1"}[scraper]
 	if profile == "" {
 		return fail()
 	}
 	locale := "pt-br"
+	optionsConfig := map[string]any{}
 	if raw, ok := metadata["scraper_config"]; ok && string(raw) != "null" {
 		allowed := map[string]bool{"enrich": true}
+		if scraper == "onlyfy" {
+			allowed["language"] = true
+		}
+		if scraper == "tupu360" {
+			allowed["listing_enrichment"] = true
+		}
 		if scraper == "jobconvo" {
 			allowed = map[string]bool{"locale": true}
 		}
@@ -63,16 +70,40 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 					return fail()
 				}
 			}
+		} else if scraper == "onlyfy" || scraper == "tupu360" || scraper == "phuketall" {
+			for key, raw := range fields {
+				var value any
+				if json.Unmarshal(raw, &value) != nil {
+					return fail()
+				}
+				if key == "language" && value != nil {
+					if _, ok := value.(string); !ok {
+						return fail()
+					}
+				}
+				if key == "listing_enrichment" {
+					if _, ok := value.(bool); !ok {
+						return fail()
+					}
+				}
+				optionsConfig[key] = value
+			}
 		} else if scraper != "linkedin" && len(fields) != 0 {
 			return fail()
 		}
 	}
 	enrich, err := monitorEnrichmentFields(config, map[string]bool{"description": true, "employment_type": true, "job_location_type": true})
-	if err != nil || scraper != "linkedin" && len(enrich) != 0 {
+	if err != nil || scraper != "linkedin" && scraper != "onlyfy" && scraper != "tupu360" && scraper != "phuketall" && len(enrich) != 0 {
 		return fail()
 	}
 	if ownership {
-		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1", "jobconvo": "https://app.jobconvo.com/job/fixture/11111111-2222-3333-4444-555555555555/", "paycor": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=fixture", "recruiterbox": "https://fixture.hire.trakstar.com/jobs/fixture/", "veryeast": "https://job.veryeast.cn/1/1"}[scraper]
+		if scraper == "onlyfy" {
+			board, err := url.Parse(config["board_url"])
+			if err != nil || board.Scheme != "https" || board.User != nil || board.Port() != "" || !strings.HasSuffix(strings.ToLower(board.Hostname()), ".onlyfy.jobs") {
+				return fail()
+			}
+		}
+		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1", "jobconvo": "https://app.jobconvo.com/job/fixture/11111111-2222-3333-4444-555555555555/", "paycor": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=fixture", "recruiterbox": "https://fixture.hire.trakstar.com/jobs/fixture/", "veryeast": "https://job.veryeast.cn/1/1", "onlyfy": "https://fixture.onlyfy.jobs/en/job/fixture", "tupu360": "https://fixture.tupu360.com/fixture/position/detail?positionId=0123456789abcdef01234567", "phuketall": "https://www.phuketall.com/jobs/057289-123456-phuket/fixture.html"}[scraper]
 	}
 	if !utf8.ValidString(source) || strings.ContainsRune(source, 0) {
 		return fail()
@@ -81,6 +112,14 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	posting, parseErr := url.Parse(source)
 	if err != nil || parseErr != nil {
 		return fail()
+	}
+	if scraper == "onlyfy" {
+		language, _ := optionsConfig["language"].(string)
+		candidate, _, _, err := api.OnlyfyDetailURLs(source, language)
+		if err != nil {
+			return fail()
+		}
+		options.Endpoint = candidate
 	}
 	if scraper == "jobconvo" {
 		request, _, err := api.JobConvoDetailRequest(source, locale)
@@ -103,7 +142,7 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	digest := sha256.Sum256(body)
 	// Queue ownership follows the posting's existing source domain. LinkedIn's
 	// fixed www guest endpoint may differ from a localized posting host.
-	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: options.Endpoint, Domain: strings.ToLower(posting.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), EnrichmentFields: enrich}
+	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: options.Endpoint, Domain: strings.ToLower(posting.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), EnrichmentFields: enrich, HTTPAPIConfig: optionsConfig}
 	if scraper == "jobconvo" {
 		p.APILocale = strings.ToLower(locale)
 	}

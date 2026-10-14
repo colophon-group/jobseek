@@ -116,6 +116,10 @@ func firstJSONLDDetailFixture(t *testing.T) firstOwnerFixture {
 }
 
 func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string, workers ...WorkerType) firstOwnerFixture {
+	return firstIndependentDetailFixtureAtBoard(t, metadata, source, domain, "https://careers.example.com/jobs", workers...)
+}
+
+func firstIndependentDetailFixtureAtBoard(t *testing.T, metadata, source, domain, boardURL string, workers ...WorkerType) firstOwnerFixture {
 	t.Helper()
 	worker := Simple
 	if len(workers) == 1 {
@@ -124,7 +128,7 @@ func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board := ordinaryID(t)
-	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.com/jobs','dom',$4::jsonb,60,24,'careers.example.com',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == Browser); err != nil {
+	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,$6,'dom',$4::jsonb,60,24,'careers.example.com',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == Browser, boardURL); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", board) })
@@ -132,6 +136,7 @@ func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string
 		t.Fatal(err)
 	}
 	config := jsonldDetailConfig()
+	config["board_url"] = boardURL
 	config["company_id"], config["board_slug"], config["metadata"] = f.company, "jsonld-"+board, metadata
 	if worker == Browser {
 		config["scraper_needs_browser"] = "1"

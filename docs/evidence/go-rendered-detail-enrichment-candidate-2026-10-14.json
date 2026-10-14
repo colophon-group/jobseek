@@ -1,0 +1,72 @@
+{
+  "schema": "jobseek.rendered-detail-enrichment-candidate/v1",
+  "observed_at_utc": "2026-10-14T04:48:51.015638+00:00",
+  "version": "0.13.1045",
+  "parent_candidate": "PR10495 merged as85ce92d457df37d56e0a70a3ae8bcf935c2c96b4",
+  "behavior": "Rendered DOM, JSON-LD and embedded/Next.js details reuse existing typed canonical field selection; navigation permissions remain unchanged",
+  "local_evidence": {
+    "held_document_real_pg_redis_selected_field_cases": 10,
+    "selected_writer_race_seconds": 4.437,
+    "canonical_hash_field_changes_and_invalid_selection": "passed",
+    "three_scraper_families_cold_retirement": "passed all six modes, including reaping, SAVE failure and Redis reload",
+    "cold_retirement_and_affected_direct_regressions_race_seconds": 51.185,
+    "retained_source1042_eligible_boards": 7,
+    "complete_retained_routes_eligible": 9380
+  },
+  "physical_live_samples": {
+    "official_lightpanda_version": "1.0.0",
+    "official_local_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+    "actual_public_documents": 11,
+    "successful_navigation_and_cleanup": 11,
+    "full_original_parser_fields_match_on_same_physical_documents": 11,
+    "usable_selected_document_samples": 9,
+    "usable_sample_boards": 5,
+    "retained_routes_on_those_five_boards": 1001,
+    "bajaj_original_browser_populated_but_lightpanda_empty_shell": 2,
+    "bajaj_8379_routes_admission_held": true,
+    "rsm_zero_scheduled_routes": true,
+    "physical_navigation_seconds": 45.816,
+    "actual_full_field_parser_race_seconds": 2.114,
+    "limitation": "same-document original Python/Go parser equality proves field handling; Bajaj actual browser mismatch remains unresolved; no production admission"
+  },
+  "exact_head_remote_checks": "not yet qualified",
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "next_actions": [
+    "Qualify this exact final child head on main after actual PR10495 merge; parent required CI, installed-image parity and all16 ARM arms passed",
+    "Source1044 original full deployments and native activation/cold reversal are verified. Complete this final-head qualification and supported following rollout; rebuild fresh full-floor admission before native ordinary ownership.",
+    "Qualify and publish the combined rendered field-mask and Bajaj public HTTP configuration through exact original workflows. Rebuild fresh full-floor admission; source8379 route eligibility and two samples grant no ownership; RSM has no scheduled sample.",
+    "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
+  ],
+  "bajaj_native_http_configuration": {
+    "actual_retained_source_urls": 8379,
+    "anonymous_verified_TLS_public_API_samples": 2,
+    "fresh_Go_requests_match_all_original_configured_API_fields": true,
+    "all_description_non_whitespace_characters_preserved_against_original_browser": true,
+    "formatting": "full upstream HTML replaces flattened browser fragment; byte-identical formatted HTML not claimed",
+    "field_mask": [
+      "description"
+    ],
+    "monitor_config": "unchanged",
+    "existing_profile": "api_sniffer.http-detail/v1",
+    "services_added": 0,
+    "candidate_SDK_and_actual_public_HTTP_race_seconds": 14.974,
+    "production_published_or_admitted": false,
+    "original_api_scraper_and_regenerated_census_tests_passed": 103,
+    "data_validation": "passed original validator after original offline census regeneration",
+    "original_API_census_and_PeopleStrong_routing_contract_tests_passed": 109,
+    "stale_DOM_CSV_consumer_assertion": "updated to preserve description-only enrichment and distinguish actual HTTP versus DOM queue routing"
+  },
+  "base_revision": "85ce92d457df37d56e0a70a3ae8bcf935c2c96b4",
+  "source1044_supported_operational_validation": {
+    "source_revision": "85ce92d457df37d56e0a70a3ae8bcf935c2c96b4",
+    "original_crawler_workflow": 38523382522,
+    "original_renderer_workflow": 38523636164,
+    "both_attempts": 1,
+    "original_full_deploy_and_promotion": "success",
+    "native_activation_plan_and_apply_epoch": 316,
+    "native_rollback_plan_and_apply_cold_epoch": 317,
+    "independent_healthy_base_restore_and_ownership_cleared": true,
+    "lock_refusals": "two before mutation; no bypass; third supported attempt completed"
+  }
+}

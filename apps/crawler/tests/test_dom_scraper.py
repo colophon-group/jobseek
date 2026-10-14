@@ -2540,11 +2540,15 @@ class TestPeopleStrongDomScraper:
         assert scraper_needs_browser("dom", PEOPLESTRONG_DOM_CONFIG) is True
 
     @pytest.mark.parametrize(
-        "board_slug",
-        ("bajaj-finserv-careers-ps-jobs", "larsen-toubro-careers"),
+        ("board_slug", "scraper_type"),
+        (
+            ("bajaj-finserv-careers-ps-jobs", "api_sniffer"),
+            ("larsen-toubro-careers", "dom"),
+        ),
     )
-    def test_peoplestrong_boards_declare_description_enrich(self, board_slug):
+    def test_peoplestrong_boards_declare_description_enrich(self, board_slug, scraper_type):
         """PeopleStrong listings are rich, so detail scrapes need explicit enrich."""
+        from src.core.scrapers import scraper_needs_browser
         from src.processing.scrape import _board_has_enrich
         from src.shared.constants import get_data_dir
         from src.shared.csv_io import read_csv
@@ -2555,10 +2559,27 @@ class TestPeopleStrongDomScraper:
 
         assert row is not None, f"{board_slug!r} row missing from boards.csv"
         assert row.get("monitor_type") == "api_sniffer"
-        assert row.get("scraper_type") == "dom"
+        assert row.get("scraper_type") == scraper_type
 
         scraper_config = json.loads(row.get("scraper_config") or "{}")
-        assert scraper_config == PEOPLESTRONG_DOM_CONFIG
+        if scraper_type == "dom":
+            assert scraper_config == PEOPLESTRONG_DOM_CONFIG
+            assert scraper_needs_browser(scraper_type, scraper_config) is True
+        else:
+            from urllib.parse import urlsplit
+
+            endpoint = urlsplit(scraper_config["api_url"])
+            assert endpoint.scheme == "https"
+            assert endpoint.netloc == "bflcareers.peoplestrong.com"
+            assert endpoint.path == "/api/cp/rest/altone/cp/job/{id}/v2"
+            assert scraper_config["json_path"] == "response"
+            assert scraper_config["fields"] == {"description": "jobDescription"}
+            assert re.fullmatch(
+                scraper_config["url_pattern"],
+                "https://bflcareers.peoplestrong.com/job/detail/JR00193058",
+            )
+            assert "auth_request" not in scraper_config
+            assert scraper_needs_browser(scraper_type, scraper_config) is False
         metadata = {
             "scraper_type": row.get("scraper_type"),
             "scraper_config": scraper_config,

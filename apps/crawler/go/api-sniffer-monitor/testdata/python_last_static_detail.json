@@ -1,0 +1,1770 @@
+{
+  "cases": [
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/complete/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/complete/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_SHELL/empty/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_SHELL/empty/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/nested/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/nested/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/entities/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/entities/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a><p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/duplicate/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Senior Test Engineer (m/w/d)</title>\n    <meta name=\"description\"\n          content=\"Senior Test Engineer (m/w/d)Standort: HofZeitpunkt: As of now\" />\n    <link rel=\"canonical\" href=\"https://example.onlyfy.jobs/en/job/abc123\" />\n  </head>\n  <body><a href=\"/candidate/job/print/abc123\">Print</a><p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_SHELL/duplicate/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/complete/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/complete/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_CANDIDATE/empty/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_CANDIDATE/empty/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/nested/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/nested/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/entities/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n</body></html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/entities/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n<p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/duplicate/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><body>\n  <div class=\"job-ad-component\">\n    <div class=\"text-element\">\n      <h1 class=\"text-element-header_text\">Senior Test Engineer (m/w/d)</h1>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">\n        <strong>Standort</strong>: Hof<br><strong>Zeitpunkt</strong>: As of now\n      </p>\n    </div>\n    <div class=\"text-element\">\n      <ul>\n        <li class=\"text-element-body_text\">Plan and automate regression tests.</li>\n        <li class=\"text-element-body_text\">Work closely with product engineering.</li>\n      </ul>\n    </div>\n    <div class=\"text-element\">\n      <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p>\n    </div>\n  </div>\n<p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body></html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<li>Plan and automate regression tests.</li>\n<li>Work closely with product engineering.</li>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": [
+          "Hof"
+        ],
+        "metadata": null,
+        "title": "Senior Test Engineer (m/w/d)"
+      },
+      "name": "ONLYFY_CANDIDATE/duplicate/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/complete/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/complete/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/empty/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/empty/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/nested/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/nested/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/entities/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  </body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/entities/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/duplicate/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>\n  <body>\n    <h1 class=\"text-element-header_text\">Leclanché: Wir sorgen für morgen!</h1>\n    <h1 class=\"text-element-header_text\">Mechatroniker für Betriebstechnik (m/w/x)</h1>\n    <p class=\"text-element-body_text\">Maintain production equipment.</p>\n  <p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Maintain production equipment.</p>\n<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Mechatroniker für Betriebstechnik (m/w/x)"
+      },
+      "name": "ONLYFY_BRANDED_CANDIDATE/duplicate/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/complete/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/complete/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/empty/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/empty/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/nested/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/nested/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/entities/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "Join our environmental problem-solving team. Our company develops and manufactures lithium-ion cells and complete energy-storage systems for electric transportation and stationary applications. We welcome speculative applications from qualified candidates across engineering and production.",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/entities/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a><p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": null,
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/duplicate/{}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html>\n  <head>\n    <title>Initiativbewerbung</title>\n    <meta name=\"description\"\n          content=\"Join our environmental problem-solving team. Our company\n                   develops and manufactures lithium-ion cells and complete\n                   energy-storage systems for electric transportation and\n                   stationary applications. We welcome speculative applications\n                   from qualified candidates across engineering and production.\" />\n  </head>\n  <body><a href=\"/candidate/job/print/speculative\">Print</a><p class=\"text-element-body_text\">Flexible working hours and mobile work.</p></body>\n</html>\n",
+      "config": {
+        "language": "de"
+      },
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Flexible working hours and mobile work.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "de",
+        "locations": null,
+        "metadata": null,
+        "title": "Initiativbewerbung"
+      },
+      "name": "ONLYFY_SUBSTANTIVE_SHELL/duplicate/{'language': 'de'}",
+      "provider": "onlyfy"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "name": "HTML/complete/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "HTML/empty/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Hello <b>World</b> Again</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "HelloWorldAgain"
+      },
+      "name": "HTML/nested/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>A &amp; B&nbsp;46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "A & B 46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "name": "HTML/entities/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"unused\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": null
+      },
+      "name": "HTML/title-feedbox/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"unused\"><strong>รายละเอียด</strong></div>\n    <div class=\"unused\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": null,
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "name": "HTML/col-md-12/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"unused\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": [
+          "46/6 หมู่ 3 อำเภอถลาง ภูเก็ต 83110"
+        ],
+        "metadata": null,
+        "title": "Medical Nurse"
+      },
+      "name": "HTML/detailsbox/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <meta property=\"og:url\"\n        content=\"https://www.phuketall.com/jobs/057289-213282-phuket/213282.html\" />\n</head>\n<body>\n  <div class=\"title-feedbox\"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>\n  <div class=\"jobs-derails-content\">\n    <div class=\"col-md-12\"><strong>รายละเอียด</strong></div>\n    <div class=\"col-md-12\">Care for guests.<br>Maintain clinical records.</div>\n    <div class=\"detailsbox\">\n      <div><strong>แผนก:</strong></div><div>MEDICAL</div>\n      <div><strong>จำนวน:</strong></div><div>1 อัตรา</div>\n      <div><strong>เวลาทำงาน:</strong></div><div>งานประจำ</div>\n      <div><strong>ลงประกาศเมื่อ:</strong></div><div>21 ส.ค. 69</div>\n    </div>\n    <p>46/6 หมู่ 3 อำเภอถลาง unused 83110</p>\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-08-21",
+        "description": "<p>Care for guests.<br>Maintain clinical records.</p>",
+        "employment_type": "full_time",
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "locations": null,
+        "metadata": {
+          "department": "MEDICAL",
+          "quantity": "1 อัตรา"
+        },
+        "title": "Medical Nurse"
+      },
+      "name": "HTML/ภูเก็ต/{}",
+      "provider": "phuketall"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/complete/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "HTML/empty/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/nested/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>A &amp; B&nbsp;负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>A &amp; B&nbsp;负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/entities/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"unused\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/positionName/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"unused\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/positionInfoInp/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/positionId/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"unused mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/position-description/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>发布时间：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>unused：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": "2026-09-08",
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/工作地点/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <title>职位详情</title>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <div class=\"container position-detail-container\">\n    <input type=\"hidden\" id=\"positionName\" value=\"供应商质量工程师\">\n    <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n    <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n    <div id=\"positionTitleNode\"><h5><span class=\"txt\">供应商质量工程师</span></h5></div>\n    <div class=\"position-description mt-4 mb-4\">\n      <p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>\n    </div>\n    <dl class=\"position-extend\">\n      <dt>unused：</dt><dd>2026-09-08</dd>\n    </dl>\n    <dl class=\"position-extend\">\n      <dt>工作地点：</dt><dd>重庆-渝北区</dd>\n    </dl>\n    <input id=\"positionInfoInp\" data-id=\"6a9fd89d7280da28da0796ae\">\n  </div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>负责供应商质量改进。</p><ul><li>推动纠正措施并验证效果。</li></ul>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": [
+          "重庆-渝北区"
+        ],
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "供应商质量工程师"
+      },
+      "name": "HTML/发布时间/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/complete/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": null,
+        "title": null
+      },
+      "name": "CUSTOM_HOST_HTML/empty/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/nested/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>A &amp; B&nbsp;Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>A &amp; B&nbsp;Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/entities/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"unused\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": null
+      },
+      "name": "CUSTOM_HOST_HTML/positionName/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/positionInfoInp/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"unused\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/positionId/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"unused\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/position-description/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/工作地点/{}",
+      "provider": "tupu360"
+    },
+    {
+      "body": "\n<html><head>\n  <script src=\"//cdn.careersite.tupu360.com/csresources/site.js\"></script>\n</head><body>\n  <input type=\"hidden\" id=\"positionName\" value=\"Project Coordinator\">\n  <input type=\"hidden\" id=\"sourcePid\" value=\"1947435\">\n  <input type=\"hidden\" id=\"recruitmentType\" value=\"SOCIALRECRUITMENT\">\n  <input type=\"hidden\" id=\"positionId\" value=\"6a9fd89d7280da28da0796ae\">\n  <div class=\"position-description\"><p>Coordinate international projects.</p></div>\n</body></html>\n",
+      "config": {},
+      "content": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": "<p>Coordinate international projects.</p>",
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "zh",
+        "locations": null,
+        "metadata": {
+          "position_id": "6a9fd89d7280da28da0796ae",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "source_id": "1947435"
+        },
+        "title": "Project Coordinator"
+      },
+      "name": "CUSTOM_HOST_HTML/发布时间/{}",
+      "provider": "tupu360"
+    }
+  ],
+  "dates": [
+    {
+      "expected": "2026-08-21",
+      "source": "21 ส.ค. 69"
+    },
+    {
+      "expected": "2026-01-01",
+      "source": "1 ม.ค. 2569"
+    },
+    {
+      "expected": "2024-02-29",
+      "source": "29 ก.พ. 2567"
+    },
+    {
+      "expected": null,
+      "source": "29 ก.พ. 2569"
+    },
+    {
+      "expected": "2026-08-21",
+      "source": "21 Aug 26"
+    },
+    {
+      "expected": "2026-08-21",
+      "source": "21 AUG 26"
+    },
+    {
+      "expected": "2026-01-01",
+      "source": "1 January 2026"
+    },
+    {
+      "expected": null,
+      "source": "31 Feb 26"
+    },
+    {
+      "expected": null,
+      "source": ""
+    },
+    {
+      "expected": "2026-01-01",
+      "source": "٠١ ม.ค. ٢٥٦٩"
+    },
+    {
+      "expected": "1483-08-21",
+      "source": "21 ส.ค. 2026"
+    },
+    {
+      "expected": "1969-08-21",
+      "source": "21 Aug 69"
+    },
+    {
+      "expected": "2068-08-21",
+      "source": "21 Aug 68"
+    }
+  ],
+  "identities": [
+    {
+      "expected": [
+        "057289",
+        "213282"
+      ],
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+    },
+    {
+      "expected": [
+        "057289",
+        "213282"
+      ],
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com/en/jobs/057289-213282-phuket/213282.html"
+    },
+    {
+      "expected": null,
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html?x=1"
+    },
+    {
+      "expected": null,
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html#x"
+    },
+    {
+      "expected": null,
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com.attacker.test/jobs/057289-213282-phuket/213282.html"
+    },
+    {
+      "expected": null,
+      "provider": "phuketall",
+      "source": "http://www.phuketall.com/jobs/057289-213282-phuket/213282.html"
+    },
+    {
+      "expected": null,
+      "provider": "phuketall",
+      "source": "https://www.phuketall.com:443/jobs/057289-213282-phuket/213282.html"
+    },
+    {
+      "expected": "6a9fd89d7280da28da0796ae",
+      "provider": "tupu360",
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+    },
+    {
+      "expected": "6a9fd89d7280da28da0796ae",
+      "provider": "tupu360",
+      "source": "https://schaeffler.tupu360.com/schaeffler/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT"
+    },
+    {
+      "expected": "6a9fd89d7280da28da0796ae",
+      "provider": "tupu360",
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN&positionId="
+    },
+    {
+      "expected": "6a9fd89d7280da28da0796ae",
+      "provider": "tupu360",
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN&bad=%zz"
+    },
+    {
+      "expected": null,
+      "provider": "tupu360",
+      "source": "https://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN&positionId=deadbeef"
+    },
+    {
+      "expected": null,
+      "provider": "tupu360",
+      "source": "http://careersite.tupu360.com/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+    },
+    {
+      "expected": null,
+      "provider": "tupu360",
+      "source": "https://careersite.tupu360.com:443/cummins/position/detail?positionId=6a9fd89d7280da28da0796ae&recruitmentType=SOCIALRECRUITMENT&currentLang=zh_CN"
+    }
+  ],
+  "onlyfy_listing": {
+    "body": "<html><script>self.__next_f.push([1,\"5:[\\\"$\\\", \\\"$L1\\\", null, {\\\"jobsData\\\": {\\\"data\\\": [{\\\"jobAdUrl\\\": \\\"https://example.onlyfy.jobs/job/abc123\\\", \\\"cityName\\\": \\\"Hof\\\"}]}}]\\n\"])</script></html>",
+    "expected": [
+      "Hof"
+    ],
+    "handle": "abc123"
+  },
+  "onlyfy_urls": [
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate",
+      "handle": "abc123",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/de/job/abc123"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de&mode=candidate",
+      "handle": "abc123",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/de/job/abc123"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc123/full?lang=de%20CH&mode=candidate",
+      "handle": "abc123",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/de/job/abc123"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc%252Fx/full?lang=en&mode=candidate",
+      "handle": "abc%2Fx",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/en",
+      "source": "https://example.onlyfy.jobs/job/abc%2Fx"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc%252Fx/full?lang=de&mode=candidate",
+      "handle": "abc%2Fx",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/job/abc%2Fx"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc%252Fx/full?lang=de%20CH&mode=candidate",
+      "handle": "abc%2Fx",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/job/abc%2Fx"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%2Bb%3Ac/full?lang=en&mode=candidate",
+      "handle": "a+b:c",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/en",
+      "source": "https://example.onlyfy.jobs/job/a+b:c"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%2Bb%3Ac/full?lang=de&mode=candidate",
+      "handle": "a+b:c",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/job/a+b:c"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%2Bb%3Ac/full?lang=de%20CH&mode=candidate",
+      "handle": "a+b:c",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/job/a+b:c"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/%C3%A9/full?lang=en&mode=candidate",
+      "handle": "é",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/en",
+      "source": "https://example.onlyfy.jobs/job/é"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/%C3%A9/full?lang=de&mode=candidate",
+      "handle": "é",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/job/é"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/%C3%A9/full?lang=de%20CH&mode=candidate",
+      "handle": "é",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/job/é"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%20b/full?lang=en&mode=candidate",
+      "handle": "a b",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/en",
+      "source": "https://example.onlyfy.jobs/job/a b"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%20b/full?lang=de&mode=candidate",
+      "handle": "a b",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/job/a b"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/a%20b/full?lang=de%20CH&mode=candidate",
+      "handle": "a b",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/job/a b"
+    },
+    {
+      "accepted": true,
+      "candidate": "/job/show/abc/full?lang=en&mode=candidate",
+      "handle": "abc",
+      "language": null,
+      "listing": "/en",
+      "source": "/job/abc"
+    },
+    {
+      "accepted": true,
+      "candidate": "/job/show/abc/full?lang=de&mode=candidate",
+      "handle": "abc",
+      "language": "de",
+      "listing": "/de",
+      "source": "/job/abc"
+    },
+    {
+      "accepted": true,
+      "candidate": "/job/show/abc/full?lang=de%20CH&mode=candidate",
+      "handle": "abc",
+      "language": "de CH",
+      "listing": "/de%20CH",
+      "source": "/job/abc"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc/full?lang=en&mode=candidate",
+      "handle": "abc",
+      "language": null,
+      "listing": "https://example.onlyfy.jobs/en",
+      "source": "https://example.onlyfy.jobs/candidate/widget/test/job/abc"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc/full?lang=de&mode=candidate",
+      "handle": "abc",
+      "language": "de",
+      "listing": "https://example.onlyfy.jobs/de",
+      "source": "https://example.onlyfy.jobs/candidate/widget/test/job/abc"
+    },
+    {
+      "accepted": true,
+      "candidate": "https://example.onlyfy.jobs/job/show/abc/full?lang=de%20CH&mode=candidate",
+      "handle": "abc",
+      "language": "de CH",
+      "listing": "https://example.onlyfy.jobs/de%20CH",
+      "source": "https://example.onlyfy.jobs/candidate/widget/test/job/abc"
+    },
+    {
+      "accepted": false,
+      "language": null,
+      "source": "https://example.onlyfy.jobs/job/show/abc"
+    },
+    {
+      "accepted": false,
+      "language": "de",
+      "source": "https://example.onlyfy.jobs/job/show/abc"
+    },
+    {
+      "accepted": false,
+      "language": "de CH",
+      "source": "https://example.onlyfy.jobs/job/show/abc"
+    },
+    {
+      "accepted": false,
+      "language": null,
+      "source": "https://example.onlyfy.jobs/job"
+    },
+    {
+      "accepted": false,
+      "language": "de",
+      "source": "https://example.onlyfy.jobs/job"
+    },
+    {
+      "accepted": false,
+      "language": "de CH",
+      "source": "https://example.onlyfy.jobs/job"
+    },
+    {
+      "accepted": false,
+      "language": null,
+      "source": "https://example.onlyfy.jobs/en"
+    },
+    {
+      "accepted": false,
+      "language": "de",
+      "source": "https://example.onlyfy.jobs/en"
+    },
+    {
+      "accepted": false,
+      "language": "de CH",
+      "source": "https://example.onlyfy.jobs/en"
+    }
+  ]
+}
