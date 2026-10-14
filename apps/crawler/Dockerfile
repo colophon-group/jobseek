@@ -83,6 +83,7 @@ COPY go/sitemap-monitor/ ../sitemap-monitor/
 COPY go/workday-monitor/ ../workday-monitor/
 COPY src/lua/ /workspace/apps/crawler/src/lua/
 COPY src/migrations/ /workspace/apps/crawler/src/migrations/
+COPY src/lightpanda/activation.py /workspace/apps/crawler/src/lightpanda/activation.py
 RUN apk add --no-cache redis \
     && go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
