@@ -1,0 +1,60 @@
+{
+  "schema": "jobseek.go-lightpanda-grouped-candidate/v1",
+  "candidate_version": "0.13.1042",
+  "base_source": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+  "parent_qualified_api_candidate": "57d3d7ea25f458e547c1d6f1d42b4fb3b4fb68c2",
+  "checkpoint_at_utc": "2026-10-14T00:28:45.268372+00:00",
+  "state": "three qualified API replacements plus two native B0 rollback consumers; local validation passed; exact combined-head remote qualification and supported operational rollout pending",
+  "full_migration_delivered": false,
+  "production_mutation": false,
+  "active_production": {
+    "source": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+    "epoch": 309,
+    "monitors": 7812,
+    "details": 7685
+  },
+  "included_api_replacements": [
+    "airbnb-contractors",
+    "didi-global-careers-intl",
+    "bp-travelcenters"
+  ],
+  "native_consumers": [
+    "go-typesense-exporter --b0-cold-rollback settle-rollback",
+    "go-typesense-exporter --b0-cold-rollback clear-rollback-tombstone"
+  ],
+  "operational_contract": "Original quiescence, route and source receipts, producer mode, fixed volume/UID, 75-second natural expiry wait, 80-second hard bound, original Lua/Redis TIME/64-record reaper, dead preservation, exact tombstone binding, canonical fence gate, RDB saves, marker removal, restart and recovery order are retained. Native code does not clear live leases or synthesize canonical completion.",
+  "local_checks": {
+    "full_exporter_race_real_postgres_redis": "passed 23.606s",
+    "original_marker_decisions": 35,
+    "real_redis_expiry_dead_live_and_over_budget_cases": 4,
+    "canonical_fence_and_compiled_cli_abi": "passed",
+    "original_activation_and_deployment_contracts": "183 passed 29.88s",
+    "wrapper_native_entrypoint_assertions": "98 passed 27.72s",
+    "vet_tidy_format_lint_and_original_corpus_regeneration": "passed",
+    "parent_full_queue_race": "passed 1063.797s"
+  },
+  "lua_source_sha256": "81327c30281b99f1e3495bed6be8b79cb0a01f7af70987bde6ffe6cedd19557f",
+  "remaining_python_b0_consumers": [
+    "activation planning",
+    "activation apply",
+    "rollback planning",
+    "rollback apply"
+  ],
+  "remaining": [
+    "Qualify exact combined head, Linux/ARM installed image and whole-lane admission.",
+    "Use original supported outgoing reversal and full workflows; verify the native rollback pair through an actual supported cold reversal before final native ownership.",
+    "Fresh full admission must preserve7812 monitor/7685 detail boards before adding the qualified API group.",
+    "Complete remaining enabled coverage/runtime consumers, freshness/conservation/cost and final cutover/reversal/rollback window before production Python/Playwright/Chromium retirement."
+  ],
+  "source_sha256": {
+    "apps/crawler/go/typesense-exporter/b0_cutover_marker.go": "d98954cbe4620edcce874f111b199200642d83070e9592580d18408921d55aaf",
+    "apps/crawler/go/typesense-exporter/b0_cutover_queue.go": "12bca203c2d9ceb6e7fb021fd2e2cbabfa6edb897fd6721728cf746be7fe3f1f",
+    "apps/crawler/go/typesense-exporter/b0_cutover_queue.lua": "81327c30281b99f1e3495bed6be8b79cb0a01f7af70987bde6ffe6cedd19557f",
+    "apps/crawler/go/typesense-exporter/b0_cutover_rollback.go": "fe152622e6a61f3dde9379fdc9a0aef68abf3c52bfc299a0b60930284f4ee233",
+    "apps/crawler/go/typesense-exporter/b0_cutover_rollback_test.go": "0c2bfd66d0bdb91563349d41f24cc3029cd280b8ee9af76f62baa26d3aa5ea88",
+    "apps/crawler/go/typesense-exporter/testdata/python_b0_cold_rollback.json": "06c0257c41fadfac66a08960f814789d82fcf5473ac617fc1ff2c9fa365b31ec",
+    "apps/crawler/go/typesense-exporter/testdata/generate_b0_cold_rollback.py": "f70738f06aa9195961c86f1d91c06360bf4bd2dc59740c776835626451d5f7da",
+    "apps/crawler/go/typesense-exporter/main.go": "f1cc819be3dfbdfa67c19633fd3c279bed63673b7412e28817d156d9bbdd7ab8",
+    "apps/crawler/scripts/lightpanda-b0-cutover.sh": "37a4d70847b8180fe37060907219df2978501254b9172fc51ad214e9793034f3"
+  }
+}
