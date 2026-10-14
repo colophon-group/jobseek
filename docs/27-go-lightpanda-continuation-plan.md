@@ -3658,3 +3658,22 @@ race tests pass. The unchanged labeller100,000-row PostgreSQL plan test passes
 locally in3.58s with its original one-second query guard; CI's30-second timeout
 remains a release blocker until the original job succeeds. Requalify the final
 corrected head; no new native authority or publication has occurred.
+
+### Next grouped execution batch — generic browser API details, source1052
+
+Use one native browser detail implementation for the remaining implicit API
+scrapers rather than per-board endpoint rewrites. The local preparation ports
+original response selection and field projection:107 frozen original selection
+cases and210 projection cases pass, as does complete actual HeavenHR output
+through the new shared selector. The entire API race suite passes11.187s and
+vet passes. Existing HTTP detail extraction reuses the same field projector.
+See [the partial core candidate](evidence/go-native-browser-api-detail-core-candidate-2026-10-14.json).
+
+This is not a delivered execution profile: finish the existing renderer/client
+API capture protocol, profile/ownership/runtime consumers, publisher-policy
+and real canonical settlement/reversal tests, and actual original route
+qualification across the captured remaining families as one batch. Ambiguous
+heuristic title aliases still require explicit fields. Keep source1051's
+prepared15-monitor cohort and full7815/7712 serving floor intact. No new native
+authority or retirement of Python/Playwright/Chromium is established by these
+parser tests. Rebase after source1051 delivery and complete final release gates.

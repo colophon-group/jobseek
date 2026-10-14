@@ -1,0 +1,195 @@
+{
+  "schema": "jobseek.native-browser-api-detail-core-candidate/v1",
+  "candidate_version": "0.13.1052",
+  "base_head": "fab5f5cc6eeeb522b7eccd5d34cd2729e12ec601",
+  "candidate_state": "local preparation; renderer protocol, ownership and worker execution integration incomplete",
+  "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
+  "original_reference_selection_cases": 107,
+  "original_reference_projection_cases": 210,
+  "selection_contract": "Stable first candidate at equal score, explicit path preference, original response/dictionary order,512 visited nodes,8 levels and50-element traversal cap",
+  "actual_HeavenHR_original_all_fields_equal": true,
+  "actual_HeavenHR_test_seconds": 0.222,
+  "full_API_race_suite_seconds": 11.187,
+  "vet": "passed",
+  "field_mapping_ambiguity": "Multiple heuristic title keys require explicit fields instead of depending on Python hash-set order; these inputs remain unqualified",
+  "private_frontier_source": "ed1df86b74f4e4e97076c53d00a69f5e603b1861 / dataf678 / epoch326",
+  "prepublication_remaining_browser_API_detail_boards": [
+    {
+      "slug": "stantec-global-jobs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "international-olympic-committee-obs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "cedars-sinai-providence-tarzana",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "acrisure-protection-group",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields",
+        "json_path",
+        "settle",
+        "timeout",
+        "wait"
+      ]
+    },
+    {
+      "slug": "biorce-main",
+      "field_mapping_present": true,
+      "option_keys": [
+        "channel",
+        "fields",
+        "headless",
+        "proxy",
+        "stealth",
+        "transport_attempts"
+      ]
+    },
+    {
+      "slug": "firehawk-aerospace-appone",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "ibm-dejobs",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "cardinal-health-specialty-alliance-support",
+      "field_mapping_present": false,
+      "option_keys": [
+        "enrich",
+        "settle",
+        "wait"
+      ]
+    },
+    {
+      "slug": "crh-careers-danucem",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "netflix-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields"
+      ]
+    },
+    {
+      "slug": "ntt-data-emeal",
+      "field_mapping_present": true,
+      "option_keys": [
+        "enrich",
+        "fields",
+        "settle"
+      ]
+    },
+    {
+      "slug": "solar-foods-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "ng-cash-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields"
+      ]
+    },
+    {
+      "slug": "banner-health-provider-opportunities",
+      "field_mapping_present": true,
+      "option_keys": [
+        "fields",
+        "settle"
+      ]
+    },
+    {
+      "slug": "cox-careers-au",
+      "field_mapping_present": false,
+      "option_keys": [
+        "enrich"
+      ]
+    },
+    {
+      "slug": "tesla-careers",
+      "field_mapping_present": true,
+      "option_keys": [
+        "browser",
+        "channel",
+        "enrich",
+        "fields",
+        "headless",
+        "persistent_context",
+        "proxy",
+        "settle",
+        "timeout",
+        "wait",
+        "warmup_url"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/single_job.go",
+      "sha256": "dfe58668cc1fe30a28bebd1722298ad85b2e45cf2803c6d4962ad7737d1e6ad1"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/single_job_test.go",
+      "sha256": "a9f7e8d9f41a129923e1b50f9b8cd9be8be42522fcc9b795346981ba79b9792c"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/http_detail.go",
+      "sha256": "28526a5e2609a4659e259d373095e19fd4ee16469415becff1809f6d87a800ca"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/generate_python_single_job.py",
+      "sha256": "0c6f4c4b6f8e89f1cadd4eb05d5791191f93007ad7c75c9403899f5556461994"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job.json",
+      "sha256": "8b9a593bf8fb75759d949e3640082ddf36e259a413314f9e7a9aafbe535ca114"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_single_job_projection.json",
+      "sha256": "a672259d05543faeb7120dc79728025a09f50427221c47eb3ae59db014d976a0"
+    },
+    {
+      "private_input": "heavenhr-http-detail-input1.json",
+      "sha256": "aebdd63d4673663303f287eff5940cc5a80540d31620b27e0de754c7c3e65e77"
+    }
+  ],
+  "required_next": [
+    "Add bounded generic single-detail capture to existing Lightpanda API replay service/client protocol, preserving publisher signals, source identity, immutable response order and cleanup",
+    "Add native detail ownership/profile/runtime consumer and canonical writer/policy/lease/reversal cases for actual configurations together",
+    "Qualify actual original captures across the remaining board families; use explicit field mappings for ambiguous heuristic inputs",
+    "After source1051 delivery, rebase and complete source-bound CI/Linux/ARM/renderer qualification and supported original full cutover",
+    "Continue all remaining profiles/consumers, full-fleet freshness/conservation/cost proofs and final Python/Playwright/Chromium retirement"
+  ],
+  "full_migration_complete": false
+}
