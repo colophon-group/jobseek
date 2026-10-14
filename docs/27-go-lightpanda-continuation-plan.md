@@ -3607,3 +3607,11 @@ without replacing full-field evidence with counts. Local qualification does not
 establish installed Linux execution or grant production ownership. Continue
 full fleet freshness/conservation, comparable cost/density and final runtime
 retirement as required by the complete migration goal.
+
+The combined source0.13.1051 candidate extends the existing quiesced worker-route
+repair target list to Venturelab's exact board/API/source identity so old browser
+schedules move to HTTP without rewriting SQL deadlines or lifecycle caches.
+Restored CSV state selects the reverse direction through the same helper.
+Keep owner/inflight/ordered-step refusal and original deploy locks intact.
+Local store/compiled CLI qualification and fresh exact-head release/deployment
+checks must pass before publication or new native authority.

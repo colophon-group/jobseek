@@ -33,6 +33,9 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		if target.LegacyType == "dom" {
 			url = fmt.Sprintf("https://%s/job/detail/JR%d", target.Domain, i+1)
 		}
+		if target.Slug == "venturelab-careers" {
+			url = fmt.Sprintf("https://%s/jobs/_publicJob%d_/apply?language=en", target.Domain, i+1)
+		}
 		var hash any = "123"
 		if i == 0 {
 			hash = nil
@@ -142,6 +145,26 @@ func workerRouteSnapshot(t *testing.T, c *redis.Client, ctx context.Context) str
 	v, err := capacityKeySnapshot(ctx, c)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Long source URLs make Redis use a hash table. Read-only HGETs may
+	// advance its rehash and change DUMP ordering without changing a field.
+	// Compare every hash field canonically; retain exact dumps for other types.
+	for key := range v {
+		kind, err := c.Type(ctx, key).Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if kind == "hash" {
+			fields, err := c.HGetAll(ctx, key).Result()
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := json.Marshal(fields)
+			if err != nil {
+				t.Fatal(err)
+			}
+			v[key] = "hash:" + string(body)
+		}
 	}
 	b, err := json.Marshal(v)
 	if err != nil {

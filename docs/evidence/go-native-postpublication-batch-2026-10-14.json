@@ -73,5 +73,16 @@
     "Local real canonical tests are not installed Linux execution or live native owner admission",
     "Remaining browser/profile frontier, global freshness/conservation, comparable cost/density and final Python retirement are incomplete"
   ],
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "candidate_version": "0.13.1051",
+  "route_cutover": {
+    "target": "venturelab-careers",
+    "board_url": "https://www.venturelab.swiss/jobs",
+    "posting_domain": "venturelab.heavenhr.com",
+    "operation": "Existing original quiesced whole-deploy worker-route repair, forward and restored-config rollback",
+    "source_pattern": "https://venturelab.heavenhr.com/jobs/[A-Za-z0-9_-]+/apply?language=en",
+    "guards": "Existing SQL/Redis owner, inflight token, exact board/source/lane and ordered scrape-step refusal; preserve deadlines, first-time scores, lifecycle hashes, rate limits and rotation",
+    "qualification": "PASS: real PostgreSQL/Redis race forward/reversal/refusal across all four targets plus compiled CLI, 2.841s; vet passed. Installed CI, source/image qualification and original whole deployment still required.",
+    "test_observation": "Initial Redis8 DUMP comparison failed after read-only hash-table rehash for long HeavenHR URLs. Test now compares every hash field canonically while retaining all keys/types and exact other-value dumps; production refusal Lua is unchanged."
+  }
 }
