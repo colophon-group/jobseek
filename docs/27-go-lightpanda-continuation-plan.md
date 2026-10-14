@@ -3677,3 +3677,10 @@ heuristic title aliases still require explicit fields. Keep source1051's
 prepared15-monitor cohort and full7815/7712 serving floor intact. No new native
 authority or retirement of Python/Playwright/Chromium is established by these
 parser tests. Rebase after source1051 delivery and complete final release gates.
+
+
+### 2026-10-14 source1051 delivery and source1052 browser detail continuation
+
+PR #10533 merged as `bade637b4534e18f431a620a2a6493f002951572`. Both original crawler and renderer workflows succeeded (38622650272 and 38622778392), with independently verified immutable images and healthy cold epoch327. Original B0 activation then succeeded at epoch328. A fresh full census covers7900 enabledboards and1722572 scheduleddetailroutes. Ordinary ownership is still pending strict all-route consolidation preserving the7815-monitor/7712-detail floor and inspecting15monitor/14detail candidates; SICTIC PDFdetail remains held.
+
+Source1052 local work now implements original bounded singlejob selection, configuration parsing, existing renderer/service/client detail operation, browser ownership and native canonical writer.323 frozen original cases, ten actual originalcapture replays, nine nonempty actualpublic all-field samples, real private PostgreSQL/Redis lifecycle and enrichment conservation, cold retirement, and physical pinned1.0.0 mutualTLS client/service tests pass. Actual Linux/ARM installation qualification, broader real-route coverage, held browsercontrols and remaining PDFparity remain required before productionadmission. Raw captures stay in protected private evidence; portable evidence is in `docs/evidence/go-native-browser-api-detail-core-candidate-2026-10-14.json`.
