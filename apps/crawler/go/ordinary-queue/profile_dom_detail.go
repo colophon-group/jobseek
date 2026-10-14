@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	"net/url"
 	"strings"
@@ -74,7 +75,7 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 	}
 	// Enrichment selects canonical writer fields; it is not a parser option.
 	delete(options, "enrich")
-	if dom.ValidateDirectConfig(options) != nil {
+	if dom.ValidateDirectConfig(options) != nil || api.ValidateDOMDocumentFallback(options["document_fallback"]) != nil {
 		return fail()
 	}
 	stable, err := stableJSONLDConfig(config, metadata)

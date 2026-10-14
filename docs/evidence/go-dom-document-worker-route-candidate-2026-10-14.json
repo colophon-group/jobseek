@@ -1,0 +1,70 @@
+{
+  "schema": "jobseek.go-lightpanda-candidate/v1",
+  "version": "0.13.1048",
+  "status": "candidate; not merged or deployed",
+  "production_source": "ac21b64d9e117b87694e38f0450c37a59eeefeb9",
+  "production_epoch": 322,
+  "prior_floor": {
+    "monitors": 7815,
+    "detail_boards": 7709
+  },
+  "changes": [
+    "Quiesced bounded Bajaj worker-route repair in both whole-deploy directions",
+    "DOM document fallback for PDF, DOCX and legacy Word; existing transport, publisher-policy, canonical writer and cold retirement"
+  ],
+  "offline_verification": {
+    "original_http_binary_cases": 30,
+    "canonical_writer_cases": 6,
+    "cold_retirement_formats": 3,
+    "cold_retirement_modes_per_format": 6,
+    "frozen_corpus_sha256": "33fdb3a305193dbef8b8857fd04c47935c1341ecd09a9bd7c843bc059e5984fc",
+    "legacy_fixture_sha256": "4876e828e62d490fa188c7c4e47013e2e0dfdf02f5903dfd374bc0d2b2049ca1",
+    "go_race_tests": [
+      "worker document parity and canonical settlement",
+      "DOM parser whole module",
+      "queue profile config binding",
+      "queue document cold retirement",
+      "Postgres/Redis provider route cutover and existing NW/Umantis repairs"
+    ],
+    "original_python_document_tests_passed": 9,
+    "deployment_contract_tests_passed": 74
+  },
+  "coverage_candidates": {
+    "document_fallback_boards": 10,
+    "retained_routes": 74,
+    "live_qualification": {
+      "initial_original_samples": 11,
+      "initial_native_complete_canonical_matches": 5,
+      "all_retained_iucn_unm_routes_compared": 54,
+      "all_route_complete_canonical_matches": 46,
+      "all_route_description_mismatches": 8,
+      "all_route_title_mismatches": 1,
+      "held_boards": [
+        "avera-western-mental-health",
+        "epfl-isic",
+        "epfl-phd-edpy",
+        "iucn-hrms",
+        "university-of-new-mexico-graduate-assistantships"
+      ],
+      "zero_route_boards": 5,
+      "admission": "no new document boards; exact canonical PDF extraction still needs work"
+    }
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "verified_at": "2026-10-14",
+    "source": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "pending": [
+    "live and complete canonical field parity",
+    "exact-head Required CI, Crawler Deploy Gate, installed image, Lightpanda and ARM qualification",
+    "supported whole release and cold reversal; fresh source-bound cohort admission preserving entire floor",
+    "whole-fleet freshness, conservation, resource and cost evidence",
+    "remaining provider/config and operational consumers; production Python/browser retirement"
+  ],
+  "packaging_repairs": [
+    "Install antiword in Alpine Go build stage as well as existing Debian runtime",
+    "Public ECR data quota blocked qualification; verify and use exact same six pinned OCI manifests at Docker Hub, preserving Python comparator authority"
+  ],
+  "registry_location_evidence": "go-immutable-registry-location-2026-10-14.json"
+}
