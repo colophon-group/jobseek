@@ -3556,3 +3556,105 @@ Continue grouped remaining monitor/detail/browser and production-consumer ports 
 Combine the three API replacements with native B0 rollback settlement and exact tombstone cleanup for one production release. The original wrapper now calls the existing Go exporter executable for those two operations, retaining the same lock, quiescence, route/source receipts, producer volume and UID, Redis lifecycle Lua, natural lease expiry, dead-letter preservation, canonical fence gate, RDB persistence and recovery/restart order. No additional production service is introduced. Planning, activation and rollback application remain Python consumers to port in the following batch.
 
 The complete exporter race suite passes against real private PostgreSQL/Redis in23.606s. Native code matches35 actual original sentinel decisions and proves expired-ready requeue, expired-dead preservation, natural live expiry and unchanged state for an over-budget lease. Real PostgreSQL fences block cleanup; compiled native settlement and cleanup preserve the original reply ABI. All183 existing activation/deployment tests pass, followed by98 wrapper tests with explicit native-entrypoint assertions. Corpus regeneration, vet, module metadata, formatting and lint pass. Exact combined-head remote qualification and an actual supported native cold reversal still precede ownership. See [the combined consumer candidate](evidence/go-native-b0-cold-rollback-candidate-2026-10-14.json).
+
+### Source1050 restored serving checkpoint — 2026-10-14
+
+PRs #10500/#10501/#10519 delivered document fallbacks, bounded route repair,
+Bass Pro HTTP details and aggregate native capacity60/15 through original
+qualified deployments. Supported reversal enabled the standard CSV publication
+of15 companies. The refreshed7900-board/1,718,429-route census preserves the
+entire7815-monitor/7712-detail cohort. Original activation was interrupted with
+the writers contained; host observation proved no remaining operation and the
+exact pending identity. A supported same-identity retry completed and independent
+SQL/Redis/immutable-image/health checks prove the complete fleet serving at
+epoch326. See [the portable checkpoint](evidence/go-lightpanda-source1050-checkpoint-2026-10-14.json).
+
+This iteration also compares three retained successful LinkedIn empty fragments,
+five DOM listing inventories and two selected JSONLD detail samples through
+the deployed Go source. Actual transport, rich output, writer and policy proofs
+remain necessary before admitting these new boards. An alternate Neurosoft
+embedded sample is explicitly retained as a different scraper, not treated as
+JSONLD parity evidence. Continue all new LinkedIn/Jobs.ch/Join/DOM families
+together with the older remaining profile frontier; do not turn each board into
+a separate release. Use the existing bounded original route-repair operation
+for qualified historical cache/lane mismatches, preserving SQL truth and queues.
+
+A45-second natural ten-container sample measures Go0.564 CPU cores/187MiB and
+12 successful monitors/2 successful details. It excludes the remote renderer
+and has no controlled comparator; sustained freshness, global conservation and
+attributable cost remain unproved. Complete those fleet-wide requirements, the
+remaining effective production consumers, supported final cold reversal and
+rollback window before retiring Python/Playwright/Chromium. The full migration
+goal remains active and incomplete. Lightpanda1.0.0 remains the latest stable
+official release and is already pinned in production.
+
+### Postpublication coverage batch — explicit HTTP detail and new families
+
+The existing Go HTTP detail worker reproduces Venturelab HeavenHR's selected
+original browser API output through the publisher's anonymous public endpoint.
+The candidate CSV adds only endpoint, job-ID extraction and JSON path; all
+original field mappings remain unchanged. Both original Python HTTP and actual
+Go HTTP match every selected field. Real PostgreSQL/Redis full/reserved/gone
+cases prove canonical writes, publisher policy and exact deadline settlement.
+Four actual LinkedIn/Join monitors and two actual JSONLD details also match
+their original inventory/output, with six original LinkedIn empty/policy writer
+cases passing against real stores. See [the batch evidence](evidence/go-native-postpublication-batch-2026-10-14.json).
+
+Keep these families together for supported publication and fresh full admission;
+the candidate is not published and the serving7815/7712 owner is unchanged.
+Finish the remaining new Jobs.ch/LinkedIn/DOM sources and old browser frontier
+without replacing full-field evidence with counts. Local qualification does not
+establish installed Linux execution or grant production ownership. Continue
+full fleet freshness/conservation, comparable cost/density and final runtime
+retirement as required by the complete migration goal.
+
+The combined source0.13.1051 candidate extends the existing quiesced worker-route
+repair target list to Venturelab's exact board/API/source identity so old browser
+schedules move to HTTP without rewriting SQL deadlines or lifecycle caches.
+Restored CSV state selects the reverse direction through the same helper.
+Keep owner/inflight/ordered-step refusal and original deploy locks intact.
+Local store/compiled CLI qualification and fresh exact-head release/deployment
+checks must pass before publication or new native authority.
+
+The same batch now includes four additional original JobCloud captures across
+jobs.ch/jobup.ch: exact Go request/response replay and actual live inventories
+match, with eight real-store empty/publisher-policy cases passing. MindMaze's
+three rich LinkedIn jobs match every original field and its captured429→200
+retry; BAS/FONGIT originals are successful empty responses. Six real-store
+full/policy cases preserve rich titles, detail schedules and queue settlement.
+All six new LinkedIn sources and four new JobCloud sources are now represented
+in the grouped qualification, rather than split into separate releases.
+
+CI found a missing census regeneration and a stale PDF inventory count after
+SICTIC's publication; the corrected census passes57 tests and all51 PDF configs
+parse without weakening invalid-contract rejection. ECR throttled the two
+density Python image pulls; DockerHub serves the identical pinned manifest,
+verified for both Linux architectures. The API race suite and all89 density
+tests/101 subtests pass. Requalify the corrected exact head before deployment.
+
+All15 new monitors now have grouped original-output qualification: the six
+LinkedIn, four JobCloud, Neurosoft Join, SIB/WYSS/SICTIC DOM and Venturelab
+rendered sources. The three DOM sources pass actual native HTTP inventories
+and six real-store canonical/policy cases. Venturelab's original required
+action pipeline succeeds through pinned physical Lightpanda1.0.0 on macOS;
+the typed result matches the original inventory and three real-store
+full/reserved/malformed cases preserve HTTP detail scheduling and settlement.
+Installed Linux qualification remains separate.
+
+SICTIC's PDF detail remains held: original final configuration was reproduced
+against both retained binaries, and Go retained/live parsing differs in title,
+location and canonical description. The original uses pypdf; Poppler's reading
+order/conditional raw extraction does not reproduce that text structure. Keep
+the original detail owner while repairing this and the earlier document gaps.
+The first saved setup sample also predated the final title/location patterns;
+the second and final-config original replay agree, so those native differences
+are genuine rather than stale fixture expectations.
+
+Full CI exposed stale registry counts and out-of-order rows after the company
+publication. Sorting preserves every parsed row/value in all three CSVs; the
+exact numeric LinkedIn opt-ins and count assertions now include the additions.
+All61 focused Python validation/census tests and current-registry Go queue/worker
+race tests pass. The unchanged labeller100,000-row PostgreSQL plan test passes
+locally in3.58s with its original one-second query guard; CI's30-second timeout
+remains a release blocker until the original job succeeds. Requalify the final
+corrected head; no new native authority or publication has occurred.

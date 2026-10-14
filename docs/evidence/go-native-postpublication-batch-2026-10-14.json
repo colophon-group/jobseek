@@ -1,0 +1,256 @@
+{
+  "schema": "jobseek.go-native-postpublication-batch/v1",
+  "source_revision_tested": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+  "data_revision_observed": "f67815a4076e01e5b36d5417c41612c6d7d33808",
+  "configuration_change": {
+    "board": "venturelab-careers",
+    "scraper": "api_sniffer",
+    "transport": "anonymous verified-TLS GET",
+    "endpoint_template": "https://api.heavenhr.com/api/v1/positions/public/vacancies/{id}",
+    "json_path": "data[0]",
+    "field_mapping": "all original fields unchanged",
+    "rows_changed": 1,
+    "publication": "not yet published"
+  },
+  "qualification": {
+    "heavenhr_original_and_go_http_full_fields": "equal to selected original browser sample, all ten fields",
+    "heavenhr_native_worker_live_transport_and_policy": "pass 0.747s",
+    "heavenhr_real_pg_redis_full_reserved_gone": "pass 3 cases 0.921s; canonical title/description staging, policy/liveness, exact SQL/Redis deadlines and no inflight lease",
+    "linkedin_and_join_live_inventory": "pass 4 boards 1.730s; OPI/GESDA/FIT successful empty, Neurosoft exact original URLs",
+    "linkedin_original_empty_real_pg_redis": "pass 6 cases 1.116s; exact original request, canonical existing-posting preservation, publisher reservations, queue settlement",
+    "jsonld_actual_live_full_fields": "Neurosoft and SIB match all selected original JSONLD fields; successful verified transport",
+    "ownership": "no added boards; current serving owner unchanged"
+  },
+  "evidence": [
+    {
+      "name": "heavenhr-http-detail-proof1.json",
+      "sha256": "36aed73c957336ddbf22f03f516ee90f8ca9aa129ac8292d9123bc6ba0b0fb3c"
+    },
+    {
+      "name": "heavenhr-original-http-reference1.json",
+      "sha256": "339ec7172bc95110813bf6ade3e6ad7ad4a560afe4ee735963dbd24b7374ff2c"
+    },
+    {
+      "name": "heavenhr-anonymous-detail-response1.json",
+      "sha256": "86f3a17aac6d1d69fa17065fc8f946f28834d40cc6afd4d3d1ce2b4d214f4d3c"
+    },
+    {
+      "name": "heavenhr-worker1_test.go",
+      "sha256": "3c28a19156255af0927a59d053c0ac3e642012767d55a1c1458e241d2f0350ac"
+    },
+    {
+      "name": "heavenhr-real-writer1_test.go",
+      "sha256": "894bbac07ea42e681864e35305be70ff5bf7569636c738a9c9963b68654296d5"
+    },
+    {
+      "name": "postdata-live-monitor-input1.json",
+      "sha256": "c11bc64739a432b2c0a8f4d88ba1158ce5c4a677abcfca34c86c4fa551f5e15d"
+    },
+    {
+      "name": "postdata-live-monitor1_test.go",
+      "sha256": "fd5ca3e5992d1dfc675ca63bb74e94ea4d1567479c49d0ee52b5b63573b597eb"
+    },
+    {
+      "name": "linkedin-original-empty-writer-input1.json",
+      "sha256": "710f152847ecc44c5911db7f8b54d5f33d1391ceddb7d328ad1ee786bd1fa58c"
+    },
+    {
+      "name": "linkedin-original-empty-writer1_test.go",
+      "sha256": "5aed5d7ab76c6c6c94841ce875fc781454e54a669fe8157051e8bb7ab1d78f4c"
+    },
+    {
+      "name": "original-jsonld-actual-http-comparison1.json",
+      "sha256": "afa8fadc174236c712a67a832aa9ea66e2c34b37482d0b19cd7b5dcbc2f8ebbc"
+    }
+  ],
+  "next": [
+    "Include the explicit HeavenHR config and newly qualified LinkedIn/Join/JSONLD boards in one supported publication/admission batch",
+    "Finish SIB DOM and remaining new Jobs.ch/LinkedIn/DOM capture qualification while keeping full prior cohort",
+    "Use fresh complete canonical/cache route reconciliation and unchanged original retirement/publication/activation workflows before granting authority"
+  ],
+  "remaining_limits": [
+    "Empty LinkedIn captures do not prove future rich detail output",
+    "Local real canonical tests are not installed Linux execution or live native owner admission",
+    "Remaining browser/profile frontier, global freshness/conservation, comparable cost/density and final Python retirement are incomplete"
+  ],
+  "full_migration_complete": false,
+  "candidate_version": "0.13.1051",
+  "route_cutover": {
+    "target": "venturelab-careers",
+    "board_url": "https://www.venturelab.swiss/jobs",
+    "posting_domain": "venturelab.heavenhr.com",
+    "operation": "Existing original quiesced whole-deploy worker-route repair, forward and restored-config rollback",
+    "source_pattern": "https://venturelab.heavenhr.com/jobs/[A-Za-z0-9_-]+/apply?language=en",
+    "guards": "Existing SQL/Redis owner, inflight token, exact board/source/lane and ordered scrape-step refusal; preserve deadlines, first-time scores, lifecycle hashes, rate limits and rotation",
+    "qualification": "PASS: real PostgreSQL/Redis race forward/reversal/refusal across all four targets plus compiled CLI, 2.841s; vet passed. Installed CI, source/image qualification and original whole deployment still required.",
+    "test_observation": "Initial Redis8 DUMP comparison failed after read-only hash-table rehash for long HeavenHR URLs. Test now compares every hash field canonically while retaining all keys/types and exact other-value dumps; production refusal Lua is unchanged."
+  },
+  "extended_qualification": {
+    "source_revision_tested": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+    "scope": "Actual source1050 original Python publisher captures replayed by deployed Go worker and real isolated PostgreSQL/Redis canonical lifecycle. No new production ownership or publication.",
+    "JobCloud": {
+      "boards": [
+        "innovaud-careers",
+        "campus-biotech-careers",
+        "epfl-innovation-park-careers",
+        "biopole-careers"
+      ],
+      "original_public_statuses": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "exact_all_request_parameters_and_response_replay": true,
+      "actual_Go_live_inventory_equal": true,
+      "original_successful_zero": "all four; not inferred from HTTP errors",
+      "real_pg_redis_empty_and_publisher_reserved_cases": 8,
+      "go_test_seconds": 2.628
+    },
+    "LinkedIn": {
+      "boards": [
+        "mindmaze-careers-linkedin",
+        "business-angels-switzerland-careers-linkedin",
+        "fongit-careers"
+      ],
+      "original_counts": [
+        3,
+        0,
+        0
+      ],
+      "MindMaze_captured_retry_statuses": [
+        429,
+        200
+      ],
+      "full_original_discovered_field_comparison": true,
+      "exact_request_parameters_and_complete_original_retry_replay": true,
+      "real_pg_redis_full_and_reserved_cases": 6,
+      "canonical_checks": "rich titles, detail scheduling, no fabricated descriptions, policy truth, exact recurring deadlines and no inflight lease",
+      "go_test_seconds": 3.317
+    },
+    "release_repairs": {
+      "data_validation": "regenerated browser census for changed boards.csv; validator passed and57 census tests passed",
+      "PDF_registry": "51 configured PDF boards after SICTIC addition; all parse and unchanged invalid contracts refuse; full API race suite9.494s passed",
+      "density_image": "two Python density images use DockerHub with unchanged SHA2567ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f; manifest bytes and Linuxamd64/arm64 verified",
+      "density_tests": "89 passed plus101 subtests1.78s"
+    },
+    "limits": [
+      "Successful empty inventories do not prove future nonempty detail fields",
+      "New native ownership still requires fresh complete source-bound census/admission and unchanged supported cutover",
+      "CI/installed Linux/ARM/physical renderer qualification remains pending for final corrected head"
+    ],
+    "evidence": [
+      {
+        "name": "jobs-ch-original-live-input1.json",
+        "sha256": "7d7fb0277c55e9f3a9a650e87e02ed6fad2cab1ecda625ea1a9e650718e1152a"
+      },
+      {
+        "name": "jobs-ch-original1_test.go",
+        "sha256": "1656e0fdb4f001a56db6b47dfd003d3b4807265e39b409992777031e2e3e3bf1"
+      },
+      {
+        "name": "linkedin-remaining-original-live-input1.json",
+        "sha256": "9e111f5c1ea1c21a82bc039cecbabda03672380979135f33405bbbe9527c8764"
+      },
+      {
+        "name": "linkedin-remaining-original1_test.go",
+        "sha256": "e810a29471b60dd2d77c278e0c870d1e4a5b7686f8225b10283914a549d27291"
+      },
+      {
+        "name": "native1051-density-python-manifest1.json",
+        "sha256": "57dac3421b7f06e166b6dd8076a14fbb1974ffe0f0d7a552b06d4292dc3570c1"
+      }
+    ]
+  },
+  "DOM_Venturelab_PDF_qualification": {
+    "source1050_worker": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+    "physical_renderer_code_head": "c65b51b81910463a76e012adab4f0b2b01741a85",
+    "DOM": {
+      "boards": [
+        "swiss-institute-of-bioinformatics-careers",
+        "wyss-center-careers",
+        "sictic-careers"
+      ],
+      "original_HTTP_statuses": [
+        200,
+        200,
+        200
+      ],
+      "original_and_actual_Go_counts": [
+        1,
+        0,
+        1
+      ],
+      "exact_original_requests_and_URL_inventories": true,
+      "real_pg_redis_full_and_reserved_cases": 6,
+      "Go_test_seconds": 3.319
+    },
+    "Venturelab": {
+      "original_actions_executed_by_pinned_physical_Lightpanda": "pass",
+      "physical_engine": "1.0.0 darwin arm64",
+      "physical_engine_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+      "typed_original_action_result": "success, cleanup sanitizer passed",
+      "physical_test_seconds": 4.752,
+      "actual_result_original_inventory_equal": true,
+      "real_pg_redis_full_reserved_malformed_cases": 3,
+      "future_explicit_HTTP_detail_first_time_schedule": true,
+      "worker_test_seconds": 1.106,
+      "limit": "macOS public execution; not installed Linux production renderer execution"
+    },
+    "SICTIC_PDF": {
+      "status": "held; do not grant native detail authority",
+      "retained_binary_and_actual_HTTP": "both fail title, locations and canonical description parity",
+      "original_final_config_reproduced": true,
+      "earlier_first_sample": "title/location config changed before final selected sample; final original was reproduced to disambiguate",
+      "second_original_sample_current_config": "all original fields equal when replayed by original Python; native differences remain",
+      "expected_title": "Mediamatician (Mediamatiker)",
+      "actual_native_title": "Job posting: Mediamatician (Mediamatiker)",
+      "expected_location": "Zurich and remote (within Switzerland)",
+      "actual_native_location": null,
+      "original_engine": "pypdf content-stream text extraction",
+      "native_engine": "pdftotext reading-order/conditional raw extraction; not equivalent to original text structure"
+    },
+    "registry_and_sort_validation": {
+      "Python_csv_and_numeric_identity_census_tests": "61 passed0.59s",
+      "Go_queue_current_registry_race": "passed9.659s",
+      "Go_worker_current_registry_race": "passed2.239s",
+      "sort": "Every original parsed row/value retained; only row order changes in three CSV files",
+      "new_registry_inventory": "37 LinkedIn monitors,40 LinkedIn detail configs,15 JobCloud monitors,51 PDFs; invalid-option guards unchanged"
+    },
+    "full_migration_complete": false,
+    "evidence": [
+      {
+        "name": "dom-three-original-live-input1.json",
+        "sha256": "7fe9ed1ea481a4c37be993b5f8a1eaf98fd3b9a4b655096cab6cbf17c6bebaec"
+      },
+      {
+        "name": "dom-three-original1_test.go",
+        "sha256": "3364190d1c00b96a642609a1335fe8869ed45011d02377d36fc140ab2b26281a"
+      },
+      {
+        "name": "venturelab-rendered-original-input1.json",
+        "sha256": "b0890d40539cbd8d84bc16466f5b7357fed4f2b40d56c05330e03374f317d801"
+      },
+      {
+        "name": "venturelab-rendered-physical-result1.pb",
+        "sha256": "6a884e9fa29ff21149a0fefc172533d4eb4012cfadce7ef9c42d8abaa525796a"
+      },
+      {
+        "name": "venturelab-physical1_test.go",
+        "sha256": "4193cc8019c2f22e1eab460d4b3d68eafd2908adc8a543eaa1b55f2aa9506351"
+      },
+      {
+        "name": "venturelab-rendered-worker1_test.go",
+        "sha256": "292a8385541d1ea627e0f4b29861d5d65e38281a1c2ebdc4e5798bb5bc7562da"
+      },
+      {
+        "name": "sictic-pdf-final-config-original-input2.json",
+        "sha256": "3c04cf438576f03ec3483dcc919311eaf603ff26ccbd5548a4195d72ef22d46b"
+      },
+      {
+        "name": "sictic-pdf-go-extraction-debug1.json",
+        "sha256": "621efa9cd08abe4c2afab212dff1446e09fa98cfec1d50f01df5cd4c57e6c3ec"
+      }
+    ]
+  }
+}

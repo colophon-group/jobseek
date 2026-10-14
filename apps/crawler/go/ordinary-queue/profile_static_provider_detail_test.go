@@ -102,7 +102,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2, "onlyfy": 6, "tupu360": 2, "phuketall": 1}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 40, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2, "onlyfy": 6, "tupu360": 2, "phuketall": 1}) {
 		t.Fatal("registry changed", counts)
 	}
 }

@@ -113,6 +113,12 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
         "dxc-technology-careers-ma-linkedin",
         "dxc-technology-careers-vn-linkedin",
         "xcmg-linkedin-global",
+        "business-angels-switzerland-careers-linkedin",
+        "fongit-careers",
+        "fondation-fit-careers",
+        "gesda-careers-linkedin",
+        "mindmaze-careers-linkedin",
+        "opi-careers",
     }
 
 

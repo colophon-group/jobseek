@@ -1,0 +1,102 @@
+{
+  "schema": "jobseek.go-lightpanda-source1050-checkpoint/v1",
+  "observed_at_utc": "2026-10-14T17:43:10.252348+00:00",
+  "source_revision": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+  "data_revision": "f67815a4076e01e5b36d5417c41612c6d7d33808",
+  "version": "0.13.1050",
+  "merged_PRs": [
+    10500,
+    10501,
+    10519
+  ],
+  "original_crawler_workflow": 38580577502,
+  "original_renderer_workflow": 38580695138,
+  "ordinary_state": "active",
+  "routing_epoch": 326,
+  "monitors": 7815,
+  "detail_boards": 7712,
+  "actors_running_and_armed": 10,
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:768e08d2e8402b4c06234770587deaad69a38770086524f3932ae4506e9585a2",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3ef83df9dc4d13fb63a652b46f4d5b50cde5021dc62c5372ec8aa7803d46615f"
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "ordinary_plan_sha256": "ad91f853b43c2705a5181c20073f88150c242b2d60f466b2cb1f614843266b90",
+  "ordinary_projection_sha1": "08f57f1cd799e75074713b3325350a24fe526e38",
+  "ordinary_receipt_sha256": "a801852b690b03a9b31c263aa5be0bfa62ef3221b6558e5e58703c26cbed821c",
+  "B0_receipt_sha256": "1cfc86c1fa3133ab9dd963896b1a4f83b39f42a5628b58ca83e722ac14a8f502",
+  "capacity": {
+    "discovery": 60,
+    "monitors": 15,
+    "memory_limit": "1GiB",
+    "GOMEMLIMIT": "512MiB"
+  },
+  "latest_stable_Lightpanda": {
+    "version": "1.0.0",
+    "reverified": "2026-10-14",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "publication": {
+    "new_companies": 15,
+    "standard_csv_workflow": 38589305704,
+    "full_census_enabled_boards": 7900,
+    "full_census_scheduled_routes": 1718429,
+    "new_boards_admitted_to_native_owner": 0
+  },
+  "restoration": "Original stage and B0 activation followed by interrupted ordinary activation. Host proved no operation process and exact pending receipt; original same-identity activation retry succeeded, independently verified serving. No manual SQL/Redis/lease changes.",
+  "bounded_resource_sample": {
+    "seconds": 45.56404844112694,
+    "ordinary_go_cpu_cores": 0.5635024954636136,
+    "ordinary_go_memory_bytes": 196202496,
+    "whole_local_lane_cpu_cores": 2.9182672863630046,
+    "whole_local_lane_memory_bytes": 3289112576,
+    "successful_native_monitors": 12,
+    "successful_native_details": 2,
+    "scope": "45-second natural sample of ten local crawler containers; remote renderer host excluded. No controlled comparator, sustained freshness or attributable cost proof."
+  },
+  "qualification": {
+    "LinkedIn": "Three original successful empty fragments: exact method/URL, one fetch, zero jobs, no truncation. Retry bodies absent; no admission.",
+    "JSONLD": "Two selected original JSONLD samples, Neurosoft and SIB, match every parsed field. Alternate Neurosoft embedded sample has five differences and is excluded by original extraction-event provenance.",
+    "DOM": "Five actual retained SIB/WYSS/SICTIC pages match complete original URL inventory under production first-page semantics; rich fields, actual transport/document verification and writer admission remain unproved."
+  },
+  "evidence": [
+    {
+      "name": "native-source1050-postdata-mixed-queue-tiers-independent-restored1-2026-10-14.json",
+      "sha256": "64d9670df8b3de4bd2412e40381f86a356ad17965313a4d220ad575b68d501a9"
+    },
+    {
+      "name": "native-source1050-postdata-throughput-independent1.json",
+      "sha256": "2629323739ac39b8695129b3423ee008b16d5353faf6bd44e4adca12d29330f1"
+    },
+    {
+      "name": "linkedin-original-empty-fragments-proof1.json",
+      "sha256": "5a767a64069ac5edc36b527b23dfa8f3cd415b613a4439f11ef15503bd5a0d5e"
+    },
+    {
+      "name": "original-jsonld-details-provenance1.json",
+      "sha256": "2fbfa97a4d6527ca0bf4142f0ccda2990b59c0a0e67c26e755fab538e4a47730"
+    },
+    {
+      "name": "original-dom-monitor-proof1.json",
+      "sha256": "e3055b452e2d191a1156c0d0bcf82cf9800e26eda9e3fed22bcabeb9e12bc1b6"
+    }
+  ],
+  "remaining": [
+    "Batch native admission for new LinkedIn, Jobs.ch, Join and DOM boards with actual original request/output and writer/policy proof",
+    "Repair remaining historical lane/cache identity using bounded original deployment route-repair protocol after canonical output qualification",
+    "Complete unsupported monitor/detail/browser and effective production consumer coverage",
+    "Prove same-scope sustained fleet freshness, queue conservation, comparable whole-lane CPU/RAM/density and attributable cost",
+    "Establish final supported cold reversal and rollback window; retire production Python, Playwright, Chromium and runtime-only assets while preserving isolated offline tooling"
+  ],
+  "full_migration_complete": false
+}
