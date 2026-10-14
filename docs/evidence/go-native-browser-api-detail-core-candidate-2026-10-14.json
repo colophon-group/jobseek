@@ -286,6 +286,14 @@
     {
       "path": "pilots/go-lightpanda/api_detail_capture.go",
       "sha256": "994bdc4ad0faf5f782439fb34b3903fa9fc366d69b390862dc6420a75dd44ba1"
+    },
+    {
+      "path": "apps/crawler/src/ordinary_ownership.py",
+      "sha256": "423cd1b182651e01300e1421c50b043231116b712247b110114a6ca72eb3efee"
+    },
+    {
+      "path": "apps/crawler/tests/test_ordinary_ownership.py",
+      "sha256": "0a7a9fdeeb99d2b7b4d982890369f9a8ab1203c7da0241489d0116f38f53543d"
     }
   ],
   "required_next": [
@@ -344,5 +352,6 @@
     "race_seconds": 4.363,
     "scope": "actual original captured JSON response order/selection/projection including emptyresult; not productionadmission"
   },
-  "qualification_repair": "Shared detail matcher is compiled in densitybench and runtime builds; exacthead CI rerun required"
+  "qualification_repair": "Shared detail matcher is compiled in densitybench and runtime builds; exacthead CI rerun required",
+  "legacy_projection_reader": "Explicitbrowserdetailprofilematchesoriginalbrowserownershiprouting; compiledprofiletestchoosesbrowser; focused85passed11skipped1.35s; actualGoownership/coldretirementalreadyverified"
 }
