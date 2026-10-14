@@ -3615,3 +3615,19 @@ Restored CSV state selects the reverse direction through the same helper.
 Keep owner/inflight/ordered-step refusal and original deploy locks intact.
 Local store/compiled CLI qualification and fresh exact-head release/deployment
 checks must pass before publication or new native authority.
+
+The same batch now includes four additional original JobCloud captures across
+jobs.ch/jobup.ch: exact Go request/response replay and actual live inventories
+match, with eight real-store empty/publisher-policy cases passing. MindMaze's
+three rich LinkedIn jobs match every original field and its captured429→200
+retry; BAS/FONGIT originals are successful empty responses. Six real-store
+full/policy cases preserve rich titles, detail schedules and queue settlement.
+All six new LinkedIn sources and four new JobCloud sources are now represented
+in the grouped qualification, rather than split into separate releases.
+
+CI found a missing census regeneration and a stale PDF inventory count after
+SICTIC's publication; the corrected census passes57 tests and all51 PDF configs
+parse without weakening invalid-contract rejection. ECR throttled the two
+density Python image pulls; DockerHub serves the identical pinned manifest,
+verified for both Linux architectures. The API race suite and all89 density
+tests/101 subtests pass. Requalify the corrected exact head before deployment.

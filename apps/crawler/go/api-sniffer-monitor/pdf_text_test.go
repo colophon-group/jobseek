@@ -79,7 +79,7 @@ func TestPDFCurrentRegistryOptionsAndRejectedContracts(t *testing.T) {
 		}
 		count++
 	}
-	if count != 50 || ocr != 4 {
+	if count != 51 || ocr != 4 {
 		t.Fatal(count, ocr)
 	}
 	for _, m := range []map[string]any{{"ocr_scale": 0}, {"ocr_scale": 5}, {"ocr_languages": "eng;sh"}, {"title_source": "other"}, {"require_title_pattern": true}, {"request_headers": map[string]any{"Authorization": "token"}}, {"defaults": map[string]any{"locations": []any{}}}, {"defaults": map[string]any{"base_salary": map[string]any{"min": -1}}}, {"other": true}} {

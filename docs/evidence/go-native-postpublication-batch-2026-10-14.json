@@ -84,5 +84,82 @@
     "guards": "Existing SQL/Redis owner, inflight token, exact board/source/lane and ordered scrape-step refusal; preserve deadlines, first-time scores, lifecycle hashes, rate limits and rotation",
     "qualification": "PASS: real PostgreSQL/Redis race forward/reversal/refusal across all four targets plus compiled CLI, 2.841s; vet passed. Installed CI, source/image qualification and original whole deployment still required.",
     "test_observation": "Initial Redis8 DUMP comparison failed after read-only hash-table rehash for long HeavenHR URLs. Test now compares every hash field canonically while retaining all keys/types and exact other-value dumps; production refusal Lua is unchanged."
+  },
+  "extended_qualification": {
+    "source_revision_tested": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+    "scope": "Actual source1050 original Python publisher captures replayed by deployed Go worker and real isolated PostgreSQL/Redis canonical lifecycle. No new production ownership or publication.",
+    "JobCloud": {
+      "boards": [
+        "innovaud-careers",
+        "campus-biotech-careers",
+        "epfl-innovation-park-careers",
+        "biopole-careers"
+      ],
+      "original_public_statuses": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "exact_all_request_parameters_and_response_replay": true,
+      "actual_Go_live_inventory_equal": true,
+      "original_successful_zero": "all four; not inferred from HTTP errors",
+      "real_pg_redis_empty_and_publisher_reserved_cases": 8,
+      "go_test_seconds": 2.628
+    },
+    "LinkedIn": {
+      "boards": [
+        "mindmaze-careers-linkedin",
+        "business-angels-switzerland-careers-linkedin",
+        "fongit-careers"
+      ],
+      "original_counts": [
+        3,
+        0,
+        0
+      ],
+      "MindMaze_captured_retry_statuses": [
+        429,
+        200
+      ],
+      "full_original_discovered_field_comparison": true,
+      "exact_request_parameters_and_complete_original_retry_replay": true,
+      "real_pg_redis_full_and_reserved_cases": 6,
+      "canonical_checks": "rich titles, detail scheduling, no fabricated descriptions, policy truth, exact recurring deadlines and no inflight lease",
+      "go_test_seconds": 3.317
+    },
+    "release_repairs": {
+      "data_validation": "regenerated browser census for changed boards.csv; validator passed and57 census tests passed",
+      "PDF_registry": "51 configured PDF boards after SICTIC addition; all parse and unchanged invalid contracts refuse; full API race suite9.494s passed",
+      "density_image": "two Python density images use DockerHub with unchanged SHA2567ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f; manifest bytes and Linuxamd64/arm64 verified",
+      "density_tests": "89 passed plus101 subtests1.78s"
+    },
+    "limits": [
+      "Successful empty inventories do not prove future nonempty detail fields",
+      "New native ownership still requires fresh complete source-bound census/admission and unchanged supported cutover",
+      "CI/installed Linux/ARM/physical renderer qualification remains pending for final corrected head"
+    ],
+    "evidence": [
+      {
+        "name": "jobs-ch-original-live-input1.json",
+        "sha256": "7d7fb0277c55e9f3a9a650e87e02ed6fad2cab1ecda625ea1a9e650718e1152a"
+      },
+      {
+        "name": "jobs-ch-original1_test.go",
+        "sha256": "1656e0fdb4f001a56db6b47dfd003d3b4807265e39b409992777031e2e3e3bf1"
+      },
+      {
+        "name": "linkedin-remaining-original-live-input1.json",
+        "sha256": "9e111f5c1ea1c21a82bc039cecbabda03672380979135f33405bbbe9527c8764"
+      },
+      {
+        "name": "linkedin-remaining-original1_test.go",
+        "sha256": "e810a29471b60dd2d77c278e0c870d1e4a5b7686f8225b10283914a549d27291"
+      },
+      {
+        "name": "native1051-density-python-manifest1.json",
+        "sha256": "57dac3421b7f06e166b6dd8076a14fbb1974ffe0f0d7a552b06d4292dc3570c1"
+      }
+    ]
   }
 }
