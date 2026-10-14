@@ -117,7 +117,7 @@ func TestDOMDetailRetainsUnsupportedSecondaryAndTransportContracts(t *testing.T)
 		`"proxy":"enabled"`, `"render":true`, `"skip_ssl":"enabled"`, `"ssl_verify":false`,
 		`"actions":[{"action":"click","selector":"button"}]`, `"enrich":["json-ld"]`,
 		`"document_fallback":{"exe":{}}`, `"linked_description":{"selector":"a.detail"}`,
-		`"fetch_url_transform":{"find":"a","replace":"b"}`, `"encoding":"utf-16"`,
+		`"fetch_url_transform":{"find":"absent","replace":"https://example.org/job"}`, `"encoding":"utf-16"`,
 		`"request_headers":false`, `"request_headers":{"Authorization":"private"}`,
 		`"request_headers":{"Accept":"text/html"," Accept ":"text/plain"}`,
 		`"retry_statuses":{"429":6}`, `"unknown":true`,
@@ -141,5 +141,22 @@ func TestDOMDocumentFallbackOwnsAllFormatsAndBindsNestedConfig(t *testing.T) {
 	changed, err := InspectDOMDetail(jsonldBoardID, c, p.SourceURL, Simple)
 	if err != nil || changed.EffectiveBoardSHA256 == p.EffectiveBoardSHA256 {
 		t.Fatal("binary configuration binding lost", err)
+	}
+}
+
+func TestDOMReadVariantsBindFetchAndLinkedConfig(t *testing.T) {
+	c := domDetailConfig()
+	c["metadata"] = `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}],"fetch_url_transform":{"find":"^https://example.com/","replace":"https://read.example.org/"},"linked_description":{"selector":"a.detail","allowed_host_suffixes":[".example.org"],"steps":[{"tag":"p","field":"description","html":true}]}}}`
+	first, err := InspectDOMDetail(jsonldBoardID, c, "https://example.com/job", Simple)
+	if err != nil || first.SourceURL != "https://example.com/job" || first.Domain != "example.com" {
+		t.Fatal(first, err)
+	}
+	for _, replacement := range [][2]string{{"read.example.org", "other.example.org"}, {"a.detail", "a.more"}, {".example.org", ".other.org"}} {
+		changed := domDetailConfig()
+		changed["metadata"] = strings.Replace(c["metadata"], replacement[0], replacement[1], 1)
+		next, err := InspectDOMDetail(jsonldBoardID, changed, "https://example.com/job", Simple)
+		if err != nil || next.EffectiveBoardSHA256 == first.EffectiveBoardSHA256 {
+			t.Fatal("read contract is not bound", err)
+		}
 	}
 }

@@ -75,6 +75,9 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 	}
 	// Enrichment selects canonical writer fields; it is not a parser option.
 	delete(options, "enrich")
+	if _, err := dom.AlternateFetchURL(source, options["fetch_url_transform"]); err != nil {
+		return fail()
+	}
 	if dom.ValidateDirectConfig(options) != nil || api.ValidateDOMDocumentFallback(options["document_fallback"]) != nil {
 		return fail()
 	}
