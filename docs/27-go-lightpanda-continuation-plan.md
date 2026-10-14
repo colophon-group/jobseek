@@ -1,16 +1,28 @@
 # Go and Lightpanda migration delivery plan
 
-### Current checkpoint — source1044 merged; original deployment in progress
+### Current checkpoint — source1044 deployed; native activation and reversal verified
 
 [PR #10495](https://github.com/colophon-group/jobseek/pull/10495) merged as
 `85ce92d457df37d56e0a70a3ae8bcf935c2c96b4` (0.13.1044). Required CI, deployment
 gate, both Linux/physical-engine architecture checks, installed-image parity and
 all16 ARM arms passed before the SHA-bound merge. Eight complete output pairs match;
 all queue/cleanup and unexpected-network checks pass. The actual merge tree equals
-the qualified head/preview tree. Original crawler workflow `38523382522` is building
-and deploying this source; the matching renderer uses its original manual workflow.
-Keep main frozen through both source-bound deploys and native activation/reversal.
-Source1043's recovered base remains the last independently verified serving state.
+the qualified head/preview tree. Original crawler workflow `38523382522` and
+renderer workflow `38523636164` completed successfully at attempt1. Independent
+verification proves matching source/digests, compiled native tools, selected CSV
+contract and all base actors healthy. The exporter completed2,065 documents with
+zero errors in the first bounded progress observation.
+
+The unchanged supported wrapper successfully exercised native activation planning
+and apply at epoch316, including pending receipt, SAVE and restart/readiness barriers.
+The active receipt and health were independently verified. Native rollback planning
+and apply also completed through that wrapper, after two pre-mutation lock refusals;
+no lock was bypassed. The existing selector helper cleared the exact staged selectors.
+Independent cold317 readback proves all seven base actors restored/armed, six healthy
+endpoints, no ownership receipts/plans/projections/native claim tokens, no live one-offs
+and stopped native actors. All four formerly Python plan/apply consumers have now
+completed their supported production exercise. Ordinary ownership remains absent;
+fresh full-floor admission must precede its next activation.
 
 [PR #10494](https://github.com/colophon-group/jobseek/pull/10494) merged as
 `7e746615839975cd9848feea0e30dd30b10351f5` (0.13.1043). The original whole crawler
