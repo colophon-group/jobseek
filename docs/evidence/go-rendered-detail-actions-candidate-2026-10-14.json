@@ -1,0 +1,48 @@
+{
+  "schema": "jobseek.rendered-detail-actions-candidate/v1",
+  "observed_at_utc": "2026-10-14T09:10:10.063776+00:00",
+  "version": "0.13.1047",
+  "base_candidate": "PR10498 head3b5a6756b633ad08b143b8e7cbff1bf4fd1e0727",
+  "parser_families": [
+    "dom",
+    "json-ld",
+    "embedded-nextdata"
+  ],
+  "behavior": "Existing typed document action protocol executes original sequential actions before parsing the held result; exact claim/config/source bindings and publisher policy remain in the existing writer path",
+  "candidate_enabled_boards": 29,
+  "retained_scheduled_routes": 4902,
+  "actual_physical_Lightpanda_1_0_0_documents": 18,
+  "physical_statuses": {
+    "200": 14,
+    "403": 3,
+    "0": 1
+  },
+  "all_physical_child_cleanup_proved": true,
+  "actual_post_action_full_original_canonical_field_matches": 14,
+  "actual_usable_descriptions": 10,
+  "actual_independent_original_Playwright_full_canonical_matches": 9,
+  "held_original_browser_difference": {
+    "itc-limited-careers": "locations differs: actual original Playwright selector omitted it while Lightpanda exposes it; exclude from qualified additions pending evidence"
+  },
+  "other_held": "Four HTTP/navigation/policy-invalid results, four empty descriptions and eleven zero-scheduled-sample boards confer no new admission",
+  "rendered_DOM_bounds_fix": "Four actual complete documents between1MiB and2MB were rejected by classifier despite fitting existing2,000,000-byte renderer contract. Classifier now shares that bound; tail challenges and oversized documents have focused regression coverage. Renderer limit unchanged.",
+  "gone_redirect_guard": "Action-bearing DOM configs with a nonempty gone_url_pattern remain rejected until pre-action guard semantics are carried by the protocol; none of the29 candidates have it",
+  "real_pinned_mutual_TLS_cases": 12,
+  "real_PG_Redis_held_field_settlement_parser_families": 3,
+  "TLS_and_real_writer_race_seconds": 3.188,
+  "all_three_action_cold_retirement_modes_per_family": 6,
+  "action_cold_retirement_race_seconds": 23.652,
+  "action_and_existing_enrichment_retirement_regression_race_seconds": 47.328,
+  "complete_DOM_module_race_seconds": 2.559,
+  "actual_physical_observation_seconds": 31.268,
+  "actual_full_field_parity_race_seconds": 4.036,
+  "new_services": 0,
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "remaining": [
+    "Finish PR10498 combined exact-head qualification and supported whole release",
+    "Exact source1047 CI/installed image/ARM qualification",
+    "Fresh canonical/cache/route floor and qualification of the nine matching board samples before supported admission",
+    "Remaining browser/API/document variants, global freshness/conservation, comparable costs and final production Python retirement"
+  ]
+}

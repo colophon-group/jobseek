@@ -39,11 +39,30 @@ The zero-route Flex JetCool board declares Onlyfy with a Workday board URL and r
 excluded from Onlyfy ownership pending a separately evidenced configuration correction.
 No source1046 production admission or full migration completion is claimed.
 
+[PR10498](https://github.com/colophon-group/jobseek/pull/10498) combines source1045
+rendered selection/Bajaj HTTP and the source1046 three-provider batch for one whole
+release. Its exact combined head is3b5a6756b633ad08b143b8e7cbff1bf4fd1e0727, based on
+main85ce92d457df37d56e0a70a3ae8bcf935c2c96b4. Two-architecture Lightpanda qualification,
+installed-image contracts and deploy gate passed; Required CI and whole-lane ARM
+measurement remain running. No outgoing retirement or source1046 deployment occurred.
+
+The following0.13.1047 candidate enables actions across existing rendered DOM,
+JSON-LD and embedded details using the existing typed action protocol. It compiles
+29 more enabled boards /4,902 retained routes. Eighteen physical Lightpanda1.0.0
+observations prove cleanup; fourteen held documents match every original canonical
+parser field, ten expose usable descriptions, and nine independently captured actual
+original Playwright outputs match all canonical fields. ITC has a location discrepancy
+and remains held, as do empty/invalid/zero-sample cases. Real pinned mTLS tests cover
+all three families, action order, binding, publisher policy and cancellation; real
+canonical writes and all six cold-retirement modes pass. Four observed documents
+exposed a classifier1MiB bound below the renderer's existing2MB limit; the classifier
+now accepts the full existing contract with boundary and tail-challenge regressions.
+See [the action candidate evidence](evidence/go-rendered-detail-actions-candidate-2026-10-14.json).
+
 PR10496 Required CI recovered on attempt3 after the registry data-limit failures.
-Its exact-head installed image contracts and deploy gate are green; explicit unchanged
-ARM64 whole-lane and two-architecture Lightpanda qualification are running before
-supported retirement, exact merge and original whole deployment. Source1044 remains
-active while this qualification runs.
+Its changes are included in PR10498; the redundant component ARM run was cancelled
+after the combined exact-head run started. Source1044 remains active while combined
+qualification runs.
 
 [PR #10494](https://github.com/colophon-group/jobseek/pull/10494) merged as
 `7e746615839975cd9848feea0e30dd30b10351f5` (0.13.1043). The original whole crawler
