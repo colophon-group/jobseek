@@ -21,3 +21,14 @@ func TestRealSharedDetailEnrichmentColdRetirementConservesAttempts(t *testing.T)
 		}
 	}
 }
+
+func TestRealDOMDocumentFormatsColdRetirementConservesAttempts(t *testing.T) {
+	for _, format := range []string{"pdf", "docx", "doc"} {
+		t.Run(format, func(t *testing.T) {
+			testDetailFixtureRetirement(t, func(t *testing.T) firstOwnerFixture {
+				metadata := fmt.Sprintf(`{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}],"document_fallback":{%q:{"title_source":"text"}}}}`, format)
+				return firstIndependentDetailFixture(t, metadata, "https://careers.example.net/download/123", "careers.example.net")
+			})
+		})
+	}
+}
