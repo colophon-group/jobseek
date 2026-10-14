@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -75,6 +77,11 @@ type b0FullPlanVector struct {
 		Type  string `json:"type"`
 		Value any    `json:"value"`
 	}
+	LuaCalls []struct {
+		SHA      string
+		KeyCount int `json:"key_count"`
+		Args     []any
+	} `json:"lua_calls"`
 	Requests  []map[string]any
 	Replies   []capacityProducerDecision
 	Payloads  []string
@@ -169,6 +176,24 @@ func (p *b0CapturedProducer) cutoverTask(_ context.Context, operation, domain, p
 
 func b0SeedFullPlan(t *testing.T, ctx context.Context, pool *pgxpool.Pool, client *redis.Client, v b0FullPlanVector) {
 	t.Helper()
+	b0SeedFullPlanRedis(t, ctx, client, v)
+	b := v.Board
+	p := v.Posting
+	metadata, err := json.Marshal(b["metadata"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO job_board VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, b["board_id"], b["board_slug"], b["board_url"], b["is_enabled"], b["board_status"], string(metadata), b["crawler_type"], b["scraper_needs_browser"], func() int64 {
+		n, _ := strconv.ParseInt(string(b["scrape_interval_hours"].(json.Number)), 10, 64)
+		return n
+	}()); err != nil {
+		t.Fatal("canonical board seed failed", err)
+	}
+	b0SeedFullPlanPosting(t, ctx, pool, p)
+}
+
+func b0SeedFullPlanRedis(t *testing.T, ctx context.Context, client *redis.Client, v b0FullPlanVector) {
+	t.Helper()
 	for key, entry := range v.Seed {
 		switch entry.Type {
 		case "string":
@@ -195,18 +220,10 @@ func b0SeedFullPlan(t *testing.T, ctx context.Context, pool *pgxpool.Pool, clien
 			t.Fatal("unknown original seed type")
 		}
 	}
-	b := v.Board
-	p := v.Posting
-	metadata, err := json.Marshal(b["metadata"])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = pool.Exec(ctx, `INSERT INTO job_board VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, b["board_id"], b["board_slug"], b["board_url"], b["is_enabled"], b["board_status"], string(metadata), b["crawler_type"], b["scraper_needs_browser"], func() int64 {
-		n, _ := strconv.ParseInt(string(b["scrape_interval_hours"].(json.Number)), 10, 64)
-		return n
-	}()); err != nil {
-		t.Fatal("canonical board seed failed", err)
-	}
+}
+
+func b0SeedFullPlanPosting(t *testing.T, ctx context.Context, pool *pgxpool.Pool, p map[string]any) {
+	t.Helper()
 	next, err := time.Parse(time.RFC3339Nano, p["next_scrape_at"].(string))
 	if err != nil {
 		t.Fatal(err)
@@ -365,8 +382,37 @@ func TestRealB0FullPlansMatchActualRetainedPlansAndDigests(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				// Replay captured actual Python Lua calls on this same Redis engine.
+				// Redis versions differ in ZSCORE decimal spelling; raw guard
+				// strings must still match exactly within one engine.
+				original := capacityRedisFixture(t, ctx)
+				b0SeedFullPlanRedis(t, ctx, original, v)
+				if len(v.LuaCalls) == 0 {
+					t.Fatal("actual original Lua calls absent")
+				}
+				for _, call := range v.LuaCalls {
+					scriptSHA := sha1.Sum([]byte(b0CutoverQueueLua))
+					if call.SHA != hex.EncodeToString(scriptSHA[:]) || call.KeyCount < 1 || call.KeyCount > len(call.Args) {
+						t.Fatal("original Lua binding differs")
+					}
+					keys := []string{}
+					for _, raw := range call.Args[:call.KeyCount] {
+						key, ok := raw.(string)
+						if !ok {
+							t.Fatal("original key invalid")
+						}
+						keys = append(keys, key)
+					}
+					if _, err := original.Eval(ctx, b0CutoverQueueLua, keys, call.Args[call.KeyCount:]...).Result(); err != nil {
+						t.Fatal("original Lua replay failed", err)
+					}
+				}
+				reference, err := b0PlanEffectsSnapshot(ctx, original)
+				if err != nil {
+					t.Fatal("actual original effects unavailable", err)
+				}
 				actualBody, _ := json.Marshal(actual)
-				expectedBody, _ := json.Marshal(v.After)
+				expectedBody, _ := json.Marshal(reference)
 				var actualValue, expectedValue any
 				d := json.NewDecoder(strings.NewReader(string(actualBody)))
 				d.UseNumber()

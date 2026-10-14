@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.native-b0-plan-apply-candidate/v1",
-  "observed_at_utc": "2026-10-14T03:25:35.615909+00:00",
+  "observed_at_utc": "2026-10-14T04:11:25.883427+00:00",
   "version": "0.13.1043",
   "base_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
   "operations": [
@@ -30,7 +30,7 @@
     "successful_apply_replies_and_full_queue_effects": "matched original real Redis Lua; typed canonical PG rows and fence effects verified",
     "stale_digest_refusal": "queue and SQL unchanged",
     "compiled_cli": "positive pending rollback plan/apply, stale refusal, committed tombstone recovery preserves original rollback digest and other-shard fences",
-    "full_exporter_private_pg_redis_race_seconds": 25.964,
+    "full_exporter_private_pg_redis_race_seconds": 27.189,
     "actual_original_producer_decisions": 57,
     "original_timestamp_cases": 6,
     "original_guard_cases": 21,
@@ -39,7 +39,9 @@
     "new_all_four_native_caller_assertion": "passed",
     "format_lint_vet_shell_syntax": "passed; shellcheck ignores pre-existing SC1091 external-source warning",
     "original_fixture_regeneration": "exact",
-    "linux_amd64_arm64": "compiled; authenticated exchange execution still requires Linux CI"
+    "linux_amd64_arm64": "compiled; authenticated exchange execution still requires Linux CI",
+    "captured_actual_original_lua_calls": 54,
+    "queue_effects_cross_redis_versions": "Replays captured actual original calls and native calls on separate instances of the same Redis engine; compares all effects including raw guard strings. Frozen plan/digest and outer apply reply comparisons remain exact."
   },
   "qualified_remote_head": null,
   "deployed": false,

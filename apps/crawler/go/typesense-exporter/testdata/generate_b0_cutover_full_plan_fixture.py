@@ -298,6 +298,15 @@ async def case(
         else:
             vector.update(accepted=True, document=plan.document, digest=plan.digest)
             pool = Pool()
+            lua_calls = []
+            original_evalsha = redis.evalsha
+
+            async def captured_evalsha(sha, key_count, *args):
+                result = await original_evalsha(sha, key_count, *args)
+                lua_calls.append({"sha": sha, "key_count": key_count, "args": list(args)})
+                return result
+
+            redis.evalsha = captured_evalsha
             applied = (
                 await activation.apply_activation_plan(
                     pool, redis, cohort="c1", expect_digest=plan.digest
@@ -312,6 +321,8 @@ async def case(
                     source_receipt_sha256="a" * 64,
                 )
             )
+            redis.evalsha = original_evalsha
+            vector["lua_calls"] = lua_calls
             vector["applied"] = applied
             vector["after"] = await snapshot(redis)
     return vector
