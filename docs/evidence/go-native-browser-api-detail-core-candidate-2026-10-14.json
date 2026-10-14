@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-browser-api-detail-core-candidate/v1",
   "candidate_version": "0.13.1052",
-  "base_head": "fab5f5cc6eeeb522b7eccd5d34cd2729e12ec601",
+  "base_head": "bade637b4534e18f431a620a2a6493f002951572",
   "candidate_state": "local preparation; renderer protocol, ownership and worker execution integration incomplete",
   "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
   "original_reference_selection_cases": 107,
@@ -182,6 +182,14 @@
     {
       "private_input": "heavenhr-http-detail-input1.json",
       "sha256": "aebdd63d4673663303f287eff5940cc5a80540d31620b27e0de754c7c3e65e77"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_detail.go",
+      "sha256": "24b690d4fdfa5e552168a58ced3edab28865b7d5228e8377101780f53637d2f2"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_detail_test.go",
+      "sha256": "82d76fe1ae87258697a01a3b2e0488e96e196e206cdde4e09c9325d3b0344868"
     }
   ],
   "required_next": [
@@ -192,5 +200,6 @@
     "Continue all remaining profiles/consumers, full-fleet freshness/conservation/cost proofs and final Python/Playwright/Chromium retirement"
   ],
   "full_migration_complete": false,
-  "mixed_location_reference_cases": 6
+  "mixed_location_reference_cases": 6,
+  "bounded_capture_configuration_parser": "Original defaults, explicit field mappings, path, wait, timeout, fractional settle and enrichment projection are tested; unsupported launch/interaction controls refused"
 }
