@@ -39,5 +39,15 @@
     "broader monitor parity and live document samples",
     "supported admission",
     "global freshness and Python retirement"
-  ]
+  ],
+  "monitor_text_parity": {
+    "retained_samples": 24,
+    "exact_equal": 23,
+    "held_discrepancy": "one inserted ASCII space in one three-page document; regex-sensitive qualification pending"
+  },
+  "live_sample": {
+    "publisher": "SICTIC",
+    "original_fresh_http_succeeded": true,
+    "native_sealed_http": "pending"
+  }
 }
