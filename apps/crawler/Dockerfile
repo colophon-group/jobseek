@@ -52,7 +52,8 @@ COPY go/workday-monitor/ go/workday-monitor/
 COPY go/pdf-text/ go/pdf-text/
 WORKDIR /workspace/apps/crawler/go/pdf-text
 RUN go test -timeout 60s ./... && go vet ./...
-RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/go-pdf-text ./cmd/pdf-text
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/go-pdf-text ./cmd/pdf-text \
+    && cp /out/go-pdf-text /usr/local/bin/go-pdf-text
 WORKDIR /workspace/apps/crawler/go/ordinary-worker
 ARG CRAWLER_SOURCE_REVISION
 RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
