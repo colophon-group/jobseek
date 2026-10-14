@@ -116,7 +116,7 @@ func TestDOMDetailRetainsUnsupportedSecondaryAndTransportContracts(t *testing.T)
 	for _, extra := range []string{
 		`"proxy":"enabled"`, `"render":true`, `"skip_ssl":"enabled"`, `"ssl_verify":false`,
 		`"actions":[{"action":"click","selector":"button"}]`, `"enrich":["json-ld"]`,
-		`"document_fallback":{"pdf":{}}`, `"linked_description":{"selector":"a.detail"}`,
+		`"document_fallback":{"exe":{}}`, `"linked_description":{"selector":"a.detail"}`,
 		`"fetch_url_transform":{"find":"a","replace":"b"}`, `"encoding":"utf-16"`,
 		`"request_headers":false`, `"request_headers":{"Authorization":"private"}`,
 		`"request_headers":{"Accept":"text/html"," Accept ":"text/plain"}`,
@@ -127,5 +127,19 @@ func TestDOMDetailRetainsUnsupportedSecondaryAndTransportContracts(t *testing.T)
 		if _, err := InspectDOMDetail(jsonldBoardID, c, "https://example.com/job", Simple); !errors.Is(err, ErrUnsupportedProfile) {
 			t.Fatal("unsupported DOM contract adopted", extra, err)
 		}
+	}
+}
+
+func TestDOMDocumentFallbackOwnsAllFormatsAndBindsNestedConfig(t *testing.T) {
+	c := domDetailConfig()
+	c["metadata"] = `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}],"document_fallback":{"pdf":{"ocr":true},"docx":{"title_source":"text"},"doc":{"title_source":"text"}}}}`
+	p, err := InspectDOMDetail(jsonldBoardID, c, "https://example.com/download", Simple)
+	if err != nil || p.Profile != domDetailProfile {
+		t.Fatal("configured formats not admitted", err)
+	}
+	c["metadata"] = strings.Replace(c["metadata"], `"ocr":true`, `"ocr":false`, 1)
+	changed, err := InspectDOMDetail(jsonldBoardID, c, p.SourceURL, Simple)
+	if err != nil || changed.EffectiveBoardSHA256 == p.EffectiveBoardSHA256 {
+		t.Fatal("binary configuration binding lost", err)
 	}
 }
