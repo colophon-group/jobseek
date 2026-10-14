@@ -2,7 +2,7 @@
   "schema": "jobseek.rendered-detail-enrichment-candidate/v1",
   "observed_at_utc": "2026-10-14T04:48:51.015638+00:00",
   "version": "0.13.1045",
-  "parent_candidate": "PR10495 at290501ae457d597714977023e56c56bdaec2d6cd",
+  "parent_candidate": "PR10495 merged as85ce92d457df37d56e0a70a3ae8bcf935c2c96b4",
   "behavior": "Rendered DOM, JSON-LD and embedded/Next.js details reuse existing typed canonical field selection; navigation permissions remain unchanged",
   "local_evidence": {
     "held_document_real_pg_redis_selected_field_cases": 10,
@@ -33,8 +33,8 @@
   "production_admitted": false,
   "full_migration_complete": false,
   "next_actions": [
-    "Qualify parent PR10495 final combined provider/output-ABI head; original installed-image expectation is fixed at207 profiles",
-    "Verify supported source1043 recovery, then deliver10495 and this group through exact required checks and supported full-lane deployment",
+    "Qualify this exact final child head on main after actual PR10495 merge; parent required CI, installed-image parity and all16 ARM arms passed",
+    "Finish original source1044 crawler/renderer deployment and native activation/reversal before following rollout; source1043 remains verified serving until the supported transition",
     "Qualify and publish the combined rendered field-mask and Bajaj public HTTP configuration through exact original workflows. Rebuild fresh full-floor admission; source8379 route eligibility and two samples grant no ownership; RSM has no scheduled sample.",
     "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
   ],
@@ -54,5 +54,6 @@
     "production_published_or_admitted": false,
     "original_api_scraper_and_regenerated_census_tests_passed": 103,
     "data_validation": "passed original validator after original offline census regeneration"
-  }
+  },
+  "base_revision": "85ce92d457df37d56e0a70a3ae8bcf935c2c96b4"
 }
