@@ -262,6 +262,22 @@
     {
       "path": "apps/crawler/go/ordinary-worker/environment.go",
       "sha256": "4dec9b1ca5b827e416676f41494844fddd0dc0188a73503c2f95bb159fb06c47"
+    },
+    {
+      "private_input": "native1052-public-detail-input1.json",
+      "sha256": "c652d58ae369fd757e75df8d885a496f20928e47f2576a8664b63c6667665e71"
+    },
+    {
+      "private_input": "native1052-public-detail-results1.json",
+      "sha256": "425c9fe2ecd190b9338f9638cf1a47a38b1af94d820f1923ad202bd55563ce7a"
+    },
+    {
+      "private_input": "native1052-original-public-detail-results1.json",
+      "sha256": "9b491a596d5f407f94ed643ed5d68476f7e3f0c03083d53a06fd0ba432dd7417"
+    },
+    {
+      "private_input": "native1052-public-original-comparison1.json",
+      "sha256": "8ddab0f212af5a90c945987b0378961d9a200400578f07a0e7529d3f16753985"
     }
   ],
   "required_next": [
@@ -287,5 +303,28 @@
     "runtime_profile_identity": "211 profiles; browser API detail included",
     "vet": "passed queue and worker",
     "production_admission": false
+  },
+  "actual_public_comparison": {
+    "platform": "darwin/arm64 pinned Lightpanda1.0.0 vs original source1050 Python/Chromium",
+    "sample_count": 12,
+    "nonempty_all_fields_equal": [
+      "stantec-global-jobs",
+      "international-olympic-committee-obs",
+      "cedars-sinai-providence-tarzana",
+      "ibm-dejobs",
+      "cardinal-health-specialty-alliance-support",
+      "crh-careers-danucem",
+      "ntt-data-emeal",
+      "banner-health-provider-opportunities",
+      "cox-careers-au"
+    ],
+    "empty_both": [
+      "acrisure-protection-group"
+    ],
+    "navigation_failed_both": [
+      "firehawk-aerospace-appone",
+      "netflix-careers"
+    ],
+    "scope": "one actual sample per nonempty selected board, no whole-route or installed Linux qualification; no new native production admission"
   }
 }
