@@ -3631,3 +3631,30 @@ parse without weakening invalid-contract rejection. ECR throttled the two
 density Python image pulls; DockerHub serves the identical pinned manifest,
 verified for both Linux architectures. The API race suite and all89 density
 tests/101 subtests pass. Requalify the corrected exact head before deployment.
+
+All15 new monitors now have grouped original-output qualification: the six
+LinkedIn, four JobCloud, Neurosoft Join, SIB/WYSS/SICTIC DOM and Venturelab
+rendered sources. The three DOM sources pass actual native HTTP inventories
+and six real-store canonical/policy cases. Venturelab's original required
+action pipeline succeeds through pinned physical Lightpanda1.0.0 on macOS;
+the typed result matches the original inventory and three real-store
+full/reserved/malformed cases preserve HTTP detail scheduling and settlement.
+Installed Linux qualification remains separate.
+
+SICTIC's PDF detail remains held: original final configuration was reproduced
+against both retained binaries, and Go retained/live parsing differs in title,
+location and canonical description. The original uses pypdf; Poppler's reading
+order/conditional raw extraction does not reproduce that text structure. Keep
+the original detail owner while repairing this and the earlier document gaps.
+The first saved setup sample also predated the final title/location patterns;
+the second and final-config original replay agree, so those native differences
+are genuine rather than stale fixture expectations.
+
+Full CI exposed stale registry counts and out-of-order rows after the company
+publication. Sorting preserves every parsed row/value in all three CSVs; the
+exact numeric LinkedIn opt-ins and count assertions now include the additions.
+All61 focused Python validation/census tests and current-registry Go queue/worker
+race tests pass. The unchanged labeller100,000-row PostgreSQL plan test passes
+locally in3.58s with its original one-second query guard; CI's30-second timeout
+remains a release blocker until the original job succeeds. Requalify the final
+corrected head; no new native authority or publication has occurred.

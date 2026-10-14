@@ -161,5 +161,96 @@
         "sha256": "57dac3421b7f06e166b6dd8076a14fbb1974ffe0f0d7a552b06d4292dc3570c1"
       }
     ]
+  },
+  "DOM_Venturelab_PDF_qualification": {
+    "source1050_worker": "ed1df86b74f4e4e97076c53d00a69f5e603b1861",
+    "physical_renderer_code_head": "c65b51b81910463a76e012adab4f0b2b01741a85",
+    "DOM": {
+      "boards": [
+        "swiss-institute-of-bioinformatics-careers",
+        "wyss-center-careers",
+        "sictic-careers"
+      ],
+      "original_HTTP_statuses": [
+        200,
+        200,
+        200
+      ],
+      "original_and_actual_Go_counts": [
+        1,
+        0,
+        1
+      ],
+      "exact_original_requests_and_URL_inventories": true,
+      "real_pg_redis_full_and_reserved_cases": 6,
+      "Go_test_seconds": 3.319
+    },
+    "Venturelab": {
+      "original_actions_executed_by_pinned_physical_Lightpanda": "pass",
+      "physical_engine": "1.0.0 darwin arm64",
+      "physical_engine_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+      "typed_original_action_result": "success, cleanup sanitizer passed",
+      "physical_test_seconds": 4.752,
+      "actual_result_original_inventory_equal": true,
+      "real_pg_redis_full_reserved_malformed_cases": 3,
+      "future_explicit_HTTP_detail_first_time_schedule": true,
+      "worker_test_seconds": 1.106,
+      "limit": "macOS public execution; not installed Linux production renderer execution"
+    },
+    "SICTIC_PDF": {
+      "status": "held; do not grant native detail authority",
+      "retained_binary_and_actual_HTTP": "both fail title, locations and canonical description parity",
+      "original_final_config_reproduced": true,
+      "earlier_first_sample": "title/location config changed before final selected sample; final original was reproduced to disambiguate",
+      "second_original_sample_current_config": "all original fields equal when replayed by original Python; native differences remain",
+      "expected_title": "Mediamatician (Mediamatiker)",
+      "actual_native_title": "Job posting: Mediamatician (Mediamatiker)",
+      "expected_location": "Zurich and remote (within Switzerland)",
+      "actual_native_location": null,
+      "original_engine": "pypdf content-stream text extraction",
+      "native_engine": "pdftotext reading-order/conditional raw extraction; not equivalent to original text structure"
+    },
+    "registry_and_sort_validation": {
+      "Python_csv_and_numeric_identity_census_tests": "61 passed0.59s",
+      "Go_queue_current_registry_race": "passed9.659s",
+      "Go_worker_current_registry_race": "passed2.239s",
+      "sort": "Every original parsed row/value retained; only row order changes in three CSV files",
+      "new_registry_inventory": "37 LinkedIn monitors,40 LinkedIn detail configs,15 JobCloud monitors,51 PDFs; invalid-option guards unchanged"
+    },
+    "full_migration_complete": false,
+    "evidence": [
+      {
+        "name": "dom-three-original-live-input1.json",
+        "sha256": "7fe9ed1ea481a4c37be993b5f8a1eaf98fd3b9a4b655096cab6cbf17c6bebaec"
+      },
+      {
+        "name": "dom-three-original1_test.go",
+        "sha256": "3364190d1c00b96a642609a1335fe8869ed45011d02377d36fc140ab2b26281a"
+      },
+      {
+        "name": "venturelab-rendered-original-input1.json",
+        "sha256": "b0890d40539cbd8d84bc16466f5b7357fed4f2b40d56c05330e03374f317d801"
+      },
+      {
+        "name": "venturelab-rendered-physical-result1.pb",
+        "sha256": "6a884e9fa29ff21149a0fefc172533d4eb4012cfadce7ef9c42d8abaa525796a"
+      },
+      {
+        "name": "venturelab-physical1_test.go",
+        "sha256": "4193cc8019c2f22e1eab460d4b3d68eafd2908adc8a543eaa1b55f2aa9506351"
+      },
+      {
+        "name": "venturelab-rendered-worker1_test.go",
+        "sha256": "292a8385541d1ea627e0f4b29861d5d65e38281a1c2ebdc4e5798bb5bc7562da"
+      },
+      {
+        "name": "sictic-pdf-final-config-original-input2.json",
+        "sha256": "3c04cf438576f03ec3483dcc919311eaf603ff26ccbd5548a4195d72ef22d46b"
+      },
+      {
+        "name": "sictic-pdf-go-extraction-debug1.json",
+        "sha256": "621efa9cd08abe4c2afab212dff1446e09fa98cfec1d50f01df5cd4c57e6c3ec"
+      }
+    ]
   }
 }

@@ -2779,6 +2779,7 @@ foley-hoag-llp,foley-hoag-llp-greenhouse,https://job-boards.greenhouse.io/foleyh
 folio,folio-ashby,https://jobs.ashbyhq.com/folio,ashby,"{""token"": ""folio""}",skip,
 follett-software-llc,follett-software-llc-greenhouse,https://job-boards.greenhouse.io/follettsoftware,greenhouse,"{""token"": ""follettsoftware""}",skip,
 fondation-fit,fondation-fit-careers,https://www.linkedin.com/company/fondation-innovation-technologie/jobs/,linkedin,"{""company_id"": ""2298967"", ""company_slug"": ""fondation-innovation-technologie"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+fongit,fongit-careers,https://www.linkedin.com/jobs/search/?f_C=2869033,linkedin,"{""company_id"": ""2869033"", ""company_slug"": ""fongit"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 fora-financial,fora-financial-greenhouse,https://job-boards.greenhouse.io/forafinancial,greenhouse,"{""token"": ""forafinancial""}",skip,
 forbes,forbes-greenhouse,https://job-boards.greenhouse.io/forbes,greenhouse,"{""token"": ""forbes""}",skip,
 ford,ford-oracle-hcm,https://efds.fa.em5.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
@@ -7898,4 +7899,3 @@ zurich-insurance,zurich-insurance-careers,https://careers.zurich.com/search/,rss
 zus-health,zus-health-careers,https://jobs.lever.co/zushealth,lever,"{""token"": ""zushealth""}",skip,
 zwift,zwift-greenhouse,https://job-boards.greenhouse.io/zwift,greenhouse,"{""token"": ""zwift""}",skip,
 zynga,zynga-greenhouse,https://job-boards.greenhouse.io/zyngacareers,greenhouse,"{""token"": ""zyngacareers""}",skip,
-fongit,fongit-careers,https://www.linkedin.com/jobs/search/?f_C=2869033,linkedin,"{""company_id"": ""2869033"", ""company_slug"": ""fongit"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
