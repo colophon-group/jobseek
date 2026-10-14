@@ -1,9 +1,9 @@
 {
   "schema": "jobseek.go-lightpanda-candidate/v1",
   "version": "0.13.1049",
-  "status": "local grouped candidate; not published, merged or deployed",
+  "status": "stacked PR10501; qualification pending, not published or owned",
   "parent_pr": 10500,
-  "parent_head": "ca5e4b64e53db56512e52118441c09d699d69bb4",
+  "parent_head": "a997506675d85a61e48218ccac647d4c757992eb",
   "changes": [
     "Convert two ApplicantPro browser-capture detail boards to their verified anonymous tenant/job HTTP APIs using the existing Go API profile",
     "Extend the original quiesced forward/reverse worker-route repair to the two explicit code-owned targets; retain Bajaj target and source/schedule/inflight/ownership bounds"
@@ -22,7 +22,8 @@
     "cold_retirement_modes_per_board": 6,
     "real_postgres_redis_forward_reverse_repair_targets": 3,
     "compiled_repair_cli": "passed",
-    "writer_fields": "all six original mappings retained"
+    "writer_fields": "all six original mappings retained",
+    "sanitized_census": "regenerated from changed CSV; 57 census tests passed"
   },
   "pending": [
     "exact candidate commit binding and release qualification",
