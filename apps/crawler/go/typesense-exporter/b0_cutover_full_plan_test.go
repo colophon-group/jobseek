@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
@@ -321,6 +322,18 @@ func TestRealB0FullPlansMatchActualRetainedPlansAndDigests(t *testing.T) {
 				if string(got) != string(want) || plan.Digest != v.Digest {
 					t.Fatal("original full plan bytes/digest differ", string(got), string(want), plan.Digest, v.Digest)
 				}
+				reply := map[string]any{"digest": plan.Digest, "count": len(plan.Tasks), "plan": plan.Document}
+				if v.Operation == "rollback" {
+					reply["rollback_plan_digest"] = plan.RollbackDigest
+				}
+				var output bytes.Buffer
+				if err := writeB0OperatorReply(&output, reply); err != nil {
+					t.Fatal(err)
+				}
+				assertOriginalB0DigestExtractor(t, output.Bytes(), "extract_digest", plan.Digest)
+				if v.Operation == "rollback" {
+					assertOriginalB0DigestExtractor(t, output.Bytes(), "extract_rollback_digest", plan.RollbackDigest)
+				}
 			}
 			after, snapshotErr := capacityKeySnapshot(ctx, client)
 			if snapshotErr != nil {
@@ -550,6 +563,8 @@ func TestRealCompiledB0PlanAndApplyEmptyPendingRollback(t *testing.T) {
 	if err != nil || json.Unmarshal(body, &document) != nil || !capacityDigest.MatchString(document.Digest) || document.Count != 0 || document.RollbackDigest != document.Digest {
 		t.Fatal("compiled pending plan ABI differs", string(body))
 	}
+	assertOriginalB0DigestExtractor(t, body, "extract_digest", document.Digest)
+	assertOriginalB0DigestExtractor(t, body, "extract_rollback_digest", document.RollbackDigest)
 	before, err := capacityKeySnapshot(ctx, client)
 	if err != nil {
 		t.Fatal(err)
@@ -586,6 +601,8 @@ func TestRealCompiledB0PlanAndApplyEmptyPendingRollback(t *testing.T) {
 	if err != nil || json.Unmarshal(body, &recovery) != nil || recovery.RollbackDigest != document.Digest || recovery.Digest == document.Digest {
 		t.Fatal("compiled committed recovery digest differs", string(body))
 	}
+	assertOriginalB0DigestExtractor(t, body, "extract_digest", recovery.Digest)
+	assertOriginalB0DigestExtractor(t, body, "extract_rollback_digest", recovery.RollbackDigest)
 	retry := exec.CommandContext(ctx, binary, "--b0-cutover", "rollback", "--cohort", "c1", "--receipt-state", "pending", "--source-receipt-sha256", receipt, "--apply", "--expect-digest", recovery.Digest)
 	retry.Env = env
 	body, err = retry.CombinedOutput()

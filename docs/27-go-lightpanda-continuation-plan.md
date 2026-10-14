@@ -1,6 +1,53 @@
 # Go and Lightpanda migration delivery plan
 
-### Current deployed checkpoint — 0.13.1042, 2026-10-14
+### Current checkpoint — source1043 recovery and grouped source1044 candidate
+
+[PR #10494](https://github.com/colophon-group/jobseek/pull/10494) merged as
+`7e746615839975cd9848feea0e30dd30b10351f5` (0.13.1043). The original whole crawler
+and renderer workflows deployed matching immutable images. Supported retirement
+removed ordinary ownership and B0 ownership before that deploy; previous write
+fences remain canonical evidence. Base serving and exporter progress were verified.
+
+The first native activation exercise reserved epoch315 but failed **before apply
+or pending receipt publication**: Go emitted compact JSON while the original shell
+digest extractor requires Python's spaced reply. The wrapper contained the writer
+lane. Independent readback confirmed no ownership receipts, active plans, owner
+keys, native claim tokens or live administrative containers. The existing selector
+helper cleared the exact staged selectors under the normal mutation lock. Original
+crawler workflow `38513589355`, attempt3, is restoring the complete base stack with
+the same source and digests. Do not claim serving until that attempt and independent
+health/progress readback succeed. Do not retry the broken native activation.
+
+[PR #10495](https://github.com/colophon-group/jobseek/pull/10495) combines Recruiterbox,
+Paycor and VeryEast details: five enabled boards,1,536 actual scheduled routes,
+15 complete live samples matching original fields,40 original parser cases and
+33 original HTTP traces. Its follow-up also fixes the observed operator reply ABI,
+using ASCII canonical encoding with Python separators outside strings. Regression
+coverage runs both unchanged shell extractors on compiled CLI rollback planning and
+recovery output, and checks escaped strings/URLs. Fresh exact-head CI and installed
+image/ARM qualification must cover the combined final change before deployment.
+
+Continue in this order:
+
+1. Verify full source1043 serving recovery; preserve the terminal activation failure.
+2. Qualify and deploy source1044 through the original whole crawler/renderer workflows.
+   Exercise native activation and cold reversal through the unchanged wrappers.
+3. Rebuild admission from fresh canonical/cache/route evidence, preserving the prior
+   7,815 monitor /7,685 detail board floor and admitting qualified additions only.
+4. Rebase and qualify [PR #10496](https://github.com/colophon-group/jobseek/pull/10496):
+   selective enrichment across DOM, JSON-LD and embedded Next-data details; currently
+   seven held boards /9,380 routes. Complete physical Lightpanda field-mask parity.
+5. Continue grouped Onlyfy, PhuketAll, Tupu360 and remaining special/detail variants;
+   reconcile cache disagreements through supported publication, then prove freshness,
+   queue preservation and comparable whole-lane CPU/RAM/density/attributable cost.
+6. Complete the supported cutover/reversal and rollback window before removing
+   production Python, Playwright, Chromium and unused runtime assets. Retain useful
+   isolated offline Python tools and every enabled board.
+
+Lightpanda1.0.0 remains the latest official stable release as rechecked2026-10-14.
+The full migration goal remains active and incomplete.
+
+### Historical deployed checkpoint — 0.13.1042, 2026-10-14
 
 [PR #10492](https://github.com/colophon-group/jobseek/pull/10492) is merged as
 `4d8410a5155f3c49c82a6681be539814caf1eae7` (0.13.1042). Required checks and all

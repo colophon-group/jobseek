@@ -40,5 +40,15 @@
     "Full freshness, global queue conservation, comparable production resource/cost and final rollback window still precede Python retirement"
   ],
   "rebased_after_native_b0_merge": 10494,
-  "installed_image_profile_assertion": "Exact ordered207-profile expectation matches executable; fresh installed-image qualification remains required"
+  "installed_image_profile_assertion": "Exact ordered207-profile expectation matches executable; fresh installed-image qualification remains required",
+  "operator_reply_abi": {
+    "observed_failure": "source1043 native compact JSON rejected by unchanged shell extract_digest before apply/receipt",
+    "fix": "single-line ASCII Python separators outside strings; canonical plan digests unchanged",
+    "compiled_cli_original_extractors_race_seconds": 3.549,
+    "broader_exporter_race": "passed private PostgreSQL and Redis",
+    "production_fixed": false,
+    "broader_exporter_race_seconds": 29.468,
+    "all_original_plan_and_shell_extractors_race_seconds": 4.946,
+    "original_plan_corpus": "all36 accepted/rejected plans; actual activation and rollback replies consumed by unchanged shell functions"
+  }
 }
