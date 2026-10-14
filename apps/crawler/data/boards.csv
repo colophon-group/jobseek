@@ -2774,6 +2774,7 @@ focused-energy,focused-energy-ashby,https://jobs.ashbyhq.com/focused,ashby,"{""t
 foley-hoag-llp,foley-hoag-llp-greenhouse,https://job-boards.greenhouse.io/foleyhoag,greenhouse,"{""token"": ""foleyhoag""}",skip,
 folio,folio-ashby,https://jobs.ashbyhq.com/folio,ashby,"{""token"": ""folio""}",skip,
 follett-software-llc,follett-software-llc-greenhouse,https://job-boards.greenhouse.io/follettsoftware,greenhouse,"{""token"": ""follettsoftware""}",skip,
+fondation-fit,fondation-fit-careers,https://www.linkedin.com/company/fondation-innovation-technologie/jobs/,linkedin,"{""company_id"": ""2298967"", ""company_slug"": ""fondation-innovation-technologie"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 fora-financial,fora-financial-greenhouse,https://job-boards.greenhouse.io/forafinancial,greenhouse,"{""token"": ""forafinancial""}",skip,
 forbes,forbes-greenhouse,https://job-boards.greenhouse.io/forbes,greenhouse,"{""token"": ""forbes""}",skip,
 ford,ford-oracle-hcm,https://efds.fa.em5.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
