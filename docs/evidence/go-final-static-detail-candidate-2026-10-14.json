@@ -49,6 +49,15 @@
     "production_fixed": false,
     "broader_exporter_race_seconds": 29.468,
     "all_original_plan_and_shell_extractors_race_seconds": 4.946,
-    "original_plan_corpus": "all36 accepted/rejected plans; actual activation and rollback replies consumed by unchanged shell functions"
+    "original_plan_corpus": "all36 accepted/rejected plans; actual activation and rollback replies consumed by unchanged shell functions",
+    "build_stage_regression_dependency": "original wrapper source and Bash included in exporter build stage; no new runtime asset"
+  },
+  "source1043_recovery": {
+    "original_workflow": 38513589355,
+    "attempt": 3,
+    "status": "successful full deploy and promotion; independently healthy complete base at epoch315",
+    "successful_exports_observed": 1275,
+    "export_errors": 0,
+    "native_activation_still_held_for_wire_fix": true
   }
 }

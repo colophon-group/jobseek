@@ -14,9 +14,11 @@ digest extractor requires Python's spaced reply. The wrapper contained the write
 lane. Independent readback confirmed no ownership receipts, active plans, owner
 keys, native claim tokens or live administrative containers. The existing selector
 helper cleared the exact staged selectors under the normal mutation lock. Original
-crawler workflow `38513589355`, attempt3, is restoring the complete base stack with
-the same source and digests. Do not claim serving until that attempt and independent
-health/progress readback succeed. Do not retry the broken native activation.
+crawler workflow `38513589355`, attempt3, restored the complete base stack with
+the same source and digests. Independent readback verifies all seven base actors
+running and armed, six healthy endpoints, epoch315, no native ownership and cleared
+selectors. At05:48 UTC the exporter completed1,275 documents with zero errors and no
+downstream backoff. Do not retry the broken native activation.
 
 [PR #10495](https://github.com/colophon-group/jobseek/pull/10495) combines Recruiterbox,
 Paycor and VeryEast details: five enabled boards,1,536 actual scheduled routes,
@@ -29,7 +31,7 @@ image/ARM qualification must cover the combined final change before deployment.
 
 Continue in this order:
 
-1. Verify full source1043 serving recovery; preserve the terminal activation failure.
+1. Source1043 serving recovery is complete; preserve the terminal activation failure.
 2. Qualify and deploy source1044 through the original whole crawler/renderer workflows.
    Exercise native activation and cold reversal through the unchanged wrappers.
 3. Rebuild admission from fresh canonical/cache/route evidence, preserving the prior
