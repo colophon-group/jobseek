@@ -27,7 +27,7 @@
       "Postgres/Redis provider route cutover and existing NW/Umantis repairs"
     ],
     "original_python_document_tests_passed": 9,
-    "deployment_contract_tests_passed": 73
+    "deployment_contract_tests_passed": 74
   },
   "coverage_candidates": {
     "document_fallback_boards": 10,
@@ -61,5 +61,10 @@
     "supported whole release and cold reversal; fresh source-bound cohort admission preserving entire floor",
     "whole-fleet freshness, conservation, resource and cost evidence",
     "remaining provider/config and operational consumers; production Python/browser retirement"
-  ]
+  ],
+  "packaging_repairs": [
+    "Install antiword in Alpine Go build stage as well as existing Debian runtime",
+    "Public ECR data quota blocked qualification; verify and use exact same six pinned OCI manifests at Docker Hub, preserving Python comparator authority"
+  ],
+  "registry_location_evidence": "go-immutable-registry-location-2026-10-14.json"
 }
