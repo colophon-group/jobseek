@@ -10,44 +10,33 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
 
-func TestNativePDFConfiguredTitleSurvivesExtractionOrder(t *testing.T) {
-	// Positioned glyphs can lose spaces in raw order; multi-column documents
-	// can split a title in reading order. Both must preserve the configured
-	// publisher capture instead of silently accepting a filename fallback.
-	for _, c := range []struct{ name, reading, raw string }{
-		{"positioned-glyphs", "Title: Research Scientist\nLocation: Nyon\n", "Title:ResearchScientist\nLocation:Nyon\n"},
-		{"columns", "Research\nTitle:\nScientist\nNyon\nLocation:\n", "Title: Research Scientist\nLocation: Nyon\n"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			dir := t.TempDir()
-			for name, value := range map[string]string{"reading": c.reading, "raw": c.raw} {
-				if err := os.WriteFile(filepath.Join(dir, name), []byte(value), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			script := "#!/bin/sh\nmode=reading\n[ \"$1\" = -raw ] && mode=raw\nexec /bin/cat \"${0%/*}/$mode\"\n"
-			if err := os.WriteFile(filepath.Join(dir, "pdftotext"), []byte(script), 0700); err != nil {
-				t.Fatal(err)
-			}
-			t.Setenv("PATH", dir)
-			o, err := api.PDFOptionsFromConfig(map[string]any{"title_source": "text", "title_pattern": `(?m)^Title: (.+)$`, "location_pattern": `(?m)^Location: (.+)$`})
-			if err != nil {
-				t.Fatal(err)
-			}
-			out, err := extractPDFBinary(context.Background(), []byte("%PDF test"), "https://example.com/posting.pdf", o)
-			if err != nil || out["title"] != "Research Scientist" || !reflect.DeepEqual(out["locations"], []any{"Nyon"}) {
-				t.Fatal(out, err)
-			}
-		})
+func TestNativePDFConfiguredTitleSurvivesNativeTextProjection(t *testing.T) {
+	dir := t.TempDir()
+	script := "#!/bin/sh\nexec /bin/cat \"${0%/*}/text\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "go-pdf-text"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "text"), []byte("Title: Research Scientist\nLocation: Nyon\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	o, err := api.PDFOptionsFromConfig(map[string]any{"title_source": "text", "title_pattern": `(?m)^Title: (.+)$`, "location_pattern": `(?m)^Location: (.+)$`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := extractPDFBinary(context.Background(), []byte("%PDF test"), "https://example.com/posting.pdf", o)
+	if err != nil || out["title"] != "Research Scientist" || !reflect.DeepEqual(out["locations"], []any{"Nyon"}) {
+		t.Fatal(out, err)
 	}
 }
 
 func TestNativePDFBinaryExtractionOCRAndBoundsMatchPython(t *testing.T) {
-	for _, name := range []string{"pdftotext", "pdfinfo", "pdftoppm", "tesseract"} {
+	for _, name := range []string{"go-pdf-text", "pdfinfo", "pdftoppm", "tesseract"} {
 		if _, err := exec.LookPath(name); err != nil {
 			t.Fatal("required native PDF dependency absent", name)
 		}
@@ -99,5 +88,35 @@ func TestNativePDFBinaryExtractionOCRAndBoundsMatchPython(t *testing.T) {
 	}
 	if _, err := extractPDFBinary(context.Background(), []byte("HTML error"), "https://example.com/file.pdf", o); err == nil {
 		t.Fatal("non-PDF body accepted")
+	}
+}
+
+func TestNativePDFSubprocessCancellationAndOutputBounds(t *testing.T) {
+	for _, mode := range []string{"cancel", "oversize"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			script := "#!/bin/sh\nwhile :; do :; done\n"
+			if mode == "oversize" {
+				script = "#!/bin/sh\nexec /usr/bin/head -c 16777217 /dev/zero\n"
+			}
+			if err := os.WriteFile(filepath.Join(dir, "go-pdf-text"), []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", dir)
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			if mode == "oversize" {
+				cancel()
+				ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			}
+			defer cancel()
+			start := time.Now()
+			out, err := nativePDFText(ctx, []byte("%PDF fixture"))
+			if err == nil || out != nil {
+				t.Fatal("failed extraction returned partial text")
+			}
+			if mode == "cancel" && (!errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 2*time.Second) {
+				t.Fatal("child not reaped after cancellation", err)
+			}
+		})
 	}
 }

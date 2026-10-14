@@ -49,6 +49,10 @@ COPY go/oracle-hcm/ go/oracle-hcm/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 COPY go/workday-monitor/ go/workday-monitor/
+COPY go/pdf-text/ go/pdf-text/
+WORKDIR /workspace/apps/crawler/go/pdf-text
+RUN go test -timeout 60s ./... && go vet ./...
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/go-pdf-text ./cmd/pdf-text
 WORKDIR /workspace/apps/crawler/go/ordinary-worker
 ARG CRAWLER_SOURCE_REVISION
 RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
@@ -271,6 +275,7 @@ COPY --from=lightpanda-b0-build /out/go-lightpanda-claimant-credentials /usr/loc
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
 COPY --from=go-b0-executor-build /out/go-lightpanda-b0-executor /usr/local/bin/go-lightpanda-b0-executor
 COPY --from=go-ordinary-worker-build /out/go-ordinary-worker /usr/local/bin/go-ordinary-worker
+COPY --from=go-ordinary-worker-build /out/go-pdf-text /usr/local/bin/go-pdf-text
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint

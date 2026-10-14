@@ -24,7 +24,7 @@ import (
 func listingProofCommands(t *testing.T, text string) {
 	t.Helper()
 	dir := t.TempDir()
-	for name, script := range map[string]string{"pdfinfo": "#!/bin/sh\nprintf 'Pages: 1\\n'\n", "pdftotext": "#!/bin/sh\nexec /bin/cat \"${0%/*}/text\"\n"} {
+	for name, script := range map[string]string{"pdfinfo": "#!/bin/sh\nprintf 'Pages: 1\\n'\n", "go-pdf-text": "#!/bin/sh\nexec /bin/cat \"${0%/*}/text\"\n"} {
 		if e := os.WriteFile(filepath.Join(dir, name), []byte(script), 0700); e != nil {
 			t.Fatal(e)
 		}

@@ -23,15 +23,23 @@ var errPDFBinary = errors.New("native PDF extraction failed")
 type pdfBoundedOutput struct {
 	bytes.Buffer
 	remaining int
+	failed    bool
 }
 
 func (b *pdfBoundedOutput) Write(p []byte) (int, error) {
-	if len(p) > b.remaining {
+	if b.failed || len(p) > b.remaining {
+		b.failed = true
 		return 0, errPDFBinary
 	}
 	n, err := b.Buffer.Write(p)
 	b.remaining -= n
 	return n, err
+}
+
+// ReadFrom must route through Write: embedding bytes.Buffer otherwise lets
+// io.Copy bypass the output limit through its promoted ReaderFrom method.
+func (b *pdfBoundedOutput) ReadFrom(r io.Reader) (int64, error) {
+	return io.Copy(struct{ io.Writer }{b}, r)
 }
 
 func pdfCommand(ctx context.Context, limit int, name string, args ...string) ([]byte, error) {
@@ -41,7 +49,7 @@ func pdfCommand(ctx context.Context, limit int, name string, args ...string) ([]
 	diagnostics := &pdfBoundedOutput{remaining: 8192}
 	command.Stdout = out
 	command.Stderr = diagnostics
-	if err := command.Run(); err != nil {
+	if err := command.Run(); err != nil || out.failed || diagnostics.failed {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -84,7 +92,7 @@ func pdfOCRPageSizes(info []byte, scale int) ([]pdfPageSize, error) {
 	return sizes, nil
 }
 
-// Poppler and Tesseract execute as bounded local processes under the crawler's
+// Native text extraction, Poppler and Tesseract execute as local processes under the crawler's
 // unprivileged identity. Publisher URLs, headers and config never select a
 // binary or command. Temporary documents disappear on every exit path.
 func extractPDFBinary(ctx context.Context, body []byte, source string, o api.PDFOptions) (map[string]any, error) {
@@ -102,7 +110,7 @@ func extractPDFBinary(ctx context.Context, body []byte, source string, o api.PDF
 	if os.WriteFile(file, body, 0o600) != nil {
 		return nil, errPDFBinary
 	}
-	text, err := pdfCommand(ctx, 16<<20, "pdftotext", "-enc", "UTF-8", "-nopgbrk", file, "-")
+	text, err := nativePDFText(ctx, body)
 	if err != nil {
 		return nil, err
 	}
@@ -153,28 +161,22 @@ func extractPDFBinary(ctx context.Context, body []byte, source string, o api.PDF
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	out, parseErr := api.ParsePDFText(string(text), source, o)
-	matched, matchErr := api.PDFTextHasConfiguredTitle(string(text), o)
-	if matchErr != nil {
-		return nil, matchErr
+	return api.ParsePDFText(string(text), source, o)
+}
+
+func nativePDFText(ctx context.Context, body []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, "go-pdf-text")
+	command.Stdin = bytes.NewReader(body)
+	command.Env = []string{"PATH=/usr/local/bin:/usr/bin:/bin", "GOMEMLIMIT=128MiB", "GOMAXPROCS=1"}
+	output := &pdfBoundedOutput{remaining: 16 << 20}
+	command.Stdout = output
+	if err := command.Run(); err != nil || output.failed {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, errPDFBinary
 	}
-	if !matched || parseErr != nil {
-		// Reading order restores spaces between positioned glyphs. Some column
-		// layouts preserve the configured title only in content-stream order;
-		// accept that alternative only with the same explicit title evidence.
-		raw, err := pdfCommand(ctx, 16<<20, "pdftotext", "-raw", "-enc", "UTF-8", "-nopgbrk", file, "-")
-		if err != nil {
-			return nil, err
-		}
-		rawMatched, err := api.PDFTextHasConfiguredTitle(string(raw), o)
-		if err != nil {
-			return nil, err
-		}
-		if rawMatched {
-			if rawOut, err := api.ParsePDFText(string(raw), source, o); err == nil {
-				return rawOut, nil
-			}
-		}
-	}
-	return out, parseErr
+	return output.Bytes(), nil
 }
