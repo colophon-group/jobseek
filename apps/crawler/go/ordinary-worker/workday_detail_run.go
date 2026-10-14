@@ -182,7 +182,7 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" || profile.Profile == "embedded.rendered-detail/v1" {
+	if profile.Profile == "api_sniffer.browser-detail/v1" || profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" || profile.Profile == "embedded.rendered-detail/v1" {
 		content, reservation, err = renderer.Fetch(ctx, profile)
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0

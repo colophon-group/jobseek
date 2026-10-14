@@ -2,7 +2,7 @@
   "schema": "jobseek.native-browser-api-detail-core-candidate/v1",
   "candidate_version": "0.13.1052",
   "base_head": "bade637b4534e18f431a620a2a6493f002951572",
-  "candidate_state": "Local preparation: selector, configuration parser and renderer/service/client detail path implemented; ownership and ordinary worker integration incomplete",
+  "candidate_state": "Local generic API browser detail path implemented through renderer, framed client, ordinary browser ownership, canonical writer and supported cold retirement; actual enabled-board captures and installed Linux/ARM qualification pending",
   "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
   "original_reference_selection_cases": 107,
   "original_reference_projection_cases": 216,
@@ -234,10 +234,38 @@
     {
       "path": "pilots/go-lightpanda/harness.go",
       "sha256": "1cd3c596ccf50feec2f499445095a385593102bbb2413e2243e9c8acfe643e43"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_browser_api_detail.go",
+      "sha256": "9b6999bc3481df2f6a1371b8b6f3895d77d42eadce4587b36a0dc3dec22ab92f"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_browser_api_detail_test.go",
+      "sha256": "11249170d48a78da170aab9db608b91dd6b272a6cf1d212c621c436d677f99f2"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/first_ownership.go",
+      "sha256": "7bd1c789620cc339f639f4063b178c3b037fd3af029a0d8e7f7903060d6aabd0"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-queue/profile_jsonld_detail.go",
+      "sha256": "db14850d38e3cd5b07fc572fae4b167e7f038f8e010b643b4912b16cf1ac3f09"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/rendered_api_detail.go",
+      "sha256": "4a83260f7091d9f789f79180739688aa368d6c43a782afd3d3c316284daa992b"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/rendered_api_detail_test.go",
+      "sha256": "6884b861b676306657aa7795eec6a6ef9cfbee8246ebe41be4b295bb22a333c6"
+    },
+    {
+      "path": "apps/crawler/go/ordinary-worker/environment.go",
+      "sha256": "4dec9b1ca5b827e416676f41494844fddd0dc0188a73503c2f95bb159fb06c47"
     }
   ],
   "required_next": [
-    "Complete ordinary-worker detail ownership/profile/runtime consumer using the implemented existing API replay detail operation; prove actual canonical writes, publisher refusal, lease settlement and cold reversal across remaining families together",
+    "Qualify actual enabled implicit API detail configurations together, including original all-field/canonical description outputs and richer browser controls that remain held; exercise installed Linux/ARM service-client and full worker path",
     "Add native detail ownership/profile/runtime consumer and canonical writer/policy/lease/reversal cases for actual configurations together",
     "Qualify actual original captures across the remaining board families; use explicit field mappings for ambiguous heuristic inputs",
     "After source1051 delivery, rebase and complete source-bound CI/Linux/ARM/renderer qualification and supported original full cutover",
@@ -250,6 +278,14 @@
     "physical_pinned_Lightpanda_1_0_0": "passed on darwin/arm64 isolated HTTPS fixture; success and publisher refusal; cleanup proved",
     "service_cleanup_policy_response_order_race": "passed 4.723s",
     "framed_service_contract_client_race": "passed",
+    "production_admission": false
+  },
+  "worker_checks": {
+    "private_pg_redis_success_reserved_failure_fingerprint_cases": "passed 3.156s race",
+    "private_pg_redis_ownership_cold_retirement": "passed 2.524s race",
+    "browser_admission_full_config_binding": "passed",
+    "runtime_profile_identity": "211 profiles; browser API detail included",
+    "vet": "passed queue and worker",
     "production_admission": false
   }
 }

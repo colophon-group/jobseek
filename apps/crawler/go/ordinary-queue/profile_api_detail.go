@@ -49,7 +49,7 @@ func independentDetailProfile(profile string) bool {
 	switch profile {
 	case jobStreetDetailProfile, notionDetailProfile, pdfDetailProfile, seekDetailProfile, linkedInDetailProfile, jazzHRDetailProfile, taleoEnterpriseDetailProfile, jobConvoDetailProfile, "paycor.public-detail/v1", "recruiterbox.public-detail/v1", "veryeast.public-detail/v1", "onlyfy.public-detail/v1", "tupu360.public-detail/v1", "phuketall.public-detail/v1":
 		return true
-	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, workableProxyDetailProfile, joinDetailProfile, oracleDetailProfile, oracleProxyDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, workableProxyDetailProfile, joinDetailProfile, oracleDetailProfile, oracleProxyDetailProfile, embeddedDetailProfile, httpAPIDetailProfile, browserAPIDetailProfile:
 		return true
 	}
 	return false

@@ -77,6 +77,9 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
+	if profile.Profile == "api_sniffer.browser-detail/v1" {
+		return r.fetchAPIDetailCapture(ctx, profile)
+	}
 	options, scraper := profile.DOMConfig, "dom"
 	if profile.Profile == "jsonld.rendered-detail/v1" {
 		options, scraper = profile.JSONLDConfig, "json-ld"
