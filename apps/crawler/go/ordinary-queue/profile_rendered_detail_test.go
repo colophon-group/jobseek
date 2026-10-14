@@ -59,7 +59,7 @@ func TestRenderedDetailBindsOriginalConfigurationAndBrowserWorker(t *testing.T) 
 }
 
 func TestRenderedDetailRetainsUnsupportedNavigationAndPipeline(t *testing.T) {
-	for name, value := range map[string]any{"proxy": true, "skip_ssl": true, "same_origin_redirects": true, "actions": []any{map[string]any{"type": "click"}}, "enrich": []any{"title"}, "request_headers": map[string]any{"X-User": "private"}, "timeout": 0, "wait": "unexpected", "wait_fallback": false, "routing_revision": "bad/path", "browser_backend": "chromium", "user_agent": "custom", "fetch_url_transform": map[string]any{}, "unknown": true} {
+	for name, value := range map[string]any{"proxy": true, "skip_ssl": true, "same_origin_redirects": true, "actions": []any{map[string]any{"type": "click"}}, "enrich": []any{"unexpected"}, "request_headers": map[string]any{"X-User": "private"}, "timeout": 0, "wait": "unexpected", "wait_fallback": false, "routing_revision": "bad/path", "browser_backend": "chromium", "user_agent": "custom", "fetch_url_transform": map[string]any{}, "unknown": true} {
 		t.Run(name, func(t *testing.T) {
 			c := renderedDetailConfig("dom")
 			var metadata map[string]any
@@ -80,5 +80,47 @@ func TestRenderedDetailRetainsUnsupportedNavigationAndPipeline(t *testing.T) {
 	c["metadata"] = `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}],"render":false,"render":true}}`
 	if _, err := InspectRenderedDetail(jsonldBoardID, c, "https://jobs.example.net/42", Browser); !errors.Is(err, ErrUnsupportedProfile) {
 		t.Fatal("duplicate browser option adopted")
+	}
+}
+
+func TestRenderedDetailSelectsFieldsAndBindsCanonicalConfiguration(t *testing.T) {
+	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
+		t.Run(scraper, func(t *testing.T) {
+			c := renderedDetailConfig(scraper)
+			var md map[string]any
+			json.Unmarshal([]byte(c["metadata"]), &md)
+			options := md["scraper_config"].(map[string]any)
+			if scraper == "nextdata" {
+				delete(options, "steps")
+				options["path"] = "job"
+				options["fields"] = map[string]any{"title": "title", "description": "description"}
+			}
+			options["enrich"] = []any{"description"}
+			body, _ := json.Marshal(md)
+			c["metadata"] = string(body)
+			p, e := InspectRenderedDetail(jsonldBoardID, c, "https://jobs.example.net/42", Browser)
+			if e != nil || len(p.EnrichmentFields) != 1 || p.EnrichmentFields[0] != "description" {
+				t.Fatal("rendered field selection refused", e, p.EnrichmentFields)
+			}
+			owner, e := inspectDetailOwnership(jsonldBoardID, c)
+			if e != nil || owner.EffectiveBoardSHA256 != p.EffectiveBoardSHA256 || owner.Domain != "*" {
+				t.Fatal("selected ownership differs", e)
+			}
+			options["enrich"] = []any{"employment_type"}
+			body, _ = json.Marshal(md)
+			c["metadata"] = string(body)
+			changed, e := InspectRenderedDetail(jsonldBoardID, c, p.SourceURL, Browser)
+			if e != nil || changed.EffectiveBoardSHA256 == p.EffectiveBoardSHA256 || changed.EnrichmentFields[0] != "employment_type" {
+				t.Fatal("field selection lost source binding", e)
+			}
+			for _, bad := range []any{[]any{"description", "description"}, []any{"unknown"}, true, "description", map[string]any{"description": true}} {
+				options["enrich"] = bad
+				body, _ = json.Marshal(md)
+				c["metadata"] = string(body)
+				if _, e := InspectRenderedDetail(jsonldBoardID, c, p.SourceURL, Browser); e == nil {
+					t.Fatal("ambiguous field selection admitted", bad)
+				}
+			}
+		})
 	}
 }

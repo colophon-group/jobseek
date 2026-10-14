@@ -191,7 +191,7 @@ func testDetailFixtureRetirement(t *testing.T, fixture func(*testing.T) firstOwn
 					t.Fatal(err)
 				}
 				if mode == "reaped-before-ack" {
-					if err := p.f.client.redis.ZAdd(ctx, "inflight:simple", redis.Z{Score: 1, Member: inflight(&claim.task)}).Err(); err != nil {
+					if err := p.f.client.redis.ZAdd(ctx, "inflight:"+string(claim.task.Worker), redis.Z{Score: 1, Member: inflight(&claim.task)}).Err(); err != nil {
 						t.Fatal(err)
 					}
 					if _, err := guardedReap(t, p.f); err != nil {
@@ -224,10 +224,10 @@ func testDetailFixtureRetirement(t *testing.T, fixture func(*testing.T) firstOwn
 			if before != coldCanonicalSnapshot(t, p.f) {
 				t.Fatal("detail retirement rewrote canonical content/receipts")
 			}
-			if p.f.client.redis.ZCard(ctx, "inflight:simple").Val() != 0 || p.f.client.redis.HLen(ctx, "inflight_tokens:simple").Val() != 0 {
+			if p.f.client.redis.ZCard(ctx, "inflight:"+string(claim.task.Worker)).Val() != 0 || p.f.client.redis.HLen(ctx, "inflight_tokens:"+string(claim.task.Worker)).Val() != 0 {
 				t.Fatal("retirement retained detail lease/token")
 			}
-			score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+claim.task.Domain, claim.task.ID).Result()
+			score, err := p.f.client.redis.ZScore(ctx, "scrapes_"+string(claim.task.Worker)+":"+claim.task.Domain, claim.task.ID).Result()
 			if due == nil {
 				if err != redis.Nil {
 					t.Fatal("inactive detail rescheduled")

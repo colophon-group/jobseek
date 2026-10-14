@@ -1,0 +1,26 @@
+{
+  "schema": "jobseek.rendered-detail-enrichment-candidate/v1",
+  "observed_at_utc": "2026-10-14T04:48:51.015638+00:00",
+  "version": "0.13.1045",
+  "parent_candidate": "PR10495 at4a4e645cefd64d8296cad1ed14a9976f1a63c874",
+  "behavior": "Rendered DOM, JSON-LD and embedded/Next.js details reuse existing typed canonical field selection; navigation permissions remain unchanged",
+  "local_evidence": {
+    "held_document_real_pg_redis_selected_field_cases": 10,
+    "selected_writer_race_seconds": 4.437,
+    "canonical_hash_field_changes_and_invalid_selection": "passed",
+    "three_scraper_families_cold_retirement": "passed all six modes, including reaping, SAVE failure and Redis reload",
+    "cold_retirement_and_affected_direct_regressions_race_seconds": 51.185,
+    "retained_source1042_eligible_boards": 7,
+    "complete_retained_routes_eligible": 9380
+  },
+  "physical_live_samples": "not yet qualified",
+  "exact_head_remote_checks": "not yet qualified",
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "next_actions": [
+    "Fix the existing PR10495 installed-image profile expectation to include its three new profiles; preserve this child branch",
+    "Deliver10494 native administration first, then10495 and this group through exact required checks and supported full-lane deployment",
+    "Compare original actual rendered fields for all seven candidate boards, then fresh full-floor census/admission; retained SDK eligibility is not ownership authority",
+    "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
+  ]
+}

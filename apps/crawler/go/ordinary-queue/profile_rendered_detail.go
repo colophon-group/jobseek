@@ -59,7 +59,18 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 		}
 		options[key] = value
 	}
-	if err := validateRenderedNavigation(options); err != nil {
+	// Field selection belongs to canonical settlement, as it does for direct
+	// details. It does not change navigation or confer browser permissions.
+	if _, err := monitorEnrichmentFields(config, detailEnrichmentFields); err != nil {
+		return fail()
+	}
+	navigation := make(map[string]any, len(options))
+	for key, value := range options {
+		if key != "enrich" {
+			navigation[key] = value
+		}
+	}
+	if err := validateRenderedNavigation(navigation); err != nil {
 		return fail()
 	}
 	// Reuse the configured static parser admission after removing only the
