@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
-	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
+	for _, scraper := range []string{"dom", "json-ld", "nextdata", "api_sniffer"} {
 		fields := []string{"title", "description", "locations", "employment_type"}
 		if scraper == "nextdata" {
 			fields = []string{"description", "employment_type"}
@@ -26,6 +26,10 @@ func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 				}
 				options := config["scraper_config"].(map[string]any)
 				options["render"] = true
+				if scraper == "api_sniffer" {
+					delete(options, "render")
+					options["fields"] = map[string]any{"title": "title", "description": "description", "locations": "locations", "employment_type": "employment"}
+				}
 				if scraper == "dom" {
 					options["defaults"] = map[string]any{"employment_type": "FULL_TIME", "language": "en"}
 				}
@@ -51,6 +55,9 @@ func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 					}
 					if scraper == "nextdata" {
 						html = nativeEmbeddedHTML
+					}
+					if scraper == "api_sniffer" {
+						return map[string]any{"title": "Senior Software Engineer", "description": "<p>Salary CHF 100000 per year.</p>", "locations": []any{"Zurich"}, "employment_type": "FULL_TIME"}, nil, nil
 					}
 					return parseHeldDetail(ctx, p, heldRenderedResult(html, p.SourceURL, 200))
 				})
