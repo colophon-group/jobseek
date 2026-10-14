@@ -70,7 +70,12 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 			navigation[key] = value
 		}
 	}
-	if err := validateRenderedNavigation(navigation); err != nil {
+	// The original DOM scraper checks gone redirects before action execution.
+	// Until the action protocol carries that guard, retain these configurations.
+	if pipeline, err := actions.Parse(options["actions"]); err != nil || len(pipeline) > 0 && options["gone_url_pattern"] != nil && options["gone_url_pattern"] != "" {
+		return fail()
+	}
+	if err := validateRenderedNavigation(navigation, true); err != nil {
 		return fail()
 	}
 	// Reuse the configured static parser admission after removing only the

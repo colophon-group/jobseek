@@ -58,6 +58,45 @@ func TestRenderedDetailBindsOriginalConfigurationAndBrowserWorker(t *testing.T) 
 	}
 }
 
+func TestRenderedDetailActionPipelinesBindAllParserFamilies(t *testing.T) {
+	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
+		t.Run(scraper, func(t *testing.T) {
+			c := renderedDetailConfig(scraper)
+			var md map[string]any
+			json.Unmarshal([]byte(c["metadata"]), &md)
+			options := md["scraper_config"].(map[string]any)
+			if scraper == "nextdata" {
+				delete(options, "steps")
+				options["path"] = "job"
+				options["fields"] = map[string]any{"description": "body"}
+			}
+			options["actions"] = []any{map[string]any{"action": "wait", "ms": 0}, map[string]any{"action": "click", "selector": "#description", "required": true}}
+			options["enrich"] = []string{"description"}
+			raw, _ := json.Marshal(md)
+			c["metadata"] = string(raw)
+			p, err := InspectRenderedDetail(jsonldBoardID, c, "https://jobs.example.net/42", Browser)
+			if err != nil || len(p.EnrichmentFields) != 1 || p.EnrichmentFields[0] != "description" {
+				t.Fatal("valid action pipeline lost selection", p, err)
+			}
+			options["actions"].([]any)[1].(map[string]any)["selector"] = "#changed"
+			raw, _ = json.Marshal(md)
+			c["metadata"] = string(raw)
+			changed, err := InspectRenderedDetail(jsonldBoardID, c, p.SourceURL, Browser)
+			if err != nil || changed.EffectiveBoardSHA256 == p.EffectiveBoardSHA256 {
+				t.Fatal("action change retained binding", err)
+			}
+			for _, invalid := range []any{[]any{map[string]any{"action": "unknown"}}, []any{map[string]any{"action": "click"}}, "click", []any{map[string]any{"action": "wait", "ms": -1}}} {
+				options["actions"] = invalid
+				raw, _ = json.Marshal(md)
+				c["metadata"] = string(raw)
+				if _, err := InspectRenderedDetail(jsonldBoardID, c, p.SourceURL, Browser); err == nil {
+					t.Fatal("invalid action pipeline admitted")
+				}
+			}
+		})
+	}
+}
+
 func TestRenderedDetailRetainsUnsupportedNavigationAndPipeline(t *testing.T) {
 	for name, value := range map[string]any{"proxy": true, "skip_ssl": true, "same_origin_redirects": true, "actions": []any{map[string]any{"type": "click"}}, "enrich": []any{"unexpected"}, "request_headers": map[string]any{"X-User": "private"}, "timeout": 0, "wait": "unexpected", "wait_fallback": false, "routing_revision": "bad/path", "browser_backend": "chromium", "user_agent": "custom", "fetch_url_transform": map[string]any{}, "unknown": true} {
 		t.Run(name, func(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 // Gone redirects precede challenge detection. Invalid regex syntax is ignored,
 // as in the Python scraper; a bounded regex execution failure remains an error.
 func ClassifyRendered(html string, config Object, finalURL string) (Object, error) {
-	return classifyDocument(html, config, finalURL, 1<<20)
+	return classifyDocument(html, config, finalURL, 2_000_000)
 }
 
 // Static documents retain the existing public fetcher's 16 MiB body bound.

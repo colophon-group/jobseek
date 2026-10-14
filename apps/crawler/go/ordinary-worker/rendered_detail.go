@@ -15,11 +15,13 @@ import (
 	"time"
 
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
+	"google.golang.org/protobuf/proto"
 )
 
 type renderedDetailClient interface {
@@ -86,6 +88,10 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	} else if profile.Profile != "dom.rendered-detail/v1" {
 		return nil, nil, queue.ErrUnsupportedProfile
 	}
+	pipeline, err := actions.Parse(options["actions"])
+	if err != nil {
+		return nil, nil, queue.ErrConfiguration
+	}
 	parser, err := json.Marshal(options)
 	if err != nil {
 		return nil, nil, queue.ErrConfiguration
@@ -140,7 +146,19 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if err != nil {
 			return nil, nil, err
 		}
-		body, err := held.Execute(ctx, input)
+		var body []byte
+		if len(pipeline) > 0 {
+			payload, marshalErr := proto.Marshal(input)
+			if marshalErr != nil {
+				held.Close()
+				return nil, nil, marshalErr
+			}
+			requestDigest := sha256.Sum256([]byte(requestID))
+			response, actionErr := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveBoardSHA256, Input: payload, Actions: pipeline})
+			body, err = response.Result, actionErr
+		} else {
+			body, err = held.Execute(ctx, input)
+		}
 		held.Close()
 		if err != nil {
 			return nil, nil, err
