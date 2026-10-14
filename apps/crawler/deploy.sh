@@ -1245,6 +1245,14 @@ repair_umantis_identity_cutover() {
     "${command_args[@]}"
 }
 
+repair_worker_route_cutover() {
+  docker run --rm -e LOCAL_DATABASE_URL -e REDIS_URL \
+    -e CRAWLER_DB_ROLE="$1" --network host \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label "com.docker.compose.service=$1" \
+    "$CRAWLER_IMAGE_REF" go-typesense-exporter --repair-worker-route-cutover
+}
+
 rollback_sync_previous_config() {
   local crawler_ref restored_web_database_url status
   local -a data_args=() restored_web_database_urls=() sync_env_args=()
@@ -1297,7 +1305,8 @@ rollback_sync_previous_config() {
     -e CRAWLER_DB_POOL_MAX=4 \
     worker-1 \
     uv run --no-sync crawler sync && \
-    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1
+    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1 && \
+    repair_worker_route_cutover rollback-worker-route-cutover
   then
     status=0
   else
@@ -2144,6 +2153,7 @@ docker run --rm \
 # previous-config rollback and parks only the incompatible old Umantis monitor
 # schedules before that runtime may restart.
 repair_umantis_identity_cutover deploy-umantis-identity-cutover
+repair_worker_route_cutover deploy-worker-route-cutover
 
 # ── Start the crawler stack on the freshly seeded Redis state ────────
 # Explicit service targets preserve the stopped legacy Murmur containers for
