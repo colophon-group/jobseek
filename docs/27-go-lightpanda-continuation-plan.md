@@ -1,121 +1,102 @@
 # Go and Lightpanda migration delivery plan
 
-### Current checkpoint — source1044 native cohort active; next three providers verified
+### Current checkpoint — 0.13.1047 active at epoch 322
 
-[PR #10495](https://github.com/colophon-group/jobseek/pull/10495) merged as
-`85ce92d457df37d56e0a70a3ae8bcf935c2c96b4` (0.13.1044). Required CI, deployment
-gate, both Linux/physical-engine architecture checks, installed-image parity and
-all16 ARM arms passed before the SHA-bound merge. Eight complete output pairs match;
-all queue/cleanup and unexpected-network checks pass. The actual merge tree equals
-the qualified head/preview tree. Original crawler workflow `38523382522` and
-renderer workflow `38523636164` completed successfully at attempt1. Independent
-verification proves matching source/digests, compiled native tools, selected CSV
-contract and all base actors healthy. The exporter completed2,065 documents with
-zero errors in the first bounded progress observation.
+[PR10498](https://github.com/colophon-group/jobseek/pull/10498) and
+[PR10499](https://github.com/colophon-group/jobseek/pull/10499) are merged. The selected
+production source is `ac21b64d9e117b87694e38f0450c37a59eeefeb9` (0.13.1047).
+Both reviewed heads passed Required CI, deploy gate, installed image contracts,
+two-architecture Lightpanda qualification and sixteen ARM whole-lane arms with eight
+complete output/effect pairs equal. The final merge tree equals the qualified head
+and preview tree. Original whole crawler workflow 38546029507 and renderer workflow
+38546142037 completed at attempt 1; independent verification binds the exact source,
+immutable images, compiled tools and selected CSV contract. Lightpanda 1.0.0 remains
+the latest official stable release, reverified October 14.
 
-The unchanged supported wrapper successfully exercised native activation planning
-and apply at epoch316, including pending receipt, SAVE and restart/readiness barriers.
-The active receipt and health were independently verified. Native rollback planning
-and apply also completed through that wrapper, after two pre-mutation lock refusals;
-no lock was bypassed. The existing selector helper cleared the exact staged selectors.
-Independent cold317 readback proves all seven base actors restored/armed, six healthy
-endpoints, no ownership receipts/plans/projections/native claim tokens, no live one-offs
-and stopped native actors. All four formerly Python plan/apply consumers have now
-completed their supported production exercise. Fresh supported admission and activation
-restored B0 and ordinary ownership at epoch318: **7,815 monitor /7,690 detail boards**,
-preserving every prior member and adding five qualified detail boards. All ten actors
-are independently verified running and armed, with matching SQL/Redis receipts and
-immutable images. The 08:19 UTC readback observed162 monitor and513 detail completed
-fences; these are processed terminal states, not a blanket claim of successful jobs.
+The source 1046 release successfully exercised supported B0 activation at epoch 320
+and cold reversal at 321 through unchanged wrappers; selectors cleared and complete
+base serving restored. Incoming source 1047 B0 and ordinary activation completed at
+**epoch 322**. Fresh full evidence includes all 7,885 enabled boards and 1,705,638
+scheduled routes. The native cohort now owns **7,815 monitors /7,709 detail boards**,
+preserving every previous 7,815 /7,690 member and adding 19 verified details. All ten
+actors are running and armed, and all eight health checks pass. Initial natural
+processed terminal fences are 9 monitors and 39 details; they are not a blanket
+successful-job claim. Nine legacy board leases expired naturally before activation;
+no leases, locks or ownership records were bypassed.
 
-The next grouped native HTTP batch implements **Onlyfy, PhuketAll and Tupu360** through
-the existing worker and canonical writer (0.13.1046 candidate). All55 original HTTP
-traces match request order, retries, failures and complete parser fields. Ten captured
-actual live samples match all original canonical fields through the SDK and worker;
-all196 retained URLs bind. Real PostgreSQL/Redis settlement, policy/foreign-source
-rejection and all six cold-retirement scenarios per provider pass. Native and Python
-ownership consumers and the installed210-profile identity are updated together.
-The zero-route Flex JetCool board declares Onlyfy with a Workday board URL and remains
-excluded from Onlyfy ownership pending a separately evidenced configuration correction.
-No source1046 production admission or full migration completion is claimed.
+The delivered batches include Onlyfy, PhuketAll and Tupu360 native HTTP details;
+selective rendered DOM/JSON-LD/embedded fields; original ordered actions through the
+existing typed Lightpanda protocol; and alignment of DOM classification with the
+renderer's existing 2 MB contract. Actual original HTTP traces, complete captured live
+canonical fields, independent original Playwright outputs, pinned-mTLS handling,
+real PostgreSQL/Redis settlement and all six cold-retirement modes passed. No new
+service was introduced.
 
-[PR10498](https://github.com/colophon-group/jobseek/pull/10498) combines source1045
-rendered selection/Bajaj HTTP and the source1046 three-provider batch for one whole
-release. Its exact combined head is3b5a6756b633ad08b143b8e7cbff1bf4fd1e0727, based on
-main85ce92d457df37d56e0a70a3ae8bcf935c2c96b4. Two-architecture Lightpanda qualification,
-installed-image contracts and deploy gate passed; Required CI and whole-lane ARM
-measurement remain running. No outgoing retirement or source1046 deployment occurred.
-
-The following0.13.1047 candidate enables actions across existing rendered DOM,
-JSON-LD and embedded details using the existing typed action protocol. It compiles
-29 more enabled boards /4,902 retained routes. Eighteen physical Lightpanda1.0.0
-observations prove cleanup; fourteen held documents match every original canonical
-parser field, ten expose usable descriptions, and nine independently captured actual
-original Playwright outputs match all canonical fields. ITC has a location discrepancy
-and remains held, as do empty/invalid/zero-sample cases. Real pinned mTLS tests cover
-all three families, action order, binding, publisher policy and cancellation; real
-canonical writes and all six cold-retirement modes pass. Four observed documents
-exposed a classifier1MiB bound below the renderer's existing2MB limit; the classifier
-now accepts the full existing contract with boundary and tail-challenge regressions.
-See [the action candidate evidence](evidence/go-rendered-detail-actions-candidate-2026-10-14.json).
-
-PR10496 Required CI recovered on attempt3 after the registry data-limit failures.
-Its changes are included in PR10498; the redundant component ARM run was cancelled
-after the combined exact-head run started. Source1044 remains active while combined
-qualification runs.
-
-[PR #10494](https://github.com/colophon-group/jobseek/pull/10494) merged as
-`7e746615839975cd9848feea0e30dd30b10351f5` (0.13.1043). The original whole crawler
-and renderer workflows deployed matching immutable images. Supported retirement
-removed ordinary ownership and B0 ownership before that deploy; previous write
-fences remain canonical evidence. Base serving and exporter progress were verified.
-
-The first native activation exercise reserved epoch315 but failed **before apply
-or pending receipt publication**: Go emitted compact JSON while the original shell
-digest extractor requires Python's spaced reply. The wrapper contained the writer
-lane. Independent readback confirmed no ownership receipts, active plans, owner
-keys, native claim tokens or live administrative containers. The existing selector
-helper cleared the exact staged selectors under the normal mutation lock. Original
-crawler workflow `38513589355`, attempt3, restored the complete base stack with
-the same source and digests. Independent readback verifies all seven base actors
-running and armed, six healthy endpoints, epoch315, no native ownership and cleared
-selectors. At05:48 UTC the exporter completed1,275 documents with zero errors and no
-downstream backoff. Do not retry the broken native activation.
-
-[PR #10495](https://github.com/colophon-group/jobseek/pull/10495) combines Recruiterbox,
-Paycor and VeryEast details: five enabled boards,1,536 actual scheduled routes,
-15 complete live samples matching original fields,40 original parser cases and
-33 original HTTP traces. Its follow-up also fixes the observed operator reply ABI,
-using ASCII canonical encoding with Python separators outside strings. Regression
-coverage runs both unchanged shell extractors on compiled CLI rollback planning and
-recovery output, and checks escaped strings/URLs. Fresh exact-head CI and installed
-image/ARM qualification must cover the combined final change before deployment.
+**Bajaj remains explicitly held.** Its verified anonymous HTTP API is published,
+but 8,261 cached routes still reference its former browser lane. Existing enqueue
+writes the new lane without removing old-lane membership; capacity rebuild also
+retains that representation. Do not rewrite Redis directly or weaken admission.
+The current cohort admits the other 19 additions. ITC's observed location difference,
+empty/invalid documents, RSM and other unsampled candidates also confer no authority.
 
 Continue in this order:
 
-1. Source1043 serving recovery and source1044 activation/reversal are complete.
-2. Preserve the verified source1044 epoch318 active cohort while qualifying following batches.
-3. Each following release must preserve the **7,815 monitor /7,690 detail board** floor
-   using fresh canonical/cache/route evidence and qualified additions only.
-4. Rebase and qualify [PR #10496](https://github.com/colophon-group/jobseek/pull/10496):
-   selective enrichment across DOM, JSON-LD and embedded Next-data details; currently
-   seven held boards /9,380 routes. Eleven physical Lightpanda1.0.0 documents match
-   every original same-document parser field; nine contain usable selected fields.
-   Bajaj's two Lightpanda pages lack job content while the original browser succeeds.
-   Its existing public HTTP detail profile instead accepts all8,379 retained URLs;
-   two actual Go TLS responses match original API extraction and preserve every
-   original description character apart from whitespace. Publish the description-only
-   HTTP configuration with upstream HTML formatting after exact qualification.
-   Five rendered boards account for1,001 other routes; RSM has no scheduled sample.
-5. Continue grouped Onlyfy, PhuketAll, Tupu360 and remaining special/detail variants;
-   reconcile cache disagreements through supported publication, then prove freshness,
-   queue preservation and comparable whole-lane CPU/RAM/density/attributable cost.
-6. Complete the supported cutover/reversal and rollback window before removing
-   production Python, Playwright, Chromium and unused runtime assets. Retain useful
-   isolated offline Python tools and every enabled board.
+1. Implement a typed, bounded source/board/SQL-schedule-bound routing repair in the
+   original quiesced publication/deployment workflow. Preserve first-time ordering,
+   original due dates, ordered fallback handoffs and inflight safety. Qualify its
+   real queue/database effects and then admit Bajaj from fresh full-floor evidence.
+2. Batch remaining browser API capture, default embedded and document detail
+   variants. The current browser API inventory replay requires an explicit API;
+   single-job capture needs bounded response selection and original field scoring.
+3. Qualify remaining enabled monitor/detail configurations and reconcile cache
+   disagreements through supported publication, preserving every prior member.
+4. Observe natural new 19 outcomes and prove current whole-fleet freshness and queue
+   conservation. The source 1044 single snapshot found 1,497,688 native scheduled active
+   details overdue 24 h; this old backlog is unresolved and no improvement is claimed.
+   Measure comparable whole-fleet CPU/RAM/density/attributable cost; synthetic ARM
+   density is not that evidence.
+5. Complete the supported rollback window and retire production Python, Playwright,
+   Chromium and unused runtime assets. Retain useful isolated offline Python tools.
 
-Lightpanda1.0.0 remains the latest official stable release as rechecked2026-10-14.
+See [the portable production checkpoint](evidence/go-lightpanda-source1047-checkpoint-2026-10-14.json).
 The full migration goal remains active and incomplete.
+
+### Working grouped candidate — 0.13.1048
+
+The next batch implements PDF, DOCX and legacy Word fallbacks for DOM scrapers,
+plus a bounded Bajaj worker-lane repair. Whole deployment runs the repair after
+forward CSV sync and after restored-config rollback, using the current immutable
+image in both directions. It refuses active ownership, inflight attempts, foreign
+identities and ordered fallback steps. Existing queue scores, first-time priority,
+unrelated cache fields, rate limits and SQL schedules are retained.
+
+Thirty original HTTP/binary cases, real canonical writer/publisher tests for all
+three formats, eighteen cold retirement cases and real Postgres/Redis forward/reverse
+repair tests pass. Ten configured boards with 74 retained routes now compile.
+Eleven actual original HTTP samples across the five boards with retained routes
+returned complete title and description; native live checks found six PDF description mismatches. Avera and both EPFL
+boards remain held. All 54 retained IUCN/UNM routes were compared: 46 match fully, eight have
+PDF description differences and one also differs in title. Both boards remain
+held; no document board has been admitted. The native format implementations and
+Bajaj routing repair proceed through release qualification. Production owns
+7,815 / 7,709.
+
+See [the candidate evidence](evidence/go-dom-document-worker-route-candidate-2026-10-14.json).
+Continue by qualifying the native live samples and every retained source, then
+shipping this whole batch through the existing source-bound release workflow.
+
+### Next grouped HTTP candidate — 0.13.1049
+
+Both Bass Pro ApplicantPro boards can use their anonymous, tenant-scoped detail
+APIs through the existing Go HTTP profile. Four original Playwright samples match
+all canonical fields, all seven retained routes match through sealed Go HTTP,
+and real writer/publisher tests plus all six cold-retirement modes pass per board.
+The original six field mappings are retained. JSON-LD was rejected because it
+changed other fields. Forward and restored-config rollback repairs reuse the
+bounded worker-route command for both explicit board targets alongside Bajaj.
+
+This is an unpublished local candidate; it confers no production ownership.
+See [the candidate evidence](evidence/go-applicantpro-anonymous-http-candidate-2026-10-14.json).
 
 ### Historical deployed checkpoint — 0.13.1042, 2026-10-14
 

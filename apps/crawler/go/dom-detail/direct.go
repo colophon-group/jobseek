@@ -1,6 +1,7 @@
 package dom
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"mime"
@@ -16,7 +17,7 @@ import (
 // their existing owner until their execution contracts are implemented.
 func ValidateDirectConfig(config Object) error {
 	allowed := map[string]bool{}
-	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback"} {
+	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback", "document_fallback"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -55,6 +56,20 @@ func ValidateDirectConfig(config Object) error {
 		label, ok := value.(string)
 		if !ok || !directEncoding(label) {
 			return errors.New("unsupported direct DOM encoding")
+		}
+	}
+	if value := config["document_fallback"]; value != nil && value != false {
+		formats, ok := value.(map[string]any)
+		if !ok {
+			return errors.New("invalid document fallback")
+		}
+		for kind, raw := range formats {
+			if kind != "pdf" && kind != "docx" && kind != "doc" {
+				return errors.New("invalid document format")
+			}
+			if _, ok := raw.(map[string]any); !ok {
+				return errors.New("invalid document format options")
+			}
 		}
 	}
 	_, err := directDocumentOptions(config, "")
@@ -126,6 +141,12 @@ func directDocumentOptions(config Object, endpoint string) (jsonld.DocumentOptio
 // FetchDetailWithClient reuses the public document fetcher's bounded redirects,
 // cookies, status retries and publisher checks, followed by the existing parser.
 func FetchDetailWithClient(ctx context.Context, endpoint string, config Object, client *http.Client) (jsonld.FetchResult, error) {
+	return FetchDetailWithDocumentParser(ctx, endpoint, config, client, nil)
+}
+
+// The installed worker supplies its bounded native binary decoders. Publisher
+// configuration cannot supply executable code or select a command.
+func FetchDetailWithDocumentParser(ctx context.Context, endpoint string, config Object, client *http.Client, binary func(context.Context, []byte, string, map[string]any) (map[string]any, error)) (jsonld.FetchResult, error) {
 	result := jsonld.FetchResult{}
 	if err := ValidateDirectConfig(config); err != nil {
 		return result, err
@@ -161,6 +182,16 @@ func FetchDetailWithClient(ctx context.Context, endpoint string, config Object, 
 	if doc.Status < 200 || doc.Status >= 300 {
 		result.ErrorKind = "status"
 		return result, errors.New("DOM document HTTP failure")
+	}
+	if fallback, ok := config["document_fallback"].(map[string]any); ok && (bytes.HasPrefix(bytes.TrimSpace(doc.Body), []byte("%PDF-")) || bytes.HasPrefix(doc.Body, []byte("PK\x03\x04")) || bytes.HasPrefix(doc.Body, []byte{0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1})) {
+		if ctx.Err() != nil {
+			return result, ctx.Err()
+		}
+		if binary == nil {
+			return result, errors.New("native binary document decoder is required")
+		}
+		result.Content, err = binary(ctx, doc.Body, endpoint, fallback)
+		return result, err
 	}
 	policy, err = ClassifyDocument(source, config, doc.FinalURL)
 	if err != nil {
