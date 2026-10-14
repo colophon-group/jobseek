@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/url"
-	"strings"
 	"time"
 
 	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
@@ -15,19 +13,6 @@ import (
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
-
-func detailCaptureMatches(source, method string) bool {
-	u, err := url.Parse(source)
-	if err != nil || u.User != nil || u.Hostname() == "" || u.Scheme != "https" && u.Scheme != "http" || method != "GET" && method != "POST" {
-		return false
-	}
-	for _, pattern := range []string{"google-analytics", "analytics", "dataplane.rum", "doubleclick", "facebook", "hotjar", "sentry", "segment", "amplitude", "mixpanel", "newrelic", "cloudwatch", "boomerang", "demdex.net", "omtrdc.net", "googlesyndication", "googletagmanager", "gtag", "secureprivacy"} {
-		if strings.Contains(strings.ToLower(source), pattern) {
-			return false
-		}
-	}
-	return true
-}
 
 func (execution *runtimeV1ServiceExecution) executeAPIDetail(ctx context.Context, request replay.Request) (replay.Response, error) {
 	response := replay.Response{Protocol: replay.Protocol, RequestID: request.RequestID, ConfigFingerprint: request.ConfigFingerprint, Outcome: "failed"}

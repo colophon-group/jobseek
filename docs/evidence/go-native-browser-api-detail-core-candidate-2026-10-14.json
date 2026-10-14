@@ -209,7 +209,7 @@
     },
     {
       "path": "pilots/go-lightpanda/api_detail_service.go",
-      "sha256": "c2e423c96e3410d566ec095100c0dd8396629ef9209352cdad3a682aadfdac55"
+      "sha256": "d40fd01bea8ff0aec3f5d051a18e426840378532ab497bab8c4c006963521285"
     },
     {
       "path": "pilots/go-lightpanda/api_detail_service_test.go",
@@ -282,6 +282,10 @@
     {
       "path": "apps/crawler/go/ordinary-worker/rendered_detail_enrichment_test.go",
       "sha256": "7753d84f49d02b87b8c7bdc624caab09a49afcc53e7aae3ad68f86f9a937a718"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_capture.go",
+      "sha256": "994bdc4ad0faf5f782439fb34b3903fa9fc366d69b390862dc6420a75dd44ba1"
     }
   ],
   "required_next": [
@@ -308,7 +312,8 @@
     "runtime_profile_identity": "211 profiles; browser API detail included",
     "vet": "passed queue and worker",
     "production_admission": false,
-    "real_browser_api_selected_enrichment_masks": "four actual privatePGRedis cases passed race5.370s; preserves unselected originalcanonical fields, exactbrowserrecurringdue and nolease"
+    "real_browser_api_selected_enrichment_masks": "four actual privatePGRedis cases passed race5.370s; preserves unselected originalcanonical fields, exactbrowserrecurringdue and nolease",
+    "actual_nine_board_canonical_writer": "passed privatePGRedis race10.724s; actual sourceconfigs and captured fields, originalbrowserqueue, exactdue andleaseclear"
   },
   "actual_public_comparison": {
     "platform": "darwin/arm64 pinned Lightpanda1.0.0 vs original source1050 Python/Chromium",
@@ -338,5 +343,6 @@
     "all_original_raw_fields_equal": true,
     "race_seconds": 4.363,
     "scope": "actual original captured JSON response order/selection/projection including emptyresult; not productionadmission"
-  }
+  },
+  "qualification_repair": "Shared detail matcher is compiled in densitybench and runtime builds; exacthead CI rerun required"
 }
