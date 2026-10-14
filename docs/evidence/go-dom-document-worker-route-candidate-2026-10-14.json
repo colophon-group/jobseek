@@ -34,14 +34,20 @@
     "retained_routes": 74,
     "live_qualification": {
       "initial_original_samples": 11,
-      "native_complete_canonical_matches": 5,
-      "native_canonical_description_mismatches": 6,
+      "initial_native_complete_canonical_matches": 5,
+      "all_retained_iucn_unm_routes_compared": 54,
+      "all_route_complete_canonical_matches": 46,
+      "all_route_description_mismatches": 8,
+      "all_route_title_mismatches": 1,
       "held_boards": [
         "avera-western-mental-health",
         "epfl-isic",
-        "epfl-phd-edpy"
+        "epfl-phd-edpy",
+        "iucn-hrms",
+        "university-of-new-mexico-graduate-assistantships"
       ],
-      "next_check": "all 54 retained IUCN/UNM routes before admission; all held PDFs retain prior ownership"
+      "zero_route_boards": 5,
+      "admission": "no new document boards; exact canonical PDF extraction still needs work"
     }
   },
   "lightpanda": {

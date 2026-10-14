@@ -31,7 +31,7 @@ func TestWorkerRouteCutoverPreservesSchedulesReversesAndRefusesBeforeMutation(t 
 		if err := conn.QueryRow(ctx, `INSERT INTO job_posting(company_id,board_id,source_url,next_scrape_at,description_r2_hash) VALUES($1::uuid,$2::uuid,$3,$4,$5) RETURNING id::text`, company, board, url, due, hash).Scan(&ids[i]); err != nil {
 			t.Fatal(err)
 		}
-		textHash := "123"
+		textHash := "456"
 		if i == 0 {
 			textHash = ""
 		}
@@ -95,6 +95,9 @@ func TestWorkerRouteCutoverPreservesSchedulesReversesAndRefusesBeforeMutation(t 
 		}
 		if got, err := c.ZScore(ctx, key, id).Result(); err != nil || got != score {
 			t.Fatal("schedule changed", i, got, err)
+		}
+		if i > 0 && c.HGet(ctx, "scrape:"+id, "description_r2_hash").Val() != "456" {
+			t.Fatal("lane repair overwrote existing lifecycle hash")
 		}
 		if c.HGet(ctx, "scrape:"+id, "retained").Val() != "original" {
 			t.Fatal("cache field lost")

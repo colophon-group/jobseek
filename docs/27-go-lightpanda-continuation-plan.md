@@ -75,8 +75,11 @@ three formats, eighteen cold retirement cases and real Postgres/Redis forward/re
 repair tests pass. Ten configured boards with 74 retained routes now compile.
 Eleven actual original HTTP samples across the five boards with retained routes
 returned complete title and description; native live checks found six PDF description mismatches. Avera and both EPFL
-boards remain held. All retained IUCN/UNM routes are being compared before
-admission; release qualification remains pending. Production owns 7,815 / 7,709.
+boards remain held. All 54 retained IUCN/UNM routes were compared: 46 match fully, eight have
+PDF description differences and one also differs in title. Both boards remain
+held; no document board has been admitted. The native format implementations and
+Bajaj routing repair proceed through release qualification. Production owns
+7,815 / 7,709.
 
 See [the candidate evidence](evidence/go-dom-document-worker-route-candidate-2026-10-14.json).
 Continue by qualifying the native live samples and every retained source, then

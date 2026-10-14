@@ -34,11 +34,13 @@ for offset=5,#ARGV,5 do
  if not typed(key,"hash") then return redis.error_reply("worker route scrape type is corrupt") end
  if redis.call("EXISTS",key)==1 then
   if redis.call("HGET",key,"board_id")~=board or redis.call("HGET",key,"source_url")~=url
-   or redis.call("HGET",key,"domain")~=domain or redis.call("HGET",key,"scrape_step")~="0"
-   or redis.call("HGET",key,"description_r2_hash")~=hash then
+   or redis.call("HGET",key,"domain")~=domain or redis.call("HGET",key,"scrape_step")~="0" then
    return redis.error_reply("worker route scrape identity or fallback step mismatch")
   end
  end
+ -- The cache hash may predate a completed R2 upload. Moving a queue lane
+ -- must not replace that lifecycle value with a newer SQL export hash.
+ if redis.call("EXISTS",key)==1 then hash=redis.call("HGET",key,"description_r2_hash") or hash end
  local ft,rec=nil,nil
  for _,lane in ipairs({"simple","browser"}) do
   local member="scrape|"..domain.."|"..id
