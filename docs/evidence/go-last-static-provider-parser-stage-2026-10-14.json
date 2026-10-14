@@ -1,0 +1,41 @@
+{
+  "schema": "jobseek.last-static-provider-parser-stage/v1",
+  "observed_at_utc": "2026-10-14T07:42:33.472437+00:00",
+  "version": "0.13.1046",
+  "stage": "parser, source identity and Onlyfy candidate/listing helper implementation; fetch/worker/SDK wiring not yet implemented",
+  "providers": [
+    "onlyfy",
+    "phuketall",
+    "tupu360"
+  ],
+  "retained_source1042_boards": 9,
+  "retained_scheduled_routes": 196,
+  "actual_original_parser_cases": 68,
+  "actual_original_onlyfy_URL_cases": 30,
+  "actual_original_date_cases": 13,
+  "actual_original_provider_identity_cases": 14,
+  "original_tests_passed": 34,
+  "original_corpus_sha256": "5d9cffbfbb56048e9074efad454c4130b3567e76e39a7a525d8f563f538e0030",
+  "original_corpus_regeneration": "exact",
+  "pure_parser_URL_identity_race_seconds": 1.463,
+  "complete_API_race_before_final_small_location_helper_corrections_seconds": 10.815,
+  "actual_original_live_samples": 10,
+  "actual_native_live_canonical_outputs_match": 10,
+  "live_canonical_output_race_seconds": 2.477,
+  "Onlyfy_raw_HTML_limitation": "two actual descriptions differ in attribute ordering; exact original Python canonical HTML normalization matches native normalization; raw byte equality not claimed",
+  "preserved_helpers": [
+    "Onlyfy lexical urllib URL handling, locale override, substantive meta-description threshold, duplicate descriptions and RSC listing locations",
+    "PhuketAll exact provider origin/identity, duplicate og:url agreement, Thai Buddhist/English date conversion and structural description selection",
+    "Tupu360 exact public URL/position identity and original field extraction including listing-enrichment location omission"
+  ],
+  "remaining": [
+    "HTTP requests/status/fallback/retry/2MiB/Phuket redirect identity and publisher-policy traces against original scrapers",
+    "Register all three through current SDK and existing worker; preserve source/config/claim/canonical fences and selected masks",
+    "Update native/Python ownership consumers, exact installed profile count/list and CLI identity",
+    "Real PostgreSQL/Redis selected writes, schedules and supported cold retirement",
+    "Rebase on final qualified source1045; source1046 qualification and supported grouped rollout with fresh full-floor evidence"
+  ],
+  "new_services": 0,
+  "production_admitted": false,
+  "full_migration_complete": false
+}
