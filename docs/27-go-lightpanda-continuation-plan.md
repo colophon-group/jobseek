@@ -3587,3 +3587,23 @@ remaining effective production consumers, supported final cold reversal and
 rollback window before retiring Python/Playwright/Chromium. The full migration
 goal remains active and incomplete. Lightpanda1.0.0 remains the latest stable
 official release and is already pinned in production.
+
+### Postpublication coverage batch — explicit HTTP detail and new families
+
+The existing Go HTTP detail worker reproduces Venturelab HeavenHR's selected
+original browser API output through the publisher's anonymous public endpoint.
+The candidate CSV adds only endpoint, job-ID extraction and JSON path; all
+original field mappings remain unchanged. Both original Python HTTP and actual
+Go HTTP match every selected field. Real PostgreSQL/Redis full/reserved/gone
+cases prove canonical writes, publisher policy and exact deadline settlement.
+Four actual LinkedIn/Join monitors and two actual JSONLD details also match
+their original inventory/output, with six original LinkedIn empty/policy writer
+cases passing against real stores. See [the batch evidence](evidence/go-native-postpublication-batch-2026-10-14.json).
+
+Keep these families together for supported publication and fresh full admission;
+the candidate is not published and the serving7815/7712 owner is unchanged.
+Finish the remaining new Jobs.ch/LinkedIn/DOM sources and old browser frontier
+without replacing full-field evidence with counts. Local qualification does not
+establish installed Linux execution or grant production ownership. Continue
+full fleet freshness/conservation, comparable cost/density and final runtime
+retirement as required by the complete migration goal.
