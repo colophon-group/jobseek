@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"log"
 	"strings"
@@ -27,38 +28,44 @@ func awaitRuntime[T any](t *testing.T, ch <-chan T) T {
 	}
 }
 func TestRuntimeBoundedClaimsAndSignalDrainKeepsHeartbeatLive(t *testing.T) {
-	c := fixtureLoopConfig()
-	ctx, stop := context.WithCancel(context.Background())
-	defer stop()
-	m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
-	m.ready.Store(true)
-	started := make(chan struct{}, 2)
-	release := make(chan struct{})
-	beats := make(chan struct{}, 100)
-	var claims atomic.Int64
-	s := runtimeServices{claim: func(context.Context) (*queue.Claim, error) { claims.Add(1); return &queue.Claim{}, nil }, heartbeat: func(context.Context, *queue.Claim) error { beats <- struct{}{}; return nil }, execute: func(ctx context.Context, _ *queue.Claim) (*GreenhouseClaimResult, error) {
-		started <- struct{}{}
-		<-release
-		if ctx.Err() != nil {
-			t.Error("signal cancelled live task before drain grace")
-		}
-		return &GreenhouseClaimResult{Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}}, nil
-	}}
-	done := make(chan error, 1)
-	go func() { done <- runWorkerLoop(ctx, c, s, m) }()
-	awaitRuntime(t, started)
-	awaitRuntime(t, started)
-	stop()
-	awaitRuntime(t, beats)
-	if claims.Load() != 2 {
-		t.Fatal("runtime claimed beyond active concurrency")
-	}
-	close(release)
-	if err := awaitRuntime(t, done); err != nil {
-		t.Fatal(err)
-	}
-	if m.active.Load() != 0 || m.drained != 1 || m.timedout != 0 || m.ready.Load() || m.tasks["succeeded"] != 2 {
-		t.Fatal("signal drain accounting lost completed claims")
+	for _, concurrency := range []int{2, 60} {
+		t.Run(fmt.Sprint(concurrency), func(t *testing.T) {
+			c := fixtureLoopConfig()
+			c.concurrency = concurrency
+			ctx, stop := context.WithCancel(context.Background())
+			defer stop()
+			m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
+			m.ready.Store(true)
+			started := make(chan struct{}, concurrency)
+			release := make(chan struct{})
+			beats := make(chan struct{}, concurrency*10)
+			var claims atomic.Int64
+			s := runtimeServices{claim: func(context.Context) (*queue.Claim, error) { claims.Add(1); return &queue.Claim{}, nil }, heartbeat: func(context.Context, *queue.Claim) error { beats <- struct{}{}; return nil }, execute: func(ctx context.Context, _ *queue.Claim) (*GreenhouseClaimResult, error) {
+				started <- struct{}{}
+				<-release
+				if ctx.Err() != nil {
+					t.Error("signal cancelled live task before drain grace")
+				}
+				return &GreenhouseClaimResult{Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}}, nil
+			}}
+			done := make(chan error, 1)
+			go func() { done <- runWorkerLoop(ctx, c, s, m) }()
+			for i := 0; i < concurrency; i++ {
+				awaitRuntime(t, started)
+			}
+			stop()
+			awaitRuntime(t, beats)
+			if claims.Load() != int64(concurrency) {
+				t.Fatal("runtime claimed beyond active concurrency")
+			}
+			close(release)
+			if err := awaitRuntime(t, done); err != nil {
+				t.Fatal(err)
+			}
+			if m.active.Load() != 0 || m.drained != 1 || m.timedout != 0 || m.ready.Load() || m.tasks["succeeded"] != uint64(concurrency) {
+				t.Fatal("signal drain accounting lost completed claims")
+			}
+		})
 	}
 }
 func TestRuntimeDrainCancelsUnfinishedWithoutFabricatedSettlement(t *testing.T) {
