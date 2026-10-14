@@ -1163,7 +1163,7 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
         'fsync_path directory "$DEPLOY_DIR"'
     )
     assert wrapper.index('write_receipt "$plan_digest" pending') < wrapper.index(
-        "lightpanda-b0-activation activate"
+        "--b0-cutover activate"
     )
     assert wrapper.index("activation_failure_containment_armed=1") < wrapper.index(
         'write_receipt "$plan_digest" pending'
@@ -1209,9 +1209,9 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     rollback_plan = wrapper.index("plan --operation rollback", settle)
     assert rollback_stop < settle < rollback_plan
     assert 'timeout --foreground --signal=TERM --kill-after=5s "$@"' in wrapper
-    assert wrapper.index("lightpanda-b0-activation rollback") < wrapper.index('rm -f -- "$RECEIPT"')
+    assert wrapper.index("--b0-cutover rollback") < wrapper.index('rm -f -- "$RECEIPT"')
     clearability = wrapper.index("check_producer_activation_sentinel_clearable", rollback_stop)
-    rollback_apply = wrapper.index("lightpanda-b0-activation rollback", rollback_plan)
+    rollback_apply = wrapper.index("--b0-cutover rollback", rollback_plan)
     first_rdb_save = wrapper.index("persist_redis_rdb", rollback_apply)
     sentinel_clear = wrapper.index("clear_producer_activation_sentinel", first_rdb_save)
     rollback_cleared = wrapper.index(
@@ -1303,7 +1303,7 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             'printf \'{"current": true, "routing_epoch": 7}\\n\'; return 0 ;;',
             '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST"; return 0 ;;',
-            '    *\\ lightpanda-b0-activation\\ activate\\ *) return "$TEST_APPLY_STATUS" ;;',
+            '    *\\ --b0-cutover\\ activate\\ *) return "$TEST_APPLY_STATUS" ;;',
             "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) ",
             '      if [[ "$TEST_SAVE_REPLY" == BUSY_THEN_LOST ]]; then',
             '        count=0; [[ ! -f "$TEST_SAVE_COUNTER" ]] || count="$(<"$TEST_SAVE_COUNTER")"',
@@ -1353,18 +1353,14 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     assert reserve < attest < enabled_config
     if plan_timeout:
         assert any("timeout:" in event and "plan --operation activate" in event for event in events)
-        assert not any(" lightpanda-b0-activation activate " in event for event in events)
+        assert not any(" --b0-cutover activate " in event for event in events)
         assert any(" kill worker-1 worker-2 worker-3" in event for event in events)
         assert not (deploy_dir / ".lightpanda-b0-active-v1").exists()
         return
     plan = next(
         index for index, event in enumerate(events) if " plan --operation activate " in event
     )
-    apply = next(
-        index
-        for index, event in enumerate(events)
-        if " lightpanda-b0-activation activate " in event
-    )
+    apply = next(index for index, event in enumerate(events) if " --b0-cutover activate " in event)
     assert plan < apply
     receipt = deploy_dir / ".lightpanda-b0-active-v1"
     assert receipt.is_file()
@@ -1496,7 +1492,7 @@ def test_active_e2_replay_cannot_bless_unhealthy_restored_e1_authority(tmp_path:
     events = log.read_text(encoding="utf-8").splitlines()
     assert not any(" reserve-epoch" in event for event in events)
     assert not any(" plan --operation activate" in event for event in events)
-    assert not any(" lightpanda-b0-activation activate" in event for event in events)
+    assert not any(" --b0-cutover activate" in event for event in events)
     assert "state=active" in receipt.read_text(encoding="ascii").splitlines()
 
 
@@ -1896,7 +1892,7 @@ def _run_pending_recovery_wrapper(
             "    *\\ plan\\ --operation\\ rollback\\ *) "
             'printf \'{"digest": "%s", "rollback_plan_digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST" "$TEST_PLAN_DIGEST"; return 0 ;;',
-            "    *\\ lightpanda-b0-activation\\ rollback\\ *) return 0 ;;",
+            "    *\\ --b0-cutover\\ rollback\\ *) return 0 ;;",
             '    *\\ clear-rollback-tombstone\\ *) return "$TEST_TOMBSTONE_CLEAR_STATUS" ;;',
             "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE)",
             '      count=0; [[ ! -f "$TEST_SAVE_COUNTER" ]] || count="$(<"$TEST_SAVE_COUNTER")"',
@@ -1947,11 +1943,7 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
     plan = next(
         index for index, event in enumerate(events) if " plan --operation rollback " in event
     )
-    apply = next(
-        index
-        for index, event in enumerate(events)
-        if " lightpanda-b0-activation rollback " in event
-    )
+    apply = next(index for index, event in enumerate(events) if " --b0-cutover rollback " in event)
     sentinel_clear = next(
         index for index, event in enumerate(events) if " --clear-activation-sentinel" in event
     )
@@ -2080,7 +2072,7 @@ def test_source_receipt_retries_full_recovery_when_sentinel_clear_fails(
     assert second.returncode == 0, second.stderr
     assert any(" settle-rollback " in event for event in second_events)
     assert any(" plan --operation rollback " in event for event in second_events)
-    assert any(" lightpanda-b0-activation rollback " in event for event in second_events)
+    assert any(" --b0-cutover rollback " in event for event in second_events)
     clear = next(
         index
         for index, event in enumerate(second_events)
@@ -2130,7 +2122,7 @@ def test_rollback_cleared_receipt_retries_only_tombstone_delete_before_python(
     assert second.returncode == 0, second.stderr
     assert not any(" settle-rollback " in event for event in second_events)
     assert not any(" plan --operation rollback " in event for event in second_events)
-    assert not any(" lightpanda-b0-activation rollback " in event for event in second_events)
+    assert not any(" --b0-cutover rollback " in event for event in second_events)
     assert any(" --check-activation-sentinel-absent" in event for event in second_events)
     tombstone_clear = next(
         index for index, event in enumerate(second_events) if " clear-rollback-tombstone " in event
@@ -2178,7 +2170,7 @@ def test_first_rdb_save_failure_retains_source_attestations_and_retries_full_rol
     )
     retry_events = log.read_text(encoding="utf-8").splitlines()[before:]
     assert retry.returncode == 0, retry.stderr
-    assert any(" lightpanda-b0-activation rollback " in event for event in retry_events)
+    assert any(" --b0-cutover rollback " in event for event in retry_events)
     assert sum(" redis-cli --raw SAVE" in event for event in retry_events) == 2
     assert not receipt.exists()
 
@@ -2223,7 +2215,7 @@ def test_second_rdb_save_failure_retains_cleared_receipt_and_retry_skips_full_ro
     )
     retry_events = log.read_text(encoding="utf-8").splitlines()[before:]
     assert retry.returncode == 0, retry.stderr
-    assert not any(" lightpanda-b0-activation rollback " in event for event in retry_events)
+    assert not any(" --b0-cutover rollback " in event for event in retry_events)
     assert sum(" redis-cli --raw SAVE" in event for event in retry_events) == 1
     assert not receipt.exists()
 
@@ -3184,3 +3176,22 @@ def test_frozen_runtime_v1_contract_baseline_is_unchanged() -> None:
         text=True,
     )
     assert diff.stdout == ""
+
+
+def test_all_b0_plan_apply_consumers_use_native_exporter_with_original_context() -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    assert "uv run --no-sync lightpanda-b0-activation" not in wrapper
+    for command in (
+        "--b0-cutover plan --operation activate",
+        "--b0-cutover activate --cohort",
+        "--b0-cutover plan --operation rollback",
+        "--b0-cutover rollback --cohort",
+    ):
+        index = wrapper.index(command)
+        start = wrapper.rfind('bounded 90s "${compose_enabled[@]}"', 0, index)
+        caller = wrapper[start:index]
+        assert start >= 0
+        assert '"${route_environment[@]}"' in caller
+        assert "--entrypoint /usr/local/bin/go-typesense-exporter worker-1" in caller
+        if "rollback" in command:
+            assert "LIGHTPANDA_B0_PRODUCER_MODE=off" in caller

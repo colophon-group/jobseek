@@ -22,7 +22,7 @@ require (
 	github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.59.0
 )
 
 require (

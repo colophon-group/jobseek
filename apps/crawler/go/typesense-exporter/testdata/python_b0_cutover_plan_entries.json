@@ -1,0 +1,1267 @@
+{
+  "schema": "jobseek.b0-cutover-plan-entries-original/v1",
+  "identity": {
+    "Namespace": "pilot",
+    "Shard": "lightpanda-b0",
+    "Epoch": 7
+  },
+  "vectors": [
+    {
+      "name": "ready-hash-None",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": null,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "ready-hash-0",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "ready-hash--9223372036854775808",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": -9223372036854775808,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "ready-hash-9223372036854775807",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 9223372036854775807,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "terminal-hash-None",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": null,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "terminal",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "0",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "0",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "terminal-hash-0",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "terminal",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "terminal-hash--9223372036854775808",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": -9223372036854775808,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "terminal",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "terminal-hash-9223372036854775807",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 9223372036854775807,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "terminal",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "dead-hash-None",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": null,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "dead",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "0",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "0",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "dead-hash-0",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "dead",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "dead-hash--9223372036854775808",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": -9223372036854775808,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "dead",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "dead-hash-9223372036854775807",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 9223372036854775807,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "dead",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "1791981000.123456",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "9223372036854775807",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "ft_browser",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|ft_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": true,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "ft_simple",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|ft_simple|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "simple",
+        "first_time": true,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "simple",
+        "first_time": true,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "recurring_simple",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_simple|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "simple",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "simple",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "changed-is_active-False",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": false,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "drop"
+      },
+      "entry": {
+        "action": "drop"
+      }
+    },
+    {
+      "name": "changed-is_enabled-False",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": false,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "drop"
+      },
+      "entry": {
+        "action": "drop"
+      }
+    },
+    {
+      "name": "changed-board_status-suspect",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "suspect",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "drop"
+      },
+      "entry": {
+        "action": "drop"
+      }
+    },
+    {
+      "name": "changed-next_scrape_at-None",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": null,
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "drop"
+      },
+      "entry": {
+        "action": "drop"
+      }
+    },
+    {
+      "name": "changed-lease_active-True",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": true,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": false
+    },
+    {
+      "name": "changed-scrape_interval_hours-0",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 0
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": false
+    },
+    {
+      "name": "changed-scrape_interval_hours-8761",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 8761
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": false
+    },
+    {
+      "name": "changed-board_id-changed-board",
+      "row": {
+        "ID": "posting",
+        "BoardID": "changed-board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "changed-board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        },
+        "identity_changed_since_activation": true
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "changed-board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "changed-source_url-https://jobs.example/changed",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/changed",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/changed",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        },
+        "identity_changed_since_activation": true
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/changed",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "changed-scraper_needs_browser-False",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": false,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      },
+      "entry": {
+        "action": "schedule",
+        "domain": "jobs.example",
+        "worker_type": "browser",
+        "first_time": false,
+        "score": "42",
+        "config": {
+          "domain": "jobs.example",
+          "board_id": "board",
+          "source_url": "https://jobs.example/posting",
+          "description_r2_hash": "0",
+          "scrape_step": "0",
+          "scrape_interval_hours": "24"
+        }
+      }
+    },
+    {
+      "name": "deleted-posting",
+      "row": null,
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42"
+      },
+      "accepted": true,
+      "task": {
+        "posting_id": "posting",
+        "action": "drop"
+      },
+      "entry": {
+        "action": "drop"
+      }
+    },
+    {
+      "name": "invalid-guard",
+      "row": {
+        "ID": "posting",
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "BoardStatus": "active",
+        "Enabled": true,
+        "Active": true,
+        "Browser": true,
+        "LeaseActive": false,
+        "NextScrapeAt": "2026-10-14T12:30:00.123456+00:00",
+        "Hash": 0,
+        "Interval": 24
+      },
+      "stored": {
+        "BoardID": "board",
+        "SourceURL": "https://jobs.example/posting",
+        "Domain": "jobs.example",
+        "State": "ready",
+        "LegacyGuard": "foreign"
+      },
+      "accepted": false
+    }
+  ]
+}

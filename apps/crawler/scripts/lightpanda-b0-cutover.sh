@@ -491,16 +491,16 @@ if [[ "$OPERATION" == activate ]]; then
   bounded 30s "${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer
   wait_healthy enabled lightpanda-producer
   plan_output="$(bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-    "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation plan --operation activate --cohort "$COHORT")"
+    "${route_environment[@]}" --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-cutover plan --operation activate --cohort "$COHORT")"
   plan_digest="$(extract_digest "$plan_output")"
   # Publish a fail-closed pending receipt before the first per-task Lua turn;
   # an apply can be partially complete only if a later authoritative race is
   # rejected, and ordinary deploy must not restart Python into that state.
   write_receipt "$plan_digest" pending
   bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-    "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation activate --cohort "$COHORT" \
+    "${route_environment[@]}" --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-cutover activate --cohort "$COHORT" \
     --apply --expect-digest "$plan_digest"
   # The pending receipt remains the recovery authority until every transfer,
   # audit, and owner/route mutation is synchronously present in Redis' RDB.
@@ -627,14 +627,16 @@ else
     --b0-cold-rollback settle-rollback --cohort "$COHORT" \
     --receipt-state "$receipt_state" --source-receipt-sha256 "$source_receipt_sha256"
   plan_output="$(bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation plan --operation rollback --cohort "$COHORT" \
+    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" \
+    --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-cutover plan --operation rollback --cohort "$COHORT" \
     --receipt-state "$receipt_state" --source-receipt-sha256 "$source_receipt_sha256")"
   plan_digest="$(extract_digest "$plan_output")"
   rollback_plan_digest="$(extract_rollback_digest "$plan_output")"
   bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation rollback --cohort "$COHORT" \
+    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" \
+    --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-cutover rollback --cohort "$COHORT" \
     --receipt-state "$receipt_state" --source-receipt-sha256 "$source_receipt_sha256" \
     --apply --expect-digest "$plan_digest"
   # Persist the exact rollback tombstone before changing either recovery

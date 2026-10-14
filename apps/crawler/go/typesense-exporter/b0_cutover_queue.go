@@ -35,8 +35,17 @@ type b0ColdQueue struct {
 type b0ColdTransition struct{ ServerMS, Value, Secondary int64 }
 
 func newB0ColdQueue(client *redis.Client, identity b0CutoverIdentity) (*b0ColdQueue, error) {
+	if !capacityDigest.MatchString(identity.SourceReceipt) {
+		return nil, errB0Cutover
+	}
+	return newB0PlanQueue(client, identity)
+}
+
+// Activation planning has no outgoing receipt; rollback planning must supply
+// one before it can authorize a rollback operation.
+func newB0PlanQueue(client *redis.Client, identity b0CutoverIdentity) (*b0ColdQueue, error) {
 	digest := sha256.Sum256([]byte(b0CutoverQueueLua))
-	if client == nil || !b0Namespace.MatchString(identity.Namespace) || !b0RouteID.MatchString(identity.Shard) || identity.Epoch < 1 || identity.Epoch > b0MaxEpoch || !capacityDigest.MatchString(identity.SourceReceipt) || !(identity.Cohort == "c1" || identity.Cohort == "c2" || identity.Cohort == "c3" || identity.Cohort == "cdom") || hex.EncodeToString(digest[:]) != b0CutoverQueueSHA {
+	if client == nil || !b0Namespace.MatchString(identity.Namespace) || !b0RouteID.MatchString(identity.Shard) || identity.Epoch < 1 || identity.Epoch > b0MaxEpoch || identity.SourceReceipt != "" && !capacityDigest.MatchString(identity.SourceReceipt) || !(identity.Cohort == "c1" || identity.Cohort == "c2" || identity.Cohort == "c3" || identity.Cohort == "cdom") || hex.EncodeToString(digest[:]) != b0CutoverQueueSHA {
 		return nil, errB0Cutover
 	}
 	keys := []string{}
@@ -74,7 +83,7 @@ func decodeB0ColdTransition(operation string, raw any) (b0ColdTransition, error)
 	if fields[0] != "accepted" {
 		return result, errB0Cutover
 	}
-	valid := operation == "audit" && fields[1] == "audit_ok" || operation == "reap_expired" && fields[1] == "reaped" || operation == "clear_rollback_tombstone" && (fields[1] == "rollback_tombstone_cleared" || fields[1] == "rollback_tombstone_already_cleared")
+	valid := operation == "audit" && fields[1] == "audit_ok" || operation == "reap_expired" && fields[1] == "reaped" || operation == "clear_rollback_tombstone" && (fields[1] == "rollback_tombstone_cleared" || fields[1] == "rollback_tombstone_already_cleared") || operation == "rollback_legacy" && (fields[1] == "rolled_back" || fields[1] == "already_rolled_back")
 	if !valid {
 		return result, errB0Cutover
 	}
@@ -102,7 +111,7 @@ func decodeB0ColdTransition(operation string, raw any) (b0ColdTransition, error)
 	if err != nil {
 		return result, errB0Cutover
 	}
-	if operation == "audit" && (result.Value > 2048 || result.Secondary > result.Value) || operation == "reap_expired" && result.Value+result.Secondary > 64 {
+	if operation == "audit" && (result.Value > 2048 || result.Secondary > result.Value) || operation == "reap_expired" && result.Value+result.Secondary > 64 || operation == "rollback_legacy" && result.Value+result.Secondary > 2048 {
 		return result, errB0Cutover
 	}
 	return result, nil

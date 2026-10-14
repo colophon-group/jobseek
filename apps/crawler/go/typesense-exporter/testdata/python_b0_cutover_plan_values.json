@@ -1,0 +1,154 @@
+{
+  "schema": "jobseek.b0-cutover-plan-values-original/v1",
+  "timestamps": [
+    {
+      "timestamp": "1970-01-01T00:00:00+00:00",
+      "seconds": "0",
+      "first_time_ready": "0"
+    },
+    {
+      "timestamp": "1970-01-01T00:00:00.000001+00:00",
+      "seconds": "0.000001",
+      "first_time_ready": "0"
+    },
+    {
+      "timestamp": "1969-12-31T23:59:59.600000+00:00",
+      "seconds": "-0.4",
+      "first_time_ready": "0"
+    },
+    {
+      "timestamp": "2026-10-14T12:30:00.123456+02:00",
+      "seconds": "1791973800.123456",
+      "first_time_ready": "0"
+    },
+    {
+      "timestamp": "0001-01-01T00:00:00+00:00",
+      "seconds": "-62135596800",
+      "first_time_ready": "0"
+    },
+    {
+      "timestamp": "9999-12-31T23:59:59.999999+00:00",
+      "seconds": "253402300799.999999",
+      "first_time_ready": "0"
+    }
+  ],
+  "guards": [
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|123.0001",
+      "accepted": true,
+      "kind": "recurring_browser",
+      "score": "123.0001"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|ft_browser|123.0001",
+      "accepted": true,
+      "kind": "ft_browser",
+      "score": "123.0001"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|ft_simple|123.0001",
+      "accepted": true,
+      "kind": "ft_simple",
+      "score": "123.0001"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_simple|123.0001",
+      "accepted": true,
+      "kind": "recurring_simple",
+      "score": "123.0001"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|0",
+      "accepted": true,
+      "kind": "recurring_browser",
+      "score": "0"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|9999999999.999",
+      "accepted": true,
+      "kind": "recurring_browser",
+      "score": "9999999999.999"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|9999999999.9991",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|01",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|1e3",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|-1",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|NaN",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|0.00000000000000000001",
+      "accepted": true,
+      "kind": "recurring_browser",
+      "score": "0.00000000000000000001"
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|42.0000",
+      "accepted": true,
+      "kind": "recurring_browser",
+      "score": "42.0000"
+    },
+    {
+      "raw": "other|lightpanda-b0|7|board|jobs.example|recurring_browser|123.0001",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|07|board|jobs.example|recurring_browser|123.0001",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|other|jobs.example|recurring_browser|123.0001",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|other.example|recurring_browser|123.0001",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|foreign|123.0001",
+      "accepted": false
+    },
+    {
+      "raw": "",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser|123.0001|extra",
+      "accepted": false
+    },
+    {
+      "raw": "pilot|lightpanda-b0|7|board|jobs.example|recurring_browser",
+      "accepted": false
+    }
+  ],
+  "canonical": {
+    "document": {
+      "tasks": [
+        {
+          "source_url": "https://jobs.example/\u00fc",
+          "ready": "123.0001"
+        }
+      ],
+      "routing_epoch": 7,
+      "empty": [],
+      "metadata": {
+        "cjk": "\u6771\u4eac"
+      }
+    },
+    "bytes": "{\"empty\":[],\"metadata\":{\"cjk\":\"\\u6771\\u4eac\"},\"routing_epoch\":7,\"tasks\":[{\"ready\":\"123.0001\",\"source_url\":\"https://jobs.example/\\u00fc\"}]}",
+    "sha256": "69c7ed3a7da22537b683d2f0f94fdb2a2aea1744fa454ea33fd929a6c1ee582a"
+  }
+}

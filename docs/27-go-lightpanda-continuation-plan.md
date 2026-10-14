@@ -29,11 +29,41 @@ have not yet executed naturally; their original future schedules remain intact.
 Observe natural receipts and freshness while porting activation planning/apply
 and rollback planning/apply together in the existing Go executable. The following
 branch has tested client, plan-value/entry assembly and real PostgreSQL readers;
-the four complete commands and original wrapper wiring remain unfinished.
+all four commands and original wrapper wiring are implemented in the next candidate,
+with exact-head release qualification still required.
 The full migration goal remains active until remaining coverage and consumers,
 freshness, global conservation, comparable production resources/cost, final
 cutover/reversal and the rollback window allow production Python, Playwright and
 Chromium retirement. Preserve every enabled board and useful offline Python.
+
+### Next combined runtime batch — 0.13.1043
+
+The four remaining B0 activation/rollback planning and apply commands now run in
+the existing Go exporter executable. The unchanged supported wrapper invokes them
+with the same route environment, images, roles, volumes, 90-second budgets,
+quiescence, receipts, SAVE barriers, sentinel checks and recovery/restart ordering.
+All production B0 administration commands now have native implementations; useful
+original Python routines remain as offline parity references.
+
+Thirty-six full plans/digests match the actual original functions. Twenty successful
+apply cases also match original replies and complete queue effects under real Redis
+Lua, plus typed canonical PostgreSQL reads and fence effects. Stale digests preserve
+queue and SQL state. The compiled executable proves pending empty rollback and
+committed tombstone recovery, retains the original commit digest, and leaves other
+shard fences untouched. The full exporter private PostgreSQL/Redis race suite passes
+in 25.964 seconds; 183 original activation/wrapper tests and the new explicit assertion
+that all four consumers call the native executable pass. Linux architecture builds,
+original corpus regeneration, lint, formatting, vet and shell checks pass. Fresh
+exact-head CI, installed image/Linux/ARM qualification and supported operational
+rollout still precede delivery. See the [candidate evidence](evidence/go-native-b0-plan-apply-candidate-2026-10-14.json).
+
+Keep source 1042 serving while this batch qualifies. At 03:20 UTC, all ten actors
+and eight health endpoints remain verified; natural completions reached 871 monitors
+and 2,579 details. BP's first native receipt completed successfully, refreshed all
+1,093 active postings and retained its next deadline. Airbnb and DiDi still await
+natural checks in their actual simple-lane queue positions; no schedules are forced.
+Complete the remaining coverage, freshness/conservation, comparable production
+resources/cost and final cutover/reversal/window before runtime Python retirement.
 
 ### Historical deployed checkpoint — source1039, 2026-10-13
 

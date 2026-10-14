@@ -1,0 +1,47 @@
+{
+  "schema": "jobseek.native-b0-plan-apply-candidate/v1",
+  "observed_at_utc": "2026-10-14T03:25:35.615909+00:00",
+  "version": "0.13.1043",
+  "base_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
+  "operations": [
+    "activation plan",
+    "activation apply",
+    "rollback plan",
+    "rollback apply"
+  ],
+  "entrypoint": "go-typesense-exporter --b0-cutover",
+  "original_wrapper_consumers": 4,
+  "new_production_services": 0,
+  "preserved_contracts": [
+    "same mutation lock, images, source/receipt identity, quiescence and restart order",
+    "same 90-second caller budgets and bounded authenticated producer socket exchange",
+    "exact original planning SQL and unchanged Redis lifecycle Lua",
+    "same decimal schedules, cached hints, first-time guards, capacity/headroom and1600 pilot limit",
+    "full canonical ASCII plan bytes and SHA-256 gates",
+    "same tombstone recovery digest and SQL fence cleanup scope",
+    "no legacy fallback on uncertain producer authority"
+  ],
+  "local_evidence": {
+    "actual_original_full_plan_vectors": 36,
+    "activation_accepted": 7,
+    "activation_rejected": 10,
+    "rollback_accepted": 13,
+    "rollback_rejected": 6,
+    "successful_apply_replies_and_full_queue_effects": "matched original real Redis Lua; typed canonical PG rows and fence effects verified",
+    "stale_digest_refusal": "queue and SQL unchanged",
+    "compiled_cli": "positive pending rollback plan/apply, stale refusal, committed tombstone recovery preserves original rollback digest and other-shard fences",
+    "full_exporter_private_pg_redis_race_seconds": 25.964,
+    "actual_original_producer_decisions": 57,
+    "original_timestamp_cases": 6,
+    "original_guard_cases": 21,
+    "actual_original_rollback_entries": 27,
+    "original_activation_and_wrapper_tests": 183,
+    "new_all_four_native_caller_assertion": "passed",
+    "format_lint_vet_shell_syntax": "passed; shellcheck ignores pre-existing SC1091 external-source warning",
+    "original_fixture_regeneration": "exact",
+    "linux_amd64_arm64": "compiled; authenticated exchange execution still requires Linux CI"
+  },
+  "qualified_remote_head": null,
+  "deployed": false,
+  "full_migration_complete": false
+}
