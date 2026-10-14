@@ -95,8 +95,24 @@ The original six field mappings are retained. JSON-LD was rejected because it
 changed other fields. Forward and restored-config rollback repairs reuse the
 bounded worker-route command for both explicit board targets alongside Bajaj.
 
-This is an unpublished local candidate; it confers no production ownership.
+The combined release is published in [PR #10501](https://github.com/colophon-group/jobseek/pull/10501) on main, including the document and route-repair changes from PR #10500. Required CI, runtime contracts, Lightpanda qualification and the deployment gate pass at head `6873e0112a7ecd62fb95cbaac675b6f24e72c5ae`; the exact-head ARM report remains pending. Ship one whole 0.13.1049 release and admit the three qualified HTTP boards only after fresh full-floor reconciliation. It confers no new production ownership yet.
 See [the candidate evidence](evidence/go-applicantpro-anonymous-http-candidate-2026-10-14.json).
+
+### Following capacity correction — 0.13.1050
+
+The three legacy HTTP workers offer 60 discovery slots and 15 monitor slots in
+aggregate. The single Go owner inherited 20 and 5, reducing capacity during the
+migration. Restore 60 and 15 through the existing worker configuration, keeping
+the two-core limit, 1 GiB container limit, 512 MiB Go memory target, host throttles,
+claim fencing and bounded drain. No new service or scheduling algorithm is needed.
+
+A source1047 natural 45-second container-cgroup sample observed roughly 0.67 CPU
+cores and 170 MiB for Go, with 31 successful details and 15 circuit-open results.
+This shows observed headroom, not sustained throughput, comparative savings or
+fleet-wide freshness. Focused race checks exercise 60 concurrent claims and the
+15-monitor cap. Finish qualification and the original whole rollout, then verify
+natural throughput, resource limits, lease recovery and backlog progress.
+See [the capacity candidate](evidence/go-native-fleet-capacity-candidate-2026-10-14.json).
 
 ### Historical deployed checkpoint — 0.13.1042, 2026-10-14
 
