@@ -1,0 +1,86 @@
+{
+  "schema": "jobseek.go-lightpanda-grouped-candidate/v1",
+  "candidate_version": "0.13.1041",
+  "base_source": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+  "checkpoint_at_utc": "2026-10-14T00:01:16.031660+00:00",
+  "state": "public transports, canonical effects and cold reversal qualified locally; exact-head remote CI/image/ARM qualification and fresh full-floor admission pending",
+  "full_migration_delivered": false,
+  "production_mutation": false,
+  "active_production": {
+    "source": "d2c7cdd5f66b54df9f88dab021873ba167492bd8",
+    "epoch": 309,
+    "monitors": 7812,
+    "details": 7685
+  },
+  "latest_stable_lightpanda": {
+    "release": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "verified_date": "2026-10-14"
+  },
+  "public_replacements": [
+    {
+      "slug": "airbnb-contractors",
+      "transport": "sealed Go HTTP",
+      "original_jobs": 4,
+      "native_jobs": 4,
+      "all_original_fields_match": true,
+      "comparison_kind": "complete actual original browser and native public inventory/field match",
+      "original_sha256": "1928a27cfed7c1afc558080dee84819868acce0b9d08bbf232f8991c6ab1e21a",
+      "native_sha256": "5432f036258e74dbd1f84c7ee94f9caed04e2ee7e19d122926a9512aa9de1e49",
+      "published_monitor_config_sha256": "941fcd498cb7723afcc605a7b50b76a84dc60424eb853df8a860ccdb30db0977",
+      "runtime_annotations_excluded_from_csv": true,
+      "production_admitted": false
+    },
+    {
+      "slug": "bp-travelcenters",
+      "transport": "Lightpanda API replay",
+      "original_jobs": 1094,
+      "native_jobs": 1094,
+      "all_original_fields_match": true,
+      "comparison_kind": "complete actual original browser and native public inventory/field match",
+      "original_sha256": "22a66f7f8121efaa68892fe8a59253c50ec6d1d3b5cb3f1a0988ef80a93aa6e2",
+      "native_sha256": "96da7a1cc0a1ff841aa4e970bddfb6f47385c39d3688e01ab7808324790632d7",
+      "published_monitor_config_sha256": "24e95befd01a04da03ea022ad9fd69af5a530278180ec734f0c680ed6ed5f116",
+      "runtime_annotations_excluded_from_csv": true,
+      "production_admitted": false
+    },
+    {
+      "slug": "didi-global-careers-intl",
+      "transport": "sealed Go HTTP",
+      "original_jobs": 287,
+      "native_jobs": 287,
+      "all_original_fields_match": true,
+      "comparison_kind": "retrospective independent complete original/browser and native/direct-HTTP field comparison; retained earlier count-mismatch captures show live changes",
+      "original_sha256": "dfd169177ce4184a77bb9dda9339df6f413f8d21fcb0f3c635bb54c26e2b786d",
+      "native_sha256": "ad54dae7d0474ef705abd658d5e61c253ae79c383214c0bbe3909cf5be77b564",
+      "published_monitor_config_sha256": "f7206e9ccf9efda24899d09b548993e7fb4f18f850bc44211ea2c58ab957f9c4",
+      "runtime_annotations_excluded_from_csv": true,
+      "production_admitted": false
+    }
+  ],
+  "bp_session_wait": {
+    "default_seconds": 3,
+    "default_api_status": 401,
+    "qualified_seconds": 10,
+    "original_fields_matched": 1094,
+    "cleanup_unproved": false,
+    "deadline_exceeded": false
+  },
+  "original_detail_policy": "DiDi retains description enrichment; Airbnb and BP retain their original rich API scheduling policy. BP has no explicit enrichment list; this candidate does not invent detail authority.",
+  "tls_and_network_contract": "Only explicit canonical direct api_sniffer skip_ssl uses the sealed exception client. DiDi exact publisher endpoint/port requires its original board and POST; unrelated ports/paths/methods and proxy/browser combinations refuse.",
+  "local_checks": {
+    "api_sniffer_full_race_and_vet": "passed 10.594s",
+    "real_canonical_publisher_and_failure_cases": 9,
+    "real_cold_retirement_cases": 9,
+    "published_native_transport_cases": 3,
+    "shared_tls_and_installed_runtime_cases": "passed 17.725s combined canonical/TLS/executable suite",
+    "census_and_csv_validation": "69 passed",
+    "renderer_full_race": "passed 12.101s"
+  },
+  "next": [
+    "Complete exact-head required checks and installed Linux/ARM qualification.",
+    "Use supported outgoing reversal and original full deployments, then fresh full census preserving7812/7685 before admitting this group.",
+    "Observe natural canonical receipts, complete fleet freshness/conservation and comparable whole-lane resources.",
+    "Finish all remaining enabled coverage and mandatory production Python consumers before final cutover/reversal/window/retirement."
+  ]
+}

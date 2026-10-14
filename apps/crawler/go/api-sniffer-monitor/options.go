@@ -238,6 +238,12 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	if !validURL(boardURL) || !validURL(o.Endpoint) {
 		return o, ErrOptions
 	}
+	// This existing canonical publisher API uses HTTPS on a non-default port.
+	// Keep its network exception tied to the original board and POST operation.
+	// TLS verification remains a separate sealed-client/canonical-config choice.
+	if o.Endpoint == didiDirectAPIEndpoint && (boardURL != "https://careers.didiglobal.com" || o.Method != "POST") {
+		return o, ErrOptions
+	}
 	if value, exists := m["json_path"]; !exists || value == nil {
 		fields, explicitFields := m["fields"].(map[string]any)
 		if o.URLField == "" || !explicitFields || len(fields) == 0 {
@@ -481,9 +487,11 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	return o, nil
 }
 
+const didiDirectAPIEndpoint = "https://cdncareers.didiglobal.com:34003/icims/searchJobList"
+
 func validURL(raw string) bool {
 	u, err := url.Parse(raw)
-	return err == nil && len(raw) <= 8192 && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Opaque == "" && u.Fragment == "" && (u.Port() == "" || u.Port() == "443") && !strings.ContainsAny(raw, "\r\n\x00")
+	return err == nil && len(raw) <= 8192 && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Opaque == "" && u.Fragment == "" && (u.Port() == "" || u.Port() == "443" || raw == didiDirectAPIEndpoint) && !strings.ContainsAny(raw, "\r\n\x00")
 }
 func validHeaderName(k string) bool {
 	if k == "" {

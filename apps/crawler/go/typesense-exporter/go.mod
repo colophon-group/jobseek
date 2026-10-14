@@ -10,6 +10,7 @@ require (
 	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.14.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0
 )
 

@@ -18,8 +18,19 @@ import (
 	"time"
 )
 
-func explicitTLSFixtureClient(t *testing.T, handler http.HandlerFunc, skip, http2 bool) *VerifiedDirectHTTP {
+func explicitTLSFixtureClient(t *testing.T, handler http.HandlerFunc, skip, http2 bool, exactTarget ...string) *VerifiedDirectHTTP {
 	t.Helper()
+	address := "example.com:443"
+	if len(exactTarget) > 1 {
+		t.Fatal("fixture allows one exact origin")
+	}
+	if len(exactTarget) == 1 {
+		address = exactTarget[0]
+	}
+	host, _, e := net.SplitHostPort(address)
+	if e != nil {
+		t.Fatal("invalid fixture origin")
+	}
 	server := httptest.NewUnstartedServer(handler)
 	server.EnableHTTP2 = http2
 	server.Config.ErrorLog = log.New(io.Discard, "", 0)
@@ -35,7 +46,7 @@ func explicitTLSFixtureClient(t *testing.T, handler http.HandlerFunc, skip, http
 		t.Fatal(e)
 	}
 	bundle := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	client, e := NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: bundle, InternalHosts: []string{"example.com"}, SkipSSL: skip, EnableHTTP2: http2})
+	client, e := NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: bundle, InternalHosts: []string{host}, SkipSSL: skip, EnableHTTP2: http2})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -44,8 +55,8 @@ func explicitTLSFixtureClient(t *testing.T, handler http.HandlerFunc, skip, http
 	// A protected fixture dialer sends the original public hostname to this
 	// owned TLS server. The protected fixture CA deliberately does not trust this server.
 	destination := server.Listener.Addr().String()
-	transport.dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-		if address != "example.com:443" {
+	transport.dial = func(ctx context.Context, network, requested string) (net.Conn, error) {
+		if requested != address {
 			t.Error("unexpected dial target")
 			return nil, ErrUnsafeURL
 		}

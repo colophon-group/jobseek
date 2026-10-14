@@ -622,8 +622,9 @@ else
   # must pass before the first Redis G/empty -> T rollback commit.
   check_producer_activation_sentinel_clearable
   bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
-    uv run --no-sync lightpanda-b0-activation settle-rollback --cohort "$COHORT" \
+    -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" \
+    --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+    --b0-cold-rollback settle-rollback --cohort "$COHORT" \
     --receipt-state "$receipt_state" --source-receipt-sha256 "$source_receipt_sha256"
   plan_output="$(bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
     -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
@@ -647,8 +648,9 @@ else
     "$retirement_routing_epoch" "$source_receipt_state"
 fi
 bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
-  -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
-  uv run --no-sync lightpanda-b0-activation clear-rollback-tombstone --cohort "$COHORT" \
+  -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" \
+  --entrypoint /usr/local/bin/go-typesense-exporter worker-1 \
+  --b0-cold-rollback clear-rollback-tombstone --cohort "$COHORT" \
   --rollback-plan-digest "$rollback_plan_digest" \
   --source-receipt-sha256 "$source_receipt_sha256" --allow-absent
 persist_redis_rdb

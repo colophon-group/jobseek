@@ -1205,7 +1205,7 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     rollback_pending = wrapper.index("rollback-pending", rollback_stop)
     retirement_reserve = wrapper.index('retirement_routing_epoch="$(reserve_routing_epoch)"')
     assert rollback_attestation < rollback_stop < rollback_pending < retirement_reserve
-    settle = wrapper.index("lightpanda-b0-activation settle-rollback", rollback_stop)
+    settle = wrapper.index("--b0-cold-rollback settle-rollback", rollback_stop)
     rollback_plan = wrapper.index("plan --operation rollback", settle)
     assert rollback_stop < settle < rollback_plan
     assert 'timeout --foreground --signal=TERM --kill-after=5s "$@"' in wrapper
@@ -1942,6 +1942,8 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
 
     assert result.returncode == 0, result.stderr
     settle = next(index for index, event in enumerate(events) if " settle-rollback " in event)
+    assert "--b0-cold-rollback settle-rollback" in events[settle]
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter worker-1" in events[settle]
     plan = next(
         index for index, event in enumerate(events) if " plan --operation rollback " in event
     )
@@ -1961,6 +1963,8 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
     tombstone_clear = next(
         index for index, event in enumerate(events) if " clear-rollback-tombstone " in event
     )
+    assert "--b0-cold-rollback clear-rollback-tombstone" in events[tombstone_clear]
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter worker-1" in events[tombstone_clear]
     final_save = max(
         index
         for index, event in enumerate(events)

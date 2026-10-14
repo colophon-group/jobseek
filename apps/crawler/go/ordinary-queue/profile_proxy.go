@@ -67,7 +67,7 @@ func MonitorSkipsSSL(config map[string]string) (bool, error) {
 		return false, ErrUnsupportedProfile
 	}
 	switch config["crawler_type"] {
-	case "dom", "inline", "sitemap":
+	case "dom", "inline", "sitemap", "api_sniffer":
 		return true, nil
 	}
 	return false, ErrUnsupportedProfile
