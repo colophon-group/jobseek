@@ -328,7 +328,10 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
         "repair_umantis_identity_cutover deploy-umantis-identity-cutover",
         nw_cutover,
     )
-    restart = script.index('docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"', umantis_cutover)
+    route_cutover = script.index(
+        "repair_worker_route_cutover deploy-worker-route-cutover", umantis_cutover
+    )
+    restart = script.index('docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"', route_cutover)
 
     assert (
         quiesce
@@ -338,6 +341,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
         < sync
         < nw_cutover
         < umantis_cutover
+        < route_cutover
         < restart
     )
 
@@ -2543,6 +2547,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             '  printf \'%s\\n\' "$1" >>"$TEST_LOG"',
             '  return "$REPAIR_STATUS"',
             "}",
+            "repair_worker_route_cutover() { :; }",
             "rollback_sync_previous_config",
             "status=$?",
             'test -z "$ROLLBACK_SYNC_WEB_DATABASE_URL"',
@@ -3279,6 +3284,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             rollback_support,
             rollback,
             "repair_umantis_identity_cutover() { :; }",
+            "repair_worker_route_cutover() { :; }",
             "wait_for_rollback_core_services() { :; }",
             "publish_legacy_success_marker() { :; }",
             "stop_maintenance_window() { :; }",
@@ -3796,7 +3802,7 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
     dockerfile = DOCKERFILE.read_text()
     dockerignore = DOCKERIGNORE.read_text().splitlines()
 
-    assert "FROM public.ecr.aws/docker/library/python:3.13.15-slim-trixie@sha256:" in dockerfile
+    assert "FROM docker.io/library/python:3.13.15-slim-trixie@sha256:" in dockerfile
     assert "python:3.14" not in dockerfile
     assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in dockerfile
     assert "ghcr.io/astral-sh/uv:latest" not in dockerfile

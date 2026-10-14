@@ -43,3 +43,18 @@ def test_forward_deploy_uses_native_repairs_and_preserves_historical_rollback_cl
     assert "-e REDIS_URL" in function
     assert '"${command_args[@]}"' in function
     assert "uv run --no-sync crawler repair-nw-provider-cutover" not in script
+
+
+def test_worker_route_cutover_uses_current_image_after_forward_and_rollback_sync() -> None:
+    script = (Path(__file__).parents[1] / "deploy.sh").read_text()
+    helper = script.split("repair_worker_route_cutover() {", 1)[1].split("\n}\n", 1)[0]
+    assert '"$CRAWLER_IMAGE_REF" go-typesense-exporter --repair-worker-route-cutover' in helper
+    assert "-e LOCAL_DATABASE_URL -e REDIS_URL" in helper
+    assert '"${MAINTENANCE_PROVENANCE_LABELS[@]}"' in helper
+    rollback = script.split("rollback_sync_previous_config() {", 1)[1].split(
+        "rollback_compose_service_ready() {", 1
+    )[0]
+    assert rollback.index("uv run --no-sync crawler sync") < rollback.index(
+        "repair_worker_route_cutover rollback-worker-route-cutover"
+    )
+    assert "repair_umantis_identity_cutover rollback-umantis-identity-cutover 1 &&" in rollback
