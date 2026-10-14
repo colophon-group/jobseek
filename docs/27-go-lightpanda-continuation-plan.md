@@ -61,6 +61,27 @@ Continue in this order:
 See [the portable production checkpoint](evidence/go-lightpanda-source1047-checkpoint-2026-10-14.json).
 The full migration goal remains active and incomplete.
 
+### Working grouped candidate — 0.13.1048
+
+The next batch implements PDF, DOCX and legacy Word fallbacks for DOM scrapers,
+plus a bounded Bajaj worker-lane repair. Whole deployment runs the repair after
+forward CSV sync and after restored-config rollback, using the current immutable
+image in both directions. It refuses active ownership, inflight attempts, foreign
+identities and ordered fallback steps. Existing queue scores, first-time priority,
+unrelated cache fields, rate limits and SQL schedules are retained.
+
+Thirty original HTTP/binary cases, real canonical writer/publisher tests for all
+three formats, eighteen cold retirement cases and real Postgres/Redis forward/reverse
+repair tests pass. Ten configured boards with 74 retained routes now compile.
+Eleven actual original HTTP samples across the five boards with retained routes
+returned complete title and description; native live checks found six PDF description mismatches. Avera and both EPFL
+boards remain held. All retained IUCN/UNM routes are being compared before
+admission; release qualification remains pending. Production owns 7,815 / 7,709.
+
+See [the candidate evidence](evidence/go-dom-document-worker-route-candidate-2026-10-14.json).
+Continue by qualifying the native live samples and every retained source, then
+shipping this whole batch through the existing source-bound release workflow.
+
 ### Historical deployed checkpoint — 0.13.1042, 2026-10-14
 
 [PR #10492](https://github.com/colophon-group/jobseek/pull/10492) is merged as
