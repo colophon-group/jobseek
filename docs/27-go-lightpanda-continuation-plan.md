@@ -3556,3 +3556,34 @@ Continue grouped remaining monitor/detail/browser and production-consumer ports 
 Combine the three API replacements with native B0 rollback settlement and exact tombstone cleanup for one production release. The original wrapper now calls the existing Go exporter executable for those two operations, retaining the same lock, quiescence, route/source receipts, producer volume and UID, Redis lifecycle Lua, natural lease expiry, dead-letter preservation, canonical fence gate, RDB persistence and recovery/restart order. No additional production service is introduced. Planning, activation and rollback application remain Python consumers to port in the following batch.
 
 The complete exporter race suite passes against real private PostgreSQL/Redis in23.606s. Native code matches35 actual original sentinel decisions and proves expired-ready requeue, expired-dead preservation, natural live expiry and unchanged state for an over-budget lease. Real PostgreSQL fences block cleanup; compiled native settlement and cleanup preserve the original reply ABI. All183 existing activation/deployment tests pass, followed by98 wrapper tests with explicit native-entrypoint assertions. Corpus regeneration, vet, module metadata, formatting and lint pass. Exact combined-head remote qualification and an actual supported native cold reversal still precede ownership. See [the combined consumer candidate](evidence/go-native-b0-cold-rollback-candidate-2026-10-14.json).
+
+### Source1050 restored serving checkpoint — 2026-10-14
+
+PRs #10500/#10501/#10519 delivered document fallbacks, bounded route repair,
+Bass Pro HTTP details and aggregate native capacity60/15 through original
+qualified deployments. Supported reversal enabled the standard CSV publication
+of15 companies. The refreshed7900-board/1,718,429-route census preserves the
+entire7815-monitor/7712-detail cohort. Original activation was interrupted with
+the writers contained; host observation proved no remaining operation and the
+exact pending identity. A supported same-identity retry completed and independent
+SQL/Redis/immutable-image/health checks prove the complete fleet serving at
+epoch326. See [the portable checkpoint](evidence/go-lightpanda-source1050-checkpoint-2026-10-14.json).
+
+This iteration also compares three retained successful LinkedIn empty fragments,
+five DOM listing inventories and two selected JSONLD detail samples through
+the deployed Go source. Actual transport, rich output, writer and policy proofs
+remain necessary before admitting these new boards. An alternate Neurosoft
+embedded sample is explicitly retained as a different scraper, not treated as
+JSONLD parity evidence. Continue all new LinkedIn/Jobs.ch/Join/DOM families
+together with the older remaining profile frontier; do not turn each board into
+a separate release. Use the existing bounded original route-repair operation
+for qualified historical cache/lane mismatches, preserving SQL truth and queues.
+
+A45-second natural ten-container sample measures Go0.564 CPU cores/187MiB and
+12 successful monitors/2 successful details. It excludes the remote renderer
+and has no controlled comparator; sustained freshness, global conservation and
+attributable cost remain unproved. Complete those fleet-wide requirements, the
+remaining effective production consumers, supported final cold reversal and
+rollback window before retiring Python/Playwright/Chromium. The full migration
+goal remains active and incomplete. Lightpanda1.0.0 remains the latest stable
+official release and is already pinned in production.
