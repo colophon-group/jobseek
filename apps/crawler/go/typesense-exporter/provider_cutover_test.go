@@ -200,12 +200,18 @@ func TestCompiledProviderCutoverCommands(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("native command build: %v %s", err, output)
 	}
-	for _, args := range [][]string{{"--repair-nw-provider-cutover"}, {"--repair-umantis-identity-cutover"}, {"--repair-umantis-identity-cutover", "--park-monitors"}} {
+	for _, args := range [][]string{{"--repair-worker-route-cutover"}, {"--repair-nw-provider-cutover"}, {"--repair-umantis-identity-cutover"}, {"--repair-umantis-identity-cutover", "--park-monitors"}} {
 		command := exec.CommandContext(ctx, binary, args...)
 		command.Env = append(os.Environ(), "LOCAL_DATABASE_URL="+dsn.String(), "REDIS_URL=unix://"+client.Options().Addr, "CRAWLER_DB_ROLE=deploy-provider-fixture")
 		output, err := command.CombinedOutput()
 		if err != nil {
 			t.Fatalf("compiled native repair refused fixture: %v %s", err, output)
+		}
+		if args[0] == "--repair-worker-route-cutover" {
+			var result workerRouteCutoverSummary
+			if json.Unmarshal(output, &result) != nil || result != (workerRouteCutoverSummary{}) {
+				t.Fatal("native worker-route empty-database summary changed")
+			}
 		}
 		if args[0] == "--repair-umantis-identity-cutover" {
 			var result umantisCutoverSummary

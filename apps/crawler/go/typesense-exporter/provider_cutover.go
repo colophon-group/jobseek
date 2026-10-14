@@ -201,6 +201,13 @@ func runProviderCutover(kind string, park bool) error {
 	options.DialTimeout, options.ReadTimeout, options.WriteTimeout = 5*time.Second, 10*time.Second, 10*time.Second
 	client := redis.NewClient(options)
 	defer client.Close()
+	if kind == "worker-route" {
+		result, err := repairWorkerRouteCutover(ctx, conn.Conn(), client)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
 	result, err := repairUmantisProviderCutover(ctx, conn.Conn(), client, park)
 	if err != nil {
 		return err

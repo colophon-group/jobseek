@@ -1,0 +1,4 @@
+Apache POI test fixture: test-data/document/simple.doc
+Source: https://github.com/apache/poi/blob/trunk/test-data/document/simple.doc
+Retrieved: 2026-10-14. Licensed under the Apache License, Version 2.0.
+Used only as an offline legacy Word parser fixture; it is not a production posting.

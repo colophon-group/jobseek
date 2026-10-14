@@ -86,14 +86,17 @@ func main() {
 		return
 	}
 
-	if len(os.Args) >= 2 && (os.Args[1] == "--repair-nw-provider-cutover" || os.Args[1] == "--repair-umantis-identity-cutover") {
+	if len(os.Args) >= 2 && (os.Args[1] == "--repair-worker-route-cutover" || os.Args[1] == "--repair-nw-provider-cutover" || os.Args[1] == "--repair-umantis-identity-cutover") {
 		kind, park := "nw", false
+		if os.Args[1] == "--repair-worker-route-cutover" {
+			kind = "worker-route"
+		}
 		if os.Args[1] == "--repair-umantis-identity-cutover" {
 			kind = "umantis"
 			park = len(os.Args) == 3 && os.Args[2] == "--park-monitors"
 		}
 		if len(os.Args) != 2 && !(kind == "umantis" && park) {
-			fmt.Fprintln(os.Stderr, "usage: --repair-nw-provider-cutover | --repair-umantis-identity-cutover [--park-monitors]")
+			fmt.Fprintln(os.Stderr, "usage: --repair-worker-route-cutover | --repair-nw-provider-cutover | --repair-umantis-identity-cutover [--park-monitors]")
 			os.Exit(2)
 		}
 		if err := runProviderCutover(kind, park); err != nil {
