@@ -1,0 +1,1752 @@
+{
+  "cases": [
+    {
+      "provider": "paycor",
+      "name": "complete",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "empty",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "challenge",
+      "body": "<h1>Please sign in</h1>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "nested-title",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Hello <b>World</b> Again\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Hello World Again",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "entities",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p data-x=\"A &amp; B\">A &amp; B&nbsp;Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p data-x=\"A &amp; B\">A &amp; B&nbsp;Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "gnewtonJobPosition",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"unused\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": null,
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "gnewtonJobLocationInfo",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"unused\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "gnewtonJobID",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"unused\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "gnewtonJobOpening",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"unused\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234"
+        }
+      }
+    },
+    {
+      "provider": "paycor",
+      "name": "gnewtonJobDescriptionText",
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"unused\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "content": {
+        "title": "Systems Engineer",
+        "description": null,
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "complete",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "empty",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "challenge",
+      "body": "<h1>Please sign in</h1>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "nested-title",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Hello <b>World</b> Again</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Hello World Again",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "entities",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p data-x=\"A &amp; B\">A &amp; B&nbsp;Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p data-x=\"A &amp; B\">A &amp; B&nbsp;Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "no-location",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"unused-city\">Middlesbrough</span>,\n            <span class=\"unused-state\">England</span>,\n            <span class=\"unused-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": null,
+        "employment_type": "Middlesbrough",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "no-opening",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"unused rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "no-description",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"unused\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": null,
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "Hybrid",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Hybrid</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "On-site",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| On-site</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "Onsite (5 Days per Week)",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Onsite (5 Days per Week)</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "Remote Hybrid",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Remote Hybrid</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "remote wherever",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| remote wherever</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "unknown",
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| unknown</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "complete",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "empty",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "zh",
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "challenge",
+      "body": "<h1>Please sign in</h1>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "zh",
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "nested-title",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Hello <b>World</b> Again</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "HelloWorldAgain",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "entities",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p data-x=\"A &amp; B\">A &amp; B&nbsp;Coach resort guests.<br>维护运动器材。</p>\n    <p data-x=\"A &amp; B\">A &amp; B&nbsp;Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p data-x=\"A &amp; B\">A &amp; B&nbsp;Coach resort guests.<br>维护运动器材。</p>\n<p data-x=\"A &amp; B\">A &amp; B&nbsp;Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "no-description",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"unused\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "no-fields",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <p>职位性质：全职</p>\n    <p>工作地区：湖州市安吉县</p>\n    <p>招聘人数：1人</p>\n    <p>学　　历：本科</p>\n    <p>工作经验：3年以上</p>\n    <p>职位有效期：2026-07-28至2026-10-26</p>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><p>Document guest progress.</p></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><p>Document guest progress.</p></ul>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "zh",
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "extra-sections",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  <h4>Ignore heading</h4><section>Final section</section></div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>\n<section>Final section</section>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "实习",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：实习</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 实习</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "实习",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "实习生",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：实习生</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 实习生</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "实习生",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "Internship",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：Internship</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> Internship</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "Internship",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "合同制",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：合同制</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 合同制</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "兼职",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：兼职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 兼职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "unknown",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：unknown</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> unknown</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "Contract temporary",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：Contract temporary</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> Contract temporary</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    },
+    {
+      "provider": "veryeast",
+      "name": "",
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      }
+    }
+  ],
+  "requests": [
+    {
+      "provider": "paycor",
+      "name": "200",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        200
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": "Systems Engineer",
+        "description": "<p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>",
+        "locations": [
+          "Salt Lake City, UT"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "1234",
+          "openings": "2"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "201",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        201
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "204",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        204
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "400",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        400
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "404",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        404
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "410",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        410
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "403",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        403
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "429-200",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "503-200",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "500-500-500",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        500,
+        500,
+        500
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "paycor",
+      "name": "0-200",
+      "source": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+      "statuses": [
+        0,
+        200
+      ],
+      "body": "\n<html>\n  <h1>JOIN OUR TEAM</h1>\n  <table id=\"gnewtonJobDescription\">\n    <tr><td id=\"gnewtonJobPosition\">\n      <b>Position:</b>&nbsp; Systems Engineer\n    </td></tr>\n    <tr>\n      <td id=\"gnewtonJobLocation\"><b>Location:</b></td>\n      <td id=\"gnewtonJobLocationInfo\"> Salt Lake City, UT<br></td>\n    </tr>\n    <tr><td id=\"gnewtonJobID\"><b>Job Id:</b>&nbsp; 1234 </td></tr>\n    <tr><td id=\"gnewtonJobOpening\"><b># of Openings:</b>&nbsp; 2 </td></tr>\n    <tr>\n      <td id=\"gnewtonJobDescriptionText\">\n        <p>Design signalling systems for rail vehicles.</p>\n        <h3>Qualifications</h3>\n        <ul><li>Engineering degree</li></ul>\n      </td>\n    </tr>\n  </table>\n</html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "200",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        200
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": "Field Sales Representative",
+        "description": "<p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>",
+        "locations": [
+          "Middlesbrough, England, United Kingdom"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "201",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        201
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "204",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        204
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "400",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        400
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "404",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        404
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "410",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        410
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "403",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        403
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "429-200",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "503-200",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "500-500-500",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        500,
+        500,
+        500
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "recruiterbox",
+      "name": "0-200",
+      "source": "https://acme.hire.trakstar.com/jobs/abc123/",
+      "statuses": [
+        0,
+        200
+      ],
+      "body": "\n    <html>\n      <head><title>Field Sales Representative at Top Closers</title></head>\n      <body>\n        <header>\n          <div class=\"js-job-title rb-text-1\">Field Sales Representative</div>\n          <p class=\"opening-info rb-text-3\">\n            <span class=\"meta-job-location-city\">Middlesbrough</span>,\n            <span class=\"meta-job-location-state\">England</span>,\n            <span class=\"meta-job-location-country\">United Kingdom</span>\n            <span>| Full-time</span>\n            <span>| Fully remote</span>\n          </p>\n        </header>\n        <div class=\"jobdesciption\">\n          <p>Sell renewable energy products to qualified customers.</p>\n          <ul><li>Two years of sales experience</li></ul>\n        </div>\n      </body>\n    </html>\n    ",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.hire.trakstar.com/jobs/abc123/"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "200",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        200
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "veryeast",
+      "name": "201",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        201
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "204",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        204
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "400",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        400
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "404",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        404
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "410",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        410
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "403",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        403
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "429-200",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        },
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "veryeast",
+      "name": "503-200",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        },
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "veryeast",
+      "name": "500-500-500",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        500,
+        500,
+        500
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        },
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        },
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "veryeast",
+      "name": "0-200",
+      "source": "https://job.veryeast.cn/8018193/2836817",
+      "statuses": [
+        0,
+        200
+      ],
+      "body": "\n<html><head><script>var page = {\"pcUrl\":\"https://job.veryeast.cn/8018193/2836817\"};</script></head>\n<body><div id=\"textword\">\n  <ul>\n    <h3>职位：Movement Coach 健身教练</h3>\n    <li>职位性质：全职</li>\n    <li>工作地区：湖州市安吉县</li>\n    <li>招聘人数：1人</li>\n    <li>学　　历：本科</li>\n    <li>工作经验：3年以上</li>\n    <li>职位有效期：2026-07-28至2026-10-26</li>\n  </ul>\n  <div class=\"describe\"><h3>岗位职责/职位描述</h3>\n    <p>Coach resort guests.<br>维护运动器材。</p>\n    <p>Deliver individual movement plans.</p>\n    <ul><li>Document guest progress.</li></ul>\n  </div>\n</div></body></html>\n",
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        },
+        {
+          "method": "GET",
+          "url": "https://job.veryeast.cn/8018193/2836817"
+        }
+      ],
+      "content": {
+        "title": "Movement Coach 健身教练",
+        "description": "<h3>岗位信息</h3><ul><li><strong>职位性质:</strong> 全职</li><li><strong>工作地区:</strong> 湖州市安吉县</li><li><strong>招聘人数:</strong> 1人</li><li><strong>学历:</strong> 本科</li><li><strong>工作经验:</strong> 3年以上</li></ul>\n<h3>岗位职责/职位描述</h3><p>Coach resort guests.<br>维护运动器材。</p>\n<p>Deliver individual movement plans.</p>\n<ul><li>Document guest progress.</li></ul>",
+        "locations": [
+          "湖州市安吉县"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-07-28",
+        "base_salary": null,
+        "language": "zh",
+        "extras": {
+          "valid_through": "2026-10-26"
+        },
+        "metadata": {
+          "quantity": "1人",
+          "degree": "本科",
+          "experience": "3年以上"
+        }
+      },
+      "failed": false
+    }
+  ],
+  "sources": {
+    "paycor": "https://recruitingbypaycor.com/career/JobIntroduction.action?id=abc",
+    "recruiterbox": "https://acme.hire.trakstar.com/jobs/abc123/",
+    "veryeast": "https://job.veryeast.cn/8018193/2836817"
+  }
+}

@@ -38,6 +38,19 @@ func StaticProviderDetailOptionsForSource(provider, source string) (StaticProvid
 	}
 	host := strings.ToLower(u.Hostname())
 	switch provider {
+	case "paycor":
+		q, err := url.ParseQuery(p.Query)
+		if host != "recruitingbypaycor.com" || u.Port() != "" || p.Path != "/career/JobIntroduction.action" || err != nil || len(q["id"]) != 1 || !regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`).MatchString(q["id"][0]) || p.Fragment != "" {
+			return o, ErrOptions
+		}
+	case "recruiterbox":
+		if u.Port() != "" || !strings.HasSuffix(host, ".hire.trakstar.com") || strings.Count(host, ".") != 3 || !jazzDetailTenant.MatchString(strings.TrimSuffix(host, ".hire.trakstar.com")) || !regexp.MustCompile(`^/jobs/[A-Za-z0-9_-]{1,128}/?$`).MatchString(p.Path) || p.Fragment != "" {
+			return o, ErrOptions
+		}
+	case "veryeast":
+		if host != "job.veryeast.cn" || u.Port() != "" || !regexp.MustCompile(`^/[0-9]{1,20}/[0-9]{1,20}/?$`).MatchString(p.Path) || p.Query != "" || p.Fragment != "" {
+			return o, ErrOptions
+		}
 	case "jobconvo":
 		request, _, err := JobConvoDetailRequest(source, "pt-br")
 		if err != nil {
@@ -419,6 +432,12 @@ func ParseTaleoEnterpriseDetail(source string) (map[string]any, error) {
 }
 func ParseStaticProviderDetail(provider, source string) (map[string]any, error) {
 	switch provider {
+	case "paycor":
+		return ParsePaycorDetail(source)
+	case "recruiterbox":
+		return ParseRecruiterboxDetail(source)
+	case "veryeast":
+		return ParseVeryEastDetail(source)
 	case "linkedin":
 		return ParseLinkedInDetail(source)
 	case "jazzhr":

@@ -1,0 +1,42 @@
+{
+  "schema": "jobseek.go-final-static-detail-candidate/v1",
+  "observed_at_utc": "2026-10-14T03:56:42.091258+00:00",
+  "version": "0.13.1044",
+  "base_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
+  "providers": [
+    "recruiterbox",
+    "paycor",
+    "veryeast"
+  ],
+  "enabled_boards": 5,
+  "retained_actual_scheduled_routes_accepted": 1536,
+  "original_live_samples": 15,
+  "original_complete_live_samples_native_full_fields_match": 15,
+  "actual_original_parser_vectors": 40,
+  "actual_original_http_traces": 33,
+  "original_python_tests_passed": 14,
+  "native_full_api_race_seconds": 10.688,
+  "native_worker_settlement_identity_and_affected_static_race_seconds": 11.147,
+  "native_cold_retirement_race_seconds": 24.35,
+  "preserved_contracts": [
+    "original selectors, HTML5 serialization, optional fields, location/workplace and internship handling",
+    "Paycor and Recruiterbox exact200 single request and empty fields on other statuses",
+    "VeryEast original three-attempt transient/empty-body retry and 2MiB cap",
+    "publisher-policy header and partial-body signals before failure/retry, including broken responses",
+    "canonical board/source/hash/lane binding; no IO or writes on changed posting source",
+    "independent canonical SQL settlement, schedules, Redis leases and supported cold retirement"
+  ],
+  "new_services": 0,
+  "original_fixture_regeneration": "exact",
+  "linux_amd64_arm64": "worker tests compiled; execution requires exact-head remote qualification",
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "continuation": [
+    "Qualify exact runtime images and supported ARM/Linux tests, preserve every existing ownership member",
+    "Deliver PR10494 native B0 plan/apply first; rebase candidate on its actual merged source and requalify exact head",
+    "Publish through original whole-lane workflows and exercise supported outgoing retirement and fresh full-floor admission",
+    "Admit these five detail boards only after fresh actual canonical/cache/route agreement; sample parity alone grants no ownership",
+    "Continue Onlyfy, PhuketAll and Tupu360 next, then remaining special browser/detail flows and supported cache reconciliation",
+    "Full freshness, global queue conservation, comparable production resource/cost and final rollback window still precede Python retirement"
+  ]
+}
