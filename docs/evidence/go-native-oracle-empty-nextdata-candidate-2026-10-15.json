@@ -1,0 +1,38 @@
+{
+  "version": "jobseek.oracle-empty-nextdata-candidate/v1",
+  "runtime_version": "0.13.1055",
+  "depends_on_pr": 10537,
+  "contracts": [
+    "Bind Oracle detail ownership to canonical tenant metadata for vanity board URLs, retaining explicit detail override precedence",
+    "Admit the existing JOIN Nextdata no-request result when the configured field map is absent or empty"
+  ],
+  "actual_oracle_all_fields": {
+    "boards": 2,
+    "samples": 4,
+    "result": "pass"
+  },
+  "actual_oracle_canonical_writer": {
+    "samples": 4,
+    "real_private_postgres_redis": true,
+    "result": "pass",
+    "enrichment_title_and_deadlines_conserved": true
+  },
+  "empty_nextdata_writer": {
+    "real_private_postgres_redis": true,
+    "http_requests": 0,
+    "original_content_retained": true,
+    "canonical_deadline_and_lease_conserved": true
+  },
+  "cold_retirement": {
+    "profiles": 2,
+    "states_per_profile": 4,
+    "result": "pass"
+  },
+  "full_queue_race_suite": "pass",
+  "production_admission": false,
+  "remaining": [
+    "installed Linux and original whole-lane qualification",
+    "fresh canonical/cache and actual-route binding",
+    "supported full-stack deployment and ownership activation"
+  ]
+}

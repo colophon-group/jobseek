@@ -304,11 +304,8 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	} else {
 		err = join.ValidateDetailURL(source)
 		if err == nil {
-			var fields map[string]string
-			fields, err = join.ValidateDetailConfig(options)
-			if err == nil && len(fields) == 0 {
-				return fail()
-			}
+			// Empty configured mappings preserve the original no-request result.
+			_, err = join.ValidateDetailConfig(options)
 		}
 		endpoint, profile = source, joinDetailProfile
 	}
@@ -368,7 +365,17 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 		if raw, ok := metadata["scraper_config"]; ok {
 			_ = json.Unmarshal(raw, &options)
 		}
-		if o, err := oracle.OptionsFromMetadata(config["board_url"], map[string]any{"host": options["host"], "site": options["site"]}); err == nil {
+		oracleIdentity := map[string]any{}
+		for _, key := range []string{"host", "site"} {
+			value := options[key]
+			if value == nil {
+				if raw, ok := metadata[key]; ok && json.Unmarshal(raw, &value) != nil {
+					return WorkdayDetailProfile{}, ErrUnsupportedProfile
+				}
+			}
+			oracleIdentity[key] = value
+		}
+		if o, err := oracle.OptionsFromMetadata(config["board_url"], oracleIdentity); err == nil {
 			if p, err := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); err == nil && (p.Profile == oracleDetailProfile || p.Profile == oracleProxyDetailProfile) {
 				p.Domain = "*"
 				return p, nil

@@ -1,5 +1,33 @@
 # Go and Lightpanda migration delivery plan
 
+## Latest checkpoint — 2026-10-15, source1053
+
+PR #10536 merged as `e613b9c363dcae51313cc9383226a2366c08f765` and its
+original crawler (38648492949) and renderer (38648764849) deployments passed.
+Independent source/image/readiness and exporter-progress checks passed. The
+supported B0 activation is independently verified at epoch332. A fresh census
+covers7900 enabled boards and1725573 scheduled detail routes. Full-route ordinary
+admission is checking the existing7830-monitor/7735-detail floor plus seven
+qualified PDF/HTTP/DOC detail boards; ordinary activation remains pending.
+
+PR #10537 groups alternate HTTP reads and linked descriptions. Its corrected
+head `e9cba4d1f35f31209b92be2b9df5cc4d81091547` built the installed wheel as
+0.13.1054; original current-head CI, installed image and whole-lane qualification
+are underway. Preserve that head while continuing independent grouped work.
+
+The following batch fixes Oracle vanity-board ownership representation and
+admits JOIN Nextdata's original no-request behavior for missing/empty field
+maps. Four actual Oracle samples match all original canonical fields and pass
+the real native writer. No-request canonical writer conservation and eight
+cold-retirement states pass. See
+`docs/evidence/go-native-oracle-empty-nextdata-candidate-2026-10-15.json`.
+
+Continue grouping remaining contracts and preserve exact qualification and
+rollback identities. Enabled coverage, global freshness/conservation, comparable
+fleet cost, the rollback window, and final Python/Playwright/Chromium retirement
+remain incomplete; the full migration goal remains active.
+
+
 ## Latest checkpoint — 2026-10-15
 
 Source1052 (`3e077597736950c94cb2556b1bf317fa677aeb80`, PR #10535) is deployed.
