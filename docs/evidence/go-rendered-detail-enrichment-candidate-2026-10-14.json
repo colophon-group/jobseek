@@ -2,7 +2,7 @@
   "schema": "jobseek.rendered-detail-enrichment-candidate/v1",
   "observed_at_utc": "2026-10-14T04:48:51.015638+00:00",
   "version": "0.13.1045",
-  "parent_candidate": "PR10495 at4a4e645cefd64d8296cad1ed14a9976f1a63c874",
+  "parent_candidate": "PR10495 ate017fb0ff75fe5ee0b911b9a96421a01d63f301b",
   "behavior": "Rendered DOM, JSON-LD and embedded/Next.js details reuse existing typed canonical field selection; navigation permissions remain unchanged",
   "local_evidence": {
     "held_document_real_pg_redis_selected_field_cases": 10,
@@ -18,8 +18,8 @@
   "production_admitted": false,
   "full_migration_complete": false,
   "next_actions": [
-    "Fix the existing PR10495 installed-image profile expectation to include its three new profiles; preserve this child branch",
-    "Deliver10494 native administration first, then10495 and this group through exact required checks and supported full-lane deployment",
+    "Qualify parent PR10495 final combined provider/output-ABI head; original installed-image expectation is fixed at207 profiles",
+    "Verify supported source1043 recovery, then deliver10495 and this group through exact required checks and supported full-lane deployment",
     "Compare original actual rendered fields for all seven candidate boards, then fresh full-floor census/admission; retained SDK eligibility is not ownership authority",
     "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
   ]
