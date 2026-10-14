@@ -30,12 +30,16 @@ type Request struct {
 	BoardURL          string          `json:"board_url"`
 	Metadata          json.RawMessage `json:"metadata"`
 	Provider          string          `json:"provider,omitempty"`
+	Operation         string          `json:"operation,omitempty"`
 	TimeoutMS         uint64          `json:"timeout_ms"`
 }
 
 func (Request) String() string   { return "API replay request" }
 func (Request) GoString() string { return "API replay request" }
 func (r Request) Valid() bool {
+	if r.Operation != "" && r.Operation != "detail" || r.Operation == "detail" && r.Provider != "" {
+		return false
+	}
 	if r.Provider != "" && r.Provider != "darwinbox" && r.Provider != "bytedance" && r.Provider != "brassring" && r.Provider != "njoyn" {
 		return false
 	}
@@ -54,6 +58,7 @@ type Response struct {
 	ConfigFingerprint string          `json:"config_fingerprint"`
 	Outcome           string          `json:"outcome"`
 	Inventory         json.RawMessage `json:"inventory,omitempty"`
+	Detail            json.RawMessage `json:"detail,omitempty"`
 	Reservation       *Reservation    `json:"reservation,omitempty"`
 	FailureURL        string          `json:"failure_url,omitempty"`
 	FailureStatus     int             `json:"failure_status,omitempty"`
@@ -65,14 +70,17 @@ func (r Response) Valid() bool {
 	}
 	switch r.Outcome {
 	case "success", "partial":
+		if len(r.Detail) > 0 {
+			return r.Outcome == "success" && len(r.Inventory) == 0 && r.FailureURL == "" && r.FailureStatus == 0 && r.Reservation == nil && len(r.Detail) <= ResponseLimit-1024 && json.Valid(r.Detail) && bytes.HasPrefix(bytes.TrimSpace(r.Detail), []byte("{"))
+		}
 		return r.FailureURL == "" && r.FailureStatus == 0 && r.Reservation == nil && len(r.Inventory) > 1 && len(r.Inventory) <= ResponseLimit-1024 && json.Valid(r.Inventory) && bytes.HasPrefix(bytes.TrimSpace(r.Inventory), []byte("{"))
 	case "provider_gone":
 		u, e := url.Parse(r.FailureURL)
-		return e == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && len(r.FailureURL) <= 8192 && (r.FailureStatus == 404 || r.FailureStatus == 410) && len(r.Inventory) == 0 && r.Reservation == nil
+		return e == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && len(r.FailureURL) <= 8192 && (r.FailureStatus == 404 || r.FailureStatus == 410) && len(r.Inventory) == 0 && len(r.Detail) == 0 && r.Reservation == nil
 	case "publisher_reserved":
-		return r.FailureURL == "" && r.FailureStatus == 0 && len(r.Inventory) == 0 && r.Reservation != nil && len(r.Reservation.URL) > 0 && len(r.Reservation.URL) <= 8192 && (r.Reservation.Source == "header" || r.Reservation.Source == "meta") && (r.Reservation.PolicyURL == nil || len(*r.Reservation.PolicyURL) <= 8192)
+		return r.FailureURL == "" && r.FailureStatus == 0 && len(r.Inventory) == 0 && len(r.Detail) == 0 && r.Reservation != nil && len(r.Reservation.URL) > 0 && len(r.Reservation.URL) <= 8192 && (r.Reservation.Source == "header" || r.Reservation.Source == "meta") && (r.Reservation.PolicyURL == nil || len(*r.Reservation.PolicyURL) <= 8192)
 	case "invalid_config", "failed":
-		return r.FailureURL == "" && r.FailureStatus == 0 && len(r.Inventory) == 0 && r.Reservation == nil
+		return r.FailureURL == "" && r.FailureStatus == 0 && len(r.Inventory) == 0 && len(r.Detail) == 0 && r.Reservation == nil
 	}
 	return false
 }

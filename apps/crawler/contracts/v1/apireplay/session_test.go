@@ -50,3 +50,34 @@ func TestRequestAndResponseBindInventoryToOneCleanedReservation(t *testing.T) {
 		t.Fatal("unknown request accepted")
 	}
 }
+
+func TestDetailOperationCannotPublishInventoryOrPartialData(t *testing.T) {
+	r := Request{Protocol: Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), BoardURL: "https://example.com/job/1", Metadata: json.RawMessage(`{"fields":{"title":"name"}}`), Operation: "detail", TimeoutMS: 20000}
+	if !r.Valid() {
+		t.Fatal("detail request rejected")
+	}
+	r.Provider = "darwinbox"
+	if r.Valid() {
+		t.Fatal("detail request inherited inventory provider")
+	}
+	r.Provider = ""
+	r.Operation = "unknown"
+	if r.Valid() {
+		t.Fatal("unknown operation accepted")
+	}
+	response := Response{Protocol: Protocol, RequestID: r.RequestID, ConfigFingerprint: r.ConfigFingerprint, Outcome: "success", Detail: json.RawMessage(`{"title":"Engineer"}`)}
+	if !response.Valid() {
+		t.Fatal("complete detail response rejected")
+	}
+	for _, outcome := range []string{"partial", "failed", "publisher_reserved", "provider_gone", "invalid_config"} {
+		response.Outcome = outcome
+		if response.Valid() {
+			t.Fatal("failure leaked detail", outcome)
+		}
+	}
+	response.Outcome = "success"
+	response.Inventory = json.RawMessage(`{}`)
+	if response.Valid() {
+		t.Fatal("mixed inventory/detail accepted")
+	}
+}

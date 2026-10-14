@@ -2,7 +2,7 @@
   "schema": "jobseek.native-browser-api-detail-core-candidate/v1",
   "candidate_version": "0.13.1052",
   "base_head": "bade637b4534e18f431a620a2a6493f002951572",
-  "candidate_state": "local preparation; renderer protocol, ownership and worker execution integration incomplete",
+  "candidate_state": "Local preparation: selector, configuration parser and renderer/service/client detail path implemented; ownership and ordinary worker integration incomplete",
   "concrete_change": "Port original bounded single-job response selection and mapped/heuristic field extraction to Go; reuse existing HTTP detail projection code",
   "original_reference_selection_cases": 107,
   "original_reference_projection_cases": 216,
@@ -190,10 +190,54 @@
     {
       "path": "apps/crawler/go/api-sniffer-monitor/browser_detail_test.go",
       "sha256": "82d76fe1ae87258697a01a3b2e0488e96e196e206cdde4e09c9325d3b0344868"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/apireplay/session.go",
+      "sha256": "d8223fbb99d96d1697ee0254d08472185bf8f8ca0ef5e2f5ab2434b69af165ee"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/apireplay/session_test.go",
+      "sha256": "6616d06ce73c5c7833c684d458ce60c4ed017c249b6aa2fbda0e3894bd5c7259"
+    },
+    {
+      "path": "apps/crawler/contracts/v1/lightpandaclient/api_replay.go",
+      "sha256": "a51ad85d3046d0925868ec8ef4afa2fd8798e10318953ba475ffc9530d73609b"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/browser_replay.go",
+      "sha256": "b7e29897a81006c32cf0335f7fffa7f06107e236527ba57028fb4bdc809a7b87"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_service.go",
+      "sha256": "c2e423c96e3410d566ec095100c0dd8396629ef9209352cdad3a682aadfdac55"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_service_test.go",
+      "sha256": "653b12042722533ae01375e7ff633b7dd8b8d17d348c0af6dd8e3e86c3f01eaa"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_detail_integration_test.go",
+      "sha256": "675b794e26c73e13c6135e48f10d326ea7264b8315f1e055e0c0febc2c5f4fd6"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_capture.go",
+      "sha256": "c7570463e90f740423d16a5d85ca94d1da69e6bc9f127a77008dbf92d1d847fe"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_controller.go",
+      "sha256": "f7a09e2e605ab20d0951feee5b543593988ee82c62a04dcac562715cdffdef28"
+    },
+    {
+      "path": "pilots/go-lightpanda/api_replay_service.go",
+      "sha256": "d33c7de447b67ba5cb3a16349be28280a49f95ef884837bafab05800c38c853a"
+    },
+    {
+      "path": "pilots/go-lightpanda/harness.go",
+      "sha256": "1cd3c596ccf50feec2f499445095a385593102bbb2413e2243e9c8acfe643e43"
     }
   ],
   "required_next": [
-    "Add bounded generic single-detail capture to existing Lightpanda API replay service/client protocol, preserving publisher signals, source identity, immutable response order and cleanup",
+    "Complete ordinary-worker detail ownership/profile/runtime consumer using the implemented existing API replay detail operation; prove actual canonical writes, publisher refusal, lease settlement and cold reversal across remaining families together",
     "Add native detail ownership/profile/runtime consumer and canonical writer/policy/lease/reversal cases for actual configurations together",
     "Qualify actual original captures across the remaining board families; use explicit field mappings for ambiguous heuristic inputs",
     "After source1051 delivery, rebase and complete source-bound CI/Linux/ARM/renderer qualification and supported original full cutover",
@@ -201,5 +245,11 @@
   ],
   "full_migration_complete": false,
   "mixed_location_reference_cases": 6,
-  "bounded_capture_configuration_parser": "Original defaults, explicit field mappings, path, wait, timeout, fractional settle and enrichment projection are tested; unsupported launch/interaction controls refused"
+  "bounded_capture_configuration_parser": "Original defaults, explicit field mappings, path, wait, timeout, fractional settle and enrichment projection are tested; unsupported launch/interaction controls refused",
+  "renderer_detail_checks": {
+    "physical_pinned_Lightpanda_1_0_0": "passed on darwin/arm64 isolated HTTPS fixture; success and publisher refusal; cleanup proved",
+    "service_cleanup_policy_response_order_race": "passed 4.723s",
+    "framed_service_contract_client_race": "passed",
+    "production_admission": false
+  }
 }
