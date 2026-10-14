@@ -230,8 +230,10 @@ services:
       <<: *common-env
       ORDINARY_GO_WORKER_MODE: enabled
       METRICS_PORT: "9104"
-      DISCOVERY_CONCURRENCY: "20"
-      MONITOR_CONCURRENCY: "5"
+      # Replace the aggregate capacity of all three HTTP workers, rather than
+      # one worker's capacity. Per-host throttle and monitor slots still apply.
+      DISCOVERY_CONCURRENCY: "60"
+      MONITOR_CONCURRENCY: "15"
       # Collect before the 1 GiB container limit; leave room for response
       # buffers, native/SQLite memory and transient concurrent inventories.
       GOMEMLIMIT: 512MiB
@@ -245,8 +247,7 @@ services:
       retries: 3
       start_period: 15s
     mem_limit: 1g
-    # Full native ownership saturates one CPU; retain the existing claim and
-    # memory bounds while giving parsing and settlement two CPU cores.
+    # Keep parsing bounded to two cores and the existing memory envelope.
     cpus: 2.0
 
   # -- Exporter ----------------------------------------------------

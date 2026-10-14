@@ -5218,6 +5218,7 @@ openworks,openworks-workable,https://apply.workable.com/openworks-engineering/,w
 openx,openx-pinpoint,https://openx.pinpointhq.com,pinpoint,"{""slug"": ""openx""}",skip,
 ophelia,ophelia-greenhouse,https://job-boards.greenhouse.io/ophelia,greenhouse,"{""token"": ""ophelia""}",skip,
 ophelos,ophelos-greenhouse,https://job-boards.greenhouse.io/ophelos,greenhouse,"{""token"": ""ophelos""}",skip,
+opi,opi-careers,https://www.linkedin.com/company/opi-geneve/jobs/,linkedin,"{""company_id"": ""2895565"", ""company_slug"": ""opi-geneve"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 oplabs,oplabs-ashby,https://jobs.ashbyhq.com/oplabs,ashby,"{""token"": ""oplabs""}",skip,
 oportun,oportun-greenhouse,https://job-boards.greenhouse.io/oportun,greenhouse,"{""token"": ""oportun""}",skip,
 oppfi,oppfi-greenhouse,https://job-boards.greenhouse.io/opploans,greenhouse,"{""token"": ""opploans""}",skip,
