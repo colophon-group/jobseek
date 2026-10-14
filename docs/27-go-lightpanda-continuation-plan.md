@@ -1,6 +1,71 @@
 # Go and Lightpanda migration delivery plan
 
-### Current deployed checkpoint — source1039, 2026-10-13
+### Current deployed checkpoint — 0.13.1042, 2026-10-14
+
+[PR #10492](https://github.com/colophon-group/jobseek/pull/10492) is merged as
+`4d8410a5155f3c49c82a6681be539814caf1eae7` (0.13.1042). Required checks and all
+16 ARM qualification arms passed at the reviewed head. Original whole crawler
+run 38494447620 passed on attempt 2 after supported outgoing retirement; matching
+renderer run 38496232020 passed. Independent checks bind the source, immutable
+images, compiled native tools, selected CSV tree, health and successful exports.
+Lightpanda 1.0.0 remains the latest official stable release, rechecked October 14.
+
+This grouped release delivers Airbnb contractors and DiDi through sealed Go
+HTTP, BP travelcenters through its explicit captured API, and native B0 rollback
+settlement and tombstone cleanup. Actual supported B0 activation at epoch 311 and cold
+reversal at epoch 312 passed: 26 schedules restored, no terminal drops or remaining Go SQL
+fences, all seven base actors restored, selectors cleared, and all 4,518 outgoing
+ordinary receipts retained. See the [portable checkpoint](evidence/go-lightpanda-source1042-checkpoint-2026-10-14.json).
+
+Final B0 and ordinary activation completed at epoch 313. The fresh all-enabled
+census reconciled 1,733,826 scheduled routes, preserved every prior 7,812 monitor
+and 7,685 detail board, and admitted the three qualified monitor additions:
+**7,815 monitors / 7,685 detail boards**, covering 1,610,377 scheduled detail routes.
+Independent verification proves all ten actors running and armed, all eight
+health checks passing, and matching SQL, Redis, source, image and receipt identities.
+Initial natural completions are 16 monitors and 248 details. The three additions
+have not yet executed naturally; their original future schedules remain intact.
+
+Observe natural receipts and freshness while porting activation planning/apply
+and rollback planning/apply together in the existing Go executable. The following
+branch has tested client, plan-value/entry assembly and real PostgreSQL readers;
+all four commands and original wrapper wiring are implemented in the next candidate,
+with exact-head release qualification still required.
+The full migration goal remains active until remaining coverage and consumers,
+freshness, global conservation, comparable production resources/cost, final
+cutover/reversal and the rollback window allow production Python, Playwright and
+Chromium retirement. Preserve every enabled board and useful offline Python.
+
+### Next combined runtime batch — 0.13.1043
+
+The four remaining B0 activation/rollback planning and apply commands now run in
+the existing Go exporter executable. The unchanged supported wrapper invokes them
+with the same route environment, images, roles, volumes, 90-second budgets,
+quiescence, receipts, SAVE barriers, sentinel checks and recovery/restart ordering.
+All production B0 administration commands now have native implementations; useful
+original Python routines remain as offline parity references.
+
+Thirty-six full plans/digests match the actual original functions. Twenty successful
+apply cases also match original replies and complete queue effects under real Redis
+Lua, plus typed canonical PostgreSQL reads and fence effects. Stale digests preserve
+queue and SQL state. The compiled executable proves pending empty rollback and
+committed tombstone recovery, retains the original commit digest, and leaves other
+shard fences untouched. The full exporter private PostgreSQL/Redis race suite passes
+in 25.964 seconds; 183 original activation/wrapper tests and the new explicit assertion
+that all four consumers call the native executable pass. Linux architecture builds,
+original corpus regeneration, lint, formatting, vet and shell checks pass. Fresh
+exact-head CI, installed image/Linux/ARM qualification and supported operational
+rollout still precede delivery. See the [candidate evidence](evidence/go-native-b0-plan-apply-candidate-2026-10-14.json).
+
+Keep source 1042 serving while this batch qualifies. At 03:20 UTC, all ten actors
+and eight health endpoints remain verified; natural completions reached 871 monitors
+and 2,579 details. BP's first native receipt completed successfully, refreshed all
+1,093 active postings and retained its next deadline. Airbnb and DiDi still await
+natural checks in their actual simple-lane queue positions; no schedules are forced.
+Complete the remaining coverage, freshness/conservation, comparable production
+resources/cost and final cutover/reversal/window before runtime Python retirement.
+
+### Historical deployed checkpoint — source1039, 2026-10-13
 
 [PR #10487](https://github.com/colophon-group/jobseek/pull/10487) is merged and
 source `a5ecb5e9da5057cf8b6348f6cb203628347b5fc7` (0.13.1039) is deployed.
@@ -3364,7 +3429,7 @@ The next mixed iteration repairs SuccessFactors Unicode redirect recognition whi
 
 Implenia’s complete original capture matches343 jobs,344 requests and compared fields after the Unicode repair. Its fresh method capture hitHTTP429 and remains unqualified for live admission. FIH’s physical document exceeds the existing rendered2,000,000-byte contract despite fitting the8MiB wire frame; keep it outside ownership. MediaMarkt’s original interactive path produces5 jobs and still needs implementation/physical/canonical proofs. Other grouped original failures remain retained. Required exact-head CI/image/Linux/ARM qualification, a fresh full census preserving7805/7685, supported reversal and original full rollout still precede activation. See the portable candidate evidence JSON.
 
-### Latest serving checkpoint — 2026-10-14, source0.13.1040
+### Historical serving checkpoint — 2026-10-14, source0.13.1040
 
 PR#10490 merged as `d2c7cdd5f66b54df9f88dab021873ba167492bd8` after exact-head required CI, deployment gate, installed runtime and physical renderer/ARM qualification passed. Both original whole deployment workflows succeeded. The forward deployment executed native Go schema revision0040. Supported B0 activation and ordinary activation completed at epoch309; independent SQL/Redis/image/health verification proves7,812 monitors and7,685 detail boards serving. The full1,731,439-route census preserved every prior7,810 monitor and7,685 detail board and added Sage and McKinsey. Initial natural receipts include12 monitor and101 detail completions; the two additions have not yet executed naturally. See [the current production checkpoint](evidence/go-lightpanda-active1040-2026-10-14.json).
 

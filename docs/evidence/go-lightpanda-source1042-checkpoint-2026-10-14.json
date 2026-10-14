@@ -1,0 +1,119 @@
+{
+  "schema": "jobseek.go-lightpanda-deployed-checkpoint/v1",
+  "observed_at_utc": "2026-10-14T02:14:21.010982+00:00",
+  "version": "0.13.1042",
+  "source_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10492",
+  "reviewed_head": "3cc13a0a6650632e3877c16f90bd9781482c1588",
+  "qualified_tree": "d2a9f7dce0c0f698a7bb16848f005abe596084b7",
+  "required_ci_and_deploy_gate": "passed exact reviewed head; SHA-bound merge; ARM16 admitted with exact effects/cleanup",
+  "crawler_workflow": {
+    "run": 38494447620,
+    "attempt": 2,
+    "conclusion": "success",
+    "first_attempt": "built exact images; expected ownership guard refused before deployment"
+  },
+  "renderer_workflow": {
+    "run": 38496232020,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:2a34992e5f28e5fc95a8ad2578e2d7682fea454bf52a9531cb217add621bb2b6",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:897ee9e204740f55ad22d07d5d1f79f627cd497258024f6915a4801a1367d65a",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:0e41e14fd2134359d3e8b73aad413944314581e441c4c6f23520024c08bad997"
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "official_latest_rechecked": "2026-10-14",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "delivered_group": [
+    "Airbnb contractors sealed Go HTTP",
+    "DiDi sealed Go HTTP with preserved original TLS exception",
+    "BP travelcenters explicit captured API under verified pinned Lightpanda",
+    "native B0 rollback settlement",
+    "native B0 rollback tombstone cleanup"
+  ],
+  "native_cold_reversal": {
+    "activated_epoch": 311,
+    "retired_epoch": 312,
+    "ready_restored": 26,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "original_supported_wrapper_sha256": "37a4d70847b8180fe37060907219df2978501254b9172fc51ad214e9793034f3",
+    "cold_proof_sha256": "1ba425b5fb7d37c36811f63a8787ed6950e44e7a478cf5b8c1e5ca34cc57ca83",
+    "all_base_actors_restored": true,
+    "all_health_passed": true,
+    "selectors_cleared": true,
+    "native_authority_absent": true,
+    "retained_outgoing_receipts": 4518
+  },
+  "next_admission": {
+    "state": "Complete: exact supported stage/activation terminal0 and independent serving verification passed",
+    "previous_floor": {
+      "monitors": 7812,
+      "details": 7685
+    },
+    "qualified_target": {
+      "monitors": 7815,
+      "details": 7685
+    },
+    "new_monitor_count": 3,
+    "new_detail_count": 0,
+    "no_coverage_admission_from_old_census": true,
+    "b0_epoch": 313,
+    "b0_receipt_sha256": "25092873af9e47036037546f43f9c70e415f52c6de88b261b557b7061b1ba431",
+    "b0_plan_digest": "501672fe51179fc13e76f63a5d3bd80da64a903de4a8e81bf715fbc5edabb989",
+    "enabled_boards": 7885,
+    "all_scheduled_routes": 1733826,
+    "qualified_scheduled_owned_routes": 1610377,
+    "previous_floor_preserved": true,
+    "qualified_monitors": 7815,
+    "qualified_details": 7685,
+    "ordinary_plan_sha256": "0204f52fc44c88d5de85d32cea3638f4085054a33e8f373ebd9376f19f5e8169",
+    "ordinary_projection_sha1": "098258fd00fad22061dcb0b304e681622df5e015",
+    "ordinary_receipt_sha256": "ac3a9e40ea92b04ebdcfdae254b9914279dad93227b5db93ad0c028769563139"
+  },
+  "remaining_native_b0_batch": [
+    "activation plan",
+    "activation apply",
+    "rollback plan",
+    "rollback apply"
+  ],
+  "remaining_delivery": [
+    "complete enabled monitor/detail/browser coverage and production consumers",
+    "natural canonical and publisher-policy receipts",
+    "fleet and detail freshness",
+    "global conservation",
+    "comparable production whole-lane CPU/RAM/density/cost",
+    "final full cutover/cold reversal and rollback window",
+    "retire production Python/Playwright/Chromium while retaining useful offline tooling"
+  ],
+  "full_migration_complete": false,
+  "goal_status": "active",
+  "serving": {
+    "epoch": 313,
+    "source_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
+    "monitors": 7815,
+    "details": 7685,
+    "actors_running_and_armed": 10,
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "sql_redis_images_receipts_agree": true,
+    "proof_sha256": "3d668da6b7bdaff49bf852785fa2867fe303a37be7112a0df77b95e5129377d4",
+    "natural_completed_monitors": 16,
+    "natural_completed_details": 248,
+    "three_new_monitors_natural_receipts": "not yet; original future schedules retained",
+    "freshness_complete": false,
+    "production_comparable_cost_complete": false
+  }
+}

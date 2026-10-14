@@ -141,45 +141,58 @@ func (p capacityProducer) enqueue(ctx context.Context, domain string, score floa
 	if err != nil {
 		return false, false, err
 	}
-	dev, ino, err := capacityProducerIdentity(p.socket, p.uid)
+	request := map[string]any{"browser": row.Browser, "cohort": "", "config": config, "domain": domain, "expected_digest": "", "first_time": row.Hash == nil, "next_scrape_at_ms": ms, "operation": "enqueue", "operator_transfer": false, "posting_id": row.ID, "version": capacityProducerProtocol}
+	response, err := p.exchange(ctx, request)
 	if err != nil {
 		return false, false, err
 	}
-	request := map[string]any{"browser": row.Browser, "cohort": "", "config": config, "domain": domain, "expected_digest": "", "first_time": row.Hash == nil, "next_scrape_at_ms": ms, "operation": "enqueue", "operator_transfer": false, "posting_id": row.ID, "version": capacityProducerProtocol}
+	return capacityProducerDecode(response)
+}
+
+// One authenticated bounded exchange serves ordinary enqueue and cold
+// administration. No failed exchange grants a legacy fallback.
+func (p capacityProducer) exchange(ctx context.Context, request map[string]any) ([]byte, error) {
+	if p.mode != "enabled" {
+		return nil, errors.New("invalid producer mode")
+	}
+	dev, ino, err := capacityProducerIdentity(p.socket, p.uid)
+	if err != nil {
+		return nil, err
+	}
 	payload, err := b0task.CanonicalJSON(request, true)
 	if err != nil {
-		return false, false, errors.New("encode producer request failed")
+		return nil, errors.New("encode producer request failed")
 	}
 	record, err := framing.EncodeRecord(payload, 256*1024)
 	if err != nil {
-		return false, false, errors.New("producer request exceeds frame bound")
+		return nil, errors.New("producer request exceeds frame bound")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	connection, err := (&net.Dialer{}).DialContext(ctx, "unix", p.socket)
 	if err != nil {
-		return false, false, errors.New("producer connection unavailable")
+		return nil, errors.New("producer connection unavailable")
 	}
 	defer connection.Close()
 	deadline, _ := ctx.Deadline()
 	if connection.SetDeadline(deadline) != nil {
-		return false, false, errors.New("producer deadline unavailable")
+		return nil, errors.New("producer deadline unavailable")
 	}
 	peer, err := capacityProducerPeerUID(connection.(*net.UnixConn))
 	afterDev, afterIno, identityErr := capacityProducerIdentity(p.socket, p.uid)
 	if err != nil || peer != p.uid || identityErr != nil || dev != afterDev || ino != afterIno {
-		return false, false, errors.New("producer peer identity differs")
+		return nil, errors.New("producer peer identity differs")
 	}
 	if _, err := io.Copy(connection, bytes.NewReader(record)); err != nil {
-		return false, false, errors.New("producer request exchange failed")
+		return nil, errors.New("producer request exchange failed")
 	}
 	response, err := framing.ReadRecord(connection, 256*1024)
 	if err != nil {
-		return false, false, errors.New("producer response frame failed")
+		return nil, errors.New("producer response frame failed")
 	}
 	var trailing [1]byte
 	if n, err := connection.Read(trailing[:]); n != 0 || err != io.EOF {
-		return false, false, errors.New("producer response has trailing bytes or no close")
+		return nil, errors.New("producer response has trailing bytes or no close")
 	}
-	return capacityProducerDecode(response)
+	return response, nil
 }
