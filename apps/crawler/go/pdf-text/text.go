@@ -72,7 +72,13 @@ func spaceWidth(f pdf.Font, enc pdf.TextEncoding) float64 {
 func extract(p pdf.Page) string {
 	identity := matrix{1, 0, 0, 1, 0, 0}
 	cm, tm, prev := identity, identity, identity
-	stack := []matrix{}
+	type graphicsState struct {
+		cm            matrix
+		font          pdf.Font
+		enc           pdf.TextEncoding
+		size, leading float64
+	}
+	stack := []graphicsState{}
 	fonts := map[string]pdf.Font{}
 	for _, name := range p.Fonts() {
 		fonts[name] = p.Font(name)
@@ -125,10 +131,11 @@ func extract(p pdf.Page) string {
 		}
 		switch op {
 		case "q":
-			stack = append(stack, cm)
+			stack = append(stack, graphicsState{cm, font, enc, size, leading})
 		case "Q":
 			if len(stack) > 0 {
-				cm = stack[len(stack)-1]
+				state := stack[len(stack)-1]
+				cm, font, enc, size, leading = state.cm, state.font, state.enc, state.size, state.leading
 				stack = stack[:len(stack)-1]
 			}
 		case "cm":

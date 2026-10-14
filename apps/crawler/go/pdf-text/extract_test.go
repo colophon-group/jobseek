@@ -72,3 +72,13 @@ func TestBlankPageWithEmptyContents(t *testing.T) {
 		t.Fatalf("text=%q err=%v", text, err)
 	}
 }
+
+func TestGraphicsStateRestoresFontAndSize(t *testing.T) {
+	baseline := "BT /F1 12 Tf 1 0 0 1 10 10 Tm (First) Tj 40 0 Td (Second) Tj ET"
+	changed := "BT /F1 12 Tf 1 0 0 1 10 10 Tm (First) Tj q /F1 1 Tf Q 40 0 Td (Second) Tj ET"
+	a, e1 := Extract(fixturePDF([]string{baseline}, 1))
+	b, e2 := Extract(fixturePDF([]string{changed}, 1))
+	if e1 != nil || e2 != nil || a != b {
+		t.Fatalf("restored output differs: %q %q (%v %v)", a, b, e1, e2)
+	}
+}
