@@ -1008,10 +1008,10 @@ test("Go Lightpanda B0 supervisor quality gate is protected", () => {
 
 test("Python fleet comparator stays locked to its production authorities", () => {
   const crawlerBase = crawlerDockerfile.match(
-    /^FROM public\.ecr\.aws\/docker\/library\/(python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
+    /^FROM docker\.io\/library\/(python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
   );
   const comparatorBase = pythonFleetDockerfile.match(
-    /^ARG PYTHON_IMAGE=public\.ecr\.aws\/docker\/library\/(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
+    /^ARG PYTHON_IMAGE=docker\.io\/library\/(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
   );
   assert.ok(crawlerBase, "crawler Python base must remain digest-pinned");
   assert.ok(comparatorBase, "comparator Python base must remain digest-pinned");
@@ -1362,7 +1362,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
 
   assert.match(
     crawlerImageJob,
-    /services:\n      postgres:\n        image: public\.ecr\.aws\/docker\/library\/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
+    /services:\n      postgres:\n        image: docker\.io\/library\/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
   );
   assert.match(crawlerImageJob, /POSTGRES_USER: crawler/);
   assert.match(crawlerImageJob, /POSTGRES_PASSWORD: crawler/);
@@ -1371,7 +1371,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerImageJob, /pg_isready -U crawler -d crawler/);
   assert.match(
     crawlerImageJob,
-    /redis:\n        image: public\.ecr\.aws\/docker\/library\/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
+    /redis:\n        image: docker\.io\/library\/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
   );
   assert.match(crawlerImageJob, /- 6379:6379/);
   assert.match(crawlerImageJob, /redis-cli ping/);
