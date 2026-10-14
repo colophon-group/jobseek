@@ -2,7 +2,7 @@
   "schema": "jobseek.go-final-static-detail-candidate/v1",
   "observed_at_utc": "2026-10-14T03:56:42.091258+00:00",
   "version": "0.13.1044",
-  "base_revision": "4d8410a5155f3c49c82a6681be539814caf1eae7",
+  "base_revision": "7e746615839975cd9848feea0e30dd30b10351f5",
   "providers": [
     "recruiterbox",
     "paycor",
@@ -33,10 +33,12 @@
   "full_migration_complete": false,
   "continuation": [
     "Qualify exact runtime images and supported ARM/Linux tests, preserve every existing ownership member",
-    "Deliver PR10494 native B0 plan/apply first; rebase candidate on its actual merged source and requalify exact head",
+    "Rebased on actual merged PR10494 source7e746615; fresh exact-head qualification precedes supported deployment",
     "Publish through original whole-lane workflows and exercise supported outgoing retirement and fresh full-floor admission",
     "Admit these five detail boards only after fresh actual canonical/cache/route agreement; sample parity alone grants no ownership",
     "Continue Onlyfy, PhuketAll and Tupu360 next, then remaining special browser/detail flows and supported cache reconciliation",
     "Full freshness, global queue conservation, comparable production resource/cost and final rollback window still precede Python retirement"
-  ]
+  ],
+  "rebased_after_native_b0_merge": 10494,
+  "installed_image_profile_assertion": "Exact ordered207-profile expectation matches executable; fresh installed-image qualification remains required"
 }
