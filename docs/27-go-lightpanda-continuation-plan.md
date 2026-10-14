@@ -85,6 +85,19 @@ See [the candidate evidence](evidence/go-dom-document-worker-route-candidate-202
 Continue by qualifying the native live samples and every retained source, then
 shipping this whole batch through the existing source-bound release workflow.
 
+### Next grouped HTTP candidate — 0.13.1049
+
+Both Bass Pro ApplicantPro boards can use their anonymous, tenant-scoped detail
+APIs through the existing Go HTTP profile. Four original Playwright samples match
+all canonical fields, all seven retained routes match through sealed Go HTTP,
+and real writer/publisher tests plus all six cold-retirement modes pass per board.
+The original six field mappings are retained. JSON-LD was rejected because it
+changed other fields. Forward and restored-config rollback repairs reuse the
+bounded worker-route command for both explicit board targets alongside Bajaj.
+
+This is an unpublished local candidate; it confers no production ownership.
+See [the candidate evidence](evidence/go-applicantpro-anonymous-http-candidate-2026-10-14.json).
+
 ### Historical deployed checkpoint — 0.13.1042, 2026-10-14
 
 [PR #10492](https://github.com/colophon-group/jobseek/pull/10492) is merged as
