@@ -1349,6 +1349,7 @@ cambridge-mobile-telematics,cambridge-mobile-telematics-greenhouse,https://job-b
 camp,camp-greenhouse,https://job-boards.greenhouse.io/camp,greenhouse,"{""token"": ""camp""}",skip,
 campfire,campfire-ashby,https://jobs.ashbyhq.com/campfire,ashby,"{""token"": ""campfire""}",skip,
 camping-world,camping-world-careers,https://campingworld.wd5.myworkdayjobs.com/jobs,workday,,workday,
+campus-biotech,campus-biotech-careers,https://www.jobs.ch/fr/entreprises/128652-fondation-campus-biotech-geneva/,jobs_ch,"{""company_id"": ""128652"", ""locale"": ""fr""}",json-ld,
 canals,canals-ashby,https://jobs.ashbyhq.com/canals,ashby,"{""token"": ""canals""}",skip,
 candidly,candidly-greenhouse,https://job-boards.greenhouse.io/candidly,greenhouse,"{""token"": ""candidly""}",skip,
 cannabis-glass,cannabis-glass-greenhouse,https://job-boards.greenhouse.io/cannabisandglass,greenhouse,"{""token"": ""cannabisandglass""}",skip,
