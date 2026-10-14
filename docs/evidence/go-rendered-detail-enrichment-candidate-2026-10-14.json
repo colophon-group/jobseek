@@ -35,7 +35,24 @@
   "next_actions": [
     "Qualify parent PR10495 final combined provider/output-ABI head; original installed-image expectation is fixed at207 profiles",
     "Verify supported source1043 recovery, then deliver10495 and this group through exact required checks and supported full-lane deployment",
-    "Admit only physically qualified boards after fresh full-floor evidence. Resolve Bajaj original-browser/Lightpanda mismatch through proved public upstream data; RSM has no scheduled sample. Retained SDK eligibility is not ownership authority.",
+    "Qualify and publish the combined rendered field-mask and Bajaj public HTTP configuration through exact original workflows. Rebuild fresh full-floor admission; source8379 route eligibility and two samples grant no ownership; RSM has no scheduled sample.",
     "Continue captured-API browser details and remaining provider/browser variants, global freshness/conservation, comparable resources/cost and final rollback window"
-  ]
+  ],
+  "bajaj_native_http_configuration": {
+    "actual_retained_source_urls": 8379,
+    "anonymous_verified_TLS_public_API_samples": 2,
+    "fresh_Go_requests_match_all_original_configured_API_fields": true,
+    "all_description_non_whitespace_characters_preserved_against_original_browser": true,
+    "formatting": "full upstream HTML replaces flattened browser fragment; byte-identical formatted HTML not claimed",
+    "field_mask": [
+      "description"
+    ],
+    "monitor_config": "unchanged",
+    "existing_profile": "api_sniffer.http-detail/v1",
+    "services_added": 0,
+    "candidate_SDK_and_actual_public_HTTP_race_seconds": 14.974,
+    "production_published_or_admitted": false,
+    "original_api_scraper_and_regenerated_census_tests_passed": 103,
+    "data_validation": "passed original validator after original offline census regeneration"
+  }
 }

@@ -38,7 +38,14 @@ Continue in this order:
    7,815 monitor /7,685 detail board floor and admitting qualified additions only.
 4. Rebase and qualify [PR #10496](https://github.com/colophon-group/jobseek/pull/10496):
    selective enrichment across DOM, JSON-LD and embedded Next-data details; currently
-   seven held boards /9,380 routes. Complete physical Lightpanda field-mask parity.
+   seven held boards /9,380 routes. Eleven physical Lightpanda1.0.0 documents match
+   every original same-document parser field; nine contain usable selected fields.
+   Bajaj's two Lightpanda pages lack job content while the original browser succeeds.
+   Its existing public HTTP detail profile instead accepts all8,379 retained URLs;
+   two actual Go TLS responses match original API extraction and preserve every
+   original description character apart from whitespace. Publish the description-only
+   HTTP configuration with upstream HTML formatting after exact qualification.
+   Five rendered boards account for1,001 other routes; RSM has no scheduled sample.
 5. Continue grouped Onlyfy, PhuketAll, Tupu360 and remaining special/detail variants;
    reconcile cache disagreements through supported publication, then prove freshness,
    queue preservation and comparable whole-lane CPU/RAM/density/attributable cost.
