@@ -1,0 +1,35 @@
+{
+  "schema": "jobseek.native-fleet-capacity-candidate/v1",
+  "candidate_version": "0.13.1050",
+  "base_head": "6873e0112a7ecd62fb95cbaac675b6f24e72c5ae",
+  "problem": "A single Go owner inherited one of three legacy HTTP workers\u2019 concurrency limits, reducing aggregate discovery capacity from 60 to 20 and monitor capacity from 15 to 5.",
+  "change": {
+    "native_discovery_slots": 60,
+    "native_monitor_slots": 15,
+    "cpu_cores_limit": 2,
+    "container_memory_limit": "1g",
+    "go_memory_target": "512MiB"
+  },
+  "observed_production_source": "ac21b64d9e117b87694e38f0450c37a59eeefeb9",
+  "observed_production_epoch": 322,
+  "natural_sample": {
+    "duration_seconds": 45.504304124973714,
+    "native_cpu_cores": 0.6658663302878784,
+    "native_container_memory_bytes": 177737728,
+    "successful_detail_tasks": 31.0,
+    "circuit_open_detail_tasks": 15.0
+  },
+  "validation": {
+    "resource_and_aggregate_capacity_contracts": "2 passed",
+    "focused_runtime_and_monitor_capacity_race": "passed 2.127s, includes60 simultaneous claims and15 monitor slots",
+    "real_lease_and_cancellation_cases": "passed2.729s with required private PostgreSQL/Redis",
+    "existing_deployment_contracts": "98passed; one random local OpenSSL key fixture rejected before test operation, focused fresh-key rerun passed",
+    "ruff_and_diff": "passed"
+  },
+  "production_change": false,
+  "limits": [
+    "The45-second sample is observational; no controlled Python comparator, fleet cost savings or sustained throughput claim.",
+    "Incoming whole-release qualification and supported deployment are required.",
+    "After rollout, verify current success/failure rates, CPU, memory, leases, host throttles, monitor freshness and detail backlog under normal workload."
+  ]
+}
