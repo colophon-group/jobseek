@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -14,58 +15,68 @@ import (
 )
 
 func TestMonitorCapacityLeavesDetailDiscoveryAvailable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	slots := make(chan struct{}, 2)
-	entered := make(chan queue.Kind, 8)
-	release := make(chan struct{})
-	var releaseOnce sync.Once
-	defer releaseOnce.Do(func() { close(release) })
-	var monitors, peak atomic.Int64
-	done := make(chan error, 8)
-	for _, kind := range []queue.Kind{queue.Monitor, queue.Monitor, queue.Monitor, queue.Monitor, queue.Scrape, queue.Scrape, queue.Scrape, queue.Scrape} {
-		go func(kind queue.Kind) {
-			_, err := executeWithMonitorSlot(ctx, slots, kind, func() (*GreenhouseClaimResult, error) {
-				if kind == queue.Monitor {
-					n := monitors.Add(1)
-					for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {
-					}
-					defer monitors.Add(-1)
+	for _, c := range []struct{ slots, monitors, details int }{{2, 4, 4}, {15, 30, 45}} {
+		t.Run(fmt.Sprint(c.slots), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			slots := make(chan struct{}, c.slots)
+			entered := make(chan queue.Kind, c.monitors+c.details)
+			release := make(chan struct{})
+			var releaseOnce sync.Once
+			defer releaseOnce.Do(func() { close(release) })
+			var monitors, peak atomic.Int64
+			done := make(chan error, c.monitors+c.details)
+			kinds := make([]queue.Kind, c.monitors+c.details)
+			for i := range kinds {
+				kinds[i] = queue.Scrape
+				if i < c.monitors {
+					kinds[i] = queue.Monitor
 				}
-				entered <- kind
-				select {
-				case <-release:
-					return &GreenhouseClaimResult{}, nil
-				case <-ctx.Done():
-					return nil, ctx.Err()
+			}
+			for _, kind := range kinds {
+				go func(kind queue.Kind) {
+					_, err := executeWithMonitorSlot(ctx, slots, kind, func() (*GreenhouseClaimResult, error) {
+						if kind == queue.Monitor {
+							n := monitors.Add(1)
+							for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {
+							}
+							defer monitors.Add(-1)
+						}
+						entered <- kind
+						select {
+						case <-release:
+							return &GreenhouseClaimResult{}, nil
+						case <-ctx.Done():
+							return nil, ctx.Err()
+						}
+					})
+					done <- err
+				}(kind)
+			}
+			counts := map[queue.Kind]int{}
+			for i := 0; i < c.slots+c.details; i++ {
+				counts[awaitRuntime(t, entered)]++
+			}
+			if counts[queue.Monitor] != c.slots || counts[queue.Scrape] != c.details || peak.Load() != int64(c.slots) {
+				t.Fatal("monitor cap consumed detail discovery capacity", counts, peak.Load())
+			}
+			select {
+			case <-entered:
+				t.Fatal("monitor executed beyond its separate cap")
+			default:
+			}
+			releaseOnce.Do(func() { close(release) })
+			for i := 0; i < c.monitors+c.details; i++ {
+				if err := awaitRuntime(t, done); err != nil {
+					t.Fatal(err)
 				}
-			})
-			done <- err
-		}(kind)
-	}
-	counts := map[queue.Kind]int{}
-	for i := 0; i < 6; i++ {
-		counts[awaitRuntime(t, entered)]++
-	}
-	if counts[queue.Monitor] != 2 || counts[queue.Scrape] != 4 || peak.Load() != 2 {
-		t.Fatal("monitor cap consumed detail discovery capacity", counts, peak.Load())
-	}
-	select {
-	case <-entered:
-		t.Fatal("monitor executed beyond its separate cap")
-	default:
-	}
-	releaseOnce.Do(func() { close(release) })
-	for i := 0; i < 8; i++ {
-		if err := awaitRuntime(t, done); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if peak.Load() != 2 || len(slots) != 0 {
-		t.Fatal("monitor capacity was leaked or exceeded")
+			}
+			if peak.Load() != int64(c.slots) || len(slots) != 0 {
+				t.Fatal("monitor capacity was leaked or exceeded")
+			}
+		})
 	}
 }
-
 func TestMonitorCapacityCancellationDoesNotEnterExecution(t *testing.T) {
 	slots := make(chan struct{}, 1)
 	slots <- struct{}{}
