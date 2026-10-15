@@ -44,7 +44,7 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 				"mcdonalds-au-restaurants":         "/crew-member/job/%d",
 				"bridgestone-careers-australia":    "/jobDetailsModern?selectJob=%d",
 				"emirates-group-dnata-au":          "/jobDetailsModern?selectJob=%d",
-				"emirates-group-dnata-catering-au": "/jobDetailsModern?selectJob=%d",
+				"emirates-group-dnata-catering-au": "/jobDetailsModern?selectJob=%d&s=250&modern=1",
 				"wix-careers":                      "/position/REF%d",
 				"cma-cgm-air-belgium":              "/jobs/first-officer-%d/",
 				"mufg-trust-jp":                    "/u/job.phtml?job_code=%d",
@@ -62,7 +62,11 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		if i == 0 {
 			textHash = ""
 		}
-		c.HSet(ctx, "scrape:"+ids[i], "board_id", board, "source_url", url, "domain", target.Domain, "scrape_step", "0", "description_r2_hash", textHash, "retained", "original")
+		cachedURL := url
+		if target.Slug == "emirates-group-dnata-catering-au" && i != 1 {
+			cachedURL = strings.Replace(url, "&s=250&modern=1", "&modern=1", 1)
+		}
+		c.HSet(ctx, "scrape:"+ids[i], "board_id", board, "source_url", cachedURL, "domain", target.Domain, "scrape_step", "0", "description_r2_hash", textHash, "retained", "original")
 		key := "scrapes_browser:" + target.Domain
 		score := float64(123 + i)
 		if i == 0 {
@@ -93,6 +97,8 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		guarded := workerRouteSnapshot(t, c, ctx)
 		if _, err := repairWorkerRouteCutover(ctx, conn, c); err == nil {
 			t.Fatal("accepted unsafe state", g.key)
+		} else if !strings.Contains(err.Error(), target.Slug) {
+			t.Fatal("missing bounded target diagnostic", err)
 		}
 		if got := workerRouteSnapshot(t, c, ctx); got != guarded {
 			t.Fatal("refusal changed queues", g.key)
@@ -105,6 +111,20 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		if workerRouteSnapshot(t, c, ctx) != before {
 			t.Fatal("fixture did not restore")
 		}
+	}
+	// A historical URL exception must not relax any other cache identity.
+	for _, field := range []string{"source_url", "board_id", "domain"} {
+		key := "scrape:" + ids[2]
+		original := c.HGet(ctx, key, field).Val()
+		c.HSet(ctx, key, field, "invalid-identity")
+		before := workerRouteSnapshot(t, c, ctx)
+		if _, err := repairWorkerRouteCutover(ctx, conn, c); err == nil || !strings.Contains(err.Error(), "worker route scrape identity or fallback step mismatch") {
+			t.Fatal("accepted changed cache identity or lost safe diagnostic", field, err)
+		}
+		if workerRouteSnapshot(t, c, ctx) != before {
+			t.Fatal("identity refusal mutated queues", field)
+		}
+		c.HSet(ctx, key, field, original)
 	}
 	result, err := repairWorkerRouteCutover(ctx, conn, c)
 	if err != nil || result.Selected != 3 || result.Repaired != 3 {
@@ -125,6 +145,13 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		}
 		if i > 0 && c.HGet(ctx, "scrape:"+id, "description_r2_hash").Val() != "456" {
 			t.Fatal("lane repair overwrote existing lifecycle hash")
+		}
+		var canonicalURL string
+		if err := conn.QueryRow(ctx, `SELECT source_url FROM job_posting WHERE id=$1::uuid`, id).Scan(&canonicalURL); err != nil {
+			t.Fatal(err)
+		}
+		if c.HGet(ctx, "scrape:"+id, "source_url").Val() != canonicalURL {
+			t.Fatal("cache URL not canonical after repair")
 		}
 		if c.HGet(ctx, "scrape:"+id, "retained").Val() != "original" {
 			t.Fatal("cache field lost")
@@ -189,4 +216,24 @@ func workerRouteSnapshot(t *testing.T, c *redis.Client, ctx context.Context) str
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestWorkerRoutePreviousURLIsMigration0031Only(t *testing.T) {
+	canonical := "https://dnatacatering.expr3ss.com/jobDetailsModern?selectJob=123&s=250&modern=1"
+	target := workerRouteTarget{Slug: "emirates-group-dnata-catering-au"}
+	if got := workerRoutePreviousURL(target, canonical); got != "https://dnatacatering.expr3ss.com/jobDetailsModern?selectJob=123&modern=1" {
+		t.Fatal(got)
+	}
+	for _, url := range []string{
+		strings.Replace(canonical, "s=250", "s=251", 1), canonical + "&tracking=1",
+		strings.Replace(canonical, "https:", "http:", 1), strings.Replace(canonical, "selectJob=123", "selectJob=other", 1),
+		strings.Replace(canonical, "dnatacatering.expr3ss.com", "dnata.expr3ss.com", 1),
+	} {
+		if workerRoutePreviousURL(target, url) != url {
+			t.Fatal("accepted nonmigration URL")
+		}
+	}
+	if workerRoutePreviousURL(workerRouteTarget{Slug: "other"}, canonical) != canonical {
+		t.Fatal("accepted another board")
+	}
 }
