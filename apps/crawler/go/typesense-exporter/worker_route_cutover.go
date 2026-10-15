@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -123,7 +124,7 @@ func repairWorkerRouteTarget(ctx context.Context, conn *pgx.Conn, client *redis.
 		if err != nil || domain != target.Domain || !target.SourcePattern.MatchString(s.URL) || s.Browser != browser {
 			return result, errors.New("worker route canonical posting identity mismatch")
 		}
-		args = append(args, s.ID, s.URL, cfg["description_r2_hash"], strconv.FormatFloat(score, 'f', -1, 64), strconv.FormatBool(s.Hash == nil))
+		args = append(args, s.ID, s.URL, cfg["description_r2_hash"], strconv.FormatFloat(score, 'f', -1, 64), strconv.FormatBool(s.Hash == nil), workerRoutePreviousURL(target, s.URL))
 	}
 	// Wrap the unchanged original enqueue implementation so both ready indexes
 	// retain their rate-limit and rotation semantics after lane normalization.
@@ -132,7 +133,37 @@ func repairWorkerRouteTarget(ctx context.Context, conn *pgx.Conn, client *redis.
 	script := workerRouteCutoverLua + "\nlocal function enqueue(ARGV)\n" + deadletterEnqueueLua + "\nend\nlocal function refresh(wtype)\nlocal domain=ARGV[2]\nlocal now=tonumber(ARGV[4])\nlocal scrape_rotation_key=\"ready:rotation:\"..wtype\n-- Always recompute ready membership." + readyBlock + "\nend\nreturn repair(enqueue,refresh)\n"
 	result.Repaired, err = client.Eval(ctx, script, nil, args...).Int64()
 	if err != nil || result.Repaired < 0 || result.Repaired > int64(result.Selected) {
-		return result, errors.New("worker route repair was not acknowledged")
+		// Redis and transport errors may contain arbitrary data. Only report our
+		// own constant preflight reasons, plus the committed target slug.
+		reason := "worker route repair was not acknowledged"
+		if err != nil {
+			for _, known := range []string{
+				"worker route ownership is still active", "worker route legacy guard is still active",
+				"worker route rate limit is corrupt", "worker route rate limit is invalid",
+				"worker route queue type is corrupt", "worker route queue deadline is invalid",
+				"worker route queue token type is corrupt", "worker route scrape type is corrupt",
+				"worker route scrape identity or fallback step mismatch", "worker route scrape is inflight",
+			} {
+				if err.Error() == known {
+					reason = known
+					break
+				}
+			}
+		}
+		return result, fmt.Errorf("worker route %s: %s", target.Slug, reason)
 	}
 	return result, nil
+}
+
+// Migration 0031 corrected this exact obsolete Expr3ss alias in SQL. Redis
+// caches can outlive the migration; authenticate that historical URL before
+// enqueue replaces it with the canonical SQL URL. No other query variations
+// or provider identities are interchangeable.
+var dnataCateringCanonicalURL = regexp.MustCompile(`^https://dnatacatering[.]expr3ss[.]com/jobDetailsModern[?]selectJob=[0-9]+&s=250&modern=1$`)
+
+func workerRoutePreviousURL(target workerRouteTarget, canonical string) string {
+	if target.Slug == "emirates-group-dnata-catering-au" && dnataCateringCanonicalURL.MatchString(canonical) {
+		return strings.Replace(canonical, "&s=250&modern=1", "&modern=1", 1)
+	}
+	return canonical
 }

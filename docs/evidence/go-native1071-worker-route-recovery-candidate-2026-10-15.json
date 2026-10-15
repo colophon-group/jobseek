@@ -1,0 +1,32 @@
+{
+  "status": "candidate_recovery_not_deployed",
+  "version": "0.13.1071",
+  "failed_source": "45f61075ee328e970399d72a4b5cdcf3848f51e3",
+  "failed_deploy": 38794642862,
+  "selected_restored_source": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+  "cold_epoch": 347,
+  "writers": "stopped_by_original_rollback_guard",
+  "observed_cause": {
+    "target": "emirates-group-dnata-catering-au",
+    "obsolete_cache_urls": 59,
+    "migration": "0031",
+    "same_board_domain_job_identifier_and_zero_fallback_step": true
+  },
+  "read_only_candidate_preflight": {
+    "targets": 10,
+    "selected_schedules": 9563,
+    "errors": 0,
+    "effects": 0
+  },
+  "validation": [
+    "Real PostgreSQL and Redis: go test -race -count=1 -run TestWorkerRoute ./...",
+    "Ten targets: forward repair, idempotent retry, reverse repair, unchanged schedule and lifecycle fields, whole-board refusal without mutation",
+    "Historical URL allowance limited to exact migration0031 dnata catering alias; other boards, query values, schemes and hosts unchanged"
+  ],
+  "latest_lightpanda": "1.0.1",
+  "remaining": [
+    "Successful original full crawler deployment and independent installed verification",
+    "Fresh full-floor admission for merged three-monitor/twelve-detail batch",
+    "Freshness, conservation, native lifecycle/recovery and production runtime retirement"
+  ]
+}

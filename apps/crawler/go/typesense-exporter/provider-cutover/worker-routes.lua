@@ -28,12 +28,14 @@ for _,lane in ipairs({"simple","browser"}) do
  end
 end
 local selected={}
-for offset=5,#ARGV,5 do
+for offset=5,#ARGV,6 do
  local id,url,hash,sqlscore,first=ARGV[offset],ARGV[offset+1],ARGV[offset+2],ARGV[offset+3],ARGV[offset+4]=="true"
+ local previousURL=ARGV[offset+5]
  local key="scrape:"..id
  if not typed(key,"hash") then return redis.error_reply("worker route scrape type is corrupt") end
  if redis.call("EXISTS",key)==1 then
-  if redis.call("HGET",key,"board_id")~=board or redis.call("HGET",key,"source_url")~=url
+  local cachedURL=redis.call("HGET",key,"source_url")
+  if redis.call("HGET",key,"board_id")~=board or (cachedURL~=url and cachedURL~=previousURL)
    or redis.call("HGET",key,"domain")~=domain or redis.call("HGET",key,"scrape_step")~="0" then
    return redis.error_reply("worker route scrape identity or fallback step mismatch")
   end

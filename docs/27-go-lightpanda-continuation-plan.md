@@ -1,6 +1,14 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery checkpoint — 2026-10-15
+## Recovery checkpoint — 2026-10-15, 20:06 UTC
+
+The 0.13.1070 batch merged in [PR #10599](https://github.com/colophon-group/jobseek/pull/10599), source `45f61075ee328e970399d72a4b5cdcf3848f51e3`. The original crawler [deployment 38794642862](https://github.com/colophon-group/jobseek/actions/runs/38794642862) failed at worker-route repair after successful migration, registry and Typesense sync. Rollback restored source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` and its committed CSV/environment, but the same repair failed. The original rollback guard deliberately left all crawler writers stopped. The previous ordinary and B0 owners were already retired at cold epoch 347; the historical 7,830/7,802 floor is not active authority now.
+
+Read-only replay of the exact repair preflight identifies 59 dnata catering caches with the obsolete URL corrected in SQL by migration 0031. Board, domain, job identifier and fallback step agree. Recovery release 0.13.1071 accepts only that migration's exact historical URL alias, replaces it with the canonical SQL URL through the original enqueue, and keeps whole-board identity, ownership, fallback and inflight checks. Read-only candidate replay passes all ten targets and 9,563 selected schedules. Real PostgreSQL/Redis race tests exercise forward repair, retry, reversal, lifecycle/priority preservation and refusal without mutation. The full supported deployment must succeed before ownership admission resumes.
+
+The renderer [deployment 38794793886](https://github.com/colophon-group/jobseek/actions/runs/38794793886) succeeded for source `45f61075ee328e970399d72a4b5cdcf3848f51e3`. Independent installed checks confirm Lightpanda 1.0.1 and the official ARM binary checksum; the official latest release was rechecked at this recovery checkpoint. Keep the merged three-monitor/twelve-detail batch together. After recovery, bind admission to the actual successful source and images, reconstruct eligible missing caches through the existing cold path, then prove fresh output, conservation and recovery before runtime retirement.
+
+## Previous delivery checkpoint (historical) — 2026-10-15
 
 Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md) for authoritative state and execution order. Source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` (0.13.1067) and latest stable Lightpanda 1.0.1 passed original deployments and independent source/image/data/binary/health/export checks. B0 and ordinary Go are independently active at epoch 346, owning **7,830 monitors / 7,802 details** and delivering all 19 additions.
 
