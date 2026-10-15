@@ -14,14 +14,13 @@
     "boards": [
       "mcdonalds-au-restaurants",
       "bridgestone-careers-australia",
-      "emirates-group-dnata-au",
       "emirates-group-dnata-catering-au",
       "wix-careers",
       "cma-cgm-air-belgium",
       "mufg-trust-jp"
     ],
-    "nonempty_original_references": 13,
-    "current_scheduled_routes_preflighted": 397,
+    "nonempty_original_references": 12,
+    "current_scheduled_routes_preflighted": 362,
     "all_original_fields_equal": true,
     "canonical_writer_checks": "pass",
     "forward_reverse_route_contracts": "pass in private PostgreSQL/Redis; retain IDs, scores, lifecycle hashes, first-time priority, unrelated entries; reject ownership/inflight/drift before per-board effects",
@@ -42,12 +41,13 @@
   },
   "proposed_additions": {
     "monitors": 2,
-    "details": 9
+    "details": 8
   },
   "held": [
     "bright-horizons-only-about-children-australia: one actual request failure remains",
     "matching empty monitor results: no new positive-content or authoritative-absence claim",
-    "remaining monitor navigation/API/session/resource-policy failures: separate retained diagnosis"
+    "remaining monitor navigation/API/session/resource-policy failures: separate retained diagnosis",
+    "emirates-group-dnata-au: second active source has no static JSON-LD; original browser adapter returns a full posting. Original browser config restored verbatim."
   ],
   "evidence_sha256": {
     "broad_field_comparison": "e4bace378e997eafb0c283602eb2f681712b158c4d35ad33bfaa0418e2057e54",
@@ -76,13 +76,14 @@
     "data_validation": "pass",
     "ordinary_profile_registry_bindings": "pass",
     "deploy_assets_and_census_pytest": "131 passed",
-    "cold_route_repair": "11 boards forward/reverse; private PostgreSQL and Redis; successful idempotent retries and refusal-before-effects checks",
+    "cold_route_repair": "pass:10targetboards (4prior,6HTTP replacements),forward/reverse private PostgreSQL/Redis contracts",
     "actual_route_profile_preflight": "397 sources across seven proposed configs",
-    "latest_release_recheck": "official GitHub latest release remains stable1.0.1, published2026-10-15T14:55:37Z"
+    "latest_release_recheck": "official GitHub latest release remains stable1.0.1, published2026-10-15T14:55:37Z",
+    "dnata_and_registry_and_census": "62passed after held dnata main removal;ruff anddata validationpass"
   },
   "candidate_assets_sha256": {
-    "apps/crawler/data/boards.csv": "b8371390868f1fa6db02e3e862e31e7cb492649375c461a68a2072247ed9b124",
-    "apps/crawler/go/typesense-exporter/provider-cutover/browser-http-routes.json": "c33a205ce7e204fdec1047182c350bfd7e610646a3cbc61299c4577d0f356fee",
-    "apps/crawler/tests/lightpanda/fixtures/census.json": "711edbe20a60d645519f4017677b8ddfe6fcddbd52a9f18bddbb6b4e5936f804"
+    "apps/crawler/data/boards.csv": "e1cc04455e50ce2fbe842d218d1ecf4084d861d02fc9dec53b0dff5ef2d337ae",
+    "apps/crawler/go/typesense-exporter/provider-cutover/browser-http-routes.json": "bc3039d29f4113b0e9a05475cf4dcc909c8901e9e732f9e5590e08e0263e4019",
+    "apps/crawler/tests/lightpanda/fixtures/census.json": "6a3c27ee6579c9ac20d3512c675ce809c91c3e9d7de2d61df9153f524334ba9d"
   }
 }

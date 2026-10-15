@@ -30,32 +30,6 @@
     }
   },
   {
-    "slug": "emirates-group-dnata-au",
-    "board_url": "https://dnata.expr3ss.com/home",
-    "domain": "dnata.expr3ss.com",
-    "scraper_type": "json-ld",
-    "source_pattern": "^https://dnata\\.expr3ss\\.com/jobDetailsModern\\?[^#]+$",
-    "forward_config": {
-      "render": false
-    },
-    "reverse_config": {
-      "render": true,
-      "proxy": true,
-      "transport_attempts": 5,
-      "channel": "chrome",
-      "headless": false,
-      "stealth": true,
-      "wait": "domcontentloaded",
-      "timeout": 30000,
-      "actions": [
-        {
-          "action": "evaluate",
-          "script": "() => { const clean = (node) => (node?.textContent || '').replace(/\\s+/g, ' ').trim(); const title = clean(document.querySelector('#job-details-title')); const descriptionNode = document.querySelector('#adCopyContainer'); const description = descriptionNode?.innerHTML?.trim() || ''; if (!title || !description || !clean(descriptionNode)) throw new Error('Expr3ss detail is missing required title or description'); const sidebar = Array.from(document.querySelectorAll('.application-sidebar__row span'), clean).filter(Boolean); const employmentType = sidebar.find((value) => /^(?:full|part|casual|contract|permanent|temporary)\\b/i.test(value)); const posted = sidebar.find((value) => /^posted\\s+/i.test(value)); const match = posted?.match(/^posted\\s+(\\d{1,2})\\s+([a-z]{3})\\s+(\\d{2}|\\d{4})$/i); const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'}; const month = match ? months[match[2].toLowerCase()] : null; const year = match ? (match[3].length === 2 ? '20' + match[3] : match[3]) : null; if (!match || !month) throw new Error('Expr3ss detail is missing a supported posted date'); const mapScript = Array.from(document.scripts, (node) => node.textContent || '').find((value) => /\\bvar\\s+mapData\\s*=/.test(value)); const mapMatch = mapScript?.match(/\\bvar\\s+mapData\\s*=\\s*(\\{[^\\r\\n;]*\\})\\s*;/); let location = ''; if (mapMatch) { const mapCenter = JSON.parse(mapMatch[1]).mapCenter; const parts = typeof mapCenter === 'string' ? mapCenter.split(',').map((value) => value.trim()) : []; const [country, region, postalCode, ...placeParts] = parts; const place = placeParts.filter(Boolean).join(', '); location = [place, [region, postalCode].filter(Boolean).join(' '), country].filter(Boolean).join(', '); } const posting = {'@context':'https://schema.org','@type':'JobPosting',title,description,datePosted:year + '-' + month + '-' + match[1].padStart(2, '0')}; if (location) posting.jobLocation = {'@type':'Place',name:location,address:{'@type':'PostalAddress',addressLocality:location}}; if (employmentType) posting.employmentType = employmentType; const script = document.createElement('script'); script.type = 'application/ld+json'; script.dataset.jobseekExpr3ss = 'true'; script.textContent = JSON.stringify(posting); document.head.appendChild(script); return true; }"
-        }
-      ]
-    }
-  },
-  {
     "slug": "emirates-group-dnata-catering-au",
     "board_url": "https://dnatacatering.expr3ss.com/home",
     "domain": "dnatacatering.expr3ss.com",

@@ -24,7 +24,7 @@ var browserHTTPRouteContracts []byte
 
 func browserHTTPRouteTargets() []workerRouteTarget {
 	var configs []browserHTTPRouteConfig
-	if json.Unmarshal(browserHTTPRouteContracts, &configs) != nil || len(configs) != 7 {
+	if json.Unmarshal(browserHTTPRouteContracts, &configs) != nil || len(configs) != 6 {
 		panic("invalid committed browser HTTP route contracts")
 	}
 	targets := make([]workerRouteTarget, 0, len(configs))

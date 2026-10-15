@@ -23,7 +23,7 @@ def test_browser_http_route_contracts_match_published_registry() -> None:
     )
     with (root / "data/boards.csv").open(newline="") as file:
         boards = {row["board_slug"]: row for row in csv.DictReader(file)}
-    assert len(targets) == 7
+    assert len(targets) == 6
     for target in targets:
         row = boards[target["slug"]]
         assert row["board_url"] == target["board_url"]

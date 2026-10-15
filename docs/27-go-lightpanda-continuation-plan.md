@@ -12,9 +12,10 @@ Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configur
 
 Combine the HTTP/profile batch below with recovery of wholly missing scheduled
 detail caches in the existing cold activation path. A complete read-only serving
-scan observes 1,685,843 selected SQL schedules and 1,536,144 represented posting
-IDs, with 149,699 absent from both ordinary lanes/inflight and missing their
-scrape cache across 1,637 boards. This observation spans a live serving interval;
+scan observes 1,686,382 selected SQL schedules and 1,536,574 represented posting
+IDs, with 149,808 absent from both ordinary lanes/inflight and missing their
+scrape cache across 1,636 boards. Explicit Redis `EXISTS` confirms every
+unrepresented posting has no scrape-cache key. This observation spans a live serving interval;
 it does not establish a single atomic gap count or a deletion root cause. The
 earlier guarded cold baseline's pre-existing 149,028-posting gap remains valid.
 
@@ -27,7 +28,7 @@ priority only when the canonical description hash is absent. Deadletters, orphan
 fallback caches, inactive/unscheduled rows and native tokens retain their existing
 contracts. Existing SAVE-before-SQL-grant, cancellation and reversal remain required.
 
-Keep this recovery in the same release as the proposed two-monitor/nine-detail
+Keep this recovery in the same release as the proposed two-monitor/eight-detail
 batch, so one supported whole deployment and cold admission delivers both. Complete
 exact-head CI, installed executable, physical Linux/ARM qualification and fresh
 full-floor reconciliation before any ownership change. See [recovery candidate
@@ -35,24 +36,28 @@ evidence](evidence/go-native1069-missing-schedules-candidate-2026-10-15.json).
 
 ### Included HTTP and profile batch
 
-Seven explicit HTTP detail replacements cover McDonald's Australia, Bridgestone
-Australia, both dnata Australia boards, CMA CGM Air Belgium, MUFG Trust and Wix.
-Thirteen nonempty actual references match every original scraper field and pass
+Six explicit HTTP detail replacements cover McDonald's Australia, Bridgestone
+Australia, dnata catering Australia, CMA CGM Air Belgium, MUFG Trust and Wix.
+Twelve nonempty actual references match every original scraper field and pass
 real PostgreSQL/Redis writers. Preserve Wix's configured User-Agent verbatim as
 an HTTP request header and McDonald's original `rescrape_policy=never` behavior.
-All 397 scheduled source URLs in the source1067 census pass the proposed native
+All 362 scheduled source URLs in the source1067 census pass the proposed native
 profiles and source-bound cold route contracts. The existing route-repair command
-now supports both directions for these seven exact configurations, preserving
+now supports both directions for these six exact configurations, preserving
 queue membership, first-time priority, scores, lifecycle hashes and unrelated
 entries. It retains ownership, inflight and whole-board validation guards.
 
 ADM early careers (49 rich postings) and Alaska Airlines (31 URLs) also pass
 canonical monitor writers with no additional origin calls. Carry these two
 monitor candidates with the previously qualified ITC and UBS-student details and
-the seven HTTP replacements. This is a proposed two-monitor/nine-detail batch;
+the six HTTP replacements. This is a proposed two-monitor/eight-detail batch;
 fresh complete admission, required qualification and supported deployment remain
 necessary. Production ownership is still 7,830 monitors / 7,802 details at epoch
 346. See [candidate evidence](evidence/go-native1068-browser-http-batch-candidate-2026-10-15.json).
+
+The main dnata board stays on its original browser route: its second actual source
+returns no JSON-LD over HTTP while the original browser adapter produces a full
+posting. Do not admit it until a native replacement preserves that fallback.
 
 The broader HTTP screen covered 51 actual sources across 26 further configurations.
 One Bright Horizons reference matches and passes its writer, but its other sample

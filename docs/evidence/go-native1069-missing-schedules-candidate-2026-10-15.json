@@ -12,15 +12,17 @@
   "included_http_batch": "go-native1068-browser-http-batch-candidate-2026-10-15.json",
   "included_profile_additions": {
     "monitors": 2,
-    "details": 9
+    "details": 8
   },
   "read_only_observation": {
-    "selected_sql_schedules": 1685843,
-    "represented_posting_ids": 1536144,
-    "unrepresented_missing_cache": 149699,
-    "affected_boards": 1637,
-    "scope": "complete selected ownership, live SQL snapshot followed by bounded Redis observations; not one atomic snapshot or a proven deletion root cause",
-    "evidence_sha256": "de8adb066e0d5e617c3c1f046f11c4faca8b5777a5ee4fa5ad19c70eca745215"
+    "selected_sql_schedules": 1686382,
+    "represented_posting_ids": 1536574,
+    "unrepresented_missing_cache": 149808,
+    "explicit_redis_key_absence_verified": true,
+    "affected_boards": 1636,
+    "scope": "complete selected ownership, live SQL snapshot followed by bounded Redis observations with explicit EXISTS;notoneatomic snapshot orproven deletion rootcause",
+    "evidence_sha256": "5b69508719d154c48e7cf9e1617e7eb776a04bb83c42b33c5147f7ced8d7fae4",
+    "missing_id_set_sha256": "0ffcc75d52f421c01909e3d37fcf5d87e8eeab206e749226ffa5943779d139a5"
   },
   "recovery_contract": {
     "entrypoint": "original native ordinary cold activation",
@@ -52,5 +54,6 @@
     "independent new source/image/receipt/SQL/Redis identities and exact queued-ID conservation",
     "post-recovery freshness and matched resource/cost evidence",
     "native lifecycle/recovery window and production Python retirement"
-  ]
+  ],
+  "held_http_candidate": "emirates-group-dnata-au: second static source empty, original browser adapter nonempty; original configuration retained"
 }
