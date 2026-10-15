@@ -35,16 +35,48 @@
       "prior_floor_invalid_routes": 0,
       "routes": 1663792,
       "scope": "local parser-only lower bound for full cold source validation; source1053 census; frozen prior7742details plus43mismatch candidates; noSQL/Redis/network effects; not full runtime cost"
-    }
+    },
+    "complete_cold_operation_10001_postings_129_domains": {
+      "cases": [
+        {
+          "domains": 129,
+          "elapsed_seconds": 1.028022666,
+          "mode": "unchanged",
+          "scheduled_postings": 10001
+        },
+        {
+          "domains": 129,
+          "elapsed_seconds": 1.051122833,
+          "mode": "one-percent-stale",
+          "scheduled_postings": 10001
+        },
+        {
+          "domains": 129,
+          "elapsed_seconds": 1.7629746659999999,
+          "mode": "all-stale",
+          "scheduled_postings": 10001
+        }
+      ],
+      "scope": "complete original cold adoption path with SQL/Redis and existing fixture B0/monitor; localMac real private Postgres and Redis;10001postings129domains; not installedLinux or wholefleet proof"
+    },
+    "compiled_native_executable": "pass: real SQL/Redis repair, SAVE failure/retry, activation, claim and canonical deadline retirement (3.967s)",
+    "existing_worker_admin_race": "pass (15.598s)",
+    "original_wrapper_tests": "17 pass (5.92s)"
   },
   "remaining": [
-    "measure complete repair including SQL/Redis on representative fleet data under installed Linux limits",
-    "confirm repair+lease drain+restart fits original cold/host budgets",
-    "finish cold reversal and installed CLI qualification for changed publication contract",
+    "measure complete repair under installed Linux limits and actual selected fleet",
+    "qualify installed executable and complete supported cold reversal",
     "strict actual current source route/cohort proof before production ownership",
     "full required CI, actual deployment gate and original ARM qualification"
   ],
   "production_repair_performed": false,
   "production_admission": false,
-  "global_migration_complete": false
+  "global_migration_complete": false,
+  "bounded_admin_contract": {
+    "parent_deadline_seconds": 1200,
+    "sql_scope": "existing WithHostColdSQLLifecycle, inheriting earlier parent deadline",
+    "original_wrapper_native_timeout_seconds": 1220,
+    "operator_whole_window_minimum_seconds": 2100,
+    "natural_lease_expiry_required": true
+  }
 }

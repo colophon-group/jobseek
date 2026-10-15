@@ -1,7 +1,7 @@
 {
   "version": "jobseek.native-grouped-delivery-checkpoint/v1",
-  "observed_at_utc": "2026-10-15T00:39:19.843227+00:00",
-  "verified_source": "c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649",
+  "observed_at_utc": "2026-10-15T01:10:43.140545+00:00",
+  "verified_source": "e115abb0a39b0d218dce63213d9de9bedd21d904",
   "verified_state": "supported cold",
   "routing_epoch": 333,
   "active_native_ownership_plans": 0,
@@ -10,14 +10,11 @@
     "monitors": 7830,
     "details": 7742
   },
-  "incoming_source": null,
-  "original_crawler_run": 38659628557,
-  "original_renderer_run": 38659690458,
+  "incoming_source": "f7de6c2d103e9120f8f4e7b104d72f6360f49027",
+  "original_crawler_run": 38662379966,
+  "original_renderer_run": 38662477948,
   "renderer_independently_verified": true,
-  "drafts": [
-    10539,
-    10540
-  ],
+  "drafts": [],
   "strategy": "combined current-source admission/activation after sequential qualified original deployments",
   "advisory_frontier": {
     "census_source": "e613b9c363dcae51313cc9383226a2366c08f765",
@@ -45,7 +42,12 @@
     "native-source1055-renderer-independent1-2026-10-15.json": "760b545d84ac4a94057ac52748c9df769e6ea2113a9cffa705f2d77cbe48b095",
     "native1057-frontier1/route-diagnostic2.json": "f67fe5a44042350bb026ff94d94120b66999ff48c73cee2b767e40f2fdc4a963",
     "native-source1055-postdeploy-cold-independent1-2026-10-15.json": "f843375ab2ee6fdbd176eacb9d9500d004222c7024a4aa63fb64066b04569583",
-    "native1057-frontier1/projection-behavior1.json": "864425a301b189786c20fc941d4d188fe378cc68545322a56576d0835e0459a0"
+    "native1057-frontier1/projection-behavior1.json": "864425a301b189786c20fc941d4d188fe378cc68545322a56576d0835e0459a0",
+    "native-source1056-postdeploy-cold-independent1-2026-10-15.json": "d91a7e5d9ac8a747ae72c947ef8a45097fc5ec4f5a021401c9f7a0e4b32e5aa4",
+    "native-source1056-renderer-independent1-2026-10-15.json": "7d9da97d6f9dfa72e242cd27d48578957c06d4b6272ba6e5e3b16cfb9a48e061",
+    "native-source1056-exporter-progress-independent-verified1-2026-10-15.json": "41fd3b4b815ae14a54d7316cc3144c9a5c49c329e9f81f6ab0e39926f1acd3db",
+    "native1057-final-qualification-binding1.json": "a7e6e84547d15dc8c417c622e41829daf5a7773287934ea0bcf1b5ac5c531cc2",
+    "native1057-head-bound-merge-result1.json": "2d9c144f26ebbc7c835127a8d6d4802fce8f3493a07df34c890ca8267768a9dc"
   },
   "global_migration_complete": false,
   "source1055_original_crawler_workflow_result": "success",
@@ -76,5 +78,11 @@
       "variant": "browser-to-simple"
     }
   ],
-  "canonical_legacy_native_worker_agreement_boards": 43
+  "canonical_legacy_native_worker_agreement_boards": 43,
+  "merged_prs": [
+    10538,
+    10539,
+    10540
+  ],
+  "local_candidate_version": "0.13.1058"
 }

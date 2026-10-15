@@ -2,91 +2,69 @@
 
 ## Durable delivery checkpoint — 2026-10-15
 
-Source1056 is now incoming: PR #10539 merged as
-`e115abb0a39b0d218dce63213d9de9bedd21d904`; original crawler38662379966 is
-building and renderer38662477948 succeeded. PR #10540 is ready after Required CI,
-installed contracts, browser conformance, both Lightpanda architectures, PR renderer
-build and original ARM qualification. Its tested PR merge revision800e5c9e has the
-exact frozen reviewed82789b05f tree. Deliver and independently verify source1056
-before the next fresh merge audit.
+Source1056 `e115abb0a39b0d218dce63213d9de9bedd21d904` is deployed.
+The original crawler38662379966 and renderer38662477948 workflows succeeded.
+Independent immutable image/source/CSV checks, seven restored base writers, six
+health checks and exporter progress pass. Native ownership remains inactive in
+supported cold epoch333. Preserve the last active floor of7830 monitor boards and
+7742 detail boards from epoch332; readiness alone does not prove fleet freshness.
 
-The isolated0.13.1058 candidate now repairs existing stale detail projections in
-256-row pages before staged ownership publication. It changes no canonical rows
-or receipts, preserves first-time and valid fallback progress, refuses live/native
-leases, and keeps repaired prefixes safe for exact retry or original cancellation.
-Thirteen new real PostgreSQL/Redis regression cases and the existing focused cold
-suite pass. Full route parser validation of1663792 source1053 routes found zero
-invalid routes (including all previous7742details and43mismatch candidates), taking
-115.1s locally. This is only a parser lower bound; measure full SQL/Redis operation
-and installed Linux cold-window budgets before publishing the candidate.
+PR #10540 merged as source1057 `f7de6c2d103e9120f8f4e7b104d72f6360f49027`
+after fresh head/base/tree/checks/hold/operator audit. Its six original qualification
+workflows pass; the tested PR merge revision has exactly the frozen reviewed tree.
+Wait for both original deployments and independent cold/source/image/CSV/exporter
+verification before the next release or ownership operation. Never restart an
+in-progress deployment merely because observation timed out.
 
+The0.13.1058 candidate repairs stale existing detail queue projections in256-row
+pages inside the original staged cold adoption path. Thirteen real PostgreSQL/Redis
+regressions and the existing cold/ordered/Workday race suite pass. The compiled
+native executable also proves repair, SAVE failure/retry, activation, real claim
+and retirement with the canonical SQL deadline preserved. Existing worker admin
+race checks and all17 original wrapper tests pass.
 
-Source1055 `c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649` is deployed and
-independently verified in supported cold epoch333. Its exact immutable images,
-selected CSV revision, seven restored base writers, six health checks and exporter
-progress pass. Native ownership is currently inactive. The last verified active
-native floor is7830 monitor boards and7742 detail boards at epoch332; every member
-must survive the next activation. Global freshness and queue conservation are not
-proved by these readiness checks.
+Full parser validation covers1663792 source1053 routes with zero invalid routes,
+including all previous7742details plus43cached-mismatch candidates (115.1s locally).
+Complete cold adoption with10001postings across129domains takes1.03s unchanged,
+1.05s with1% stale and1.76s with all stale on local private SQL/Redis. These are
+macOS measurements, not installed Linux or whole-fleet resource proof. The existing
+admin now has a20-minute parent deadline, its original wrapper1220seconds, and
+operator callers must allow at least35minutes for complete stop/readiness and
+containment. SQL leases still expire naturally under the original exclusive locks.
+The existing lifecycle SQL scope inherits the earlier parent deadline.
 
-PR #10538 merged as source1055 `c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649`.
-The original crawler workflow38659628557 succeeded. Original renderer workflow
-38659690458 succeeded and its source/digest/running/no-OOM identity is independently
-verified. Never restart an observed in-progress deployment. Verify the incoming
-whole workflow and independent cold/source/image/CSV/exporter state before the
-next merge or ownership operation.
+Next deliver this candidate through full required CI, actual Crawler Deploy Gate,
+original ARM and installed-runtime qualification. Measure the complete selected
+fleet on Linux before granting ownership. Bind later operator drivers to the exact
+Git-deployed wrapper hash and whole-operation budget. Never replace live wrappers
+or edit production SQL/Redis/leases/receipts manually.
 
-The grouped follow-ups are frozen drafts: PR #10539 at
-`c80a9982149ae1f3dd2e33f4f177d73ae77e2833` ports JSON-LD403 recovery through
-Workday with separate protected transports; PR #10540 at
-`82789b05f4cb8f46507d05a2c6cfbe1c0f066bca` ports visible/hidden/default browser
-wait states. Their actual parity and private canonical writer/retirement checks
-pass. Lightpanda and installed runtime checks pass where completed; Required CI
-and original ARM qualification must finish before marking the drafts ready and
-reconciling the actual deploy gate. Preserve the exact qualified heads. Use merge
-commits and re-audit head/base/preview tree/required checks/holds/operator state
-immediately before a head-bound merge.
+Keep intermediate qualified releases in supported ownerless cold state while
+sequential original deployments finish. Consolidate one fresh current-source
+admission for the qualified DOM, Oracle/Nextdata, Workday recovery and browser wait
+batches, then activate once through the original B0/ordinary wrappers. Preserve
+every prior member and strict validation of every selected actual source route.
 
-Keep intermediate qualified releases in the supported ownerless cold state while
-sequential original deployments finish. Consolidate complete fresh current-source
-admission for all qualified groups and activate once, avoiding repeated lease
-drains. Use the original B0 and ordinary wrappers, locks and recovery protocols.
-No manual SQL/Redis/lease/receipt changes are part of this plan.
+The source1053 advisory screen has67unowned monitors and155unowned details.
+Of93compiled details,43have cached-route mismatches and50still need complete
+output qualification. A repeated2292posting sample found249different cached board
+IDs,3different source URLs,69sole wrong-lane entries and3dual-lane entries. This
+sample is not a whole-fleet count or admission. All43candidate boards agree on
+canonical legacy/native worker lanes. Original cold adoption accepted four stale
+variants but left each unclaimable; the candidate repair makes them claimable and
+preserves exact retry/cancellation and valid fallback progress.
 
-The next bulk gap is canonical detail projection. The source1053 census screened
-with candidate1057 has67 unowned monitors and155 unowned detail boards.93 detail
-boards compile:50 still lack complete output qualification and43 have cached route
-mismatches. A read-only sample of2292 postings from those43 boards, repeated with
-identical typed counts, found249 different cached board IDs,3 different cached
-source URLs,69 sole wrong-lane entries and3 dual-lane entries. It found no missing
-board IDs or invalid steps in that sample. These are bounded observations, not a
-whole-fleet count or repair authority.
+The next bulk coverage gap spans browser proxy/controls across DOM and JSON-LD:
+62detail boards do not compile;31include proxy,26stealth,16channel and13persistent
+context options. Port multiple variants together, with original behavior and actual
+output proof. Continue existing compiled monitor/detail qualification in the same
+iteration; compilation alone grants no ownership.
 
-Private PostgreSQL/Redis fixtures show that the existing cold adoption accepts
-four stale board/source/lane variants but none becomes claimable. All43 candidate
-mismatch boards have matching canonical legacy/native worker lanes, so repair to
-the canonical SQL lane can also preserve cold cancellation compatibility.
-
-The native URL publisher already locks fresh canonical posting/board rows and
-checks due/hash/owner; foreign relists use the canonical owner. Do not invent or
-relax a native publication race. Reproduce the stale legacy projections in the
-private PostgreSQL/Redis fixture, then add a bounded canonical repair inside the
-original cold host/SQL publication path. Preserve canonical source/board, SQL due
-dates, valid fallback progress, first-time order, receipts and live-lease safety.
-Prove interruption/retry/cold-reversal behavior and rerun strict complete-route
-verification before granting ownership. Retain every prior native member.
-
-The other bulk coverage gap spans browser proxy/controls across DOM and JSON-LD:
-62 detail boards do not compile in the advisory screen;31 include proxy,26 stealth,
-16 channel and13 persistent context options. Port multiple variants per iteration,
-with original behavior and real output proof. Continue qualifying existing compiled
-monitor/detail candidates; a compiled profile alone never grants ownership.
-
-Lightpanda1.0.0 remains the latest official stable release. Complete enabled coverage,
-whole-fleet freshness and queue conservation, comparable CPU/RAM/density/attributable
-cost, and the qualified rollback window before retiring production Python,
-Playwright, Chromium and legacy runtime assets. Preserve useful isolated offline
-Python tooling. The full migration goal remains active.
+Lightpanda1.0.0 is the latest official stable release, rechecked2026-10-15.
+Complete enabled coverage, fleet freshness and queue conservation, comparable
+CPU/RAM/density/cost, supported cold reversal and the rollback window before
+retiring production Python, Playwright, Chromium and legacy runtime assets.
+Preserve useful isolated offline Python tooling. The full migration goal is active.
 
 
 ## Latest checkpoint — 2026-10-15, source1053
