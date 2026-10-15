@@ -7,34 +7,46 @@ and Lightpanda before Python, Playwright and Chromium can be removed.
 
 ## Current release and activation
 
-PR [#10543](https://github.com/colophon-group/jobseek/pull/10543) delivered
-0.13.1060, source `80860a269e1b6c96090f7cb9634828e72de8a4e6`.
-Required CI, both complete native execution suites, installed-runtime contracts,
-both Linux Lightpanda architectures, original ARM qualification and the actual
-Crawler Deploy Gate passed on reviewed head
-`134e929cceda65d711b310d448e1e72b398ee5b6`. The independently audited ARM report
-passes 16 arms and eight complete-output pairs. The merged and qualified trees
-are identical.
+PR [#10544](https://github.com/colophon-group/jobseek/pull/10544) delivered
+0.13.1061, source `cf71baa66147eb825c9569bfa70be87be7e92c91`.
+Exact-head Required CI, full native queue/worker suites, installed-runtime
+contracts, both Linux Lightpanda architectures, independently audited16-arm/eight
+complete-output ARM pairs and the actual Crawler Deploy Gate passed. The merged
+and qualified trees match. Original crawler run
+[38690879150](https://github.com/colophon-group/jobseek/actions/runs/38690879150)
+and renderer run
+[38690978972](https://github.com/colophon-group/jobseek/actions/runs/38690978972)
+succeeded. Independent source/image/data/health/exporter checks passed; B0 is
+active at epoch338.
 
-Original crawler run
-[38680997319](https://github.com/colophon-group/jobseek/actions/runs/38680997319)
-succeeded, with independent source/image/data/cold335/health/exporter verification. Renderer run
-[38681018005](https://github.com/colophon-group/jobseek/actions/runs/38681018005)
-succeeded and independent source/image/running/no-OOM checks passed.
-The original source1060 B0 activation then succeeded; independent readback verifies
-epoch 336 and seven healthy endpoints. The fresh census and original staging completed, but ordinary activation stopped
-at its existing20-minute bound during canonical detail projection. Original
-recover-pending succeeded. Independent verification confirms source1060 healthy
-at B0 epoch336, with no ordinary receipt, projection or active SQL plan.
+Fresh admission covered7900boards and1706384scheduled postings, preserving the
+full7830monitor/7783detail cohort with no held candidates. Original ordinary
+staging succeeded, but activation reached the existing20-minute bound during
+canonical projection at07:12:01UTC. Original recover-pending succeeded.
+Independent source/image/seven-health/B0 checks verify restored serving with no
+ordinary receipt, projection or active SQL plan. Ordinary Go ownership remains
+inactive; production Python still serves that fleet.
 
-Candidate0.13.1061 replaces repeated UUID-ordered256-row reads with one read-only
-canonical stream and bounded1024-record Redis batches. The installed old query
-took310.095ms per256rows; a read-only unordered stream read1647310rows in28.324s.
-A live825-record candidate Redis inspection took0.162s with no changes. These are
-component observations, not an end-to-end production cutover or savings claim.
-The original cold barriers/source checks, full profile validation, canonical
-SQL/deadline/lease conservation, SAVE-before-grant protocol and overall20-minute
-activation bound remain. See the [candidate evidence](evidence/go-native-cold-projection-stream-candidate-2026-10-15.json).
+The SQL stream fix removed repeated UUID pages, but every row still repeated
+shared Redis TYPE and sorted-set edge checks. Candidate0.13.1062 caches only
+those invariant checks within one atomic Lua invocation. Every row's identity,
+source, stage, priority and lease validation remains; inspect and apply each
+revalidate from a fresh cache. Original cold barriers, canonical SQL fields and
+deadlines, SAVE-before-grant, runtime budgets and the overall20-minute bound stay.
+
+The installed same-snapshot825-record comparison returns identical results. Seven
+paired timings improve median inspection from0.194s to0.083s. A full read-only
+rehearsal passed1647884canonical rows in1610batches with no refusals:199.299s in
+Redis and274.596s including SQL/Python streaming, maximum batch0.205s. It performs
+no writes, grants or origin requests and excludes Go profile validation, actual
+repair effects, SAVE and SQL grant. See the
+[candidate evidence](evidence/go-native-cold-queue-validation-candidate-2026-10-15.json).
+
+The guarded pre-cutover capture preserves exact1506232queued IDs among1646979
+selected scheduled postings. Its140747scheduled-versus-observed-queue gap predates
+cutover. Compare future postactive IDs with current SQL/receipt accounting before
+claiming conservation; do not silently enqueue absent work or attribute the gap
+to this migration.
 
 The closed batch preserves 7,830 monitors and the entire prior 7,742-detail floor,
 adding 41 detail configurations for a target of 7,783. Qualification includes 51
@@ -88,9 +100,9 @@ retired because forward maintenance uses Go.
 
 ## Execution order
 
-1. Qualify candidate1061 on its frozen head and deliver through Required CI,
+1. Qualify candidate1062 on its frozen head and deliver through Required CI,
    Crawler Deploy Gate and the original quiesced deployment. Use supported B0
-   reversal/clearing for outgoing1060; verify the new source/images and establish
+   reversal/clearing for outgoing1061; verify the new source/images and establish
    its fresh B0 epoch. Repeat the complete source/config/cache/route census,
    stage one new ordinary plan and execute one original activation. Verify
    receipt, SQL plan, Redis projection, source/images, health, processing and
@@ -106,12 +118,16 @@ retired because forward maintenance uses Go.
    details, 23 also have stale cached routes and 41 await complete-output
    qualification. Reuse the existing cold repair for qualified configurations.
 3. Deliver grouped shared contracts across multiple configurations per release.
-   Start with the nine unsupported detail configurations that have no active
-   proxy or launch-identity options: seven DOM, one JSON-LD and one Onlyfy.
-   Their concrete gaps include browser-lane fallback chains, DOM actions/read
-   options and Onlyfy language selection. Original sync already assigns a chain
-   containing a rendered fallback to the browser lane; preserve that contract
-   and separate, fenced attempts for each stage.
+   Start with the eight DOM/JSON-LD configurations without active proxy or
+   launch-identity controls. Four DOM configurations already pass navigation,
+   action and parser checks but are rejected for fragment URLs; the renderer
+   already preserves requested/final fragments. Pair that shared admission fix
+   with browser-lane ordered DOM/JSON-LD fallback. Preserve the chain's browser
+   queue and each stage's configured HTTP or rendered transport with fenced
+   handoff. Other gaps include alternate reads, warmup and user-agent controls.
+   Onlyfy language handling already exists: its retained uncompiled case points
+   at a Workday board with no scheduled postings and needs configuration
+   diagnosis, rather than a duplicate language implementation.
    In the same iteration, qualify existing compiled families where original
    complete outputs are available. Treat the other 41 unsupported configurations
    as shared browser-control work across DOM, JSON-LD and API capture.
@@ -142,9 +158,9 @@ seconds. Callers must allow at least 35 minutes for the complete stop, operation
 readiness and containment sequence. Let leases expire naturally. Never edit
 production SQL, Redis, leases or receipts manually, or replace the wrappers ad hoc.
 
-Source1060 validates selected SQL routes in256-row pages. Candidate1061 uses
-one read-only stream and at most1024-record batches before Redis SAVE and SQL
-ownership grant. Partial failures remain staged
+Source1061 uses one read-only stream and at most1024-record batches before Redis
+SAVE and SQL ownership grant. Candidate1062 reduces repeated invariant Redis
+validation within each batch. Partial failures remain staged
 and use the original recovery protocol. A successful unit test or Mac benchmark
 cannot replace installed Linux verification of that operation.
 

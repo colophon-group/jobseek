@@ -1,0 +1,80 @@
+{
+  "schema": "jobseek.native-cold-queue-validation-candidate/v1",
+  "date": "2026-10-15",
+  "candidate_version": "0.13.1062",
+  "serving_source": "cf71baa66147eb825c9569bfa70be87be7e92c91",
+  "b0_epoch": 338,
+  "ordinary_production_ownership_admitted": false,
+  "incident": {
+    "source1061_result": "canonical-detail-projection deadline at2026-10-15T07:12:01UTC within original20minute nativeoperation",
+    "observations": "all legacy SQL leases expired by07:01:47; original read-only stream observed07:02:39 and07:10:52; repeated shared Redis validation remained expensive",
+    "supported_recovery": "original recover-pending succeeded; independent source/image/7health/B0active338 and ordinary receipt/projection/activeSQL absence verified"
+  },
+  "change": {
+    "cache_scope": "one atomic Redis Lua invocation, discarded before next inspect/apply call",
+    "cached_checks": [
+      "key type by key and expected type",
+      "finite sorted-set score edges by queue key"
+    ],
+    "retained_per_row": [
+      "canonical identity/source/domain/worker",
+      "ordered stage/interval/historical hash validation",
+      "first-time priority and recurring membership",
+      "live/native inflight leases and B0 overlap",
+      "all batch preflight before effects"
+    ],
+    "maximum_rows_per_batch": 1024,
+    "canonical_sql_rows_deadlines_leases": "unchanged",
+    "save_before_sql_grant": true,
+    "native_operation_bound_seconds": 1200,
+    "runtime_budgets_and_original_wrappers": "unchanged"
+  },
+  "actual_readonly_comparison": {
+    "rows": 825,
+    "same_atomic_snapshot_results_equal": true,
+    "paired_runs": 7,
+    "original_median_seconds": 0.1943218857049942,
+    "candidate_median_seconds": 0.0830144565552473,
+    "median_ratio": 2.340819825468233,
+    "scope": "same-snapshot original/candidate EVAL_RO equivalence and7 repeated paired timings; no transport, SQL/Redis mutations or activation authority"
+  },
+  "full_selected_fleet_readonly_rehearsal": {
+    "source_revision": "cf71baa66147eb825c9569bfa70be87be7e92c91",
+    "observed_at_utc": "2026-10-15T07:31:59.313435+00:00",
+    "candidate_lua_sha256": "f1ebc93ee9d87ada6170a0d0ccb4b5ac0f18460dc44aea1a32d284fd35ea87a3",
+    "selected_boards": 7783,
+    "rows": 1647884,
+    "batches": 1610,
+    "elapsed_seconds": 274.59563282318413,
+    "lua_roundtrip_seconds": 199.29887996334583,
+    "maximum_batch_seconds": 0.20477499533444643,
+    "requested_repairs": 71,
+    "refusals_matching_original_at_same_snapshot": {},
+    "sql_mutations": 0,
+    "redis_mutations": 0,
+    "origin_requests": 0,
+    "scope": "full selected canonical fleet streamed through candidate Redis EVAL_RO preflight only on installed host; includes Python SQL/URL/JSON streaming overhead; excludes Go profile validation, actual repair effects, SAVE and SQL grant; not activation authority"
+  },
+  "validation": {
+    "complete_projection_real_postgres_redis_race_seconds": 9.112,
+    "compiled_worker_repair_save_retry_activation_claim_retirement_race_seconds": 5.737,
+    "ordered_adoption_retirement_save_recovery_race_seconds": 13.506,
+    "queue_and_worker_vet": "pass",
+    "real_redis_work_bound_regression": "1026 canonical records inspected and1025 repaired over bounded batches: TYPE calls <=2564 and ZRANGE calls <=512; every distinct posting hash still checked",
+    "inspect_apply_mutation_regressions": [
+      "changed shared key type after inspect refuses apply without row/ownership effects",
+      "infinite shared queue edge after inspect refuses apply without row/ownership effects"
+    ]
+  },
+  "closed_batch": {
+    "monitors": 7830,
+    "previous_details": 7742,
+    "qualified_detail_additions": 41,
+    "target_details": 7783
+  },
+  "limits": [
+    "full frozen-head required CI/runtime/Linux architectures/ARM qualification pending",
+    "read-only rehearsal excludes Go profile validation, actual repair effects, SAVE and SQL grant",
+    "full production activation, queue conservation/freshness and production Python retirement remain incomplete"
+  ]
+}
