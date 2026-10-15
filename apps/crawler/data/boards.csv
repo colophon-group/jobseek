@@ -5554,6 +5554,7 @@ plaid,plaid-ashby,https://jobs.ashbyhq.com/plaid,ashby,"{""token"": ""plaid""}",
 plaid,plaid-careers,https://jobs.lever.co/plaid,lever,"{""token"": ""plaid""}",skip,
 plain,plain-ashby,https://jobs.ashbyhq.com/plain,ashby,"{""token"": ""plain""}",skip,
 plainid,plainid-comeet,https://www.comeet.com/jobs/plainid/C4.00C,comeet,"{""company"": ""plainid"", ""board_id"": ""C4.00C""}",skip,
+planate-management-group,planate-management-group-careers,https://planate.recruiterbox.com/,recruiterbox,"{""tenant"": ""planate""}",json-ld,"{""description_selector"": "".jobdesciption""}"
 plane,plane-ashby,https://jobs.ashbyhq.com/plane,ashby,"{""token"": ""plane""}",skip,
 planet,planet-greenhouse,https://job-boards.greenhouse.io/planetlabs,greenhouse,"{""token"": ""planetlabs""}",skip,
 planet-a-foods-gmbh,planet-a-foods-gmbh-join,https://join.com/companies/forplanetacom,join,"{""slug"": ""forplanetacom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
