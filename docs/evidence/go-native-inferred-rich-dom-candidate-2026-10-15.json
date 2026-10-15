@@ -1,0 +1,49 @@
+{
+  "version": "jobseek.native-inferred-rich-dom-candidate/v1",
+  "runtime_version": "0.13.1059",
+  "depends_on_pr": 10541,
+  "scope": [
+    "original rich API/Nextdata no-scrape inference with full native monitor validation",
+    "ignore original inert top-level DOM map and replacement marker"
+  ],
+  "candidate_enabled_boards": 11,
+  "original_actual_rich_configs": {
+    "boards": 9,
+    "runtime_classifier_and_real_postgres_original_sql_agree": true,
+    "http_requests": 0
+  },
+  "actual_dom": {
+    "boards": 2,
+    "samples": 4,
+    "all_fields_equal": true,
+    "effective_request_sequence_equal": true,
+    "request_equivalence": "method,scheme,host,effectiveport,escapedpath,rawquery; explicit HTTPS443 normalized",
+    "canonical_real_postgres_redis_writers": 4,
+    "result": "pass"
+  },
+  "local_validation": {
+    "original_dom_frozen_all_field_cases": 3,
+    "queue_race": "pass3.254s; inferred HTTP/browser API and Nextdata, override/enrichment refusals, existing explicit classifier and cold retirement",
+    "worker_real_store_race": "pass10.333s; inferred and existing explicit unscheduling, source/config refusal, content/receipt preservation",
+    "actual_dom_writer_race": "pass3.607s",
+    "vet": "queue and worker pass"
+  },
+  "current_source_config_binding": {
+    "source": "f7de6c2d103e9120f8f4e7b104d72f6360f49027",
+    "boards": 11,
+    "canonical_and_cache_full_profile_fingerprints_equal": true
+  },
+  "production_admission": false,
+  "global_migration_complete": false,
+  "remaining": [
+    "full required CI, installed Linux, Lightpanda and original ARM qualification",
+    "fresh final source and complete actual route/floor binding",
+    "supported original deployment and staged ownership lifecycle"
+  ],
+  "proof_sha256": {
+    "original-inferred-proof1.json": "9f2aeb24002c555ade5d9bbfa14040c479177bb3a297b92a78551e0e254aeb10",
+    "candidate-current-bindings1.json": "25d6f257a7bbec4767292326c4d9bc657b8bda6cee9ea2ab2327d07f7556f714",
+    "dom-comparison6.json": "85508f5ea482d299760da750b8d9f129409b761e10ef635a1d5cdedfe6eb3580",
+    "dom-writer-proof1.json": "d52ef105a5d295ac33d782bf797ba461b9f6afeef9b2489d74d7134c9a90b598"
+  }
+}

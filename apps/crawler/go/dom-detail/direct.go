@@ -16,7 +16,7 @@ import (
 // parser, including bounded alternate reads and allowlisted linked descriptions.
 func ValidateDirectConfig(config Object) error {
 	allowed := map[string]bool{}
-	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback", "document_fallback", "fetch_url_transform", "linked_description"} {
+	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback", "document_fallback", "fetch_url_transform", "linked_description", "_replace", "map"} {
 		allowed[key] = true
 	}
 	for key := range config {

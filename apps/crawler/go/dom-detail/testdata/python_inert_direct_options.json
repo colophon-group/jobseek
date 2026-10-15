@@ -1,0 +1,102 @@
+{
+  "source_revision": "f7de6c2d103e9120f8f4e7b104d72f6360f49027",
+  "html": "<h1>Engineer</h1><h2>Role</h2><p>Build useful products.</p>",
+  "cases": [
+    {
+      "config": {
+        "steps": [
+          {
+            "tag": "h1",
+            "field": "title"
+          },
+          {
+            "tag": "h2",
+            "text": "Role",
+            "offset": 1,
+            "field": "description",
+            "html": true
+          }
+        ],
+        "_replace": true
+      },
+      "expected": {
+        "title": "Engineer",
+        "description": "Build useful products.",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "config": {
+        "steps": [
+          {
+            "tag": "h1",
+            "field": "title"
+          },
+          {
+            "tag": "h2",
+            "text": "Role",
+            "offset": 1,
+            "field": "description",
+            "html": true
+          }
+        ],
+        "map": {
+          "title": "not applied"
+        }
+      },
+      "expected": {
+        "title": "Engineer",
+        "description": "Build useful products.",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "config": {
+        "steps": [
+          {
+            "tag": "h1",
+            "field": "title"
+          },
+          {
+            "tag": "h2",
+            "text": "Role",
+            "offset": 1,
+            "field": "description",
+            "html": true
+          }
+        ],
+        "_replace": true,
+        "map": {
+          "title": "not applied",
+          "description": "not applied"
+        }
+      },
+      "expected": {
+        "title": "Engineer",
+        "description": "Build useful products.",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    }
+  ]
+}
