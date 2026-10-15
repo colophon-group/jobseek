@@ -67,7 +67,7 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[string]json.RawMessage, provider, profile, token, endpoint string) (GreenhouseMonitorProfile, error) {
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
 	if string(md["proxy"]) == "true" {
-		directRenderedReplacement := provider == "dom" && profile == domRenderedMonitorProfile && config["monitor_needs_browser"] == "1" && selfIdentifyingDOMSource(config, md)
+		directRenderedReplacement := provider == "dom" && profile == domRenderedMonitorProfile && config["monitor_needs_browser"] == "1" && selfIdentifyingDOMMonitorSource(config, md)
 		if proxy, ok := httpMonitorProxyProfiles[profile]; ok && config["monitor_needs_browser"] == "0" {
 			profile = proxy
 		} else if !directRenderedReplacement && !ProfileRequiresProxy(profile) {
@@ -109,7 +109,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// the immutable profile while removing its fragment only for this validator.
 	// The same validation-only normalization applies to the exact qualified
 	// rendered DOM source hashes; their actual navigation retains the fragment.
-	if provider == "wecruit" || provider == "jobdiva" || provider == "dom" && profile == domRenderedMonitorProfile && selfIdentifyingDOMSource(config, md) {
+	if provider == "wecruit" || provider == "jobdiva" || provider == "dom" && profile == domRenderedMonitorProfile && selfIdentifyingDOMMonitorSource(config, md) {
 		if u, err := url.Parse(validation["board_url"]); err == nil {
 			u.Fragment, u.RawFragment = "", ""
 			validation["board_url"] = u.String()

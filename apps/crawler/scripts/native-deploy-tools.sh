@@ -39,3 +39,20 @@ run_native_postgresql_preflight() {
     "GRAFANA_PROM_PASSWORD=$GRAFANA_PROM_PASSWORD" \
     "$NATIVE_DEPLOY_TOOLS" postgresql-preflight
 }
+
+# The digest-pinned image advertises its supported recovery CLI. Never infer
+# support from the failed incoming release or fall back after a command fails.
+crawler_image_maintenance_backend() {
+  local image="$1" capability
+  [[ "$image" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: maintenance image must be immutable" >&2; return 1;
+  }
+  capability="$(docker image inspect --format '{{index .Config.Labels "org.jobseek.crawler.native-maintenance"}}' "$image")" || {
+    echo "ERROR: maintenance image capability is unavailable" >&2; return 1;
+  }
+  case "$capability" in
+    v1) printf '%s\n' native ;;
+    ''|'<no value>') printf '%s\n' legacy ;;
+    *) echo "ERROR: maintenance image capability is unsupported" >&2; return 1 ;;
+  esac
+}

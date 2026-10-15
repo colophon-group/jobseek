@@ -757,7 +757,10 @@ def _install_csv_host_docker(binary_dir: Path) -> None:
         "from pathlib import Path\n"
         "import os, sys\n"
         "args = sys.argv[1:]\n"
-        "if args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
+        "if args[:2] == ['image', 'inspect']:\n"
+        "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
+        "    print('')\n"
+        "elif args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = {}\n"
         "    for line in env_file.read_text().splitlines():\n"
@@ -2167,7 +2170,10 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "import os, sys\n"
         f"events = Path({str(events)!r})\n"
         "args = sys.argv[1:]\n"
-        "if args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
+        "if args[:2] == ['image', 'inspect']:\n"
+        "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
+        "    print('')\n"
+        "elif args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = {}\n"
         "    for line in env_file.read_text().splitlines():\n"
@@ -2249,6 +2255,7 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
                 verification_helpers,
                 release_helpers,
                 spec_transaction,
+                (REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh").read_text(),
                 rollback_support,
                 rollback,
                 arm,
@@ -2506,8 +2513,10 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
 
 
 @pytest.mark.usefixtures("bind_native_deployment_fixture")
+@pytest.mark.parametrize("maintenance_backend", ["native", "legacy"])
 def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
     tmp_path: Path,
+    maintenance_backend: str,
 ) -> None:
     script = DEPLOY_SH.read_text()
     read_exact = script[
@@ -2537,6 +2546,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             'ACTIVE_DATA_FILES_MANIFEST="$TEST_DATA_MANIFEST"',
             "verify_exact_csv_tree() { return 0; }",
             read_exact,
+            'crawler_image_maintenance_backend() { printf "%s\\n" "$TEST_BACKEND"; }',
             rollback_sync,
             "rollback_compose() {",
             '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "$EXPECTED_WEB_DATABASE_URL"',
@@ -2577,7 +2587,10 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                 env={
                     **os.environ,
                     "COMPOSE_STATUS": str(compose_status),
-                    "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url,
+                    "TEST_BACKEND": maintenance_backend,
+                    "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url
+                    if maintenance_backend == "legacy"
+                    else "",
                     "REPAIR_STATUS": str(repair_status),
                     "TEST_ENV_FILE": str(env_file),
                     "TEST_LOG": str(log),
@@ -2587,12 +2600,21 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             )
             assert result.returncode == 0, result.stderr
             calls = log.read_text(encoding="utf-8").splitlines()
-            expected_web_arg = "-e WEB_DATABASE_URL " if legacy_web_database_url else ""
+            expected_web_arg = (
+                "-e WEB_DATABASE_URL "
+                if legacy_web_database_url and maintenance_backend == "legacy"
+                else ""
+            )
+            sync_command = (
+                "go-typesense-exporter --sync-registry"
+                if maintenance_backend == "native"
+                else "uv run --no-sync crawler sync"
+            )
             assert calls[0] == (
                 f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
                 f"{expected_web_arg}-e CRAWLER_DB_ROLE=rollback-sync "
                 "-e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_MAX=4 "
-                "worker-1 uv run --no-sync crawler sync"
+                f"worker-1 {sync_command}"
             )
             if compose_status == 0:
                 assert calls[1] == "rollback-umantis-identity-cutover"
@@ -2619,6 +2641,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             env={
                 **os.environ,
                 "COMPOSE_STATUS": "0",
+                "TEST_BACKEND": maintenance_backend,
                 "EXPECTED_WEB_DATABASE_URL": "",
                 "REPAIR_STATUS": "0",
                 "TEST_ENV_FILE": str(env_file),
@@ -2731,6 +2754,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
             "}",
             restore,
+            (REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh").read_text(),
             rollback_support,
             rollback,
             arm,
@@ -3211,6 +3235,9 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         f"old_data = Path({str(old_release / 'data')!r})\n"
         f"new_data = Path({str(new_release / 'data')!r})\n"
         "args = sys.argv[1:]\n"
+        "if args[:2] == ['image', 'inspect']:\n"
+        "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
+        "    print(''); sys.exit(0)\n"
         "def env_value(key):\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = [line.split('=', 1)[1] for line in env_file.read_text().splitlines() "
@@ -3281,6 +3308,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             verification_helpers,
             release_helpers,
             restore,
+            (REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh").read_text(),
             rollback_support,
             rollback,
             "repair_umantis_identity_cutover() { :; }",
@@ -3472,6 +3500,7 @@ def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
             "verify_active_deploy_snapshot() { :; }",
             "publish_legacy_success_marker() { :; }",
             restore,
+            (REPO_ROOT / "apps/crawler/scripts/native-deploy-tools.sh").read_text(),
             rollback_support,
             rollback,
             "wait_for_rollback_core_services() { :; }",

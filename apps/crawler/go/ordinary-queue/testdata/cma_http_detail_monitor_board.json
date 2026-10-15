@@ -1,0 +1,16 @@
+{
+  "id": "ba47b7e7-b3f9-435f-b8a2-6b6b4af3c728",
+  "config": {
+    "board_slug": "cma-cgm-air-belgium",
+    "board_url": "https://www.airbelgium.com/jobs/",
+    "crawler_type": "dom",
+    "company_id": "00e86db1-f2e9-4a5c-8da5-90fc88fcd7eb",
+    "metadata": "{\"wait\":\"domcontentloaded\",\"render\":true,\"stealth\":true,\"timeout\":30000,\"url_filter\":\"(?i)(first[-_ ]?officer|lmcc[-_ ]?engineer|material[-_ ]?controller)\",\"scraper_type\":\"dom\",\"scraper_config\":{\"steps\":[{\"tag\":\"h1\",\"field\":\"title\"},{\"tag\":\"p\",\"text\":\"Employment type\",\"field\":\"employment_type\",\"regex\":\"(?i)Employment type\\\\s*:?\\\\s*(.+)\"},{\"tag\":\"p\",\"html\":true,\"field\":\"description\",\"stop_count\":200}],\"render\":false,\"defaults\":{\"locations\":[\"Mont-Saint-Guibert, BE\"]}}}",
+    "check_interval_minutes": "60",
+    "scrape_interval_hours": "24",
+    "throttle_key": "www.airbelgium.com",
+    "domain": "www.airbelgium.com",
+    "monitor_needs_browser": "1",
+    "scraper_needs_browser": "0"
+  }
+}

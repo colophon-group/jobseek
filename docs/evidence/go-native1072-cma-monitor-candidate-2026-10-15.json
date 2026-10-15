@@ -1,0 +1,33 @@
+{
+  "status": "candidate_not_deployed",
+  "version": "0.13.1072",
+  "prior_deployed_source": "fa0fc8e99f7e0fa6b23eb95d91f2eb4704f8241f",
+  "B0_active_epoch": 348,
+  "ordinary_ownership_active": false,
+  "observed_preflight_refusal": {
+    "board": "cma-cgm-air-belgium",
+    "missing_prior_monitors": 1,
+    "monitor_configuration_changed": false,
+    "cause": "HTTP detail changes shared frozen source policy fingerprint"
+  },
+  "fix": "Authenticate only the exact qualified HTTP detail against the unchanged original monitor contract; retain actual current ownership binding",
+  "preserved": [
+    "original rendered navigation and listing options",
+    "nonempty inventory guard",
+    "verified TLS and direct request policy",
+    "whole prior monitor/detail cohort",
+    "all3monitor12detail additions"
+  ],
+  "validation": [
+    "focused race tests including original frozen source policy and strict refusal cases",
+    "real PostgreSQL/Redis rendered-monitor activation, namespace lease refusal, crash reaping and cold reversal"
+  ],
+  "required_before_admission": [
+    "exact-head Required CI and Crawler Deploy Gate",
+    "runtime image parity, Linux amd64/ARM64 and fresh original ARM whole-lane qualification",
+    "original full deployment and renderer source/image/binary verification",
+    "fresh complete prior-floor admission and original quiesced activation",
+    "postactivation exact ownership/cache/queued-ID conservation and fresh output evidence"
+  ],
+  "full_migration_complete": false
+}

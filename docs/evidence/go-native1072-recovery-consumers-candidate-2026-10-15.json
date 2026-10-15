@@ -1,0 +1,43 @@
+{
+  "schema": "jobseek.native-migration-candidate/v1",
+  "version": "0.13.1072",
+  "base_revision": "25c6b203e590649add4124a7066a0059b865eedd",
+  "stage": "following lifecycle candidate; no production mutation",
+  "image_capability": {
+    "label": "org.jobseek.crawler.native-maintenance",
+    "version": "v1",
+    "scope": "digest-pinned retained crawler image;slim/full inherit commonbase",
+    "unknown_or_inspection_failure": "stop before recovery command",
+    "unlabelled_historical_image": "retain original Python CLI until recovery generations expire"
+  },
+  "native_consumers": [
+    "full-deploy rollback registry sync",
+    "full-deploy rollback parked Umantis repair",
+    "CSV bootstrap sync",
+    "CSV interrupted-journal restore/promote sync"
+  ],
+  "failure_contract": "Never run Python after failed native command. Existing rollback keeps writers stopped when config restore fails. Exact prior CSV snapshot and source/image verification remain required.",
+  "credential_contract": "Native sync omits historical WEB_DATABASE_URL; historical CLI receives it only from verified retained release.",
+  "local_validation": {
+    "deployment_and_recovery_pytest": 100,
+    "focused_native_real_store_race_checks": 5,
+    "native_checks": [
+      "compiled provider repairs including parkedUmantis",
+      "Umantis batchresume/receipts/onlymonitorparking",
+      "registry taxonomy/company rollback",
+      "registry boardidentity/rehome rollback",
+      "registry SQLcommit/Redisfailureboundary"
+    ],
+    "ruff": "pass",
+    "shell_syntax": "pass"
+  },
+  "still_required": [
+    "finalreviewandrequiredCI",
+    "installedimagecapability/sourceverification",
+    "supportedwholedeployment",
+    "actualCSVjournalrecoveryandcoldreversaldrill",
+    "native-to-nativeactiveownershiphandoff",
+    "fullenabledcoverage,freshness,matchedcost/recoverywindow,andproductionPythonretirement"
+  ],
+  "production_unchanged": "source1067/0.13.1067/epoch346/7830monitors/7802details"
+}

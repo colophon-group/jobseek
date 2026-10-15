@@ -1,5 +1,44 @@
 # Go and Lightpanda migration delivery plan
 
+## Current delivery checkpoint — recovery deployed, batch admission pending
+
+Source `fa0fc8e99f7e0fa6b23eb95d91f2eb4704f8241f` (0.13.1071), merged in
+[PR #10602](https://github.com/colophon-group/jobseek/pull/10602), successfully
+completed the original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38803265811)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38803299366).
+Independent source/image/data/executable checks and all base writer health checks
+pass. The exporter records 1,773 successful documents, zero export errors and
+zero unknown writers. Installed Lightpanda remains latest stable 1.0.1 with the
+official ARM binary checksum. Fresh ARM qualification independently passes all
+16 arms and eight complete-output pairs, cleanup and zero unexpected origins.
+
+B0 is independently active at epoch **348**, with its exact source, images,
+receipt and health verified. The activation's local SSH completion response was
+lost; a fresh read-only check found the active receipt, expected policies and no
+host mutation lock held. Only the stale local transport was closed. Ordinary Go
+ownership is still **inactive**; the 7,830-monitor/7,802-detail floor is historical.
+
+The fresh full census covers **7,900 boards / 1,738,028 scheduled postings** and
+observes 2,572 cache projection mismatches. Full-floor admission correctly refuses
+one prior monitor: CMA CGM Air Belgium. Its unchanged monitor uses a policy
+fingerprint shared with the detail config; the newly qualified HTTP detail
+invalidated that fingerprint. Do not remove the board or shrink the prior floor.
+
+Release **0.13.1072** preserves the original frozen monitor permission only for
+this exact qualified HTTP detail replacement. It authenticates an unchanged
+monitor against the original contract, retains the actual current ownership
+fingerprint, and preserves identical navigation/parser options and the nonempty
+inventory guard. Unqualified board, origin, parser, navigation and proxy changes
+remain rejected. Combine this fix with native rollback and CSV recovery consumers
+below, then repeat fresh source-bound admission for the complete **three-monitor /
+twelve-detail** batch and the preserved **7,830 / 7,802** floor. The proposed total
+remains **7,833 monitors / 7,814 details**; it is not current serving authority.
+
+After admission, use the original cold activation to repair eligible cache
+projections and wholly missing schedules, then prove exact queued-ID conservation,
+fresh writes/exports, native lifecycle handoff/recovery and comparable resources
+before production Python/Playwright/Chromium retirement. The full goal remains active.
+
 ## Recovery checkpoint — 2026-10-15, 20:06 UTC
 
 The 0.13.1070 batch merged in [PR #10599](https://github.com/colophon-group/jobseek/pull/10599), source `45f61075ee328e970399d72a4b5cdcf3848f51e3`. The original crawler [deployment 38794642862](https://github.com/colophon-group/jobseek/actions/runs/38794642862) failed at worker-route repair after successful migration, registry and Typesense sync. Rollback restored source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` and its committed CSV/environment, but the same repair failed. The original rollback guard deliberately left all crawler writers stopped. The previous ordinary and B0 owners were already retired at cold epoch 347; the historical 7,830/7,802 floor is not active authority now.
@@ -116,6 +155,27 @@ final-shape requests fail HTTP navigation; leave it out of the batch. ADM US's
 old 535/536 inventory mismatch remains unresolved and its fresh original fails
 navigation. Caterpillar capture also remains held. See [following candidate
 evidence](evidence/go-native1070-brassring-rendered-candidate-2026-10-15.json).
+
+## Next lifecycle slice — native rollback and CSV recovery consumers
+
+With the complete migration batch and monitor compatibility fix, deliver 0.13.1072's maintenance
+consumer change. New digest-pinned images advertise native maintenance version
+`v1`. Full-deploy rollback and CSV bootstrap/journal recovery inspect the exact
+retained image, then use its native registry sync and parked Umantis repair.
+Retained historical images without that capability keep their original CLI.
+Unknown capabilities or unavailable image inspection stop recovery, and a failed
+native command never retries through Python. Native recovery omits the retained
+web-database credential. Release verification, committed CSV mounts, mutation
+locks, complete quiescence and failed-restore containment retain their contracts.
+
+The current deployment/recovery suite passes 100 cases. Five real PostgreSQL/Redis native
+checks pass with the race detector, including compiled repair commands, parked
+monitor preservation, registry commit/Redis failure boundaries and canonical
+rollback. These checks do not constitute an installed rollout or a recovery-window
+drill. Active-ownership handoff across deployment/publication is still required;
+the wrappers continue to require supported retirement before a release change.
+Deliver and exercise that lifecycle before removing historical recovery support
+and the production Python image/runtime dependencies.
 
 ## Historical source1060 qualification correction — 2026-10-15
 
