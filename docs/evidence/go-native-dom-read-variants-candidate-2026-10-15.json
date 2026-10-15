@@ -1,0 +1,81 @@
+{
+  "version": "jobseek.go-dom-read-variants-candidate/v1",
+  "runtime_version": 1054,
+  "depends_on_pr": 10536,
+  "scope": [
+    "alternate HTTP read URLs",
+    "allowlisted linked description fallback"
+  ],
+  "reference_cases": {
+    "alternate_url": 23,
+    "linked_target": 6,
+    "complete_read_pipeline": 10
+  },
+  "local_race_tests": [
+    "dom-detail",
+    "jsonld-detail",
+    "ordinary-queue"
+  ],
+  "fresh_actual_http": {
+    "held_original_failure": 2,
+    "matched": 2,
+    "scope": "fresh original and sealed native HTTP; all canonical fields, no production writes"
+  },
+  "actual_boards_matched": [
+    "bae-systems-prismatic",
+    "roboa-careers"
+  ],
+  "held_actual_boards": {
+    "wustl-faculty": "earlier sample and three highest current posting IDs return original HTTP failures",
+    "vertiv-data-racks": "original HTTP failure"
+  },
+  "production_admission": false,
+  "required_remaining": [
+    "installed Linux qualification",
+    "exact current configuration and all-route binding",
+    "supported deployment and activation"
+  ],
+  "production_checkpoint": {
+    "source_revision": "3e077597736950c94cb2556b1bf317fa677aeb80",
+    "routing_epoch": 330,
+    "monitors": 7830,
+    "details": 7735,
+    "independent_readback_utc": "2026-10-14T22:16:46.931025+00:00",
+    "services_running": 10,
+    "health_checks_passed": 8,
+    "lightpanda_version": "1.0.0",
+    "latest_release_verified": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "global_migration_complete": false,
+  "actual_canonical_writer": {
+    "cases": 2,
+    "result": "pass",
+    "real_private_postgres_redis": true,
+    "canonical_identity_and_deadlines_conserved": true
+  },
+  "canonical_writer_regressions": {
+    "cases": 3,
+    "variants": [
+      "linked",
+      "complete",
+      "reserved"
+    ],
+    "real_postgres_redis": true,
+    "identity_deadline_and_lease_checks": "pass",
+    "publisher_policy_preserves_original_content": "pass"
+  },
+  "cold_retirement": {
+    "variants": [
+      "alternate",
+      "linked",
+      "combined"
+    ],
+    "states_per_variant": [
+      "active",
+      "committed-before-ack",
+      "claim-before-sql",
+      "inactive"
+    ],
+    "real_postgres_redis": "pass"
+  }
+}

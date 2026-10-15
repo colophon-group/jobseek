@@ -1,0 +1,122 @@
+[
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<a class=\"description\" href=\"https://publisher.example/role\">read</a>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": "https://publisher.example/role",
+    "error": false
+  },
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<a class=\"description\" href=\"https://evilpublisher.example/role\">read</a>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<a class=\"description\" href=\"http://publisher.example/role\">read</a>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<a class=\"description\" href=\"https://u:p@publisher.example/role\">read</a>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<a class=\"description\" href=\"https://publisher.example/a\">read</a><a class=\"description\" href=\"https://publisher.example/b\">read</a>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "https://jobs.example.com/role",
+    "html": "<p>no link</p>",
+    "config": {
+      "selector": "a.description",
+      "allowed_host_suffixes": [
+        ".publisher.example"
+      ],
+      "min_chars": 200,
+      "steps": [
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description"
+        }
+      ]
+    },
+    "output": null,
+    "error": true
+  }
+]

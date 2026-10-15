@@ -13,11 +13,10 @@ import (
 )
 
 // ValidateDirectConfig admits only the static document and existing pure DOM
-// parser. Linked documents, alternate fetch URLs and secondary enrichment keep
-// their existing owner until their execution contracts are implemented.
+// parser, including bounded alternate reads and allowlisted linked descriptions.
 func ValidateDirectConfig(config Object) error {
 	allowed := map[string]bool{}
-	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback", "document_fallback"} {
+	for _, key := range []string{"steps", "preset", "scope", "include_document_title", "include_document_description", "include_header_content", "defaults", "defaults_by_url", "defaults_by_regex", "gone_url_pattern", "retry_statuses", "same_origin_redirects", "request_headers", "encoding", "render", "actions", "proxy", "skip_ssl", "ssl_verify", "enrich", "fallback", "document_fallback", "fetch_url_transform", "linked_description"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -71,6 +70,9 @@ func ValidateDirectConfig(config Object) error {
 				return errors.New("invalid document format options")
 			}
 		}
+	}
+	if _, err := LinkedDescriptionConfig(config["linked_description"]); err != nil {
+		return err
 	}
 	_, err := directDocumentOptions(config, "")
 	return err
@@ -151,11 +153,15 @@ func FetchDetailWithDocumentParser(ctx context.Context, endpoint string, config 
 	if err := ValidateDirectConfig(config); err != nil {
 		return result, err
 	}
+	fetchURL, err := AlternateFetchURL(endpoint, config["fetch_url_transform"])
+	if err != nil {
+		return result, err
+	}
 	opts, err := directDocumentOptions(config, endpoint)
 	if err != nil {
 		return result, err
 	}
-	doc, err := jsonld.FetchDocumentWithClient(ctx, endpoint, opts, client)
+	doc, err := jsonld.FetchDocumentWithClient(ctx, fetchURL, opts, client)
 	result.Requests, result.Responses, result.Bytes = doc.Requests, doc.Responses, doc.Bytes
 	result.Status, result.FinalURL = doc.Status, doc.FinalURL
 	result.ErrorKind, result.TDMSource, result.TDMPolicy = doc.ErrorKind, doc.TDMSource, doc.TDMPolicy
@@ -204,5 +210,8 @@ func FetchDetailWithDocumentParser(ctx context.Context, endpoint string, config 
 		return result, ctx.Err()
 	}
 	result.Content, err = Parse(source, config, &endpoint)
-	return result, err
+	if err != nil {
+		return result, err
+	}
+	return fillLinkedDescription(ctx, result, source, endpoint, config, client)
 }

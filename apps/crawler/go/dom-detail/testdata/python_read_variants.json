@@ -1,0 +1,697 @@
+[
+  {
+    "name": "complete-linked",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": {
+      "title": "Research Professor",
+      "description": "<p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "language": "en"
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "complete-original",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "p",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><p>Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. </p></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42"
+    ],
+    "expected": {
+      "title": "Research Professor",
+      "description": "Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role. Complete original role.",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "language": "en"
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "alternate-linked",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      },
+      "fetch_url_transform": {
+        "find": "^https://jobs.company.example/",
+        "replace": "https://read.company.example/"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://read.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://read.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": {
+      "title": "Research Professor",
+      "description": "<p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "language": "en"
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "foreign",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://outside.example/full\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42"
+    ],
+    "expected": null,
+    "error": "ValueError"
+  },
+  {
+    "name": "duplicate-link",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Duplicate</a>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42"
+    ],
+    "expected": null,
+    "error": "ValueError"
+  },
+  {
+    "name": "short-linked",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {},
+        "body": "<div class=\"job-description\"><p>Short</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": null,
+    "error": "ValueError"
+  },
+  {
+    "name": "redirect-foreign",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 302,
+        "headers": {
+          "Location": "https://outside.example/full"
+        },
+        "body": ""
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": null,
+    "error": "ValueError"
+  },
+  {
+    "name": "redirect-allowed",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 302,
+        "headers": {
+          "Location": "https://other.company.example/full"
+        },
+        "body": ""
+      },
+      {
+        "url": "https://other.company.example/full",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role",
+      "https://other.company.example/full"
+    ],
+    "expected": {
+      "title": "Research Professor",
+      "description": "<p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "language": "en"
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "reserved",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 200,
+        "headers": {
+          "TDM-Reservation": "1"
+        },
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": null,
+    "error": "TDMReservedError"
+  },
+  {
+    "name": "status-before-policy",
+    "source": "https://jobs.company.example/positions/42",
+    "config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "div",
+          "attr": "class=summary",
+          "field": "description",
+          "html": true
+        }
+      ],
+      "defaults_by_url": {
+        "https://jobs.company.example/positions/42": {
+          "locations": [
+            "Zurich"
+          ],
+          "language": "en"
+        }
+      },
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [
+          ".company.example"
+        ],
+        "min_chars": 50,
+        "scope": ".job-description",
+        "steps": [
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true,
+            "to_end": true
+          }
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.company.example/positions/42",
+        "status": 200,
+        "headers": {},
+        "body": "<h1>Research Professor</h1><div class=\"summary\"><a class=\"full-description\" href=\"https://department.company.example/jobs/full-role\">Learn more</a></div>"
+      },
+      {
+        "url": "https://department.company.example/jobs/full-role",
+        "status": 410,
+        "headers": {
+          "TDM-Reservation": "1"
+        },
+        "body": "<h1>Keep original title</h1><div class=\"job-description\"><p>Lead a multidisciplinary research program and mentor faculty trainees.</p><p>Publish original scholarship and collaborate across departments.</p></div>"
+      }
+    ],
+    "requested": [
+      "https://jobs.company.example/positions/42",
+      "https://department.company.example/jobs/full-role"
+    ],
+    "expected": null,
+    "error": "HTTPStatusError"
+  }
+]

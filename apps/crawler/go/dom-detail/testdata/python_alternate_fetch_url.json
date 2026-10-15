@@ -1,0 +1,226 @@
+[
+  {
+    "name": "0",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": null,
+    "output": "https://jobs.example.com/job/42?a=1",
+    "error": false
+  },
+  {
+    "name": "1",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "2",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(.*)$",
+      "replace": "https://read.example.net/\\1"
+    },
+    "output": "https://read.example.net/job/42?a=1",
+    "error": false
+  },
+  {
+    "name": "3",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "job",
+      "replace": "role"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "4",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "missing",
+      "replace": "x"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "5",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "(",
+      "replace": "x"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "6",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": ".*",
+      "replace": "https://example.com/"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "7",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "^.*$",
+      "replace": "http://user:pass@example.com/"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "8",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "^.*$",
+      "replace": "file:///tmp/x"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "9",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "^.*$",
+      "replace": "https://example.com/\u0000"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "10",
+    "source": "https://jobs.example.com/job/42?a=1",
+    "config": {
+      "find": "^.*$",
+      "replace": "//example.com/x"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement0",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\g<id>"
+    },
+    "output": "https://read.example.com/42",
+    "error": false
+  },
+  {
+    "name": "replacement1",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\g<0>"
+    },
+    "output": "https://read.example.com/https://jobs.example.com/42",
+    "error": false
+  },
+  {
+    "name": "replacement2",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\2"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement3",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\10"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement4",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\101"
+    },
+    "output": "https://read.example.com/A",
+    "error": false
+  },
+  {
+    "name": "replacement5",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\111"
+    },
+    "output": "https://read.example.com/I",
+    "error": false
+  },
+  {
+    "name": "replacement6",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\400"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement7",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\q"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement8",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\&"
+    },
+    "output": "https://read.example.com/\\&",
+    "error": false
+  },
+  {
+    "name": "replacement9",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\\\"
+    },
+    "output": "https://read.example.com/\\",
+    "error": false
+  },
+  {
+    "name": "replacement10",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\g<missing>"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "replacement11",
+    "source": "https://jobs.example.com/42",
+    "config": {
+      "find": "^https://jobs[.]example[.]com/(?P<id>\\d+)$",
+      "replace": "https://read.example.com/\\g<01>"
+    },
+    "output": "https://read.example.com/42",
+    "error": false
+  }
+]

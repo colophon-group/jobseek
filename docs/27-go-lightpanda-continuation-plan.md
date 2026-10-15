@@ -1,5 +1,37 @@
 # Go and Lightpanda migration delivery plan
 
+## Latest checkpoint — 2026-10-15
+
+Source1052 (`3e077597736950c94cb2556b1bf317fa677aeb80`, PR #10535) is deployed.
+The original supported activation completed at epoch330. Independent readback
+verified native ownership for 7830 monitor boards and 7735 detail boards,
+exact immutable images, canonical SQL and Redis ownership, ten running services,
+and eight passing health checks. The nine new browser API detail boards retain
+all previous ownership. Lightpanda1.0.0 remains the latest stable release.
+
+PR #10536 delivers native PDF text extraction for both monitor and detail paths.
+Its current head `c5839d91f0360562eeea81088e99233f262fee4d` passed required CI,
+installed Linux qualification, and the original ARM whole-lane gate. Six mixed
+HTTP/PDF boards also passed fresh all-field and private canonical writer checks.
+Complete the supported outgoing retirement/cold reversal, merge with fresh
+head/base/gate/hold/operator evidence, deploy, then bind and activate the exact
+current routes while preserving the7830/7735 floor. Host mutation locks must
+finish naturally; a lock rejection does not authorize bypassing the lock.
+
+The next grouped batch ports alternate URL reads and linked descriptions in one
+iteration. Local parser/transport/ownership tests and both reachable actual
+alternate-read boards pass. WUSTL and Vertiv remain held on original HTTP
+failures. Qualify installed execution and native writer/retirement behavior,
+then admit only boards with complete current-route and canonical-field proof.
+See `docs/evidence/go-native-dom-read-variants-candidate-2026-10-15.json`.
+
+Continue grouping independent monitor/detail variants each iteration. Finish
+remaining enabled coverage and global freshness, queue conservation, comparable
+fleet cost, and rollback-window evidence before removing production Python,
+Playwright, Chromium, or retained rollback support. The full migration goal
+remains active.
+
+
 ### Current checkpoint — 0.13.1047 active at epoch 322
 
 [PR10498](https://github.com/colophon-group/jobseek/pull/10498) and
