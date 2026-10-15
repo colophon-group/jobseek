@@ -5,65 +5,72 @@ profile does not establish production ownership. Useful isolated offline Python
 tools may remain; production crawling must finish moving to Go HTTP/API routes
 and Lightpanda before Python, Playwright and Chromium can be removed.
 
-## Current release and activation
+## Current delivered release and ownership
 
-PR [#10547](https://github.com/colophon-group/jobseek/pull/10547) delivered
-0.13.1063, source `d8397e0a39ced279203af1d884d68af4ccce7658`. Exact-head Required CI,
-installed-runtime contracts, both Linux Lightpanda architectures, the independently
-audited 16-arm/eight-output-pair ARM report and actual Crawler Deploy Gate passed.
-Original crawler [38717503957](https://github.com/colophon-group/jobseek/actions/runs/38717503957)
-and renderer [38717561140](https://github.com/colophon-group/jobseek/actions/runs/38717561140)
-succeeded on attempt 1. Independent source/image/data/cold/exporter checks passed.
-Supported B0 activation and seven health checks passed at epoch 342. Ordinary Go
-ownership is inactive; the base Python workers still serve ordinary work.
+PR [#10548](https://github.com/colophon-group/jobseek/pull/10548) delivered
+0.13.1064, source `f010c87dd3e339abbe2ce3518197f437a9680e0d`. Required CI, actual
+Crawler Deploy Gate, installed-runtime contracts, both Linux Lightpanda
+architectures and the original ARM comparison passed. Independent audit verifies
+all 16 ARM arms and eight complete-output pairs. The automatic ARM run tested
+GitHub's synthetic merge `5539e578aa50d971df430a640708cf39ae9e0e46`; its exact
+base/head parents and complete tree match the reviewed candidate and final merge.
 
-Fresh admission captured all 7,900 boards and 1,707,847 scheduled posting routes.
-It refused before staging because two newly observed Oracle requisition IDs
-contain literal parentheses. The existing EXL configuration is unchanged. Python
-monitoring emits those IDs, but both the old Python detail parser and Go profile
-reject them. There is no ordinary pending plan or ownership grant on 1063.
+Original crawler [38730896891](https://github.com/colophon-group/jobseek/actions/runs/38730896891)
+and renderer [38730917611](https://github.com/colophon-group/jobseek/actions/runs/38730917611)
+deployments succeeded on attempt 1. Independent installed source/image/data,
+exporter, renderer and cold checks passed. Original B0 and ordinary activation
+succeeded at epoch 344. Receipt, SQL plan, Redis projection, source/images, all
+actors and eight health endpoints independently agree: Go now owns 7,830 monitors
+and 7,783 detail configurations, including all 41 prepared additions.
 
-Candidate 0.13.1064 fixes Oracle copy IDs in Go inventory/detail and the
-transitional Python parser, and admits fragment URLs across rendered DOM,
-JSON-LD and embedded detail profiles. Encoded path aliases, finder injection,
-untrusted authorities and wrong worker lanes remain refused. A physical pinned
-Lightpanda 1.0.0 test verifies that two fragment routes produce distinct DOM and
-JSON-LD fields while preserving exact source URLs and one origin request each.
+Fresh admission captured 7,900 boards and 1,709,330 scheduled routes. The guarded
+cold baseline retained 1,509,577 queued posting IDs among 1,650,095 selected scheduled
+postings. Complete postactive comparison retains every baseline ID, with zero
+missing IDs and 21 additional queued IDs. The pre-existing 140,518 scheduled-versus-
+queued gap is unchanged. All 35 selected stale routes across seven boards were
+repaired; the complete postactive selected cohort has zero cached route mismatches.
+See the [delivered evidence](evidence/go-native1064-delivery-2026-10-15.json).
 
-Both actual Oracle responses contain blank descriptions. Every other canonical
-field matches between Go and Python; the retained raw comparison records Python's
-empty description string versus Go's omitted field. These are upstream-empty
-observations, not successful description references. Real direct/proxy worker
-tests verify retry and content retention for blank results, plus successful copy-ID
-settlement when content exists. All 86 Python Oracle tests, Go Oracle race tests,
-focused queue tests and real Oracle worker settlement tests pass locally.
+The first 40-second serving observation records 11 successful Go monitor runs and
+21 successful Go scrapes, zero Go errors/cancellations and no OOM event. Sampled
+service cgroups average 3.169 CPU cores and 3.015 GB RAM. These natural unpaired
+observations do not establish causal savings, matched throughput or attributable
+whole-host cost. The first active freshness snapshot still has 1,588,094 scheduled
+postings over 24 hours late; backlog resolution remains required.
 
-A candidate-only preflight against the complete 1063 capture now preserves all
-7,830 monitors and 7,742 prior detail configurations, with all 41 prepared detail
-additions: 7,783 details and 1,648,443 selected scheduled postings. It is not
-production admission. Thirty-five stale cached routes across seven selected
-boards still require the original canonical repair during fresh cold activation.
-See the [candidate evidence](evidence/go-native-url-compatibility-candidate-2026-10-15.json).
+The installed 30-minute native admin, 15-minute canonical stream and 1,820-second
+wrapper budgets have now completed a real ordinary activation successfully.
+Complete callers still require at least 45 minutes. Natural lease expiry, every
+canonical/per-row validation, original locks, exact staged identity, resource
+bounds and SAVE-before-grant remain. Do not tighten the budgets based on a small
+fixture or bypass them for a subsequent attempt.
 
-The installed 1063 budgets are 30 minutes for the native admin, 15 minutes for the
-read-only projection stream and SQL statement, and 1,820 seconds for the wrapper's
-native command. Complete operator callers require at least 45 minutes. They have
-not yet been exercised by an ordinary activation. Every per-row validation,
-natural lease expiry, original lock, staged identity, resource budget and
-SAVE-before-grant guard remains. See the
-[budget evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
+The release fixes Oracle literal parenthesized copy IDs in Go monitor/detail and
+transitional Python parsing, and fragment source admission across rendered DOM,
+JSON-LD and embedded detail profiles. The two actual Oracle copy responses have
+blank descriptions; other canonical fields match. They are explicitly not
+successful description references. Real worker tests prove blank-content retry
+and retention. Physical pinned Lightpanda 1.0.0 tests prove distinct fragment-driven
+DOM/JSON-LD fields, exact source URLs and request conservation.
 
-Source1062's earlier activation reached its 20-minute deadline during canonical
-projection without SQL ownership. Original recover-pending restored B0/base
-serving after scheduled reconciliation released the lock. Its guarded baseline
-had 1,506,613 queued IDs among 1,647,257 selected scheduled postings; the existing
-140,644 gap is not evidence of migration loss. The next activation requires its
-own source/epoch/plan-bound baseline and postactive ID accounting.
+## Remaining grouped work
 
-The same-release 1063 cold base sample observed 4.605 CPU cores and 3.363 GB mean
-RAM over 40 seconds, with no OOM. The freshness baseline contained 1,707,834
-scheduled postings, 1,590,952 over 24 hours late. These natural unpaired samples
-establish neither causal savings nor attributable cost.
+The fresh active-cohort screen excludes the three B0 boards and identifies 67
+remaining monitor configurations and 114 detail configurations. Of those, 22 monitors
+and 68 details compile; 45 monitors and 46 details still require shared contracts or
+configuration diagnosis. Four fragment boards now compile: both LTIMindtree
+regions, Antonie and Axis Bank. Compilation does not establish output qualification
+or additional ownership. Among compiled details, 23 have stale cached routes and 45
+await complete-output qualification. Use original cold repair for qualified cache
+gaps; never silently skip canonical routes or disable boards to improve coverage.
+
+Group existing compiled DOM, JSON-LD, API capture, Brassring, Onlyfy and Workday
+qualification with the four fragment boards. Extend browser-lane ordered fallback,
+proxy/context/identity controls, alternate reads and warmup as shared contracts
+across families. Preserve each configured stage's transport, source identity,
+complete fields, publisher policy and canonical writer behavior. Onlyfy language
+already exists; its remaining uncompiled example points at Workday and needs
+configuration diagnosis.
 
 ## Previous source1061 delivery
 
@@ -160,46 +167,25 @@ retired because forward maintenance uses Go.
 
 ## Execution order
 
-1. Freeze and qualify candidate1064 through Required CI, Crawler Deploy Gate,
-   installed-runtime, both Lightpanda architectures and the ARM report. Use
-   supported outgoing1063 B0 reversal/clearing and the original quiesced
-   deployment; independently verify the new source/images/data/exporter and B0.
-   Repeat complete current-source/config/cache/route admission, preserving the
-   prior floor and closed 41 additions. Stage one ordinary plan and execute one
-   original activation with the installed budgets above. Independently verify
-   receipt, SQL plan, Redis projection, health, processing and repaired routes.
-   Preserve before/after queued IDs and account for pre-existing missing work.
-   Never duplicate activation because an observation times out.
-2. Recompute the remaining frontier from the active cohort. The fresh source1059
-   census identifies 67 monitors and 114 detail configurations outside the staged
-   batch; this is planning evidence, not production admission. Of those
-   details, 64 compile and 50 require additional contracts: DOM 33, JSON-LD 14,
-   API sniffer two and Onlyfy one. Browser proxy, stealth, channel and persistent
-   context options account for much of the unsupported set. Of the compiled
-   details, 23 also have stale cached routes and 41 await complete-output
-   qualification. Reuse the existing cold repair for qualified configurations.
-3. Deliver grouped shared contracts across multiple configurations per release.
-   Start with the eight DOM/JSON-LD configurations without active proxy or
-   launch-identity controls. Four DOM configurations already pass navigation,
-   action and parser checks but are rejected for fragment URLs; the renderer
-   already preserves requested/final fragments. Pair that shared admission fix
-   with browser-lane ordered DOM/JSON-LD fallback. Preserve the chain's browser
-   queue and each stage's configured HTTP or rendered transport with fenced
-   handoff. Other gaps include alternate reads, warmup and user-agent controls.
-   Onlyfy language handling already exists: its retained uncompiled case points
-   at a Workday board with no scheduled postings and needs configuration
-   diagnosis, rather than a duplicate language implementation.
-   In the same iteration, qualify existing compiled families where original
-   complete outputs are available. Treat the other 41 unsupported configurations
-   as shared browser-control work across DOM, JSON-LD and API capture.
-   Prefer existing Go HTTP/API families or complete upstream data when they
-   preserve behavior. Implement required Lightpanda controls where necessary.
-   Preserve publisher policy, origin limits, complete fields and canonical writer
-   effects. Upstream failures or empty originals remain explicitly classified;
-   they do not establish complete successful-output equivalence. Do not silently
-   ignore required controls or disable enabled boards to manufacture coverage.
-4. Establish fleet freshness and conservation while the full cohort runs. Before
-   this cutover, 1,598,500 scheduled postings were over 24 hours late. Track that
+1. Keep the independently verified1064cohort serving while preparing the next
+   substantial batch. Qualify the22compiled monitors and68compiled details across
+   families, including the four fragment boards. Capture original/native complete
+   outputs and real canonical settlement, bind current configs and actual routes,
+   and keep empty originals/upstream failures explicitly classified.
+2. Implement shared missing browser contracts across DOM/JSON-LD/API capture and
+   browser-lane ordered fallback. Group multiple types/configurations per release.
+   Use existing Go HTTP/API routes where their complete outputs preserve behavior.
+   Never ignore configured controls, omit an enabled board or equate compilation
+   with ownership. Deploy via required checks and original supported workflows;
+   verify fresh admission, actual serving and before/after queued IDs.
+3. Finish native-to-native deployment, CSV publication and supported rollback
+   consumers before removing the Python base. Current wrappers reject active
+   ordinary receipts for deployment/publication. Preserve exact release/CSV/image/
+   queue/receipt binding, exclusive writer barriers and failure recovery, and drill
+   the actual transition. This lifecycle work is required even at full profile
+   coverage; do not remove Python recovery assets prematurely.
+4. Establish fleet freshness and conservation while the full cohort runs. The first
+   active 1064 snapshot has 1,588,094 scheduled postings over 24 hours late. Track that
    SQL age distribution alongside queue/lease/receipt accounting and successful
    writes and exports. Compare whole-lane CPU, RAM and throughput over identified
    workloads. Natural unpaired samples and synthetic ARM pairs do not establish
@@ -214,13 +200,13 @@ retired because forward maintenance uses Go.
 
 Use Git-deployed B0 and ordinary wrappers, mutation locks, exclusive ownership and
 the [production deployment contract](adr/006-crawler-deploy-quiescence-and-rollback.md).
-Candidate1063 gives the ordinary native admin a 1,800-second deadline and its
+The installed 1064 runtime gives the ordinary native admin a 1,800-second deadline and its
 wrapper 1,820 seconds. Callers must allow at least 45 minutes for the complete stop,
 operation, readiness and containment sequence. Let leases expire naturally. Never edit
 production SQL, Redis, leases or receipts manually, or replace the wrappers ad hoc.
 
-Source1061 uses one read-only stream and at most1024-record batches before Redis
-SAVE and SQL ownership grant. Candidate1062 reduces repeated invariant Redis
+The installed runtime uses one read-only stream and at most 1,024-record batches before Redis
+SAVE and SQL ownership grant. Its per-batch cache reduces repeated invariant Redis
 validation within each batch. Partial failures remain staged
 and use the original recovery protocol. A successful unit test or Mac benchmark
 cannot replace installed Linux verification of that operation.

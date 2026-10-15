@@ -3,31 +3,30 @@
 ## Current delivery checkpoint — 2026-10-15
 
 Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
-for current state and completion order. Source1063
-`d8397e0a39ced279203af1d884d68af4ccce7658` passed both original deployments and
-independent source/image/data/cold/exporter checks. B0 is active at epoch342.
-Ordinary admission refused before staging on two newly observed Oracle copy IDs
-with parentheses; ordinary Go ownership remains inactive.
+for current state and completion order. Source1064
+`f010c87dd3e339abbe2ce3518197f437a9680e0d` passed both original deployments and
+independent installed checks. Original B0 and ordinary activation succeeded at
+epoch 344. Go ownership is independently verified for 7,830 monitors and 7,783 details,
+including all 41 prepared detail additions, with eight passing health endpoints.
 
-Candidate0.13.1064 fixes those IDs in Oracle Go/Python monitoring and detail
-parsers, together with fragment source admission across rendered DOM, JSON-LD
-and embedded detail profiles. Complete local-route preflight preserves7830
-monitors/7742prior details and all41prepared additions, covering1648443scheduled
-postings. Physical Lightpanda1.0.0 fragment fields, real Oracle direct/proxy
-settlement and blank-description retry/content retention pass. The two actual
-Oracle copy responses have blank descriptions; other canonical fields match,
-but these are not successful description references. See the
-[candidate evidence](evidence/go-native-url-compatibility-candidate-2026-10-15.json).
+The guarded baseline preserves 1,509,577 queued posting IDs after cutover: zero
+missing baseline IDs and 21 additional queued IDs. The pre-existing 140,518 scheduled-
+versus-queued gap remains explicit. All 35 selected stale routes were repaired;
+complete postactive census verifies zero selected cache mismatches. A 40-second
+sample records 11 successful Go monitors and 21 successful Go scrapes, no Go errors
+or cancellations and no OOM. Freshness and comparable resource/cost evidence
+remain incomplete. See the [delivery evidence](evidence/go-native1064-delivery-2026-10-15.json).
 
-Freeze/qualify/deliver1064, repeat fresh full admission and execute the original
-cold activation. Source1063 installed30-minute native/15-minute stream/1820-second
-wrapper budgets remain unexercised by ordinary activation; allow at least45minutes
-for complete callers. Preserve every canonical/lease/source/config/lock/SAVE guard.
-Verify actual serving and before/after queue IDs before adding another port batch.
-Then group browser contracts and compiled-family output qualification, complete
-native-to-native deployment/CSV/rollback support, freshness and resource evidence,
-and retire production Python after the supported reversal/window. The full goal
-remains active. Earlier entries below are historical.
+Next, group 22 compiled monitors and 68 compiled details across families for complete-
+output and canonical-writer qualification. Four fragment boards now compile;
+45 monitor and 46 detail configurations still need shared contracts or diagnosis.
+Combine DOM/JSON-LD/API browser controls and browser-lane ordered fallback in
+substantial batches. Preserve current serving while preparing them. Complete
+native-to-native deployment/CSV/rollback support, fleet freshness, resource evidence
+and the supported recovery window before production Python/Playwright/Chromium
+retirement. Useful isolated offline Python may remain. Lightpanda 1.0.0 is the
+latest stable release, rechecked October 15. The full goal remains active; earlier
+entries below are historical.
 
 ## Historical source1060 qualification correction — 2026-10-15
 
