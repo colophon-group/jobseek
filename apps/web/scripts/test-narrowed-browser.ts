@@ -83,6 +83,16 @@ async function main() {
     const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
     const signedIn = await context.request.post(`${baseUrl}/api/auth/sign-in/email`, { data: { email: user.email, password }, headers: { origin: baseUrl } });
     assert.equal(signedIn.status(), 200);
+    // Cached results must already be in the authorized server document;
+    // they must not wait for the client's account bootstrap request.
+    // Inspect the document directly: Next's streamed Suspense chunks use its
+    // inline reveal script even before React/account hydration.
+    const serverResponse = await context.request.get(`${baseUrl}/en/watchlists/${id}`);
+    assert.equal(serverResponse.status(), 200);
+    const serverHtml = await serverResponse.text();
+    assert.match(serverHtml, /aria-label="Narrowed results"/);
+    assert.match(serverHtml, /1 of 60 jobs reviewed/);
+    assert.doesNotMatch(serverHtml, /aria-label="Edit matching criteria"/);
     page = await context.newPage();
     page.setDefaultTimeout(45_000);
     const failedRequests: string[] = [];
@@ -102,7 +112,7 @@ async function main() {
     await narrowed.getByText("2 matches · 2 of 60 jobs reviewed", { exact: true }).waitFor();
     assert.deepEqual(failedRequests, []);
     await page.screenshot({ path: "/tmp/jobseek-narrowed-first-page-ui.png", fullPage: true });
-    console.log(JSON.stringify({ cachedMatchVisible: true, newMatchDeliveryMs: deliveryMs, broadTotalsHidden: true, reviewProgress: "2 of 60", screenshot: "/tmp/jobseek-narrowed-first-page-ui.png" }));
+    console.log(JSON.stringify({ cachedMatchVisible: true, serverSnapshotIncludesCachedResults: true, newMatchDeliveryMs: deliveryMs, broadTotalsHidden: true, reviewProgress: "2 of 60", screenshot: "/tmp/jobseek-narrowed-first-page-ui.png" }));
   } catch (error) {
     if (page) {
       await page.screenshot({ path: "/tmp/jobseek-narrowed-first-page-ui-failure.png", fullPage: true });
