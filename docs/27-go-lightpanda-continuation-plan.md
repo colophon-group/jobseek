@@ -2,11 +2,11 @@
 
 ## Current delivery checkpoint — 2026-10-15
 
-Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md) for authoritative state and execution order. Source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` (0.13.1067) and latest stable Lightpanda 1.0.1 passed original deployments and independent source/image/data/binary/health/export checks. B0 and ordinary Go are independently active at epoch346, owning **7,830 monitors / 7,802 details** and delivering all19 additions.
+Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md) for authoritative state and execution order. Source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` (0.13.1067) and latest stable Lightpanda 1.0.1 passed original deployments and independent source/image/data/binary/health/export checks. B0 and ordinary Go are independently active at epoch 346, owning **7,830 monitors / 7,802 details** and delivering all 19 additions.
 
-The complete postactive census preserves the exact cohort with zero owned cache mismatches after3357repairs. Every one of1535564baseline queued IDs remains present, with zero missing and two additional IDs. The pre-existing149028scheduled-versus-queued gap remains unresolved. See the [delivery evidence](evidence/go-native1067-delivery-2026-10-15.json).
+The complete postactive census preserves the exact cohort with zero owned cache mismatches after 3,357 repairs. Every one of 1,535,564 baseline queued IDs remains present, with zero missing and two additional IDs. The pre-existing 149,028 scheduled-versus-queued gap remains unresolved. See the [delivery evidence](evidence/go-native1067-delivery-2026-10-15.json).
 
-Keep this cohort serving. Continue the remaining67monitor/95detail configurations in substantial shared-contract batches, including the22compiled-monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
+Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
 ## Historical source1060 qualification correction — 2026-10-15
 
