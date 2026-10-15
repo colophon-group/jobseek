@@ -18,6 +18,8 @@ import (
 
 var firstImage = regexp.MustCompile(`^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$`)
 
+const firstOwnershipAdminTimeout = 30 * time.Minute
+
 // FirstOwnershipRequest is the protected host's retained pending decision.
 // The supported wrapper owns the original flock, stopped/restart-disabled
 // writers, pinned installed release and B0 receipt, and full-stack readiness.
@@ -109,10 +111,11 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (r
 		return nil, ErrStartup
 	}
 	// Legacy cancellation retains ten-minute SQL leases after every process
-	// stops. Reserve a further ten minutes for complete canonical route
-	// validation and paged projection repair; never clear a lease to fit the
-	// budget. The protected host remains cold throughout this bounded window.
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
+	// stops. The installed fleet also needs more than ten minutes for complete
+	// canonical route validation. Reserve fifteen minutes for that stream and
+	// five for eligibility, restoration and persistence. The protected host
+	// remains cold throughout; an earlier caller deadline still wins.
+	ctx, cancel := context.WithTimeout(ctx, firstOwnershipAdminTimeout)
 	defer cancel()
 	phase = "database"
 	config, err := pgxpool.ParseConfig(c.database)

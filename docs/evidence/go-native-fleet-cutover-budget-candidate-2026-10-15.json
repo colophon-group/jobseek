@@ -1,0 +1,78 @@
+{
+  "schema": "jobseek.native-fleet-cutover-budget-candidate/v1",
+  "candidate_version": "0.13.1063",
+  "production_admission": false,
+  "installed_source": "555a6b7a72186cb75ca5d0562c0d57f219bf902f",
+  "installed_version": "0.13.1062",
+  "original_crawler_run": 38704936422,
+  "original_renderer_run": 38704993327,
+  "original_deployments": "success, attempt1",
+  "fresh_admission": {
+    "routing_epoch": 340,
+    "enabled_boards": 7900,
+    "monitor_boards": 7830,
+    "detail_boards": 7783,
+    "new_detail_boards_admitted": 41,
+    "held_qualified_detail_candidates": {},
+    "scheduled_owned_postings": 1647452
+  },
+  "original_activation": {
+    "failed_at_utc": "2026-10-15T09:10:39Z",
+    "phase": "canonical-detail-projection",
+    "reason": "deadline",
+    "parent_budget_seconds": 1200,
+    "last_natural_legacy_lease_expiry_utc": "2026-10-15T09:00:29.584085Z",
+    "sql_ownership_granted": false,
+    "contained_pending_identity": true
+  },
+  "installed_validation_observations": {
+    "aggregate_cold_redis_interval_seconds": 163.322548,
+    "eval_calls_in_interval": 382,
+    "eval_cpu_microseconds_in_interval": 39737292,
+    "eval_failed_calls_in_interval": 0,
+    "eval_rejected_calls_in_interval": 0,
+    "native_admin_cpu_sample_seconds": 40.02581787481904,
+    "native_admin_mean_cpu_cores": 0.8759146686183363,
+    "native_admin_memory_bytes": 146722816,
+    "native_admin_oom_events": 0,
+    "kernel_peak_memory_counter_available": false,
+    "scope": "Installed cold validation observations; aggregate calls are planning evidence, not a completed full-operation benchmark or admission authority. Earlier SQL/Python rehearsal excluded Go per-row validation."
+  },
+  "guarded_before_queue_baseline": {
+    "selected_details": 7783,
+    "selected_scheduled": 1647257,
+    "selected_queued": 1506613,
+    "preexisting_selected_scheduled_minus_queued": 140644,
+    "selected_queued_ids_sha256": "172b382f1fa7780299a8f33c99a58160794dfd07d6ea4c5fe7b42a0b48c2e058",
+    "capture_sha256": "7b2dcd4dd4f790abdd7b6a3ddc78c68f20985d7cb7c670d461e1e818d19f57c7",
+    "postactive_conservation_proved": false
+  },
+  "candidate_budgets_seconds": {
+    "native_admin": 1800,
+    "read_only_projection_stream": 900,
+    "sql_stream_statement": 900,
+    "original_wrapper_native_command": 1820,
+    "minimum_complete_operator_caller": 2700
+  },
+  "unchanged_contracts": [
+    "Natural SQL lease expiry and original exclusive writer barriers",
+    "Every canonical source/profile/config validation and bounded1024-record batches",
+    "Every per-row Redis guard, original repair semantics and immutable staged identity",
+    "Earlier parent cancellation, SAVE before SQL grant, containment and supported recovery",
+    "Runtime resource limits and full7830-monitor/7783-detail cohort"
+  ],
+  "required_delivery": "qualify and deploy the frozen candidate through original workflows; fresh full admission and one original activation with adequate caller budget; independently verify processing, repaired routes, queued-ID conservation, resources and freshness.",
+  "supported_recovery": {
+    "attempt1": "refused mutation lock held; no action",
+    "recognized_lock_holder": "scheduled cross-store reconciliation, verified source1062 image",
+    "attempt2": "success after scheduled job completed",
+    "independent_observed_at_utc": "2026-10-15T09:22:27.590987+00:00",
+    "routing_epoch": 340,
+    "running_restart_armed_actors": 9,
+    "passing_health_checks": 7,
+    "active_ordinary_sql_plans": 0,
+    "ordinary_receipt_absent": true,
+    "ordinary_projection_absent": true,
+    "foreign_oneoffs": 0
+  }
+}
