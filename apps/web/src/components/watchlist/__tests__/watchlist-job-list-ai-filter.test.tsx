@@ -166,6 +166,13 @@ describe("WatchlistJobList matching results", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("hides broad active/year statistics while the narrowed drawer is open", () => {
+    const { rerender } = render(<WatchlistJobList {...baseProps} resultMode="broad" drawerOpen />);
+    expect(screen.queryByText("Ordinary result stats")).toBeNull();
+    rerender(<WatchlistJobList {...baseProps} resultMode="broad" drawerOpen={false} />);
+    expect(screen.getByText("Ordinary result stats")).toBeTruthy();
+  });
+
   it("waits for signed-in session hydration before broad pagination", () => {
     hookMocks.paginatedHasMore = true;
     hookMocks.session = { isLoggedIn: false, isPending: true };
@@ -370,7 +377,7 @@ describe("WatchlistJobList matching results", () => {
     expect(screen.queryByText("Reviewing this feed…")).toBeNull();
   });
 
-  it("refreshes counters when background evaluation finishes after rows load", async () => {
+  it("renders new matches together with counters when background evaluation finishes", async () => {
     const accepted = posting("accepted", "Persisted accepted role");
     const processing = aiState({
       status: "processing",
@@ -393,7 +400,7 @@ describe("WatchlistJobList matching results", () => {
           json: async () => ({ state: processing, workflow: null }),
         } as Response;
       }
-      return { ok: true, json: async () => completed } as Response;
+      return { ok: true, json: async () => ({ state: completed, decisions: [{ posting: accepted }, { posting: posting("new", "New background match") }], total: 2, nextOffset: 2, hasMore: false }) } as Response;
     });
     vi.stubGlobal("fetch", fetchMock);
     const onStateChange = vi.fn();
@@ -416,6 +423,7 @@ describe("WatchlistJobList matching results", () => {
 
     await waitFor(() => {
       expect(onStateChange).toHaveBeenCalledWith(completed);
+      expect(screen.getByText("New background match")).toBeTruthy();
     }, { timeout: 2_000 });
   });
 

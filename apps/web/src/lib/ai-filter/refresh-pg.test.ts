@@ -156,6 +156,7 @@ beforeAll(async () => {
     "0094_ai_filter_candidate_languages.sql",
     "0103_ai_filter_freshness.sql",
     "0104_ai_filter_shared_worker.sql",
+    "0105_ai_filter_interactive_demand.sql",
   ]) {
     for (const statement of (await readFile(`drizzle/${file}`, "utf8"))
       .split("--> statement-breakpoint")
@@ -207,7 +208,7 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       await sql().unsafe(
         'TRUNCATE "user",subscription,watchlist_company,user_preferences CASCADE',
       );
-      await sql()`UPDATE ai_filter_worker SET lease_owner=NULL,lease_expires_at=NULL,next_tick_at=now(),blocked_until=NULL,reason=NULL,failures=0,next_lane='historical'`;
+      await sql()`UPDATE ai_filter_worker SET lease_owner=NULL,lease_expires_at=NULL,next_tick_at=now(),blocked_until=NULL,reason=NULL,failures=0,next_lane='historical',interactive_streak=0`;
       mocks.postings = [];
       mocks.classify.mockReset().mockImplementation(async ({ jobs }) => ({
         model: JEV_MODEL,
@@ -408,6 +409,44 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
         coverage: { state: "unreviewed" },
       });
     });
+    it("admits a first-page wake immediately after an idle slice, while retaining the singleton fence", async () => {
+      const input = await fixture();
+      const owner = await claimAiFilterWorker();
+      await releaseAiFilterWorker(owner!, false);
+      await sql()`UPDATE ai_filter_worker SET next_tick_at=now()+interval '1 minute'`;
+      await enqueueAiFilterWork({ ...input, kind: "historical", acceptedTarget: 20 });
+      const awakened = await claimAiFilterWorker();
+      expect(awakened).toBeTruthy();
+      expect(await claimAiFilterWorker()).toBeNull();
+      await releaseAiFilterWorker(awakened!, false);
+      await sql()`UPDATE ai_filter_worker SET blocked_until=now()+interval '15 minutes'`;
+      expect(await claimAiFilterWorker()).toBeNull();
+    });
+    it("serves first-page demand before pagination and reserves every fourth turn for background work", async () => {
+      const first = await fixture();
+      const more = await fixture("pagination-owner");
+      await enqueueAiFilterWork({ ...more, kind: "historical", acceptedTarget: 40 });
+      await enqueueAiFilterWork({ ...first, kind: "historical", acceptedTarget: 20 });
+      const owner = await claimAiFilterWorker();
+      for (let turn = 0; turn < 3; turn++) {
+        const target = await claimAiFilterWork(owner!);
+        expect(target).toMatchObject({ watchlistId: first.watchlistId, kind: "historical", acceptedTarget: 20 });
+        await finishAiFilterWork(target!, "continue");
+      }
+      const background = await claimAiFilterWork(owner!);
+      expect(background!.kind).toBe("freshness");
+    });
+    it("fills an accepted result page beyond a raw candidate runway and then yields", async () => {
+      const input = await fixture();
+      mocks.postings = Array.from({ length: 100 }, () => posting());
+      await enqueueAiFilterWork({ ...input, kind: "historical", demandTargetOffset: 5, acceptedTarget: 20 });
+      await tick();
+      const state = await getAiFilterOwnerState(input);
+      expect(state.counts.accepted).toBeGreaterThanOrEqual(20);
+      expect(state.counts.total).toBeLessThan(100);
+      const [work] = await sql()`SELECT status FROM ai_filter_work WHERE query_version_id=${input.queryVersionId} AND kind='historical'`;
+      expect(work.status).toBe("idle");
+    });
     it("reviews late-indexed old postings and expired decisions without an owner page request", async () => {
       const input = await fixture();
       mocks.postings = [posting()];
@@ -422,6 +461,7 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       await sql()`UPDATE ai_filter_decision SET decided_at=now()-interval '29 days',expires_at=now()-interval '1 second'`;
       await sql()`UPDATE ai_filter_global_cache SET expires_at=now()-interval '1 second' WHERE status='ready'`;
       await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=NULL`;
+      await tick();
       await tick();
       expect(mocks.classify.mock.calls.length).toBeGreaterThanOrEqual(3);
     });

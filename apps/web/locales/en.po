@@ -257,6 +257,12 @@ msgstr "{range} employees"
 msgid "company.head.employees"
 msgstr "{range} employees"
 
+#. Progress of natural-language job review; reviewed and total are job counts
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewProgress"
+msgstr "{reviewed} of {total} jobs reviewed"
+
 #. Number of active jobs in the compact narrowed-results control
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx

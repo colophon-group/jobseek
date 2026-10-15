@@ -26,9 +26,9 @@ records or delete saved Narrowed criteria to implement maintenance.
    serialized deployment workflow.
 2. Dispatch `deploy-ai-filter-refresh.yml` on current main with exact `revision`
    and `action=pause`. It disables and stops only the Narrowed refresh timer
-   and service, using existing protected, host-key-pinned SSH credentials.
+   and service (including persistent-service boot enablement), using existing protected, host-key-pinned SSH credentials.
    It defaults to pause and does not require the refresh bearer. Verify the
-   timer is disabled and both units inactive. Web deployment does not resume it.
+   timer and service are disabled and both units inactive. Web deployment does not resume it.
 3. Audit existing payment subscriptions using an authorized payment runtime:
 
    ```bash
@@ -119,19 +119,29 @@ produce zero Workflow runs.
    and deploy. Existing billing uses the explicit operator command independently;
    changing its desired-state flag alone never mutates provider subscriptions.
 
-The project worker admits at most one tick per 55 seconds, at most five serial
-five-candidate checkpoints and one repair scope per tick. It has a 42-second
-work deadline and 70-second crash leases. Three consecutive failures open a
-15-minute shared circuit; per-work retries back off 5 minutes to 1 hour.
-Admission checks current, enabled, entitled demand and due five-minute repair
-in the same statement that claims the singleton. When neither is ready, the
-tick performs one SQL statement without writing the worker row or advancing
-its cadence. Ready demand on either lane and expired work leases still admit
-the next tick; idle rows, future retry times and live work leases do not. The
-repair cutoff is shared with the rotating repair selector. A skipped idle
-tick does not reset the persisted failure circuit.
-The host HTTP runner has separate systemd CPU/memory/task limits and no database
-credentials or Docker socket. No crawler writers are restarted.
+The shared worker now supports immediate interactive demand (migration 0105).
+One database-fenced worker runs at a time, with a 70-second crash lease, a
+42-second slice deadline, and at most five serial five-candidate checkpoints.
+Background admission has a two-second floor; expiring owner demand can wake an
+idle slot immediately. First-page requests precede pagination; after three
+interactive checkpoints a background turn is reserved. Scope verification is
+reused only within the same bounded slice, and every paid call retains current
+revision/entitlement/budget checks. Repair runs after admitted work if the
+provider retry budget remains. Three failed slices still open the shared
+15-minute circuit; per-work retries retain their five-minute to one-hour backoff.
+
+The singleton admission statement checks enabled, entitled, current demand or
+due repair. An idle tick performs one statement and leaves cadence/circuit state
+untouched. The host driver runs continuously under the existing systemd
+CPU/memory/task limits, with two seconds between active slices and 30 seconds
+when idle. It has no database credentials or Docker socket. Owner requests
+commit durable demand before waking the same worker via Next.js `after`; the
+host recovers missed wakes. No crawler writers are restarted.
+
+Activation disables the legacy minute timer and enables the persistent service.
+Pause disables both. The installer restores their prior state on failure.
+See [interactive rollout](../24-ai-filter.md#interactive-worker-rollout) for the
+migration, web promotion, host activation and bounded verification sequence.
 
 Freshness currently uses bounded rotating repair, including late indexing and
 expired decisions. Per-posting commit signals and re-evaluation of enriched

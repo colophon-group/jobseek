@@ -90,26 +90,44 @@ coalesced Postgres work, unique by immutable query revision and historical or
 freshness lane. Criteria creation/revision commits enqueue freshness in the
 same database transaction. Shared GETs remain read-only.
 
-The existing Hetzner timer calls the bearer-protected web worker once per
-minute. A durable singleton slot limits project-wide execution to one active
-worker, with a 55-second admission floor and a 70-second crash lease. A tick
-has a 42-second deadline, prepares at most one rotating repair scope and
-executes at most five five-candidate checkpoints, serially. Backlog size changes
-completion latency; it cannot increase scheduled invocation count or create
-managed Workflow runs. Idle scopes create no segments or paid calls.
+The resource-limited Hetzner driver calls the bearer-protected web worker
+continuously while work exists (two seconds between bounded slices), and backs
+off to 30 seconds when idle. Owner configuration and reconciliation commit
+interactive demand before a Next.js `after` callback wakes the same shared
+worker. Missed wakes are recovered by the host; there are no per-watchlist
+Workflow runs or detached promises. The host retains only the endpoint bearer,
+never database/provider credentials or Docker access.
 
-Historical and freshness lanes alternate, oldest available work first. Demand
-extensions during execution increment a generation, so completing the old
-claim cannot discard newly committed work. The existing semantic singleflight,
-spend reservations, entitlement checks and revision isolation remain the paid
-execution boundary. Candidate selection still requires the stable Typesense
-receipt, mining policy and the 10,000-candidate scope limit.
+The Postgres singleton permits one active worker with a 70-second crash lease.
+Background admission has a two-second floor; committed interactive demand may
+wake an idle slot immediately. Every slice has a 42-second deadline and at most
+five serial five-candidate checkpoints. Checks stop admitting a checkpoint
+when fewer than 25 seconds remain for its two-attempt provider bound. Due repair
+runs after admitted work, if that budget remains. Scope verification runs once
+per revision per slice; paid reservations still recheck current authorization.
+
+Migration `0105_ai_filter_interactive_demand` adds expiring two-minute owner
+priority and accepted-page targets. First pages precede pagination, with oldest
+available work breaking ties. After three interactive checkpoints a background
+turn is reserved; ordinary historical/freshness work retains rotating lanes.
+An interactive page scans until enough accepted jobs exist or the feed ends,
+rather than stopping at its ordinary raw-candidate runway. Demand generations
+preserve extensions made during execution. Idle scopes create no segments or
+paid calls. The existing exact semantic cache reuses unchanged job/request
+pairs across hard-filter revisions after their current content is verified.
+
+The browser shows cached matches immediately, publishes each new accepted
+batch, and refreshes rows and counts through the same decisions endpoint. It
+backs off unchanged progress reads without abandoning an unfinished visible
+feed. Hidden tabs suspend reads. The narrowed view hides broad active/year
+statistics and shows matches plus reviewed/total progress when the candidate
+count is known. It never pads a partial page with unreviewed jobs.
 
 The repair pass rotates enabled entitled scopes with a five-minute per-scope
 floor and excludes current unexpired decisions before selecting candidates.
 It detects late indexing independently of original first-seen timestamps and
 renews expired decisions. For N continuously enabled scopes, repair can take
-approximately max(5,N) minutes plus failures/jitter. Committed per-posting index
+at least five minutes plus queueing, failures and jitter. Committed per-posting index
 and enrichment signals remain a follow-up optimization; this release relies
 on bounded repair for freshness and does not reclassify an unexpired decision
 solely because a posting was enriched. Do not promise one-minute freshness.
@@ -282,7 +300,7 @@ The web path is designed around fewer invocations and bounded active CPU:
 - polling is bounded, cancellable for safe GETs, and suspended while a
   foreground load is active or the browser tab is hidden;
 - owner prefetch starts one 500-candidate demand per visible result cursor;
-- minute scheduling admits one fixed worker and at most five checkpoints; and
+- owner wakes and the fixed host driver share one admitted worker and at most five checkpoints per slice; and
 - each route execution has a bounded deadline and durable checkpoints.
 
 Do not move authoritative paid-call state into an in-memory or regional cache,
@@ -323,8 +341,8 @@ The host runner performs one fixed-URL HTTPS request with a 55-second timeout,
 rejects redirects and oversized responses, and logs only aggregate counters.
 Systemd uses `DynamicUser` and `LoadCredential`; the bearer source is root-owned
 mode 0600 under `/etc/jobseek-ai-filter-refresh`. The runner has no Docker socket
-or database credentials. A single oneshot service prevents overlapping host
-triggers; PostgreSQL dispatch claims, leases and the semantic cache handle an
+or database credentials. A single persistent service serializes host
+requests; PostgreSQL dispatch claims, leases and the semantic cache handle an
 ambiguous/lost response and duplicate requests.
 
 The manual deployment workflow binds an owner dispatch to current main and uses
@@ -334,12 +352,34 @@ project before deploying the web revision. It authorizes only this endpoint and
 is separate from the existing, unreadable sensitive Vercel cron credential.
 Credentials move over SSH stdin, never command arguments or logs. The
 installer records the revision, verifies the web contract before changing host
-state, and restores the prior timer/files on a failed installation. It does not
+state, and restores prior timer/service enablement and files on a failed installation. It does not
 restart crawler writers or any other timers. Rotate the host credential by
 rerunning the same deployment workflow after rotating the shared `AI_FILTER_REFRESH_SECRET`.
 
-Check `systemctl is-active jobseek-ai-filter-refresh.timer` and bounded
-`journalctl -u jobseek-ai-filter-refresh.service` evidence. Stop and disable only
-`jobseek-ai-filter-refresh.timer` to roll back background scheduling; owner-driven
+Check `systemctl is-active jobseek-ai-filter-refresh.service` and bounded
+`journalctl -u jobseek-ai-filter-refresh.service` evidence. The legacy timer is
+disabled. Use the protected pause workflow to stop and disable both units; owner-driven
 matching remains available. Roll back web code only to a compatible reviewed
 revision, leaving the additive migration intact.
+
+### Interactive worker rollout
+
+1. Merge the additive migration and runtime changes, then apply migration 0105
+   with the exact-head protected routine migration workflow. The web production
+   verifier intentionally prevents promotion while its database is behind.
+2. Deploy the same main revision with the normal web production workflow.
+   Current owner demand can now wake the database-fenced worker immediately;
+   the old host timer remains compatible until its replacement is activated.
+3. Dispatch `deploy-ai-filter-refresh.yml`, `action=activate`, at current main.
+   The revision-bound installer disables the old timer and enables the
+   persistent service. Pause disables both service and timer, including on boot.
+4. Verify current-revision decisions, first-match delay, incremental rows and
+   reviewed/total progress on a bounded owned feed. Inspect aggregate host
+   receipts and confirm idle scopes create no decisions or provider calls.
+   Compare first-page latency under concurrent owners, selective/no-match feeds,
+   revision edits and worker restarts; the 5-second first-match and 15–20-second
+   common first-page goals are acceptance targets, not measured guarantees.
+
+Rollback keeps migration 0105 in place: it is additive and old web workers can
+still consume the queue. Reinstall a reviewed prior host revision through the
+same workflow to restore its timer/files; never edit a running host in place.

@@ -197,7 +197,7 @@ async function lockConfiguration(tx: Transaction, watchlistId: string): Promise<
 }
 
 /** Idempotently enables the filter or creates one immutable query version. */
-export async function putAiFilterConfiguration(input: {
+export type AiFilterConfigurationInput = {
   ownerId: string;
   watchlistId: string;
   query: unknown;
@@ -205,10 +205,13 @@ export async function putAiFilterConfiguration(input: {
   /** Background work cannot re-enable a disabled or replaced configuration. */
   expectedEnabledQueryVersionId?: string;
   now?: Date;
-}): Promise<AiFilterOwnerState> {
+};
+
+/** Worker verification avoids computing the owner's full results/budget snapshot. */
+export async function ensureAiFilterConfiguration(input: AiFilterConfigurationInput): Promise<{ queryVersionId: string }> {
   if (!input.expectedEnabledQueryVersionId) assertNarrowedAvailable();
   const now = input.now ?? new Date();
-  await db.transaction(async (tx) => {
+  const queryVersionId = await db.transaction(async (tx) => {
     await lockConfiguration(tx, input.watchlistId);
     const owned = await ownedWatchlist(tx, input.ownerId, input.watchlistId);
     // Authorize before inspecting user-controlled configuration so anonymous
@@ -283,7 +286,7 @@ export async function putAiFilterConfiguration(input: {
             .set({ status: "enabled", disabledAt: null, updatedAt: now })
             .where(eq(aiFilterConfiguration.id, configuration.id));
         }
-        return;
+        return currentQuery.id;
       }
 
       const revision = configuration.currentRevision + 1;
@@ -346,7 +349,7 @@ export async function putAiFilterConfiguration(input: {
         idempotencyKey: `query:${queryVersionId}:created`,
         createdAt: now,
       });
-      return;
+      return queryVersionId;
     }
 
     if (input.expectedEnabledQueryVersionId) throw new AiFilterNotFoundError();
@@ -387,11 +390,17 @@ export async function putAiFilterConfiguration(input: {
       idempotencyKey: `query:${queryVersionId}:created`,
       createdAt: now,
     });
+    return queryVersionId;
   });
+  return { queryVersionId };
+}
+
+export async function putAiFilterConfiguration(input: AiFilterConfigurationInput): Promise<AiFilterOwnerState> {
+  await ensureAiFilterConfiguration(input);
   return getAiFilterOwnerState({
     ownerId: input.ownerId,
     watchlistId: input.watchlistId,
-    now,
+    now: input.now,
   });
 }
 

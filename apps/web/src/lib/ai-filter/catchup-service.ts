@@ -97,6 +97,7 @@ async function claimSegment(input: {
   maxSegmentsPerUser: number;
   maxSegmentsPerProject: number;
   demandTargetOffset: number;
+  acceptedTarget?: number;
   kind?: "historical" | "freshness";
   queryVersionId?: string;
   now: Date;
@@ -214,6 +215,7 @@ async function claimSegment(input: {
     }
     if (
       input.kind !== "freshness" &&
+      !input.acceptedTarget &&
       !active &&
       previous?.status === "completed" &&
       !previous.idempotencyKey.startsWith("repair:") &&
@@ -408,6 +410,8 @@ export async function runAiFilterCatchupStep(input: {
   now?: Date;
   signal?: AbortSignal;
   candidateLimit?: number;
+  /** Interactive work continues until its accepted page is filled or exhausted. */
+  acceptedTarget?: number;
 }): Promise<AiFilterCatchupStepResult> {
   if (
     !Number.isSafeInteger(input.demandTargetOffset) ||
@@ -563,7 +567,7 @@ export async function runAiFilterCatchupStep(input: {
   }
 
   const coveredOffset = claim.segment.selectionOffset + page.scannedCount;
-  if (input.kind !== "freshness" && coveredOffset >= input.demandTargetOffset) {
+  if (input.kind !== "freshness" && !input.acceptedTarget && coveredOffset >= input.demandTargetOffset) {
     return { status: "demand_satisfied", segmentId: claim.segment.id };
   }
   if (

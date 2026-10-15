@@ -74,6 +74,11 @@
       "tag": "0104_ai_filter_shared_worker",
       "createdAt": 1791716400000,
       "hash": "c480544ccf9cdc710ce8afcd09fc79c11e0892a30276a8ffdbfdf0c4419666e2"
+    },
+    {
+      "tag": "0105_ai_filter_interactive_demand",
+      "createdAt": 1792080000000,
+      "hash": "ebe9eaaf360e4d8d853cad76f04d200bc8b12be92362b7d56a3a950c5530e939"
     }
   ]
 }

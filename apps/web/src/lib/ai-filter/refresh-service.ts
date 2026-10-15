@@ -11,7 +11,7 @@ import {
 import {
   AiFilterNotFoundError,
   AiFilterEntitlementError,
-  putAiFilterConfiguration,
+  ensureAiFilterConfiguration,
 } from "./configuration-service";
 import { readAiFilterRuntimePolicy } from "./policy";
 import { runAiFilterCatchupStep } from "./catchup-service";
@@ -95,7 +95,7 @@ const dependencies = {
   releaseWorker: releaseAiFilterWorker,
   repair: claimAiFilterRefreshTargets,
   assertScope: countAiFilterCandidates,
-  configure: putAiFilterConfiguration,
+  configure: ensureAiFilterConfiguration,
   load: loadAiFilterCandidatePage,
   caughtUp: markAiFilterRepairCaughtUp,
   enqueue: enqueueAiFilterWork,
@@ -127,53 +127,7 @@ export async function runAiFilterRefreshSweep(
   const deadline = Date.now() + 42_000;
   const signal = AbortSignal.timeout(42_000);
   try {
-    // At most one repair per tick leaves capacity for foreground/backlog work.
-    for (const target of await deps.repair(new Date(), 1)) {
-      try {
-        const total = await deps.assertScope({
-          ownerId: target.ownerId,
-          watchlistId: target.watchlistId,
-          candidateLanguages: target.candidateLanguages,
-          signal,
-        });
-        if (total > 10_000) throw new TypeError("ineligible");
-        const state = await deps.configure({
-          ...target,
-          expectedEnabledQueryVersionId: target.queryVersionId,
-        });
-        const page = await deps.load({
-          ownerId: target.ownerId,
-          watchlistId: target.watchlistId,
-          offset: 0,
-          windowStart: aiFilterHistoricalHorizonStart(),
-          windowEnd: aiFilterHorizonEnd(new Date()),
-          onlyUndecidedForQueryVersionId: state.queryVersionId,
-          candidateLimit: 1,
-          signal,
-        });
-        if (page.scannedCount)
-          await deps.enqueue({
-            ownerId: target.ownerId,
-            watchlistId: target.watchlistId,
-            queryVersionId: state.queryVersionId,
-            kind: "freshness",
-            demandTargetOffset: 10_000,
-          });
-        else
-          await deps.caughtUp({
-            watchlistId: target.watchlistId,
-            queryVersionId: state.queryVersionId,
-          });
-      } catch (error) {
-        if (
-          error instanceof TypeError ||
-          error instanceof AiFilterNotFoundError ||
-          error instanceof AiFilterEntitlementError
-        )
-          counters.deferred += 1;
-        else counters.failed += 1;
-      }
-    }
+    const verified = new Set<string>();
     // Five candidates keep each provider call bounded. A time slice may advance
     // several checkpoints but always yields to the next lane/oldest work item.
     while (
@@ -184,7 +138,8 @@ export async function runAiFilterRefreshSweep(
       if (!target) break;
       counters.claimed += 1;
       try {
-        if (target.query) {
+        const scopeKey = `${target.queryVersionId}:${target.scopeVersion ?? ""}`;
+        if (target.query && !verified.has(scopeKey)) {
           const total = await deps.assertScope({
             ownerId: target.ownerId,
             watchlistId: target.watchlistId,
@@ -203,6 +158,7 @@ export async function runAiFilterRefreshSweep(
             candidateLanguages: target.candidateLanguages,
             expectedEnabledQueryVersionId: target.queryVersionId,
           });
+          verified.add(scopeKey);
           if (current.queryVersionId !== target.queryVersionId) {
             await deps.finish(target, "disabled");
             continue;
@@ -224,6 +180,55 @@ export async function runAiFilterRefreshSweep(
       } catch {
         await deps.finish(target, "failed", "worker_unavailable");
         counters.failed += 1;
+      }
+    }
+    if (Date.now() + 25_000 < deadline) {
+      // Repair yields to admitted owner demand and never consumes its first-page budget.
+      for (const target of await deps.repair(new Date(), 1)) {
+        try {
+          const total = await deps.assertScope({
+            ownerId: target.ownerId,
+            watchlistId: target.watchlistId,
+            candidateLanguages: target.candidateLanguages,
+            signal,
+          });
+          if (total > 10_000) throw new TypeError("ineligible");
+          const state = await deps.configure({
+            ...target,
+            expectedEnabledQueryVersionId: target.queryVersionId,
+          });
+          const page = await deps.load({
+            ownerId: target.ownerId,
+            watchlistId: target.watchlistId,
+            offset: 0,
+            windowStart: aiFilterHistoricalHorizonStart(),
+            windowEnd: aiFilterHorizonEnd(new Date()),
+            onlyUndecidedForQueryVersionId: state.queryVersionId,
+            candidateLimit: 1,
+            signal,
+          });
+          if (page.scannedCount)
+            await deps.enqueue({
+              ownerId: target.ownerId,
+              watchlistId: target.watchlistId,
+              queryVersionId: state.queryVersionId,
+              kind: "freshness",
+              demandTargetOffset: 10_000,
+            });
+          else
+            await deps.caughtUp({
+              watchlistId: target.watchlistId,
+              queryVersionId: state.queryVersionId,
+            });
+        } catch (error) {
+          if (
+            error instanceof TypeError ||
+            error instanceof AiFilterNotFoundError ||
+            error instanceof AiFilterEntitlementError
+          )
+            counters.deferred += 1;
+          else counters.failed += 1;
+        }
       }
     }
     return { status: "completed" as const, ...counters };

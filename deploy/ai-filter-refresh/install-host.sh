@@ -25,8 +25,12 @@ paths=(
 )
 timer_enabled=0
 timer_active=0
+service_enabled=0
+service_active=0
 systemctl is-enabled --quiet jobseek-ai-filter-refresh.timer && timer_enabled=1 || true
 systemctl is-active --quiet jobseek-ai-filter-refresh.timer && timer_active=1 || true
+systemctl is-enabled --quiet jobseek-ai-filter-refresh.service && service_enabled=1 || true
+systemctl is-active --quiet jobseek-ai-filter-refresh.service && service_active=1 || true
 for index in "${!paths[@]}"; do
   if [[ -f "${paths[$index]}" ]]; then cp -p "${paths[$index]}" "$stage/previous-$index"; fi
 done
@@ -40,6 +44,8 @@ rollback() {
   systemctl daemon-reload
   if [[ "$timer_enabled" = 1 ]]; then systemctl enable jobseek-ai-filter-refresh.timer; else systemctl disable jobseek-ai-filter-refresh.timer || true; fi
   if [[ "$timer_active" = 1 ]]; then systemctl start jobseek-ai-filter-refresh.timer; fi
+  if [[ "$service_enabled" = 1 ]]; then systemctl enable jobseek-ai-filter-refresh.service; else systemctl disable jobseek-ai-filter-refresh.service || true; fi
+  if [[ "$service_active" = 1 ]]; then systemctl start jobseek-ai-filter-refresh.service; fi
   exit "$status"
 }
 trap rollback ERR
@@ -51,9 +57,9 @@ install -o root -g root -m 0600 "$stage/refresh-bearer" "${paths[1]}"
 install -o root -g root -m 0644 "$source_root/deploy/systemd/jobseek-ai-filter-refresh.service" "${paths[2]}"
 install -o root -g root -m 0644 "$source_root/deploy/systemd/jobseek-ai-filter-refresh.timer" "${paths[3]}"
 systemctl daemon-reload
-systemctl start jobseek-ai-filter-refresh.service
-systemctl enable --now jobseek-ai-filter-refresh.timer
-systemctl is-active --quiet jobseek-ai-filter-refresh.timer
+systemctl disable jobseek-ai-filter-refresh.timer
+systemctl enable --now jobseek-ai-filter-refresh.service
+systemctl is-active --quiet jobseek-ai-filter-refresh.service
 printf '%s\n' "$revision" > "${paths[4]}"
 trap - ERR
 printf '%s\n' 'ai_filter_refresh_timer_installed'

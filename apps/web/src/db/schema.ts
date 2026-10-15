@@ -1207,6 +1207,8 @@ export const aiFilterWork = pgTable("ai_filter_work", {
   watchlistId: uuid("watchlist_id").notNull().references(() => watchlist.id, { onDelete: "cascade" }),
   ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   targetOffset: integer("target_offset").notNull(),
+  interactiveUntil: timestamp("interactive_until", { withTimezone: true }),
+  acceptedTarget: integer("accepted_target"),
   generation: bigint("generation", { mode: "bigint" }).default(sql`1`).notNull(),
   status: text("status", { enum: ["queued", "processing", "idle", "paused"] }).default("queued").notNull(),
   availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
@@ -1227,6 +1229,7 @@ export const aiFilterWorker = pgTable("ai_filter_worker", {
   reason: text("reason"),
   failures: integer("failures").default(0).notNull(),
   nextLane: text("next_lane", { enum: ["historical", "freshness"] }).default("historical").notNull(),
+  interactiveStreak: integer("interactive_streak").default(0).notNull(),
 }, table => [check("ai_filter_worker_id_check", sql`${table.id} = 1`)]);
 
 export const aiFilterGlobalCache = pgTable(

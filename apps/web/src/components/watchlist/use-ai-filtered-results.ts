@@ -14,7 +14,6 @@ const BATCH = AI_FILTER_RESULT_PAGE_SIZE;
 const AI_FILTER_POLL_MS = 1_500;
 const AI_FILTER_POLL_ATTEMPTS = 30;
 const AI_FILTER_BACKGROUND_POLL_MS = 5_000;
-const AI_FILTER_BACKGROUND_POLL_ATTEMPTS = 24;
 
 type AiDecisionPageResponse = {
   decisions: Array<{ posting: WatchlistPostingEntry }>;
@@ -42,19 +41,6 @@ function aiFilterDemandCannotStart(state: AiFilterUiState): boolean {
     state.status === "disabled";
 }
 
-async function readAiFilterState(
-  watchlistId: string,
-  signal?: AbortSignal,
-): Promise<AiFilterUiState> {
-  const response = await fetch(`/api/web/watchlists/${watchlistId}/ai-filter`, {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
-  if (!response.ok) throw new Error("matching_state_unavailable");
-  return response.json() as Promise<AiFilterUiState>;
-}
-
 async function readAcceptedPage(
   watchlistId: string,
   offset: number,
@@ -79,6 +65,7 @@ async function requestAiFilterDemand(
   offset: number,
   jobLanguages: readonly string[],
   locale: string,
+  resultOffset = 0,
 ): Promise<{
   state: AiFilterUiState;
   workflow: { runId: string } | null;
@@ -89,7 +76,7 @@ async function requestAiFilterDemand(
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ offset, jobLanguages, locale }),
+      body: JSON.stringify({ offset, jobLanguages, locale, resultOffset }),
     },
   );
   if (!response.ok) throw new Error("matching_reconcile_unavailable");
@@ -259,6 +246,7 @@ export function useAiFilteredResults(input: {
         latestDemandOffset,
         input.jobLanguages,
         input.locale,
+        Math.floor(postingsRef.current.length / BATCH) * BATCH,
       );
       const demandBaseline = demand.state;
       stateRef.current = demand.state;
@@ -318,7 +306,7 @@ export function useAiFilteredResults(input: {
         const currentBlockedState = aiFilterResultsBlocked(nextState) &&
           (demand.workflow === null || workflowAdvanced);
         if (
-          collected >= BATCH ||
+          collected > 0 ||
           !nextHasMore ||
           currentBlockedState ||
           (
@@ -507,6 +495,7 @@ export function useAiFilteredResults(input: {
           offset,
           input.jobLanguages,
           input.locale,
+          Math.floor(postingsRef.current.length / BATCH) * BATCH,
         );
         if (cancelled) return;
         stateRef.current = demand.state;
@@ -567,7 +556,7 @@ export function useAiFilteredResults(input: {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
-    let attempts = 0;
+    let unchanged = 0;
     const poll = async () => {
       if (cancelled) return;
       // A background tab cannot show progress. Wait until it is visible
@@ -578,23 +567,42 @@ export function useAiFilteredResults(input: {
       }
       try {
         controller = new AbortController();
-        const nextState = await readAiFilterState(
+        const page = await readAcceptedPage(
           input.watchlistId,
+          0,
+          Math.min(100, Math.max(BATCH, postingsRef.current.length)),
           controller.signal,
         );
         if (cancelled) return;
+        const nextState = page.state;
+        if (!nextState) return;
+        if (nextState.queryVersionId !== stateRef.current?.queryVersionId) {
+          // Let the revision reset effect own the new feed and its cursor.
+          input.onStateChange?.(nextState);
+          return;
+        }
+        unchanged = nextState.latestEventSequence === stateRef.current?.latestEventSequence ? unchanged + 1 : 0;
+        const existing = new Set(postingsRef.current.map(post => post.id));
+        const fresh = page.decisions.map(decision => decision.posting).filter(post => !existing.has(post.id));
+        if (fresh.length) {
+          // Preserve the user's current rows/scroll; newly committed matches
+          // appear immediately without waiting for the pagination sentinel.
+          pendingScrollTopRef.current = window.scrollY;
+          postingsRef.current = [...postingsRef.current, ...fresh];
+          cursorRef.current = Math.max(page.nextOffset, cursorRef.current + fresh.length);
+          setPostings(postingsRef.current);
+        }
         stateRef.current = nextState;
         input.onStateChange?.(nextState);
         setTotal(nextState.counts.accepted);
         setEvaluated(nextState.counts.total);
+        setHasMore(page.hasMore);
         if (
           nextState.status !== "processing" &&
           nextState.status !== "waiting_for_jev"
         ) {
           return;
         }
-        attempts += 1;
-        if (attempts >= AI_FILTER_BACKGROUND_POLL_ATTEMPTS) return;
       } catch (error) {
         if (cancelled) return;
         logExternalError(
@@ -603,7 +611,7 @@ export function useAiFilteredResults(input: {
           error,
         );
       }
-      timer = setTimeout(() => void poll(), AI_FILTER_BACKGROUND_POLL_MS);
+      timer = setTimeout(() => void poll(), unchanged < 3 ? AI_FILTER_POLL_MS : Math.min(15_000, AI_FILTER_BACKGROUND_POLL_MS * Math.ceil(unchanged / 3)));
     };
     timer = setTimeout(() => void poll(), AI_FILTER_POLL_MS);
     return () => {

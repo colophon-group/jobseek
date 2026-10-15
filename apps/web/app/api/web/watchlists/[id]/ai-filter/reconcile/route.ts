@@ -22,6 +22,10 @@ import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 import { aiFilterDemandLimiter } from "@/lib/rate-limit";
+import { AI_FILTER_RESULT_PAGE_SIZE } from "@/lib/ai-filter/demand";
+import { wakeAiFilterWorker } from "@/lib/ai-filter/wake-worker";
+
+export const maxDuration = 60;
 
 export async function POST(
   request: Request,
@@ -39,13 +43,17 @@ export async function POST(
     const keys = Reflect.ownKeys(body);
     if (
       !keys.every((key) =>
-        key === "offset" || key === "jobLanguages" || key === "locale"
+        key === "offset" || key === "jobLanguages" || key === "locale" || key === "resultOffset"
       ) ||
       !("offset" in body)
     ) {
       throw new TypeError("AI filter demand contains unsupported fields");
     }
     const requestedTargetOffset = aiFilterDemandTarget(body.offset);
+    const resultOffset = body.resultOffset ?? 0;
+    if (typeof resultOffset !== "number" || !Number.isSafeInteger(resultOffset) || resultOffset < 0 || resultOffset > 10_000) {
+      throw new TypeError("Invalid result offset");
+    }
     let candidateLanguages: string[] | undefined;
     if ("jobLanguages" in body || "locale" in body) {
       if (
@@ -115,7 +123,9 @@ export async function POST(
     const workflow = await startAiFilterCatchup({
       ...owner,
       demandTargetOffset,
+      acceptedTarget: Math.min(10_000, Math.min(resultOffset, state.counts.accepted) + AI_FILTER_RESULT_PAGE_SIZE),
     });
+    wakeAiFilterWorker();
     return NextResponse.json(
       { state, workflow },
       { status: 202, headers: AI_FILTER_PRIVATE_HEADERS },

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""One bounded, credential-file-authenticated refresh dispatch; no Docker access."""
+"""Shared host driver for bounded, credential-file-authenticated worker slices."""
 from __future__ import annotations
 
 import json
 import os
 import argparse
 import re
+import signal
+import threading
 from pathlib import Path
 import urllib.error
 import urllib.request
@@ -64,7 +66,14 @@ def main() -> int:
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("--inspect")
+        parser.add_argument("--worker", action="store_true")
         arguments = parser.parse_args()
+        if arguments.worker:
+            stop = threading.Event()
+            signal.signal(signal.SIGTERM, lambda *_: stop.set())
+            signal.signal(signal.SIGINT, lambda *_: stop.set())
+            serve(stop=stop)
+            return 0
         result = run(inspect=arguments.inspect)
     except Exception:
         # Never emit request headers, credential bytes, or an upstream body.
@@ -72,6 +81,35 @@ def main() -> int:
         return 1
     print(json.dumps({"event": "ai_filter_refresh_trigger", **result}))
     return 0
+
+
+def serve(run_once=None, stop=None) -> None:
+    """One project driver. Active demand continues; idle work backs off cheaply.
+
+    Each HTTPS request and response retains run()'s bounds. There is no per-scope
+    loop, database credential or Docker access here. Owner wakes use the same
+    server-side singleton; the host recovers missed wakes and crashed requests.
+    """
+    execute = run_once or run
+    stopped = stop or threading.Event()
+    failures = 0
+    previous = None
+    while not stopped.is_set():
+        try:
+            result = execute()
+            failures = 0
+            busy = result["started"] > 0 or result["claimed"] > 0
+            delay = 2 if busy else 30
+            status = "active" if busy else "idle"
+            if busy or previous != status:
+                print(json.dumps({"event": "ai_filter_refresh_trigger", **result}), flush=True)
+            previous = status
+        except Exception:
+            failures += 1
+            delay = min(900, 30 * 2 ** min(failures, 5))
+            print(json.dumps({"event": "ai_filter_refresh_trigger", "status": "failed"}), flush=True)
+            previous = "failed"
+        stopped.wait(delay)
 
 
 if __name__ == "__main__":

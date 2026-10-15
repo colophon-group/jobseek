@@ -15,6 +15,13 @@ import type { SearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 import { isWatchlistId } from "@/lib/watchlist-id";
 import { logExternalError } from "@/lib/safe-external-error";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
+import { enqueueAiFilterWork } from "@/lib/ai-filter/work-queue";
+import { wakeAiFilterWorker } from "@/lib/ai-filter/wake-worker";
+
+async function requestFirstPage(ownerId: string, watchlistId: string) {
+  await enqueueAiFilterWork({ ownerId, watchlistId, demandTargetOffset: 500, acceptedTarget: 20 });
+  wakeAiFilterWorker();
+}
 
 type AiFilterMutationError =
   | "maintenance"
@@ -42,6 +49,7 @@ export async function configureAiFilter(
     await assertAiFilterEntitlement({ ownerId, watchlistId });
     await assertAiFilterCandidateScope({ ownerId, watchlistId });
     const state = await putAiFilterConfiguration({ ownerId, watchlistId, query });
+    await requestFirstPage(ownerId, watchlistId);
     return { ok: true, state };
   } catch (error) {
     if (error instanceof NarrowedMaintenanceError) return { error: "maintenance" };
@@ -115,6 +123,7 @@ export async function createAiFilteredWatchlist(input: {
       watchlistId: created.id,
       query: input.query,
     });
+    await requestFirstPage(ownerId, created.id);
     return created;
   } catch (error) {
     // Do not leave an ordinary watchlist behind when precise matching could
