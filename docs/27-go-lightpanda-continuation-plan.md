@@ -1,5 +1,49 @@
 # Go and Lightpanda migration delivery plan
 
+## Current delivery checkpoint — 2026-10-15
+
+PR #10537 is merged as `e8c991476c0f6801c2bc9e4def6ab992b7c505e5`
+(0.13.1054). It groups alternate DOM reads and linked descriptions. Its exact
+reviewed head passed Required CI, the actual Crawler Deploy Gate, installed
+runtime parity, both Lightpanda architectures, and 16 original ARM qualification
+arms. The original crawler workflow 38657849689 and renderer workflow
+38657977457 are delivering that source; deployed ownership is not yet claimed.
+
+Outgoing source1053 completed the supported ordinary retirement, B0 cold
+reversal, and selector clearing. Independent readback verifies cold epoch333,
+zero active ordinary plans, absent owner receipts, stopped native actors and
+six restored base-lane health checks. The last verified active native floor was
+7830 monitor boards and7742 detail boards at epoch332. Preserve that entire
+floor when qualifying and activating the incoming source from fresh canonical
+SQL/Redis/configuration and complete posting routes.
+
+PR #10538 groups Oracle vanity-board ownership and empty JOIN Nextdata behavior.
+Its frozen head `c9d7faf837f71cb638dd0a562935968d7a998964` passed the required
+gates, installed contracts, both Lightpanda architectures and original ARM
+qualification. Deliver the parent release before a fresh merge audit. Use merge
+commits for the stacked runtime PRs so their qualified ancestry survives.
+
+The next local group ports JSON-LD 403 recovery into the existing Workday API
+client with separately configured protected proxy selection. Eight original
+Python fixtures, five real PostgreSQL/Redis writer cases and eight retirement
+states pass. Two reachable RTX samples match all original fields on both the
+primary path and live Workday recovery after a synthetic primary403; one exact
+requisition is unresolved and remains held. Fresh installed qualification and
+complete current-route publication remain required.
+
+Visible/hidden/default browser waits are the following local batch. All21
+original Chromium fixtures and the existing physical interaction suite pass on
+official Lightpanda1.0.0. WTW's captured output matches original canonical fields;
+canonical writer, retirement and installed qualification remain required.
+
+Lightpanda1.0.0 is still the latest official stable release, reverified October15.
+Continue grouped contracts, then prove remaining enabled coverage, global
+freshness and queue conservation, comparable fleet cost and the rollback window.
+Retire production Python, Playwright and Chromium only after replacement and
+rollback authority are established. Preserve useful isolated offline Python.
+The full migration goal remains active.
+
+
 ## Latest checkpoint — 2026-10-15, source1053
 
 PR #10536 merged as `e613b9c363dcae51313cc9383226a2366c08f765` and its

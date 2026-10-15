@@ -38,9 +38,11 @@ type DirectHTTPConfig struct {
 // runner. Callers cannot swap its transport, redirect policy or cookie jar.
 // CA/internal-host inputs still require protected installed startup admission.
 type VerifiedHTTP struct {
-	client        *http.Client
-	proxyRequired bool
-	skipSSL       bool
+	client                *http.Client
+	proxyRequired         bool
+	skipSSL               bool
+	workdayRecoveryProxy  *VerifiedHTTP
+	workdayRecoveryDirect *VerifiedHTTP
 }
 
 // Keep existing direct callers source-compatible while the compiled profile

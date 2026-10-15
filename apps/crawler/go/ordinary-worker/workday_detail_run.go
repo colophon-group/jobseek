@@ -298,5 +298,5 @@ func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profil
 	if profile.Profile == "dom.direct-detail/v1" || profile.Profile == "dom.proxy-detail/v1" {
 		return dom.FetchDetailWithDocumentParser(ctx, profile.SourceURL, profile.DOMConfig, &client, parseDOMBinaryDocument)
 	}
-	return jsonld.FetchDetailWithClient(ctx, jsonld.Request{URL: profile.SourceURL, Config: profile.JSONLDConfig}, &client)
+	return fetchJSONLDWithWorkdayRecovery(ctx, verified, &client, profile)
 }

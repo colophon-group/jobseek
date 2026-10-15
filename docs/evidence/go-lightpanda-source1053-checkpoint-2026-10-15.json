@@ -1,0 +1,45 @@
+{
+  "version": "jobseek.native-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-14T23:34:04.511199+00:00",
+  "source_revision": "e613b9c363dcae51313cc9383226a2366c08f765",
+  "runtime_version": "0.13.1053",
+  "merged_pr": 10536,
+  "routing_epoch": 332,
+  "ownership": {
+    "monitors": 7830,
+    "details": 7742,
+    "new_details": 7,
+    "previous_floor_preserved": true
+  },
+  "canonical_sql_redis_and_receipts_verified": true,
+  "services_running": 10,
+  "health_checks_passed": 8,
+  "original_workflows": {
+    "crawler": 38648492949,
+    "renderer": 38648764849
+  },
+  "lightpanda_version": "1.0.0",
+  "lightpanda_latest_stable_verified": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+  "admission_census": {
+    "enabled_boards": 7900,
+    "scheduled_detail_routes": 1725573,
+    "all_routes_reconciled": true
+  },
+  "next_draft_prs": [
+    10537,
+    10538
+  ],
+  "next_local_contracts": [
+    "browser wait_for visible",
+    "browser wait_for hidden",
+    "original default visible state"
+  ],
+  "global_migration_complete": false,
+  "remaining": [
+    "remaining enabled monitor/detail/browser coverage",
+    "global freshness and queue conservation",
+    "comparable production fleet cost",
+    "qualified rollback window",
+    "production Python/Playwright/Chromium retirement"
+  ]
+}
