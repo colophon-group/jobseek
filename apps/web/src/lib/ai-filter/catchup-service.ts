@@ -27,6 +27,7 @@ import {
 } from "./policy";
 import { CLASSIFIER_INPUT_NORMALIZER_VERSION, CLASSIFIER_INPUT_SCHEMA_VERSION } from "./classifier-input";
 import { aiFilterHistoricalHorizonStart, aiFilterHorizonEnd } from "./horizon";
+import { AI_FILTER_MAX_SEARCH_CANDIDATES } from "./search-eligibility";
 
 const SEGMENT_LEASE_MS = 70_000;
 
@@ -514,6 +515,22 @@ export async function runAiFilterCatchupStep(input: {
       now,
     });
     return { status: "paused_provider", segmentId: claim.segment.id };
+  }
+
+  // New indexing can expand an unchanged scope after its slice admission.
+  // Enforce the product ceiling on each loaded page before reserving any spend.
+  if (page.total > AI_FILTER_MAX_SEARCH_CANDIDATES) {
+    await pauseSegment({
+      segmentId: claim.segment.id,
+      ownerId: input.ownerId,
+      watchlistId: input.watchlistId,
+      queryVersionId: claim.segment.queryVersionId,
+      leaseOwner: input.leaseOwner,
+      status: "paused_kill",
+      reason: "scope_too_broad",
+      now: new Date(),
+    });
+    return { status: "paused_kill", segmentId: claim.segment.id };
   }
 
   const checkpointAt = new Date();

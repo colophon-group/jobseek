@@ -447,6 +447,15 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       const [work] = await sql()`SELECT status FROM ai_filter_work WHERE query_version_id=${input.queryVersionId} AND kind='historical'`;
       expect(work.status).toBe("idle");
     });
+    it("rejects index growth beyond the candidate ceiling before paid classification", async () => {
+      const input = await fixture();
+      const owner = await claimAiFilterWorker();
+      const target = await claimAiFilterWork(owner!);
+      mocks.postings = Array.from({ length: 10_001 }, () => posting());
+      expect(await runAiFilterCatchupStep({ ...target!, candidateLimit: 5 })).toMatchObject({ status: "paused_kill" });
+      expect(mocks.classify).not.toHaveBeenCalled();
+      expect((await getAiFilterOwnerState(input)).progress.stopReason).toBe("scope_too_broad");
+    });
     it("reviews late-indexed old postings and expired decisions without an owner page request", async () => {
       const input = await fixture();
       mocks.postings = [posting()];
