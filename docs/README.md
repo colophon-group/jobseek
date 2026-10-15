@@ -70,6 +70,9 @@ Status tags:
   `[runbook]` - deployed native worker, verified cold recovery, current enabled
   profile inventory and remaining full-migration delivery order.
 
+- [32 - Go and Lightpanda Delivery Checkpoint (2026-10-15)](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
+  `[runbook]` - current recovery, grouped cutover and full production Python retirement plan.
+
 ## Search, SEO, And Web Read Paths
 
 - [11 - Typesense](11-typesense.md) `[reference]` - Typesense deployment,

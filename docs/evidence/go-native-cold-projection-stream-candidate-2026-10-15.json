@@ -46,7 +46,10 @@
       "second inspection failure retains repaired prefix without ownership",
       "retry loses or duplicates no queued IDs and leaves SQL fields/deadlines/leases unchanged",
       "caller cancellation after inspection prevents first repair effect"
-    ]
+    ],
+    "full_private_census_profile_validator_rows": 1647573,
+    "full_private_census_profile_validator_seconds": 114.341449,
+    "full_private_census_profile_validator_scope": "local single-thread unchanged per-row profile validation; excludes production SQL, Redis and network"
   },
   "closed_batch": {
     "monitors": 7830,
