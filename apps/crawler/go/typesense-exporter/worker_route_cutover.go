@@ -20,14 +20,15 @@ const bajajRouteDomain = "bflcareers.peoplestrong.com"
 type workerRouteTarget struct {
 	Slug, BoardURL, Domain, APIURL, LegacyType string
 	SourcePattern                              *regexp.Regexp
+	StaticConfigs                              *browserHTTPRouteConfig
 }
 
-var workerRouteTargets = []workerRouteTarget{
-	{bajajRouteBoard, "https://bflcareers.peoplestrong.com/job/joblist", bajajRouteDomain, "https://bflcareers.peoplestrong.com/api/cp/rest/altone/cp/job/{id}/v2?part=basic,organisational,descriprion,workflow,skill,qualification,certification,language,applied&isReqId=false", "dom", regexp.MustCompile(`^https://bflcareers[.]peoplestrong[.]com/job/detail/JR[0-9]+$`)},
-	{"bass-pro-shops-top-of-the-rock", "https://topoftherock.applicantpro.com/jobs/", "topoftherock.applicantpro.com", "https://topoftherock.applicantpro.com/core/jobs/14094/{id}/job-details", "api_sniffer", regexp.MustCompile(`^https://topoftherock[.]applicantpro[.]com/jobs/[0-9]+/?$`)},
-	{"bass-pro-shops-wonders-of-wildlife", "https://wondersofwildlife.applicantpro.com/jobs/", "wondersofwildlife.applicantpro.com", "https://wondersofwildlife.applicantpro.com/core/jobs/13695/{id}/job-details", "api_sniffer", regexp.MustCompile(`^https://wondersofwildlife[.]applicantpro[.]com/jobs/[0-9]+/?$`)},
-	{"venturelab-careers", "https://www.venturelab.swiss/jobs", "venturelab.heavenhr.com", "https://api.heavenhr.com/api/v1/positions/public/vacancies/{id}", "api_sniffer", regexp.MustCompile(`^https://venturelab[.]heavenhr[.]com/jobs/[A-Za-z0-9_-]+/apply[?]language=en$`)},
-}
+var workerRouteTargets = append([]workerRouteTarget{
+	{bajajRouteBoard, "https://bflcareers.peoplestrong.com/job/joblist", bajajRouteDomain, "https://bflcareers.peoplestrong.com/api/cp/rest/altone/cp/job/{id}/v2?part=basic,organisational,descriprion,workflow,skill,qualification,certification,language,applied&isReqId=false", "dom", regexp.MustCompile(`^https://bflcareers[.]peoplestrong[.]com/job/detail/JR[0-9]+$`), nil},
+	{"bass-pro-shops-top-of-the-rock", "https://topoftherock.applicantpro.com/jobs/", "topoftherock.applicantpro.com", "https://topoftherock.applicantpro.com/core/jobs/14094/{id}/job-details", "api_sniffer", regexp.MustCompile(`^https://topoftherock[.]applicantpro[.]com/jobs/[0-9]+/?$`), nil},
+	{"bass-pro-shops-wonders-of-wildlife", "https://wondersofwildlife.applicantpro.com/jobs/", "wondersofwildlife.applicantpro.com", "https://wondersofwildlife.applicantpro.com/core/jobs/13695/{id}/job-details", "api_sniffer", regexp.MustCompile(`^https://wondersofwildlife[.]applicantpro[.]com/jobs/[0-9]+/?$`), nil},
+	{"venturelab-careers", "https://www.venturelab.swiss/jobs", "venturelab.heavenhr.com", "https://api.heavenhr.com/api/v1/positions/public/vacancies/{id}", "api_sniffer", regexp.MustCompile(`^https://venturelab[.]heavenhr[.]com/jobs/[A-Za-z0-9_-]+/apply[?]language=en$`), nil},
+}, browserHTTPRouteTargets()...)
 
 //go:embed provider-cutover/worker-routes.lua
 var workerRouteCutoverLua string
@@ -92,7 +93,14 @@ func repairWorkerRouteTarget(ctx context.Context, conn *pgx.Conn, client *redis.
 		return result, errors.New("worker route board identity mismatch")
 	}
 	result.Worker = "simple"
-	if browser {
+	if target.StaticConfigs != nil {
+		if !target.StaticConfigs.matches(config.Type, config.Config, browser) {
+			return result, errors.New("unsupported browser HTTP worker route configuration")
+		}
+		if browser {
+			result.Worker = "browser"
+		}
+	} else if browser {
 		result.Worker = "browser"
 		if config.Type != target.LegacyType || target.LegacyType == "dom" && config.Config["render"] != true || target.LegacyType == "api_sniffer" && config.Config["api_url"] != nil {
 			return result, errors.New("unsupported rollback worker route")

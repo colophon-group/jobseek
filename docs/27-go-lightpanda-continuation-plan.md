@@ -8,6 +8,42 @@ The complete postactive census preserves the exact cohort with zero owned cache 
 
 Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
+## Following batch — 0.13.1068 candidate, 2026-10-15
+
+Seven explicit HTTP detail replacements cover McDonald's Australia, Bridgestone
+Australia, both dnata Australia boards, CMA CGM Air Belgium, MUFG Trust and Wix.
+Thirteen nonempty actual references match every original scraper field and pass
+real PostgreSQL/Redis writers. Preserve Wix's configured User-Agent verbatim as
+an HTTP request header and McDonald's original `rescrape_policy=never` behavior.
+All 397 scheduled source URLs in the source1067 census pass the proposed native
+profiles and source-bound cold route contracts. The existing route-repair command
+now supports both directions for these seven exact configurations, preserving
+queue membership, first-time priority, scores, lifecycle hashes and unrelated
+entries. It retains ownership, inflight and whole-board validation guards.
+
+ADM early careers (49 rich postings) and Alaska Airlines (31 URLs) also pass
+canonical monitor writers with no additional origin calls. Carry these two
+monitor candidates with the previously qualified ITC and UBS-student details and
+the seven HTTP replacements. This is a proposed two-monitor/nine-detail batch;
+fresh complete admission, required qualification and supported deployment remain
+necessary. Production ownership is still 7,830 monitors / 7,802 details at epoch
+346. See [candidate evidence](evidence/go-native1068-browser-http-batch-candidate-2026-10-15.json).
+
+The broader HTTP screen covered 51 actual sources across 26 further configurations.
+One Bright Horizons reference matches and passes its writer, but its other sample
+failed the native request, so that board stays held. Remaining native monitor
+failures are retained separately: three navigation HTTP failures, four API/session
+inventory failures and two failures with invalid resource-policy evidence. Matching
+empty inventories do not establish positive content or authoritative absence.
+
+A later unpaired 40-second source1067 sample records two successful Go monitors,
+eight monitor timeouts and no completed Go details. Whole crawler cgroups average
+0.755 CPU cores / 2.422 GB, with no OOM delta. A separate read-only SQL snapshot
+finds no blocked connections; five authority connections are idle in transactions
+aged 0.21–1.36 seconds. These observations do not establish a root cause or savings.
+Freshness, the pre-existing scheduling gap, native lifecycle and runtime retirement
+remain part of the full delivery goal.
+
 ## Historical source1060 qualification correction — 2026-10-15
 
 Source1059 `67ed605cccc55caa03dcae268f958a76dd67f179` passed both original

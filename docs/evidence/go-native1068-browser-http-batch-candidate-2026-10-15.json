@@ -1,0 +1,88 @@
+{
+  "schema": "jobseek.native-migration-candidate/v1",
+  "version": "0.13.1068",
+  "base_revision": "c85aa92c4e4aef24fe63e2a4e6ba3f57133527bd",
+  "serving_revision": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+  "serving_ownership": {
+    "epoch": 346,
+    "monitors": 7830,
+    "details": 7802
+  },
+  "lightpanda_release": "1.0.1",
+  "stage": "candidate; no new production ownership",
+  "http_replacements": {
+    "boards": [
+      "mcdonalds-au-restaurants",
+      "bridgestone-careers-australia",
+      "emirates-group-dnata-au",
+      "emirates-group-dnata-catering-au",
+      "wix-careers",
+      "cma-cgm-air-belgium",
+      "mufg-trust-jp"
+    ],
+    "nonempty_original_references": 13,
+    "current_scheduled_routes_preflighted": 397,
+    "all_original_fields_equal": true,
+    "canonical_writer_checks": "pass",
+    "forward_reverse_route_contracts": "pass in private PostgreSQL/Redis; retain IDs, scores, lifecycle hashes, first-time priority, unrelated entries; reject ownership/inflight/drift before per-board effects",
+    "wix_user_agent_preserved": true,
+    "mcdonalds_never_rescrape_preserved": true
+  },
+  "following_unchanged_config_candidates": {
+    "monitors": [
+      "adm-early-careers-na",
+      "alaska-airlines-careers"
+    ],
+    "monitor_canonical_insertions": 80,
+    "details": [
+      "itc-limited-careers",
+      "ubs-careers-students"
+    ],
+    "scope": "qualified references carried from unchanged native worker code; fresh complete config/route admission still required"
+  },
+  "proposed_additions": {
+    "monitors": 2,
+    "details": 9
+  },
+  "held": [
+    "bright-horizons-only-about-children-australia: one actual request failure remains",
+    "matching empty monitor results: no new positive-content or authoritative-absence claim",
+    "remaining monitor navigation/API/session/resource-policy failures: separate retained diagnosis"
+  ],
+  "evidence_sha256": {
+    "broad_field_comparison": "e4bace378e997eafb0c283602eb2f681712b158c4d35ad33bfaa0418e2057e54",
+    "broad_canonical_writer": "08250e7d582a517057bef9f78aadffffad363a6dd0b28ecf120398cbd7d68302",
+    "wix_canonical_writer": "801e5fc03c8ef94764176501adb132d12da939d1a03efae7fd938ca1904c6ee0",
+    "monitor_canonical_writers": "79d4281d0f5ec01287d0045694b5e5d7131333bd5873dd1cb9277f5f8445c760",
+    "following_itc_ubs_canonical_writers": "c4a03ee51a0f7a855683b09204173761c4ba9de83a02c9da2b134542715104dd"
+  },
+  "required_before_delivery": [
+    "exact-head required CI and Crawler Deploy Gate",
+    "installed runtime and Linux amd64/arm64 qualification",
+    "original ARM complete-output audit",
+    "fresh complete canonical admission preserving current7830/7802 floor",
+    "supported original whole deployment and ownership workflows",
+    "independent source/image/data/receipt/SQL/Redis/health/export verification and exact queued-ID conservation"
+  ],
+  "full_goal_incomplete": [
+    "remaining enabled profile coverage",
+    "native-to-native deployment/CSV/rollback",
+    "freshness and existing queue gap",
+    "matched whole-lane resources and attributable cost",
+    "supported reversal and recovery window",
+    "production Python/Playwright/Chromium retirement"
+  ],
+  "local_validation": {
+    "data_validation": "pass",
+    "ordinary_profile_registry_bindings": "pass",
+    "deploy_assets_and_census_pytest": "131 passed",
+    "cold_route_repair": "11 boards forward/reverse; private PostgreSQL and Redis; successful idempotent retries and refusal-before-effects checks",
+    "actual_route_profile_preflight": "397 sources across seven proposed configs",
+    "latest_release_recheck": "official GitHub latest release remains stable1.0.1, published2026-10-15T14:55:37Z"
+  },
+  "candidate_assets_sha256": {
+    "apps/crawler/data/boards.csv": "b8371390868f1fa6db02e3e862e31e7cb492649375c461a68a2072247ed9b124",
+    "apps/crawler/go/typesense-exporter/provider-cutover/browser-http-routes.json": "c33a205ce7e204fdec1047182c350bfd7e610646a3cbc61299c4577d0f356fee",
+    "apps/crawler/tests/lightpanda/fixtures/census.json": "711edbe20a60d645519f4017677b8ddfe6fcddbd52a9f18bddbb6b4e5936f804"
+  }
+}
