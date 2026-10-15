@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -189,53 +188,5 @@ func TestRealColdDetailProjectionRefusesUnboundScopeAndPlan(t *testing.T) {
 	})
 	if err == nil || p.f.client.redis.Exists(context.Background(), ownershipProjectionKey).Val() != 0 {
 		t.Fatal("unbound staged plan accepted")
-	}
-}
-
-func TestRealColdDetailProjectionPagedPrefixIsContainedAndReplayable(t *testing.T) {
-	p := projectionFixture(t, Simple, `{"scraper_type":"json-ld"}`)
-	ctx, r := context.Background(), p.f.client.redis
-	board := p.plan.document.Details[0].BoardID
-	ids := make([]string, 0, 258)
-	namespace := strings.ReplaceAll(ordinaryID(t), "-", "")[:10]
-	middle := "-" + namespace[:4] + "-4" + namespace[4:7] + "-8" + namespace[7:10] + "-"
-	for n := 0; n < 257; n++ {
-		ids = append(ids, "00000001"+middle+fmt.Sprintf("%012d", n))
-	}
-	late := "ffffffff" + middle + "ffffffffffff"
-	ids = append(ids, late)
-	created := []string{}
-	t.Cleanup(func() {
-		_, _ = p.f.observer.Exec(context.Background(), "DELETE FROM job_posting WHERE id=ANY($1::uuid[])", created)
-	})
-	for _, id := range ids {
-		source := "https://example.com/job/" + id
-		var due time.Time
-		if err := p.f.observer.QueryRow(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,titles,locales,last_seen_at,next_scrape_at)
- VALUES($1::uuid,$2::uuid,$3::uuid,$4,ARRAY['Original'],ARRAY['en'],now(),now()-interval '1 minute') RETURNING next_scrape_at`, id, p.f.company, board, source).Scan(&due); err != nil {
-			t.Fatal(err)
-		}
-		created = append(created, id)
-		oldBoard := p.plan.document.Members[0].BoardID
-		if id == late {
-			oldBoard = board
-		}
-		if _, err := p.f.client.EnqueueURLDetail(ctx, URLOnlyDetail{ID: id, BoardID: oldBoard, URL: source, Due: due, Browser: true}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	r.HSet(ctx, "scrape:"+late, "scrape_step", "9")
-	if _, err := applyFirstFixture(t, p, false); err == nil || firstFixtureState(t, p) != "staged" || r.Exists(ctx, ownershipProjectionKey).Val() != 0 {
-		t.Fatal("later failed batch granted ownership", err)
-	}
-	if r.HGet(ctx, "scrape:"+ids[0], "board_id").Val() != board || r.ZScore(ctx, "ft_scrapes_simple:example.com", ids[0]).Val() != 0 || r.HGet(ctx, "scrape:"+late, "scrape_step").Val() != "9" {
-		t.Fatal("valid prefix or refused later batch changed unexpectedly")
-	}
-	r.HSet(ctx, "scrape:"+late, "scrape_step", "0")
-	if _, err := applyFirstFixture(t, p, false); err != nil {
-		t.Fatal("canonical prefix retry failed", err)
-	}
-	if r.ZCard(ctx, "ft_scrapes_browser:example.com").Val() != 0 || r.ZCard(ctx, "ft_scrapes_simple:example.com").Val() != int64(len(ids)+1) {
-		t.Fatal("paged retry lost or duplicated a detail")
 	}
 }

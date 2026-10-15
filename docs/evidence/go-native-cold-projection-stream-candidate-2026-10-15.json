@@ -1,0 +1,65 @@
+{
+  "schema": "jobseek.native-cold-projection-stream-candidate/v1",
+  "date": "2026-10-15",
+  "candidate_version": "0.13.1061",
+  "serving_source": "80860a269e1b6c96090f7cb9634828e72de8a4e6",
+  "b0_epoch": 336,
+  "ordinary_production_ownership_admitted": false,
+  "incident": {
+    "original_activation": "failed canonical-detail-projection at existing20minute bound before SQL ownership grant",
+    "supported_recovery": "original recover-pending succeeded; independent source/image/health, B0active336 and ordinary receipt/projection/SQL absence verified"
+  },
+  "change": {
+    "canonical_read": "single unordered read-only SQL stream instead of repeated UUID-ordered256-row transactions",
+    "maximum_projection_batch_rows": 1024,
+    "stream_ceiling_seconds": 600,
+    "overall_activation_ceiling_seconds": 1200,
+    "authority": "original dedicated cold SQL session retains all three exclusive writer barriers; each Redis effect requires live exact source/pool/session/lease checks",
+    "unchanged": [
+      "full per-source profile/config/company/worker/domain validation",
+      "canonical SQL rows, deadlines and leases",
+      "historical fallback hash, progress and priority guards",
+      "inspect before effects; replayable failed prefix",
+      "SAVE before SQL ownership grant",
+      "runtime transaction budgets and original host wrappers"
+    ]
+  },
+  "actual_readonly_components": {
+    "original_256row_query_ms": 310.095,
+    "original_plan_auto_generic_executions": 0,
+    "original_plan_auto_custom_executions": 6,
+    "unordered_canonical_stream_rows": 1647310,
+    "unordered_canonical_stream_seconds": 28.324468741,
+    "candidate_redis_inspection_rows": 825,
+    "candidate_redis_inspection_seconds": 0.16164097003638744,
+    "candidate_redis_repairs_requested": 0,
+    "scope": "installed production SQL read-only execution and Redis EVAL_RO inspection; no mutation or end-to-end activation claim"
+  },
+  "validation": {
+    "complete_projection_real_store_race_seconds": 8.172,
+    "compiled_worker_repair_save_retry_activation_claim_retirement_race_seconds": 5.819,
+    "ordered_adoption_and_retirement_save_recovery_real_store_race_seconds": 13.323,
+    "queue_and_worker_vet": "pass",
+    "new_regressions": [
+      "single read-only unpaged stream with pool MaxConns2",
+      "more than1024rows use bounded batches",
+      "second inspection failure retains repaired prefix without ownership",
+      "retry loses or duplicates no queued IDs and leaves SQL fields/deadlines/leases unchanged",
+      "caller cancellation after inspection prevents first repair effect"
+    ],
+    "full_private_census_profile_validator_rows": 1647573,
+    "full_private_census_profile_validator_seconds": 114.341449,
+    "full_private_census_profile_validator_scope": "local single-thread unchanged per-row profile validation; excludes production SQL, Redis and network"
+  },
+  "closed_batch": {
+    "monitors": 7830,
+    "previous_details": 7742,
+    "qualified_detail_additions": 41,
+    "target_details": 7783
+  },
+  "limits": [
+    "frozen-head CI and installed-image qualification pending",
+    "full production activation, queue conservation, freshness and comparable resource/cost proof pending",
+    "production Python/Playwright/Chromium retirement remains incomplete"
+  ]
+}
