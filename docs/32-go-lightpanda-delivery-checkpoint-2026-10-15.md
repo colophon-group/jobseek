@@ -7,44 +7,63 @@ and Lightpanda before Python, Playwright and Chromium can be removed.
 
 ## Current release and activation
 
-PR [#10546](https://github.com/colophon-group/jobseek/pull/10546) delivered
-0.13.1062, source `555a6b7a72186cb75ca5d0562c0d57f219bf902f`. Original crawler
-[38704936422](https://github.com/colophon-group/jobseek/actions/runs/38704936422)
-and renderer
-[38704993327](https://github.com/colophon-group/jobseek/actions/runs/38704993327)
-deployments succeeded on attempt 1. Independent source/image/data/cold 339,
-exporter progress and renderer checks passed. Supported B0 activation and seven
-health checks passed at epoch 340.
+PR [#10547](https://github.com/colophon-group/jobseek/pull/10547) delivered
+0.13.1063, source `d8397e0a39ced279203af1d884d68af4ccce7658`. Exact-head Required CI,
+installed-runtime contracts, both Linux Lightpanda architectures, the independently
+audited 16-arm/eight-output-pair ARM report and actual Crawler Deploy Gate passed.
+Original crawler [38717503957](https://github.com/colophon-group/jobseek/actions/runs/38717503957)
+and renderer [38717561140](https://github.com/colophon-group/jobseek/actions/runs/38717561140)
+succeeded on attempt 1. Independent source/image/data/cold/exporter checks passed.
+Supported B0 activation and seven health checks passed at epoch 342. Ordinary Go
+ownership is inactive; the base Python workers still serve ordinary work.
 
-Fresh 7,900-board/1,706,956-route admission preserved the full 7,830-monitor/7,783-detail
-cohort, with 41 additions and none held. The original plan staged successfully.
-Activation reached the 20-minute parent deadline during canonical projection at
-09:10:39 UTC, without granting SQL ownership. Its last legacy lease expired at
-09:00:29 UTC. A cold 163.323-second interval observed 382 Redis EVAL calls with no
-failures or rejections; the native admin used 0.876 CPU cores and 147 MB current RAM
-over 40 seconds, with no OOM. The earlier full read-only rehearsal omitted Go
-per-row validation and underestimated this complete operation.
+Fresh admission captured all 7,900 boards and 1,707,847 scheduled posting routes.
+It refused before staging because two newly observed Oracle requisition IDs
+contain literal parentheses. The existing EXL configuration is unchanged. Python
+monitoring emits those IDs, but both the old Python detail parser and Go profile
+reject them. There is no ordinary pending plan or ownership grant on 1063.
 
-The original wrapper contained the pending plan. Supported recovery initially
-refused the mutation lock, held by the scheduled cross-store reconciliation job
-on the verified 1062 image. After that job finished, original recover-pending
-succeeded. Independent readback at 09:22:27 UTC verifies restored B0/base serving:
-nine running and restart-armed actors, seven passing health checks, no ordinary
-receipt/projection/active SQL plan, and no administrative one-offs.
+Candidate 0.13.1064 fixes Oracle copy IDs in Go inventory/detail and the
+transitional Python parser, and admits fragment URLs across rendered DOM,
+JSON-LD and embedded detail profiles. Encoded path aliases, finder injection,
+untrusted authorities and wrong worker lanes remain refused. A physical pinned
+Lightpanda 1.0.0 test verifies that two fragment routes produce distinct DOM and
+JSON-LD fields while preserving exact source URLs and one origin request each.
 
-Candidate 0.13.1063 changes the bounded cold-operation budgets: 30 minutes for the
-native admin, 15 minutes for the read-only projection stream and its SQL statement,
-and 1,820 seconds for the wrapper's native command. Allow at least 45 minutes for
-complete operator callers. This reserves 10 minutes for natural leases, 15 for fleet
-validation and 5 for other cold work. Earlier cancellation, every row's validation,
-original locks, staged identity, resource budgets, SAVE-before-grant and supported
-recovery remain. See the
-[candidate evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
+Both actual Oracle responses contain blank descriptions. Every other canonical
+field matches between Go and Python; the retained raw comparison records Python's
+empty description string versus Go's omitted field. These are upstream-empty
+observations, not successful description references. Real direct/proxy worker
+tests verify retry and content retention for blank results, plus successful copy-ID
+settlement when content exists. All 86 Python Oracle tests, Go Oracle race tests,
+focused queue tests and real Oracle worker settlement tests pass locally.
 
-The guarded cold baseline retains 1,506,613 queued IDs among 1,647,257 selected scheduled
-postings; 140,644 were already absent from the observed queues. No postactive
-conservation is proved. A future attempt requires a fresh baseline bound to its
-own source, epoch and pending plan.
+A candidate-only preflight against the complete 1063 capture now preserves all
+7,830 monitors and 7,742 prior detail configurations, with all 41 prepared detail
+additions: 7,783 details and 1,648,443 selected scheduled postings. It is not
+production admission. Thirty-five stale cached routes across seven selected
+boards still require the original canonical repair during fresh cold activation.
+See the [candidate evidence](evidence/go-native-url-compatibility-candidate-2026-10-15.json).
+
+The installed 1063 budgets are 30 minutes for the native admin, 15 minutes for the
+read-only projection stream and SQL statement, and 1,820 seconds for the wrapper's
+native command. Complete operator callers require at least 45 minutes. They have
+not yet been exercised by an ordinary activation. Every per-row validation,
+natural lease expiry, original lock, staged identity, resource budget and
+SAVE-before-grant guard remains. See the
+[budget evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
+
+Source1062's earlier activation reached its 20-minute deadline during canonical
+projection without SQL ownership. Original recover-pending restored B0/base
+serving after scheduled reconciliation released the lock. Its guarded baseline
+had 1,506,613 queued IDs among 1,647,257 selected scheduled postings; the existing
+140,644 gap is not evidence of migration loss. The next activation requires its
+own source/epoch/plan-bound baseline and postactive ID accounting.
+
+The same-release 1063 cold base sample observed 4.605 CPU cores and 3.363 GB mean
+RAM over 40 seconds, with no OOM. The freshness baseline contained 1,707,834
+scheduled postings, 1,590,952 over 24 hours late. These natural unpaired samples
+establish neither causal savings nor attributable cost.
 
 ## Previous source1061 delivery
 
@@ -141,15 +160,16 @@ retired because forward maintenance uses Go.
 
 ## Execution order
 
-1. Qualify candidate1063 on its frozen head and deliver through Required CI,
-   Crawler Deploy Gate and the original quiesced deployment. Use supported B0
-   reversal/clearing for outgoing1062; verify the new source/images and establish
-   its fresh B0 epoch. Repeat the complete source/config/cache/route census,
-   stage one new ordinary plan and execute one original activation. Verify
-   receipt, SQL plan, Redis projection, source/images, health, processing and
-   repaired routes independently. Preserve before/after queued IDs and account
-   separately for the pre-existing scheduled-versus-queued gap. Never start a
-   duplicate activation because an observation times out.
+1. Freeze and qualify candidate1064 through Required CI, Crawler Deploy Gate,
+   installed-runtime, both Lightpanda architectures and the ARM report. Use
+   supported outgoing1063 B0 reversal/clearing and the original quiesced
+   deployment; independently verify the new source/images/data/exporter and B0.
+   Repeat complete current-source/config/cache/route admission, preserving the
+   prior floor and closed 41 additions. Stage one ordinary plan and execute one
+   original activation with the installed budgets above. Independently verify
+   receipt, SQL plan, Redis projection, health, processing and repaired routes.
+   Preserve before/after queued IDs and account for pre-existing missing work.
+   Never duplicate activation because an observation times out.
 2. Recompute the remaining frontier from the active cohort. The fresh source1059
    census identifies 67 monitors and 114 detail configurations outside the staged
    batch; this is planning evidence, not production admission. Of those

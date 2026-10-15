@@ -1,0 +1,59 @@
+{
+  "schema": "jobseek.native-url-compatibility-candidate/v1",
+  "date": "2026-10-15",
+  "version": "0.13.1064",
+  "production_admission": false,
+  "installed_source": "d8397e0a39ced279203af1d884d68af4ccce7658",
+  "installed_version": "0.13.1063",
+  "installed_b0_epoch": 342,
+  "ordinary_staged": false,
+  "ordinary_active": false,
+  "contracts": [
+    "Oracle literal parenthesized copy IDs in monitor/detail Go and transitional Python",
+    "Rendered DOM/JSON-LD/embedded detail fragment source admission"
+  ],
+  "tests": {
+    "python_oracle": {
+      "passed": 86
+    },
+    "go_oracle_race": "passed",
+    "queue_oracle_fragment_race": "passed",
+    "real_oracle_worker_direct_proxy_copy_and_blank_description": "passed",
+    "physical_lightpanda_1_0_0_dom_jsonld_fragments": "passed"
+  },
+  "preflight": {
+    "enabled_boards": 7900,
+    "scheduled_detail_postings": 1707847,
+    "monitor_boards": 7830,
+    "detail_boards": 7783,
+    "previous_monitor_count_preserved": 7830,
+    "previous_detail_count_preserved": 7742,
+    "new_detail_boards_admitted": 41,
+    "scheduled_owned_postings": 1648443
+  },
+  "pending_cached_route_repairs": 35,
+  "pending_cached_route_repair_boards": 7,
+  "actual_oracle": {
+    "responses": 2,
+    "http_status": 200,
+    "matching_items_each": 1,
+    "blank_descriptions": 2,
+    "other_canonical_fields_exact": true,
+    "raw_difference": "Python description empty string; Go omits description",
+    "successful_description_references": false,
+    "body_sha256": [
+      "ca0a31fb2b4b8bf48609fe086e6745c86fc9a808548a5d0b58a068633fedad2d",
+      "5688410d3dba170e7a4b1e0483370cc9037d42f2d3a6513da0e75ed2e73bd08f"
+    ]
+  },
+  "remaining": [
+    "Frozen-head CI/runtime/Linux Lightpanda/ARM qualification",
+    "Original quiesced deployment and fresh installed-source admission",
+    "Original ordinary activation and independent serving/conservation/freshness/resource evidence"
+  ],
+  "lightpanda": {
+    "version": "1.0.0",
+    "latest_stable_checked": "2026-10-15",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  }
+}

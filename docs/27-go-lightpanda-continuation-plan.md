@@ -3,32 +3,31 @@
 ## Current delivery checkpoint — 2026-10-15
 
 Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
-for current state and completion order. Source1062
-`555a6b7a72186cb75ca5d0562c0d57f219bf902f` passed both original deployments and
-independent source/image/data/cold/exporter checks. B0 activation passed at epoch340.
-Fresh admission preserves 7,830 monitors and 7,783 detail configurations, including
-all 41 additions. The original ordinary activation reached its 20-minute deadline
-in canonical validation at 09:10:39 UTC, without granting SQL ownership.
-Supported recovery initially refused the lock held by scheduled reconciliation.
-After that job finished, recovery succeeded. Independent readback confirms
-healthy B0/base serving, no ordinary receipt/projection/active SQL plan, and no
-administrative one-offs.
+for current state and completion order. Source1063
+`d8397e0a39ced279203af1d884d68af4ccce7658` passed both original deployments and
+independent source/image/data/cold/exporter checks. B0 is active at epoch342.
+Ordinary admission refused before staging on two newly observed Oracle copy IDs
+with parentheses; ordinary Go ownership remains inactive.
 
-Candidate0.13.1063 corrects the measured cold-operation budget: 30 minutes for the
-native admin, 15 minutes for its read-only posting stream and SQL statement, and
-1,820 seconds for the wrapper's native command. Callers require at least 45 minutes.
-The installed operation includes Go validation omitted by the earlier SQL/Python
-rehearsal. Every canonical/per-row check, natural lease expiry, exclusive barrier,
-staged identity, SAVE-before-grant and runtime resource limit remains. Cross-layer
-budget and real-store cancellation/refusal/recovery tests guard that contract.
-See the [candidate evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
+Candidate0.13.1064 fixes those IDs in Oracle Go/Python monitoring and detail
+parsers, together with fragment source admission across rendered DOM, JSON-LD
+and embedded detail profiles. Complete local-route preflight preserves7830
+monitors/7742prior details and all41prepared additions, covering1648443scheduled
+postings. Physical Lightpanda1.0.0 fragment fields, real Oracle direct/proxy
+settlement and blank-description retry/content retention pass. The two actual
+Oracle copy responses have blank descriptions; other canonical fields match,
+but these are not successful description references. See the
+[candidate evidence](evidence/go-native-url-compatibility-candidate-2026-10-15.json).
 
-Deliver this complete 41-configuration batch before adding more ports. Then group
-shared DOM/JSON-LD fragment and browser-lane fallback work with already compiled
-families awaiting complete-output qualification. Onlyfy language already exists;
-its uncompiled example points at Workday and needs configuration diagnosis.
-Full migration, freshness/conservation and production Python retirement remain
-incomplete. Earlier entries below are historical.
+Freeze/qualify/deliver1064, repeat fresh full admission and execute the original
+cold activation. Source1063 installed30-minute native/15-minute stream/1820-second
+wrapper budgets remain unexercised by ordinary activation; allow at least45minutes
+for complete callers. Preserve every canonical/lease/source/config/lock/SAVE guard.
+Verify actual serving and before/after queue IDs before adding another port batch.
+Then group browser contracts and compiled-family output qualification, complete
+native-to-native deployment/CSV/rollback support, freshness and resource evidence,
+and retire production Python after the supported reversal/window. The full goal
+remains active. Earlier entries below are historical.
 
 ## Historical source1060 qualification correction — 2026-10-15
 

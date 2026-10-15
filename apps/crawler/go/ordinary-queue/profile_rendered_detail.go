@@ -29,8 +29,7 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	if worker != Browser || config["scraper_needs_browser"] != "1" {
 		return fail()
 	}
-	parsedSource, err := url.Parse(source)
-	if err != nil || parsedSource.Fragment != "" {
+	if _, err := url.Parse(source); err != nil {
 		return fail()
 	}
 	metadata, err := profileMetadataFields(config["metadata"], nil)

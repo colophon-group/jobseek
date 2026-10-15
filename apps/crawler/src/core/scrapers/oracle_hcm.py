@@ -44,7 +44,9 @@ _DEFAULT_FIELDS = {
     "employment_type": "JobSchedule",
 }
 
-_CONFIGURED_JOB_PATH_RE = re.compile(r"/(?:jobs?|requisitions/preview)/([A-Za-z0-9._-]{1,128})/?$")
+_CONFIGURED_JOB_PATH_RE = re.compile(
+    r"/(?:jobs?|requisitions/preview)/([A-Za-z0-9._()-]{1,128})/?$"
+)
 
 
 def _configured_job_id(url: str) -> str | None:

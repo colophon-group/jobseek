@@ -14,7 +14,7 @@ import (
 func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *testing.T) {
 	for _, proxy := range []bool{false, true} {
 		t.Run(fmt.Sprintf("proxy=%v", proxy), func(t *testing.T) {
-			for _, mode := range []string{"description", "description_and_employment", "configured_fields", "empty_backfill", "empty_payload", "404", "header_reserved"} {
+			for _, mode := range []string{"description", "description_and_employment", "configured_fields", "empty_backfill", "empty_payload", "404", "header_reserved", "copy_id", "copy_id_blank_description"} {
 				t.Run(mode, func(t *testing.T) {
 					fields := `["description"]`
 					if mode == "description_and_employment" {
@@ -24,7 +24,11 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 					if mode == "configured_fields" {
 						metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","enrich":["description"],"fields":{"title":"Title","locations":"PrimaryLocation","date_posted":"ExternalPostedStartDate","description":["ExternalDescriptionStr","ExternalQualificationsStr","ExternalResponsibilitiesStr"],"valid_through":"ExternalPostedEndDate","employment_type":"JobSchedule","job_location_type":{"map":{"ORA_HYBRID":"hybrid","ORA_REMOTE":"remote","ORA_ON_SITE":"onsite"},"path":"WorkplaceTypeCode"}}}}`
 					}
-					source := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/123"
+					jobID := "123"
+					if strings.HasPrefix(mode, "copy_id") {
+						jobID = "EXL_RB_1(2)"
+					}
+					source := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/" + jobID
 					if proxy {
 						metadata = oracleProxyFixtureMetadata(t, metadata, false)
 					}
@@ -41,7 +45,7 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 					calls := 0
 					client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
 						calls++
-						if r.Method != "GET" || r.Host != "fixture.fa.em2.oraclecloud.com" || r.URL.Path != "/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails" || !strings.Contains(r.URL.RawQuery, `Id="123",siteNumber=CX_1`) {
+						if r.Method != "GET" || r.Host != "fixture.fa.em2.oraclecloud.com" || r.URL.Path != "/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails" || !strings.Contains(r.URL.RawQuery, `Id="`+jobID+`",siteNumber=CX_1`) {
 							t.Error("Oracle request lost exact tenant/site/id", r.URL.RawQuery)
 						}
 						if mode == "404" {
@@ -58,6 +62,10 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 							fmt.Fprint(w, `{"items":[{}]}`)
 							return
 						}
+						if mode == "copy_id_blank_description" {
+							fmt.Fprint(w, `{"items":[{"Title":"Copy Engineer","PrimaryLocation":"Zurich","ExternalDescriptionStr":"","OrganizationDescriptionStr":"","CorporateDescriptionStr":""}]}`)
+							return
+						}
 						fmt.Fprint(w, `{"items":[{"Title":"Senior Software Engineer","PrimaryLocation":"Zurich","JobSchedule":"Full-time","WorkplaceTypeCode":"ORA_REMOTE","ExternalQualificationsStr":"<p>Qualifications</p>","ExternalResponsibilitiesStr":"<p>Responsibilities</p>","ExternalDescriptionStr":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"}]}`)
 					})
 					circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
@@ -69,7 +77,7 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 					}
 					result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 					wantStatus := "succeeded"
-					if mode == "empty_payload" || mode == "404" {
+					if mode == "empty_payload" || mode == "404" || mode == "copy_id_blank_description" {
 						wantStatus = "failed"
 					}
 					if mode == "header_reserved" {
