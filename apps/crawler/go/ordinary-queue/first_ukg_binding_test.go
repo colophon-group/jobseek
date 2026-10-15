@@ -26,6 +26,16 @@ func TestRealFirstUKGActivationAfterEquivalentLegacyDiscovery(t *testing.T) {
 				}
 			}
 			update(ukgBindingMetadata, true)
+			// This binding test conserves an already represented schedule.
+			// Wholly absent schedules are intentionally reconstructed by the
+			// separate cold recovery contract; seed the normal legacy enqueue.
+			detail := URLOnlyDetail{ID: p.f.task.ID, BoardID: p.f.task.ID}
+			if err := p.f.observer.QueryRow(ctx, "SELECT source_url,next_scrape_at,description_r2_hash FROM job_posting WHERE id=$1::uuid", detail.ID).Scan(&detail.URL, &detail.Due, &detail.DescriptionHash); err != nil {
+				t.Fatal("canonical scheduled detail", err)
+			}
+			if added, err := p.f.client.EnqueueURLDetail(ctx, detail); err != nil || !added {
+				t.Fatal("legacy detail enqueue", err)
+			}
 			plan, e := p.f.authority.StageOwnership(ctx, p.plan.SourceRevision(), []string{p.f.task.ID}, []string{p.f.task.ID})
 			if e != nil {
 				t.Fatal("stage monitor and independent detail", e)
