@@ -280,6 +280,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "dom"
             and (
                 bool((config or {}).get("rich_rows"))
+                or (config or {}).get("tupu360_listing") is True
                 or (
                     isinstance((config or {}).get("script_json_links"), dict)
                     and bool(
