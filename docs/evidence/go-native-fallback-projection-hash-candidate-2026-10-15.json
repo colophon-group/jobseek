@@ -1,0 +1,65 @@
+{
+  "schema": "jobseek.native-fallback-projection-hash-candidate/v1",
+  "date": "2026-10-15",
+  "candidate_version": "0.13.1060",
+  "serving_source": "67ed605cccc55caa03dcae268f958a76dd67f179",
+  "routing_epoch": 334,
+  "production_ownership_admitted": false,
+  "incident": {
+    "original_activation_result": "canonical-detail-projection authority refusal before SQL grant",
+    "supported_recovery": "original recover-pending cancelled inactive stage and restored B0/base serving; independent source/image/health and ordinary receipt/projection/SQL absence verified"
+  },
+  "contract": {
+    "cause": "queued fallback carries its earlier attempt hash; later R2 publication may advance canonical description hash",
+    "behavior": "preserve a valid historical fallback hash, stage, interval and priority; keep canonical SQL rows/deadlines unchanged; validate signed64 decimal hashes without float rounding; identity changes still reset to canonical primary",
+    "guards_retained": [
+      "exact staged source/epoch/cold session",
+      "canonical source/config/company/worker/domain",
+      "step bounds",
+      "malformed hash refusal",
+      "live/native lease refusal",
+      "B0 overlap refusal",
+      "SAVE before SQL ownership grant"
+    ]
+  },
+  "actual_readonly_qualification": {
+    "board": "thirdchannel-careers",
+    "rows": 826,
+    "historical_hash_differences": 809,
+    "original_rejected_pages": 4,
+    "candidate_passed_pages": 4,
+    "candidate_queue_changes": 0,
+    "transport_requests": 0,
+    "sql_mutations": 0,
+    "redis_mutations": 0,
+    "scope": "original versus candidate EVAL_RO inspect; not activation authority"
+  },
+  "validation": {
+    "focused_real_store_race_seconds": 6.068,
+    "compiled_first_ownership_repair_save_retry_claim_retirement_race_seconds": 5.633,
+    "original_python_dispatch_tests": 3,
+    "original_python_dispatch_test_seconds": 0.48,
+    "queue_and_worker_vet": "pass",
+    "complete_projection_race_seconds": 6.839,
+    "ordered_adoption_retirement_race_seconds": 73.996,
+    "original_python_r2_stage_hash_variants": 6,
+    "original_python_r2_candidate_bytes_identical": true
+  },
+  "source_sha256": {
+    "apps/crawler/go/ordinary-queue/first_detail_projection.lua": "d66153e6a04a55f8e651d9d1df2030d0f104ba39d54d6dd84fa47f139ceef580",
+    "apps/crawler/go/ordinary-queue/first_detail_projection_handoff_hash_test.go": "61e53c1e4b86193a9ee55d6f040587ef8b2865f72cb06fb2dca64b1df3e79e30",
+    "apps/crawler/go/ordinary-queue/first_detail_projection_test.go": "f1f4e83196c2bfd9149beba3d70abd42ef3e089e7973cbce6aabec36f1401a00",
+    "apps/crawler/go/ordinary-worker/first_projection_admin_integration_test.go": "6b96c8459e5ff2f199cec51c028dbb8919a838a1d51310b029edf08843185771",
+    "apps/crawler/src/processing/scrape.py": "ef7898d01c42cc205d1c08efd09c24fcb9d6f5e99b0bd75c96928d04bb0d2361",
+    "apps/crawler/src/workers/pipeline.py": "f16f98cb8d2de0bc821bde7f7207a625f5a9e3dd9e21850318042ddae9bf1ba1",
+    "apps/crawler/src/processing/r2_stage.py": "5201c85ca8a236e92e828b4c0ba1e7aa738db67ec4e2bd21c17c900428525101"
+  },
+  "remaining": [
+    "original Required CI and installed-runtime qualification",
+    "both Linux Lightpanda architectures and original ARM qualification",
+    "actual Crawler Deploy Gate and fresh exact-head/base/operator/hold audit",
+    "original immutable crawler/renderer deployments and independent source/image/data/readiness verification",
+    "fresh complete cohort/config/routes and original supported activation with independent repaired projection and processing verification",
+    "full coverage, freshness/conservation, resources/cost, rollback window and Python retirement"
+  ]
+}

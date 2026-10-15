@@ -1,6 +1,30 @@
 # Go and Lightpanda migration delivery plan
 
-## Durable delivery checkpoint — 2026-10-15
+## Current delivery correction — 2026-10-15
+
+Source1059 `67ed605cccc55caa03dcae268f958a76dd67f179` passed both original
+crawler38671836521 and renderer38671936024 deployments. B0 activation is
+independently verified at epoch334. Fresh complete7900board/1711527scheduled-route
+admission preserves7830monitors/7742prior details and qualifies41detail additions,
+for7783details and1651887scheduled owned postings. The original ordinary stage
+succeeded. Activation refused a historical fallback hash before SQL ownership;
+original recover-pending cancelled it and restored independently healthy B0/base
+serving with no ordinary receipt, projection or active SQL plan.
+
+Candidate0.13.1060 fixes that concrete blocker without changing the closed41board
+batch. A pending fallback retains its earlier hash while R2 publication can
+advance the SQL description hash. Preserve valid pending history and validate
+signed64 hashes, keeping identity, source/config, lease, step, B0 and SAVE guards.
+Read-only original/candidate inspection proves the rejection on809of826actual
+ThirdChannel records; all four candidate pages pass without queue changes.
+Original Python R2 staging produces identical candidate bytes across six historical/current
+hash variants. Real-store cold projection/ordered recovery and compiled worker tests pass.
+See [candidate evidence](evidence/go-native-fallback-projection-hash-candidate-2026-10-15.json).
+Complete original qualification and supported delivery, then repeat fresh complete
+admission and activation. Do not add another port batch before this cohort serves.
+Full migration and production Python retirement remain incomplete.
+
+## Historical pre1059 delivery checkpoint — 2026-10-15
 
 Source1057 `f7de6c2d103e9120f8f4e7b104d72f6360f49027` is fully deployed and
 independently verified: original crawler38664164280 and renderer38665411872
