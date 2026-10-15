@@ -95,8 +95,7 @@ func brassRingClick(ctx context.Context, capture *replayCapture, selector, respo
 		return nil, err
 	}
 	phase = "click"
-	var clicked bool
-	if err := sessionEvaluate(ctx, `(()=>{const e=document.querySelector(`+string(quoted)+`);if(!e)return false;e.click();return true})()`, &clicked); err != nil || !clicked {
+	if err := interactionClick(ctx, selector); err != nil {
 		return nil, errReplayCapture
 	}
 	call, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -184,8 +183,7 @@ func discoverBrassRingSession(ctx context.Context, task *apiReplayTask, capture 
 			if err := sessionEvaluate(ctx, `(()=>{const a=Array.from(document.querySelectorAll('#sortBy option'));return a.findIndex(o=>o.value==='1')+1})()`, &index); err != nil || index < 1 {
 				return nil, api.ErrBrassRingSnapshotChanged
 			}
-			var clicked bool
-			if err := sessionEvaluate(ctx, `(()=>{const e=document.querySelector('#sortBy-button');if(!e)return false;e.click();return true})()`, &clicked); err != nil || !clicked {
+			if err := interactionClick(ctx, "#sortBy-button"); err != nil {
 				return nil, api.ErrBrassRingSnapshotChanged
 			}
 			return brassRingClick(ctx, capture, "#sortBy-menu li:nth-child("+strconv.Itoa(index)+")", "/TGnewUI/Search/Ajax/ProcessSortAndShowMoreJobs", 1)

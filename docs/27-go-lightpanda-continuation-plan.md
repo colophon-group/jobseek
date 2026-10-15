@@ -74,6 +74,32 @@ aged 0.21–1.36 seconds. These observations do not establish a root cause or sa
 Freshness, the pre-existing scheduling gap, native lifecycle and runtime retirement
 remain part of the full delivery goal.
 
+## Following batch — 0.13.1070 preparation, 2026-10-15
+
+Keep release 0.13.1069 frozen through delivery. The separate following batch
+reuses the existing pointer helper for BrassRing search, sort and pagination.
+ADM Global matches all original fields for 306 rich jobs and passes 306 canonical
+inserts with no extra origins. The physical session suite passes all 13 cases,
+including a widget that requires pointer events before click, publisher refusal,
+changed inventories, complete retry and cleanup. The full physical renderer race
+suite passes. The fixture search now commits page one rather than racing a later
+page-zero update against the sort barrier.
+
+Four rendered detail configurations retain their actions and parsers: BBVA Garanti,
+dnata Australia, McDonald's US restaurants and Republic Services Robinson Waste.
+Seven fresh actual references match every original field and pass canonical
+PostgreSQL/Redis writers. All 29,089 scheduled sources for these four boards in
+the source1067 snapshot compile against the proposed profiles. The configurations
+retain valid legacy cold fallback; ordinary native ownership selects Lightpanda.
+Fresh installed full-floor admission and original qualification/deployment remain
+required. This preparation grants no production ownership.
+
+Alten Netherlands' earlier two matches and writers remain retained, but both fresh
+final-shape requests fail HTTP navigation; leave it out of the batch. ADM US's
+old 535/536 inventory mismatch remains unresolved and its fresh original fails
+navigation. Caterpillar capture also remains held. See [following candidate
+evidence](evidence/go-native1070-brassring-rendered-candidate-2026-10-15.json).
+
 ## Historical source1060 qualification correction — 2026-10-15
 
 Source1059 `67ed605cccc55caa03dcae268f958a76dd67f179` passed both original

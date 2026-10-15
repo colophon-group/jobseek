@@ -25,11 +25,6 @@ def test_dnata_australia_expr3ss_monitor_and_detail_transports() -> None:
     }
     expected_scraper_config = {
         "render": True,
-        "proxy": True,
-        "transport_attempts": 5,
-        "channel": "chrome",
-        "headless": False,
-        "stealth": True,
         "wait": "domcontentloaded",
         "timeout": 30000,
     }

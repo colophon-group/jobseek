@@ -27,7 +27,7 @@ import (
 // process/port cleanup. The established test transport grants no runtime proxy.
 func TestLightpandaSessionProviderIntegration(t *testing.T) {
 	binary := interactionIntegrationBinary(t)
-	for _, mode := range []string{"brass-complete", "brass-publisher", "brass-root-publisher", "brass-detail-publisher", "brass-duplicate", "brass-changed-total", "brass-recover", "brass-cleanup", "njoyn-complete", "njoyn-publisher", "njoyn-root-publisher", "njoyn-short-tail"} {
+	for _, mode := range []string{"brass-pointer", "brass-complete", "brass-publisher", "brass-root-publisher", "brass-detail-publisher", "brass-duplicate", "brass-changed-total", "brass-recover", "brass-cleanup", "njoyn-complete", "njoyn-publisher", "njoyn-root-publisher", "njoyn-short-tail"} {
 		t.Run(mode, func(t *testing.T) {
 			provider, host, board, metadata := "brassring", "sjobs.brassring.com", "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=6007", `{"scraper_type":"skip"}`
 			if strings.HasPrefix(mode, "njoyn") {
@@ -105,7 +105,15 @@ func TestLightpandaSessionProviderIntegration(t *testing.T) {
 						w.WriteHeader(503)
 					}
 					w.Header().Set("Content-Type", "text/html")
-					io.WriteString(w, `<!doctype html><html><body><button id="clearResumeJobsBtn" onclick="search()">Search</button><select id="sortBy"><option value="0">Recent</option><option value="1">Title</option></select><button id="sortBy-button">Sort</button><ul id="sortBy-menu"><li>Recent</li><li onclick="sorted()">Title</li></ul><span class="pagewise-pagination" aria-current="page">1</span><button title="Next Page" onclick="next()">Next</button><script>let current=1;async function request(path,n){await fetch('/TGnewUI/Search/Ajax/'+path+'?page='+n,{method:'POST'});setTimeout(()=>{current=n;document.querySelector('.pagewise-pagination').textContent=String(n)},75)}function search(){request('MatchedJobs',0)}function sorted(){request('ProcessSortAndShowMoreJobs',1)}function next(){request('ProcessSortAndShowMoreJobs',current+1)}</script></body></html>`)
+					fixture := `<!doctype html><html><body><button id="clearResumeJobsBtn" onclick="search()">Search</button><select id="sortBy"><option value="0">Recent</option><option value="1">Title</option></select><button id="sortBy-button">Sort</button><ul id="sortBy-menu"><li>Recent</li><li onclick="sorted()">Title</li></ul><span class="pagewise-pagination" aria-current="page">1</span><button title="Next Page" onclick="next()">Next</button><script>let current=1;async function request(path,n){await fetch('/TGnewUI/Search/Ajax/'+path+'?page='+n,{method:'POST'});setTimeout(()=>{current=Math.max(1,n);document.querySelector('.pagewise-pagination').textContent=String(current)},75)}function search(){request('MatchedJobs',0)}function sorted(){request('ProcessSortAndShowMoreJobs',1)}function next(){request('ProcessSortAndShowMoreJobs',current+1)}</script></body></html>`
+					if mode == "brass-pointer" {
+						// The upstream widget commits a pointer sequence before
+						// accepting click. HTMLElement.click alone cannot drive it.
+						fixture = strings.ReplaceAll(fixture, `onclick="`, `onmousedown="this.dataset.down='1'" onmouseup="this.dataset.up=this.dataset.down" onclick="if(this.dataset.up!=='1')return;delete this.dataset.down;delete this.dataset.up;`)
+						fixture = strings.Replace(fixture, `<button id="sortBy-button">`, `<button id="sortBy-button" onmousedown="this.dataset.down='1'" onmouseup="this.dataset.up=this.dataset.down" onclick="if(this.dataset.up==='1')document.querySelector('#sortBy-menu').style.display='block'">`, 1)
+						fixture = strings.Replace(fixture, `<ul id="sortBy-menu">`, `<ul id="sortBy-menu" style="display:none">`, 1)
+					}
+					io.WriteString(w, fixture)
 					return
 				}
 				if r.Method == "GET" {
@@ -160,7 +168,7 @@ func TestLightpandaSessionProviderIntegration(t *testing.T) {
 					return Result{}, errCleanupUnproved
 				}
 				if err != nil {
-					t.Logf("owned fixture failure: %T", err)
+					t.Logf("owned fixture failure: %T %v", err, err)
 				}
 				return result, err
 			}}
