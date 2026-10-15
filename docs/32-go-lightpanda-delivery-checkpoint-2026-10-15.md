@@ -7,6 +7,47 @@ and Lightpanda before Python, Playwright and Chromium can be removed.
 
 ## Current release and activation
 
+PR [#10546](https://github.com/colophon-group/jobseek/pull/10546) delivered
+0.13.1062, source `555a6b7a72186cb75ca5d0562c0d57f219bf902f`. Original crawler
+[38704936422](https://github.com/colophon-group/jobseek/actions/runs/38704936422)
+and renderer
+[38704993327](https://github.com/colophon-group/jobseek/actions/runs/38704993327)
+deployments succeeded on attempt 1. Independent source/image/data/cold 339,
+exporter progress and renderer checks passed. Supported B0 activation and seven
+health checks passed at epoch 340.
+
+Fresh 7,900-board/1,706,956-route admission preserved the full 7,830-monitor/7,783-detail
+cohort, with 41 additions and none held. The original plan staged successfully.
+Activation reached the 20-minute parent deadline during canonical projection at
+09:10:39 UTC, without granting SQL ownership. Its last legacy lease expired at
+09:00:29 UTC. A cold 163.323-second interval observed 382 Redis EVAL calls with no
+failures or rejections; the native admin used 0.876 CPU cores and 147 MB current RAM
+over 40 seconds, with no OOM. The earlier full read-only rehearsal omitted Go
+per-row validation and underestimated this complete operation.
+
+The original wrapper contained the pending plan. Supported recovery initially
+refused the mutation lock, held by the scheduled cross-store reconciliation job
+on the verified 1062 image. After that job finished, original recover-pending
+succeeded. Independent readback at 09:22:27 UTC verifies restored B0/base serving:
+nine running and restart-armed actors, seven passing health checks, no ordinary
+receipt/projection/active SQL plan, and no administrative one-offs.
+
+Candidate 0.13.1063 changes the bounded cold-operation budgets: 30 minutes for the
+native admin, 15 minutes for the read-only projection stream and its SQL statement,
+and 1,820 seconds for the wrapper's native command. Allow at least 45 minutes for
+complete operator callers. This reserves 10 minutes for natural leases, 15 for fleet
+validation and 5 for other cold work. Earlier cancellation, every row's validation,
+original locks, staged identity, resource budgets, SAVE-before-grant and supported
+recovery remain. See the
+[candidate evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
+
+The guarded cold baseline retains 1,506,613 queued IDs among 1,647,257 selected scheduled
+postings; 140,644 were already absent from the observed queues. No postactive
+conservation is proved. A future attempt requires a fresh baseline bound to its
+own source, epoch and pending plan.
+
+## Previous source1061 delivery
+
 PR [#10544](https://github.com/colophon-group/jobseek/pull/10544) delivered
 0.13.1061, source `cf71baa66147eb825c9569bfa70be87be7e92c91`.
 Exact-head Required CI, full native queue/worker suites, installed-runtime
@@ -100,9 +141,9 @@ retired because forward maintenance uses Go.
 
 ## Execution order
 
-1. Qualify candidate1062 on its frozen head and deliver through Required CI,
+1. Qualify candidate1063 on its frozen head and deliver through Required CI,
    Crawler Deploy Gate and the original quiesced deployment. Use supported B0
-   reversal/clearing for outgoing1061; verify the new source/images and establish
+   reversal/clearing for outgoing1062; verify the new source/images and establish
    its fresh B0 epoch. Repeat the complete source/config/cache/route census,
    stage one new ordinary plan and execute one original activation. Verify
    receipt, SQL plan, Redis projection, source/images, health, processing and
@@ -153,9 +194,9 @@ retired because forward maintenance uses Go.
 
 Use Git-deployed B0 and ordinary wrappers, mutation locks, exclusive ownership and
 the [production deployment contract](adr/006-crawler-deploy-quiescence-and-rollback.md).
-The ordinary native admin has a 1,200-second deadline; its wrapper allows 1,220
-seconds. Callers must allow at least 35 minutes for the complete stop, operation,
-readiness and containment sequence. Let leases expire naturally. Never edit
+Candidate1063 gives the ordinary native admin a 1,800-second deadline and its
+wrapper 1,820 seconds. Callers must allow at least 45 minutes for the complete stop,
+operation, readiness and containment sequence. Let leases expire naturally. Never edit
 production SQL, Redis, leases or receipts manually, or replace the wrappers ad hoc.
 
 Source1061 uses one read-only stream and at most1024-record batches before Redis

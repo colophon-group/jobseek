@@ -3,27 +3,31 @@
 ## Current delivery checkpoint — 2026-10-15
 
 Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
-for current state and completion order. Source1061
-`cf71baa66147eb825c9569bfa70be87be7e92c91` is deployed and independently healthy
-at B0 epoch338. Its ordinary activation still reached the existing20-minute
-bound during canonical projection. Original recover-pending restored B0/base
-serving; ordinary receipt, projection and active SQL plans are absent.
+for current state and completion order. Source1062
+`555a6b7a72186cb75ca5d0562c0d57f219bf902f` passed both original deployments and
+independent source/image/data/cold/exporter checks. B0 activation passed at epoch340.
+Fresh admission preserves 7,830 monitors and 7,783 detail configurations, including
+all 41 additions. The original ordinary activation reached its 20-minute deadline
+in canonical validation at 09:10:39 UTC, without granting SQL ownership.
+Supported recovery initially refused the lock held by scheduled reconciliation.
+After that job finished, recovery succeeded. Independent readback confirms
+healthy B0/base serving, no ordinary receipt/projection/active SQL plan, and no
+administrative one-offs.
 
-Candidate0.13.1062 caches shared Redis key-type and finite queue-edge validation
-within each atomic batch. Every row's identity, source, stage, priority and lease
-checks remain; inspect and apply each start with an empty cache. An installed
-read-only rehearsal inspected1647884canonical rows in1610batches without refusal
-or mutation:199.299seconds in Redis,274.596seconds including SQL/Python streaming.
-It excludes Go profile validation, actual effects, SAVE and SQL grant. Real-store
-work-bound and corruption-between-inspect/apply regressions pass. See the
-[candidate evidence](evidence/go-native-cold-queue-validation-candidate-2026-10-15.json).
+Candidate0.13.1063 corrects the measured cold-operation budget: 30 minutes for the
+native admin, 15 minutes for its read-only posting stream and SQL statement, and
+1,820 seconds for the wrapper's native command. Callers require at least 45 minutes.
+The installed operation includes Go validation omitted by the earlier SQL/Python
+rehearsal. Every canonical/per-row check, natural lease expiry, exclusive barrier,
+staged identity, SAVE-before-grant and runtime resource limit remains. Cross-layer
+budget and real-store cancellation/refusal/recovery tests guard that contract.
+See the [candidate evidence](evidence/go-native-fleet-cutover-budget-candidate-2026-10-15.json).
 
-Finish the same closed41-configuration batch:7830monitors,7742previous details and
-41qualified additions for7783. Keep the supported deadline and original wrappers.
-Then group remaining DOM/JSON-LD fragment navigation and browser-lane fallback
-contracts with other compiled-family qualification. Onlyfy language is already
-implemented; its retained uncompiled example points at Workday and needs separate
-configuration diagnosis. Full migration and production Python retirement remain
+Deliver this complete 41-configuration batch before adding more ports. Then group
+shared DOM/JSON-LD fragment and browser-lane fallback work with already compiled
+families awaiting complete-output qualification. Onlyfy language already exists;
+its uncompiled example points at Workday and needs configuration diagnosis.
+Full migration, freshness/conservation and production Python retirement remain
 incomplete. Earlier entries below are historical.
 
 ## Historical source1060 qualification correction — 2026-10-15

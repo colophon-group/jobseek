@@ -15,6 +15,8 @@ import (
 //go:embed first_detail_projection.lua
 var firstDetailProjectionLua string
 
+const coldDetailProjectionReadTimeout = 15 * time.Minute
+
 type canonicalDetailProjection struct {
 	ID, BoardID, Source, Domain, Worker, Due, Hash, Interval string
 	Steps                                                    int
@@ -68,13 +70,13 @@ func repairStagedDetailProjection(ctx context.Context, pool *pgxpool.Pool, clien
 	// pages force random heap reads and thousands of round trips at fleet scale;
 	// an unordered stream visits each selected row once with bounded memory.
 	// Redis effects still require the live original scope for every batch.
-	readCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	readCtx, cancel := context.WithTimeout(ctx, coldDetailProjectionReadTimeout)
 	defer cancel()
 	return pgx.BeginTxFunc(readCtx, pool, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
 		if CheckHostColdSQLScope(readCtx, pool, plan.SourceRevision()) != nil {
 			return ErrAuthorityLost
 		}
-		if _, err := tx.Exec(readCtx, "SET LOCAL statement_timeout='10min'"); err != nil {
+		if _, err := tx.Exec(readCtx, "SET LOCAL statement_timeout='15min'"); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(readCtx, "SET LOCAL idle_in_transaction_session_timeout='1min'"); err != nil {

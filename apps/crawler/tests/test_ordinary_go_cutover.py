@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -46,7 +47,15 @@ sha256sum() {
   if type -P sha256sum >/dev/null; then command sha256sum "$@";
   else shasum -a 256 "$@"; fi
 }
-timeout() { shift 4; "$@"; }
+timeout() {
+  local budget=$4
+  shift 4
+  case "$*" in
+    *' --activate-first-ownership'|*' --retire-first-ownership')
+      printf 'native-timeout:%s\n' "$budget" >>"$TEST_LOG" ;;
+  esac
+  "$@"
+}
 sleep() { return 0; }
 curl() {
   printf 'health:%s\n' "$*" >>"$TEST_LOG"
@@ -219,6 +228,34 @@ def test_complete_first_owner_cutover_and_retirement(
     removal = next(i for i, event in enumerate(events) if event.startswith("docker:rm "))
     assert not any("--force" in event or " -v " in event for event in events[removal : removal + 1])
     assert any("update --restart unless-stopped" in event for event in events[:removal])
+
+
+def test_native_deadlines_cover_leases_stream_and_wrapper_containment(host) -> None:
+    _, _, env = host
+    worker = (ROOT / "apps/crawler/go/ordinary-worker/first_ownership_admin.go").read_text()
+    projection = (ROOT / "apps/crawler/go/ordinary-queue/first_detail_projection.go").read_text()
+
+    def minutes(source: str, name: str) -> int:
+        match = re.search(rf"const {name} = (\d+) \* time.Minute", source)
+        assert match is not None, f"missing bounded duration: {name}"
+        return int(match[1])
+
+    admin_minutes = minutes(worker, "firstOwnershipAdminTimeout")
+    stream_minutes = minutes(projection, "coldDetailProjectionReadTimeout")
+    statement = re.search(r"SET LOCAL statement_timeout='(\d+)min'", projection)
+    assert statement is not None
+    # The SQL server includes ClientWrite time while Go validates each row.
+    assert int(statement[1]) >= stream_minutes
+    # Natural ten-minute leases cannot consume the fleet validation budget.
+    assert admin_minutes >= 10 + stream_minutes + 5
+
+    assert invoke(host, "activate", PLAN, PROJECTION).returncode == 0
+    events = Path(env["TEST_LOG"]).read_text().splitlines()
+    budgets = [
+        int(event.split(":", 1)[1][:-1]) for event in events if event.startswith("native-timeout:")
+    ]
+    assert len(budgets) == 1
+    assert budgets[0] >= admin_minutes * 60 + 20
 
 
 def test_retired_container_cleanup_failure_retains_identity_for_supported_recovery(
