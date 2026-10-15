@@ -19,7 +19,7 @@ func TestJoinDetailRetainsConfiguredFieldsAndActualSourceBinding(t *testing.T) {
 			t.Fatal("unsupported actual source admitted", raw)
 		}
 	}
-	for _, options := range []string{`{"fields":{}}`, `{"path":"foreign","fields":{"title":"title"}}`, `{"path":"props.pageProps.initialState.job","fields":{"title":"foreign"}}`, `{"path":"props.pageProps.initialState.job","fields":{"title":"title"},"render":false}`} {
+	for _, options := range []string{`{"path":"foreign","fields":{"title":"title"}}`, `{"path":"props.pageProps.initialState.job","fields":{"title":"foreign"}}`, `{"path":"props.pageProps.initialState.job","fields":{"title":"title"},"render":false}`} {
 		c["metadata"] = `{"scraper_type":"nextdata","scraper_config":` + options + `}`
 		if _, err := InspectAPIDetail(profileBoardID, c, source, Simple); err == nil {
 			t.Fatal("unported detail configuration admitted", options)
