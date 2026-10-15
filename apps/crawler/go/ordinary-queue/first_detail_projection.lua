@@ -11,6 +11,15 @@ end
 local clock = redis.call("TIME")
 local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
 local changes, domains = {}, {}
+local function valid_handoff_hash(value)
+    if value == "" then return true end
+    if type(value) ~= "string" or not string.match(value,"^%-?%d+$") then return false end
+    local negative=string.sub(value,1,1)=="-"
+    local digits=negative and string.sub(value,2) or value
+    if (#digits>1 and string.sub(digits,1,1)=="0") or (negative and digits=="0") then return false end
+    local limit=negative and "9223372036854775808" or "9223372036854775807"
+    return #digits<#limit or (#digits==#limit and digits<=limit)
+end
 for _, row in ipairs(rows) do
     if type(row.ID) ~= "string" or #row.ID ~= 36 or type(row.BoardID) ~= "string"
         or (row.Worker ~= "simple" and row.Worker ~= "browser")
@@ -65,13 +74,20 @@ for _, row in ipairs(rows) do
     if not identity then step="0";interval=row.Interval end
     local n=tonumber(step)
     if queued and (not n or n~=math.floor(n) or tostring(n)~=step or n<0 or n>=row.Steps) then return redis.error_reply("invalid current detail step") end
-    if queued and n>0 and (config[5] or "")~=row.Hash then return redis.error_reply("stale detail handoff hash") end
+    local hash=row.Hash
+    if queued and n>0 then
+        -- A pending fallback carries its earlier attempt's hash. R2 drain can
+        -- advance the SQL hash after enqueue; that does not invalidate the
+        -- independently queued stage. Preserve its exact historical value.
+        hash=config[5] or ""
+        if not valid_handoff_hash(hash) then return redis.error_reply("invalid detail handoff hash") end
+    end
     if queued and (not retirement_finite(tonumber(interval)) or tonumber(interval)<1 or tonumber(interval)>2562047) then return redis.error_reply("invalid detail interval") end
     if queued and (not identity or wrong_lane) then
         if unsafe then return redis.error_reply("live or native detail lease retained") end
         if redis.call("HEXISTS","lightpanda-b0:legacy-guard",row.ID)==1 then return redis.error_reply("B0 detail overlap") end
         if lease and first==nil and row.Hash=="" then first=0 end
-        changes[#changes+1]={row=row,contexts=contexts,first=first,step=step,interval=interval,identity_changed=not identity}
+        changes[#changes+1]={row=row,contexts=contexts,first=first,step=step,hash=hash,interval=interval,identity_changed=not identity}
     end
 end
 if ARGV[2]=="inspect" then
@@ -91,7 +107,7 @@ for _, change in ipairs(changes) do
         redis.call("ZREM","inflight:"..item.worker,item.task)
         domains[item.worker.."|"..item.domain]=item
     end
-    redis.call("HSET","scrape:"..row.ID,"board_id",row.BoardID,"source_url",row.Source,"domain",row.Domain,"description_r2_hash",row.Hash,"scrape_step",change.step,"scrape_interval_hours",change.interval)
+    redis.call("HSET","scrape:"..row.ID,"board_id",row.BoardID,"source_url",row.Source,"domain",row.Domain,"description_r2_hash",change.hash,"scrape_step",change.step,"scrape_interval_hours",change.interval)
     if change.identity_changed then redis.call("HDEL","scrape:"..row.ID,"egress_host") end
     if change.first~=nil then
         redis.call("ZADD","ft_scrapes_"..row.Worker..":"..row.Domain,change.first,row.ID)
