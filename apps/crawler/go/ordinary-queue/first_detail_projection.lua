@@ -5,7 +5,7 @@
 local owner = redis.call("GET", "ordinary:ownership:active")
 if owner ~= false then return redis.error_reply("detail projection already owned") end
 local ok, rows = pcall(cjson.decode, ARGV[1])
-if not ok or type(rows) ~= "table" or #rows > 256 then
+if not ok or type(rows) ~= "table" or #rows > 1024 then
     return redis.error_reply("invalid cold detail batch")
 end
 local clock = redis.call("TIME")

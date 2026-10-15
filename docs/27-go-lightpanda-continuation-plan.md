@@ -1,6 +1,29 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery correction — 2026-10-15
+## Current delivery checkpoint — 2026-10-15
+
+Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
+for current state and the completion plan. Source1060
+`80860a269e1b6c96090f7cb9634828e72de8a4e6` is deployed and independently healthy
+at B0 epoch336. Original ordinary activation hit its existing20-minute bound
+while projecting1.65million canonical details. Supported recover-pending succeeded;
+ordinary receipt, Redis projection and active SQL plans are absent.
+
+Candidate0.13.1061 replaces repeated UUID-ordered256-row reads with one read-only
+SQL stream feeding at most1024records per Redis inspection/repair. Original cold
+writer barriers, live source/lease checks, complete profile validation,
+SAVE-before-grant and the overall activation deadline remain. An installed
+read-only query streamed1647310rows in28.324seconds; the old256-row query
+took310.095ms. Component observations do not establish end-to-end cutover.
+
+Preserve7830monitors and7742previous detail configurations, adding41qualified
+detail configurations for7783. Finish supported activation and independent
+processing/conservation verification before another grouped runtime batch.
+Full migration and production Python retirement remain incomplete. See the
+[stream candidate evidence](evidence/go-native-cold-projection-stream-candidate-2026-10-15.json).
+Earlier entries below are historical.
+
+## Historical source1060 qualification correction — 2026-10-15
 
 Source1059 `67ed605cccc55caa03dcae268f958a76dd67f179` passed both original
 crawler38671836521 and renderer38671936024 deployments. B0 activation is
