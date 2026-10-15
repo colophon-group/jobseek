@@ -15,7 +15,7 @@ var ErrInventory = errors.New("Oracle HCM inventory failed")
 
 var hostPattern = regexp.MustCompile(`^(?:[a-z0-9-]{1,63}\.)+fa\.(?:(?:[a-z]{2}\d+|ocs)\.)?oraclecloud(?:\d{1,3})?\.(?:com|eu)$`)
 var sitePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
-var idPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9._()-]{1,128}$`)
 var facetPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,256}$`)
 var languagePattern = regexp.MustCompile(`^[A-Za-z]{2}(?:[-_][A-Za-z]{2})?$`)
 
@@ -80,7 +80,10 @@ func normalizeHost(value any) (string, bool) {
 // Candidate identifies public Oracle URLs without trusting arbitrary API hosts.
 func Candidate(source string, requireJob bool) (host, site, id string, ok bool) {
 	u, err := url.Parse(source)
-	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.RawPath != "" || (u.Port() != "" && u.Port() != "443") {
+	// net/url retains literal parentheses in RawPath, but clears RawPath for
+	// their canonical percent encoding. Accept public literal copy IDs while
+	// continuing to reject encoded path aliases and separators.
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" || strings.Contains(u.EscapedPath(), "%") || (u.Port() != "" && u.Port() != "443") {
 		return
 	}
 	host, ok = normalizeHost(u.Hostname())

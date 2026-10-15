@@ -58,6 +58,33 @@ func TestRenderedDetailBindsOriginalConfigurationAndBrowserWorker(t *testing.T) 
 	}
 }
 
+func TestRenderedFragmentsKeepBrowserAuthorityAndExactSource(t *testing.T) {
+	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
+		t.Run(scraper, func(t *testing.T) {
+			c := renderedDetailConfig(scraper)
+			if scraper == "nextdata" {
+				c["metadata"] = `{"scraper_type":"nextdata","scraper_config":{"render":true,"path":"job","fields":{"title":"title","description":"description"}}}`
+			}
+			first, err := InspectRenderedDetail(jsonldBoardID, c, "https://jobs.example.net/job#first", Browser)
+			if err != nil || first.SourceURL != "https://jobs.example.net/job#first" || first.Domain != "jobs.example.net" || detailWorker(first.Profile) != Browser {
+				t.Fatal("fragment source lost browser authority", err)
+			}
+			second, err := InspectRenderedDetail(jsonldBoardID, c, "https://jobs.example.net/job#second", Browser)
+			if err != nil || second.SourceURL == first.SourceURL || second.Profile != first.Profile || second.EffectiveBoardSHA256 != first.EffectiveBoardSHA256 {
+				t.Fatal("fragment was stripped or changed canonical config identity", err)
+			}
+			for _, unsafe := range []string{"https://user:secret@jobs.example.net/job#first", "https://jobs.example.net:444/job#first", "file:///job#first"} {
+				if _, err := InspectRenderedDetail(jsonldBoardID, c, unsafe, Browser); err == nil {
+					t.Fatal("fragment weakened source URL guards")
+				}
+			}
+			if _, err := InspectRenderedDetail(jsonldBoardID, c, first.SourceURL, Simple); err == nil {
+				t.Fatal("fragment downgraded browser lane")
+			}
+		})
+	}
+}
+
 func TestRenderedDetailActionPipelinesBindAllParserFamilies(t *testing.T) {
 	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
 		t.Run(scraper, func(t *testing.T) {

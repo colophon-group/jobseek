@@ -116,7 +116,7 @@ _ORACLE_HCM_HOST_RE = re.compile(
     re.IGNORECASE,
 )
 _ORACLE_SITE_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
-_ORACLE_JOB_ID_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_ORACLE_JOB_ID_RE = re.compile(r"[A-Za-z0-9._()-]{1,128}")
 _ORACLE_FACET_ID_RE = re.compile(r"[A-Za-z0-9._:-]{1,256}")
 
 

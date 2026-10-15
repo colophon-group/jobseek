@@ -33,3 +33,21 @@ func TestOracleDetailBindsDefaultEnrichmentAndTrustedTenant(t *testing.T) {
 		}
 	}
 }
+
+func TestOracleCopyIDsKeepCanonicalOwnershipAndActualSource(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"] = "oracle_hcm"
+	c["board_url"] = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+	c["metadata"] = `{}`
+	owner, err := inspectAPIDetailOwnership(profileBoardID, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"EXL_RB_1(2)", "EXL_RB_3(2)"} {
+		source := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/" + id
+		p, err := InspectAPIDetail(profileBoardID, c, source, Simple)
+		if err != nil || p.Profile != owner.Profile || p.EffectiveBoardSHA256 != owner.EffectiveBoardSHA256 || p.SourceURL != source || !strings.Contains(p.Endpoint, `Id="`+id+`",siteNumber=CX_1`) {
+			t.Fatal("copy ID lost source or canonical binding", err)
+		}
+	}
+}

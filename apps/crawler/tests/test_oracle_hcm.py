@@ -990,6 +990,50 @@ async def test_discover_marks_oracle_result_window_cap_as_truncated():
 
 
 # ── Vanity-domain config-driven scraper path ────────────────────────
+
+
+@pytest.mark.parametrize("req_id", ["EXL_RB_1(2)", "EXL_RB_3(2)"])
+@pytest.mark.parametrize("vanity", [False, True])
+@pytest.mark.asyncio
+async def test_copy_requisition_ids_preserve_full_detail_finder(req_id, vanity):
+    host = "acme.fa.eu2.oraclecloud.com"
+    source = f"https://{host}/hcmUI/CandidateExperience/en/sites/CX_1/job/{req_id}"
+    config = {}
+    if vanity:
+        source = f"https://careers.example.com/jobs/{req_id}"
+        config = {"host": host, "site": "CX_1"}
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        assert request.url.host == host
+        assert request.url.params["finder"] == f'ById;Id="{req_id}",siteNumber=CX_1'
+        return httpx.Response(
+            200, json=_oracle_hcm_payload(req_id, "Copy Engineer", description="")
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(source, config, client)
+    assert len(calls) == 1
+    assert content.title == "Copy Engineer"
+    assert not content.description  # An actual blank Oracle body stays blank.
+
+
+@pytest.mark.parametrize("req_id", ["EXL_RB_1%282%29", 'EXL_RB_1(2)",siteNumber=CX_2'])
+@pytest.mark.asyncio
+async def test_copy_ids_do_not_accept_encoded_aliases_or_finder_injection(req_id):
+    def handler(request: httpx.Request) -> httpx.Response:
+        pytest.fail("unsafe source must not make a detail request")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(
+            f"https://acme.fa.eu2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/{req_id}",
+            {},
+            client,
+        )
+    assert not content.title and not content.description
+
+
 #
 # Regression for #2920: Nokia (jobs.nokia.com) and TI (careers.ti.com) host
 # Oracle HCM Cloud SPAs on vanity domains. The `_ORACLE_HCM_URL_RE` auto-detect

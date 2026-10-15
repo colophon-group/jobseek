@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-var configuredJobPath = regexp.MustCompile(`/(?:jobs?|requisitions/preview)/([A-Za-z0-9._-]{1,128})/?$`)
+var configuredJobPath = regexp.MustCompile(`/(?:jobs?|requisitions/preview)/([A-Za-z0-9._()-]{1,128})/?$`)
 
 // DetailEndpoint accepts Oracle's public job route or an HTTPS vanity route
 // bound to explicitly configured, allowlisted Oracle tenant and site metadata.
 func DetailEndpoint(jobURL string, metadata map[string]any) (string, error) {
 	u, err := url.Parse(jobURL)
-	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" || u.RawPath != "" || u.Port() != "" && u.Port() != "443" {
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" || strings.Contains(u.EscapedPath(), "%") || u.Port() != "" && u.Port() != "443" {
 		return "", ErrOptions
 	}
 	configured := map[string]any{}
