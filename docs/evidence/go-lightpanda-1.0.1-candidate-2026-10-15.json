@@ -1,0 +1,88 @@
+{
+  "schema": "jobseek.lightpanda-upgrade.candidate/v1",
+  "candidate_version": "0.13.1067",
+  "lightpanda_release": {
+    "schema_version": 2,
+    "repository": "https://github.com/lightpanda-io/browser",
+    "tag": "1.0.1",
+    "verified_at": "2026-10-15",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1",
+    "published_at": "2026-10-15T14:55:37Z",
+    "note": "Builds copy only the binary from the official multi-architecture OCI image by immutable index digest and verify its architecture-specific SHA-256. OCI index, platform manifests, binary layers and extracted executables were independently hashed and matched to official 1.0.1 release assets. No mutable tag or GitHub asset URL is resolved during builds. OCI deletion fails closed; retain promoted Jobseek image digests for reversal.",
+    "image": {
+      "repository": "lightpanda/browser",
+      "index_digest": "sha256:e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a",
+      "binary_path": "/bin/lightpanda"
+    },
+    "assets": {
+      "amd64": {
+        "id": 644204069,
+        "name": "lightpanda-x86_64-linux",
+        "updated_at": "2026-10-15T14:56:50Z",
+        "size": 75670856,
+        "sha256": "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd",
+        "image_manifest_digest": "sha256:c427b144613fbf099868c5ab54be509741c8535def6a40fd0b62360658e279d1",
+        "image_created_at": "2026-10-15T15:00:06.209832385Z",
+        "image_binary_layer_digest": "sha256:0c9051cbefbe85d57582f37af5e827cd5eff2f830812e7ec0778db47d27b03d4"
+      },
+      "arm64": {
+        "id": 644211243,
+        "name": "lightpanda-aarch64-linux",
+        "updated_at": "2026-10-15T14:59:08Z",
+        "size": 73240632,
+        "sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+        "image_manifest_digest": "sha256:7032e32e127fb82bcd912bed2995a33336262abe65679e30eca278aeff7c1a62",
+        "image_created_at": "2026-10-15T15:00:07.313221802Z",
+        "image_binary_layer_digest": "sha256:ee5403f42c396e8158dc13acf66340752609d3b5026699d4413df51b4f7726df"
+      }
+    }
+  },
+  "mac_arm64": {
+    "sha256": "d4b66ac8484f49d7a49e05b6f9342716c747129527fcbe8ffe36679ffa18dd60",
+    "version_output": "1.0.1",
+    "official_asset_checksum_verified": true
+  },
+  "verification": {
+    "official_index_platform_manifests_binary_layers_and_executables_hashed": true,
+    "both_linux_OCI_binaries_equal_official_release_assets": true,
+    "release_pin_consistency_test": "passed",
+    "mac_physical_race_suite": "passed; full go test -race -count=1 ./... with verified1.0.1 binary,39.683seconds",
+    "linux_and_ARM_whole_lane_qualification": "required at final head"
+  },
+  "delivery_context": {
+    "prior_runtime_source": "f010c87dd3e339abbe2ce3518197f437a9680e0d",
+    "prior_version": "0.13.1064",
+    "outgoing_independently_cold_epoch": 345,
+    "retained_ordinary_write_fences": 5298,
+    "merged_next_source": "9b67eb14c1b50d895c5e5ebbf38c846d408a1b18",
+    "merged_version": "0.13.1066",
+    "merged_pull_request": 10552,
+    "original_crawler_deployment": 38756030287,
+    "renderer1066_dispatched": false,
+    "reason_for_following_release": "1.0.1 published2026-10-15T14:55:37Z immediately before1066 merge; activate only after latest pin is qualified and deployed"
+  },
+  "prepared_admission": {
+    "prior_monitors_preserved": 7830,
+    "prior_details_preserved": 7783,
+    "additional_details": 13,
+    "planned_details": 7796,
+    "profiles": {
+      "dom": 3,
+      "jsonld": 5,
+      "workday": 5
+    },
+    "complete_description_references": 24,
+    "real_canonical_writer_references": 19,
+    "fresh_live_workday_matches": 10,
+    "retained_projection_repairs_required": 3357,
+    "authority": "retained full-route preview only; incoming source/config/route census, original cold repair, exact queued-ID conservation and independent serving verification still required"
+  },
+  "private_proof_hashes": {
+    "official-index1.json": "e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a",
+    "official-index-proof1.json": "8f1ad54e15d4903209c45448592ea6362bc835988fc90cbfb379049d2ed78fe7",
+    "amd64-manifest1.json": "c427b144613fbf099868c5ab54be509741c8535def6a40fd0b62360658e279d1",
+    "arm64-manifest1.json": "7032e32e127fb82bcd912bed2995a33336262abe65679e30eca278aeff7c1a62",
+    "verified-linux-assets1.json": "bd613d5e09f3fe543994324cfb490cb5e2895b9c792351bcb0c12cfd9204cf74"
+  },
+  "full_migration_complete": false
+}

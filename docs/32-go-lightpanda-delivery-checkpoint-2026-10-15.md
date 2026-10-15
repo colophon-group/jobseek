@@ -5,7 +5,24 @@ profile does not establish production ownership. Useful isolated offline Python
 tools may remain; production crawling must finish moving to Go HTTP/API routes
 and Lightpanda before Python, Playwright and Chromium can be removed.
 
-## Current delivered release and ownership
+## Current transition and latest-release requirement
+
+Source 1064 ordinary retirement and original B0 reversal/selector restoration
+succeeded. Independent cold epoch 345 verification confirms zero active ordinary
+plans and all 5,298 retained ordinary write fences. PR #10552 merged source
+`9b67eb14c1b50d895c5e5ebbf38c846d408a1b18` (0.13.1066) after every required check
+and independent 16-arm/eight-pair ARM audit passed; original crawler deployment
+38756030287 is running. No new Go/B0 admission has occurred.
+
+Lightpanda 1.0.1 published at 14:55:37 UTC during this transition. Candidate
+0.13.1067 updates both Linux OCI/binary pins and current physical integration
+checks to that release. Independent artifact verification matches both Linux
+executables to official assets and confirms macOS ARM version/checksum. The
+prepared thirteen-detail admission carries forward to this latest release after
+qualification, full deployment and fresh actual-route validation. See the
+[1.0.1 candidate](evidence/go-lightpanda-1.0.1-candidate-2026-10-15.json).
+
+## Last independently active release and ownership
 
 PR [#10548](https://github.com/colophon-group/jobseek/pull/10548) delivered
 0.13.1064, source `f010c87dd3e339abbe2ce3518197f437a9680e0d`. Required CI, actual
