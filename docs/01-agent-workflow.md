@@ -141,8 +141,9 @@ The CSV config for the company should be included in the same PR alongside the c
 
 The primary recurring path is the Hetzner-hosted Codex runner documented
 in [18 - Hetzner Codex Runner Deployment](18-codex-automation-deployment.md). It
-checks the backlog every 15-30 minutes, self-regulates against Codex usage and
-host capacity, selects at most one open `company-request` issue per accepted
+checks the backlog about every 1-1.5 minutes after the previous run exits,
+admits at most one company start per rolling hour, self-regulates against Codex
+usage and host capacity, selects at most one open `company-request` issue per accepted
 run, claims it with the shared `ws` claim protocol, and runs
 `ws task --issue <N>` from `apps/crawler` in an isolated worktree.
 

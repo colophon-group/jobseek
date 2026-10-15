@@ -241,6 +241,36 @@ def test_runner_launch_overrides_previous_host_model_policy(
     assert result.stdout.strip() == "gpt-6.1-sol high"
 
 
+def test_governor_launch_overrides_previous_four_hour_pacing() -> None:
+    exec_start = next(
+        line.removeprefix("ExecStart=")
+        for line in GOVERNOR_SERVICE.read_text().splitlines()
+        if line.startswith("ExecStart=")
+    )
+    command = shlex.split(exec_start)
+    env_index = command.index("/usr/bin/env")
+    python_index = command.index("/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python")
+    result = subprocess.run(
+        [
+            *command[env_index:python_index],
+            sys.executable,
+            "-c",
+            "from src.workspace.codex_runner import RunnerConfig; "
+            "config = RunnerConfig.from_env(); "
+            "print(config.fast_min_start_interval_s, config.conservative_min_start_interval_s)",
+        ],
+        cwd=ROOT / "apps" / "crawler",
+        env={
+            "JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S": "14400",
+            "JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S": "14400",
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "3600 3600"
+
+
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:
     config_dir = tmp_path / "config"
     config_dir.mkdir()
