@@ -168,8 +168,8 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.max_unlinked_session_age_days == 7
     assert config.max_terminal_worktrees == 3
     assert config.max_terminal_worktree_gib == 2
-    assert config.fast_min_start_interval_s == 4 * 60 * 60
-    assert config.conservative_min_start_interval_s == 4 * 60 * 60
+    assert config.fast_min_start_interval_s == 60 * 60
+    assert config.conservative_min_start_interval_s == 60 * 60
     assert config.managed_repo_dir == Path.home() / ".jobseek" / "repo"
     assert config.managed_worktrees_dir == Path.home() / ".jobseek" / "worktrees"
     assert build_codex_command(config, "do the task") == [
@@ -1115,11 +1115,11 @@ def test_scheduler_records_usage_snapshots(monkeypatch, tmp_path: Path) -> None:
     assert by_window["weekly"]["used_percent"] == 45
     assert by_window["weekly"]["recent_limit"] == 50
     assert by_window["weekly"]["decision_reason"] == "admitted"
-    assert by_window["weekly"]["pacing_interval_s"] == 4 * 60 * 60
+    assert by_window["weekly"]["pacing_interval_s"] == 60 * 60
     assert by_window["five_hour"]["reset_in_seconds"] == 3600
 
 
-def test_fast_mode_hard_caps_starts_at_once_per_four_hours(monkeypatch, tmp_path: Path) -> None:
+def test_fast_mode_hard_caps_starts_at_once_per_hour(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
     monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 1000)
@@ -1141,13 +1141,13 @@ def test_fast_mode_hard_caps_starts_at_once_per_four_hours(monkeypatch, tmp_path
 
     assert not decision.should_run
     assert decision.reason == "start pacing interval active"
-    assert decision.retry_after_s == 4 * 60 * 60 - 60
-    assert decision.pacing_interval_s == 4 * 60 * 60
+    assert decision.retry_after_s == 60 * 60 - 60
+    assert decision.pacing_interval_s == 60 * 60
     assert decision.last_started_at == 1000
-    assert {snapshot["retry_after_s"] for snapshot in snapshots} == {4 * 60 * 60 - 60}
+    assert {snapshot["retry_after_s"] for snapshot in snapshots} == {60 * 60 - 60}
 
 
-def test_local_pacing_configuration_cannot_lower_four_hour_hard_cap(tmp_path: Path) -> None:
+def test_local_pacing_configuration_cannot_lower_hourly_hard_cap(tmp_path: Path) -> None:
     config = RunnerConfig(
         root=tmp_path / "runner",
         fast_min_start_interval_s=0,
@@ -1159,8 +1159,80 @@ def test_local_pacing_configuration_cannot_lower_four_hour_hard_cap(tmp_path: Pa
         windows=(UsageWindow(name="weekly", remaining_percent=100),),
     )
 
-    assert governor._pacing_interval(fast_usage) == 4 * 60 * 60
-    assert governor._pacing_interval(None) == 4 * 60 * 60
+    assert governor._pacing_interval(fast_usage) == 60 * 60
+    assert governor._pacing_interval(None) == 60 * 60
+
+
+@pytest.mark.parametrize("weekly_remaining", [80, 49, None])
+@pytest.mark.parametrize("elapsed_s", [3599, 3600, 3601])
+def test_hourly_admission_boundary_in_all_usage_modes(
+    monkeypatch, tmp_path: Path, weekly_remaining: int | None, elapsed_s: int
+) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 100_000)
+    assert ledger.acquire(run_id="old", issue=1, active_slot=config.active_slot)
+    ledger.update("old", state="completed", started_at=100_000, completed_at=100_001)
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub())
+    usage = (
+        UsageProbeResult(
+            ok=True,
+            windows=(UsageWindow(name="weekly", remaining_percent=weekly_remaining),),
+        )
+        if weekly_remaining is not None
+        else UsageProbeResult(ok=False, error="telemetry unavailable")
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 100_000 + elapsed_s)
+
+    decision = governor.should_start()
+
+    assert decision.should_run == (elapsed_s >= 3600)
+    assert decision.pacing_interval_s == 3600
+    assert decision.retry_after_s == (3600 - elapsed_s if elapsed_s < 3600 else None)
+
+
+@pytest.mark.parametrize("weekly_remaining", [80, 49, None])
+@pytest.mark.parametrize("interval_s, expected_starts", [(3600, 24), (14400, 6)])
+def test_hourly_policy_quadruples_daily_admissions(
+    monkeypatch,
+    tmp_path: Path,
+    weekly_remaining: int | None,
+    interval_s: int,
+    expected_starts: int,
+) -> None:
+    from dataclasses import replace
+
+    config = replace(
+        _config(tmp_path),
+        fast_min_start_interval_s=interval_s,
+        conservative_min_start_interval_s=interval_s,
+    )
+    ledger = RunnerLedger(config.ledger_path)
+    governor = CompanyResolverGovernor(config, ledger=ledger, github=FakeGitHub())
+    usage = (
+        UsageProbeResult(
+            ok=True,
+            windows=(UsageWindow(name="weekly", remaining_percent=weekly_remaining),),
+        )
+        if weekly_remaining is not None
+        else UsageProbeResult(ok=False, error="telemetry unavailable")
+    )
+    monkeypatch.setattr(governor, "_probe_usage", lambda: usage)
+    starts = 0
+    for hour in range(24):
+        # Include a second of timer delay so the rolling five-hour budget ages
+        # out its oldest entry before admitting the next hourly run.
+        now = 100_000 + hour * 3601
+        monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda now=now: now)
+        decision = governor.should_start()
+        if decision.should_run:
+            run_id = f"issue-{hour}"
+            assert ledger.acquire(run_id=run_id, issue=hour + 1, active_slot=config.active_slot)
+            ledger.update(run_id, state="completed", started_at=now, completed_at=now + 60)
+            starts += 1
+
+    assert starts == expected_starts
 
 
 def test_low_usage_window_pauses_until_reset(monkeypatch, tmp_path: Path) -> None:

@@ -496,15 +496,19 @@ Scheduling policy:
 
 - Default concurrency is `1`.
 - A code-enforced hard floor permits at most one company resolver start per
-  rolling four hours. Usage telemetry, fast mode, and local environment values
+  rolling hour. Usage telemetry, fast mode, and local environment values
   may lengthen that interval but cannot shorten it.
+- The production governor pins both pacing modes to `3600` seconds at launch,
+  overriding older four-hour values in `governor.env`. This raises the admission
+  ceiling from 6 to 24 starts per day; actual completions still depend on run
+  duration, daily routine lock contention, usage budgets, and host health.
 - The systemd lock is global across company resolver, daily annotations, and
   daily error review. A recurring resolver wake exits immediately if a daily
   routine is active; daily routines wait for an in-flight resolver up to six
   hours.
 - Always keep a hard safety cap of at most
   `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
-  This is a secondary ceiling behind the four-hour admission floor.
+  This is a secondary ceiling behind the hourly admission floor.
 - Hard-block all new runs when either five-hour or weekly remaining usage is
   below `20%` by default (`JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT` and
   `JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT`).
@@ -513,11 +517,11 @@ Scheduling policy:
 - When weekly remaining usage is at least
   `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
   five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`, and the fast minimum
-  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `14400`).
+  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `3600`).
 - When weekly remaining usage is below that threshold, use the slower
   conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`, and
   the conservative minimum start interval,
-  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `14400`).
+  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `3600`).
 - When usage telemetry is unavailable, run at the conservative floor instead
   of failing the scheduler permanently.
 - Record every scheduler decision and usage window in the local SQLite
