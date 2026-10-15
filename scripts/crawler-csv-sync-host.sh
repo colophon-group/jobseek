@@ -321,7 +321,7 @@ fsync_generation() {
 }
 
 build_runtime_env() {
-  local release="$1" key retained_web_database_url
+  local release="$1" key retained_web_database_url maintenance_backend="${2:-legacy}"
   local -a required_env=(
     LOCAL_DATABASE_URL TYPESENSE_HOST TYPESENSE_PORT
     TYPESENSE_PROTOCOL TYPESENSE_OPERATIONS_KEY
@@ -353,7 +353,7 @@ build_runtime_env() {
     fi
     printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
   done
-  if (( ${#retained_web_database_urls[@]} == 1 )); then
+  if [[ "$maintenance_backend" == legacy ]] && (( ${#retained_web_database_urls[@]} == 1 )); then
     printf 'WEB_DATABASE_URL=%s\n' "$retained_web_database_url" >>"$RUNTIME_ENV"
   fi
   printf '%s\n' \
@@ -364,21 +364,27 @@ build_runtime_env() {
 }
 
 sync_release_data() {
-  local release="$1" role="${2:-csv-sync}" image data_args=()
+  local release="$1" role="${2:-csv-sync}" image data_args=() maintenance_backend
   verify_release_generation "$release"
   image="$ACTIVE_IMAGE_REF"
-  build_runtime_env "$release"
   if [[ "$ACTIVE_RELEASE_FORMAT" == 3 ]]; then
     data_args=(-v "$ACTIVE_DATA_DIR:/app/data:ro")
   fi
-  NAME="crawler-csv-data-sync-${BASHPID}"
   # Normal publication has passed the exact runtime-contract gate and uses
   # the installed Go synchronizer directly. Bootstrap/recovery may select a
-  # historical image whose supported entrypoint is still the Python CLI.
+  # historical image; inspect that exact image for its supported recovery CLI.
   local command_args=(uv run --no-sync crawler sync)
   if [[ "$role" == csv-sync ]]; then
+    maintenance_backend=native
     command_args=(go-typesense-exporter --sync-registry)
+  else
+    maintenance_backend="$(crawler_image_maintenance_backend "$image")" || return 1
+    if [[ "$maintenance_backend" == native ]]; then
+      command_args=(go-typesense-exporter --sync-registry)
+    fi
   fi
+  build_runtime_env "$release" "$maintenance_backend"
+  NAME="crawler-csv-data-sync-${BASHPID}"
   docker run --rm --name "$NAME" --env-file "$RUNTIME_ENV" --network host \
     "${data_args[@]}" -e "CRAWLER_DB_ROLE=$role" "$image" \
     "${command_args[@]}"

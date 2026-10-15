@@ -1,0 +1,62 @@
+{
+  "slug": "cma-cgm-air-belgium",
+  "board_url": "https://www.airbelgium.com/jobs/",
+  "domain": "www.airbelgium.com",
+  "scraper_type": "dom",
+  "source_pattern": "^https://www\\.airbelgium\\.com/jobs/[^/?#]+/?$",
+  "forward_config": {
+    "steps": [
+      {
+        "tag": "h1",
+        "field": "title"
+      },
+      {
+        "tag": "p",
+        "text": "Employment type",
+        "field": "employment_type",
+        "regex": "(?i)Employment type\\s*:?\\s*(.+)"
+      },
+      {
+        "tag": "p",
+        "html": true,
+        "field": "description",
+        "stop_count": 200
+      }
+    ],
+    "defaults": {
+      "locations": [
+        "Mont-Saint-Guibert, BE"
+      ]
+    },
+    "render": false
+  },
+  "reverse_config": {
+    "render": true,
+    "wait": "domcontentloaded",
+    "timeout": 30000,
+    "stealth": true,
+    "steps": [
+      {
+        "tag": "h1",
+        "field": "title"
+      },
+      {
+        "tag": "p",
+        "text": "Employment type",
+        "field": "employment_type",
+        "regex": "(?i)Employment type\\s*:?\\s*(.+)"
+      },
+      {
+        "tag": "p",
+        "field": "description",
+        "html": true,
+        "stop_count": 200
+      }
+    ],
+    "defaults": {
+      "locations": [
+        "Mont-Saint-Guibert, BE"
+      ]
+    }
+  }
+}

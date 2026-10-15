@@ -278,6 +278,8 @@ COPY --from=go-b0-executor-build /out/go-lightpanda-b0-executor /usr/local/bin/g
 COPY --from=go-ordinary-worker-build /out/go-ordinary-worker /usr/local/bin/go-ordinary-worker
 COPY --from=go-ordinary-worker-build /out/go-pdf-text /usr/local/bin/go-pdf-text
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
+# Native sync and parked Umantis recovery are part of the immutable image contract.
+LABEL org.jobseek.crawler.native-maintenance="v1"
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
 RUN chmod 0755 /usr/local/bin/exporter-entrypoint

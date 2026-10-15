@@ -1,5 +1,44 @@
 # Go and Lightpanda delivery checkpoint — 2026-10-15
 
+## Current delivery checkpoint — recovery deployed, batch admission pending
+
+Source `fa0fc8e99f7e0fa6b23eb95d91f2eb4704f8241f` (0.13.1071), merged in
+[PR #10602](https://github.com/colophon-group/jobseek/pull/10602), successfully
+completed the original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38803265811)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38803299366).
+Independent source/image/data/executable checks and all base writer health checks
+pass. The exporter records 1,773 successful documents, zero export errors and
+zero unknown writers. Installed Lightpanda remains latest stable 1.0.1 with the
+official ARM binary checksum. Fresh ARM qualification independently passes all
+16 arms and eight complete-output pairs, cleanup and zero unexpected origins.
+
+B0 is independently active at epoch **348**, with its exact source, images,
+receipt and health verified. The activation's local SSH completion response was
+lost; a fresh read-only check found the active receipt, expected policies and no
+host mutation lock held. Only the stale local transport was closed. Ordinary Go
+ownership is still **inactive**; the 7,830-monitor/7,802-detail floor is historical.
+
+The fresh full census covers **7,900 boards / 1,738,028 scheduled postings** and
+observes 2,572 cache projection mismatches. Full-floor admission correctly refuses
+one prior monitor: CMA CGM Air Belgium. Its unchanged monitor uses a policy
+fingerprint shared with the detail config; the newly qualified HTTP detail
+invalidated that fingerprint. Do not remove the board or shrink the prior floor.
+
+Release **0.13.1072** preserves the original frozen monitor permission only for
+this exact qualified HTTP detail replacement. It authenticates an unchanged
+monitor against the original contract, retains the actual current ownership
+fingerprint, and preserves identical navigation/parser options and the nonempty
+inventory guard. Unqualified board, origin, parser, navigation and proxy changes
+remain rejected. Combine this fix with native rollback and CSV recovery consumers
+below, then repeat fresh source-bound admission for the complete **three-monitor /
+twelve-detail** batch and the preserved **7,830 / 7,802** floor. The proposed total
+remains **7,833 monitors / 7,814 details**; it is not current serving authority.
+
+After admission, use the original cold activation to repair eligible cache
+projections and wholly missing schedules, then prove exact queued-ID conservation,
+fresh writes/exports, native lifecycle handoff/recovery and comparable resources
+before production Python/Playwright/Chromium retirement. The full goal remains active.
+
 The goal remains full production migration to Go and Lightpanda or proven Go HTTP/API routes. Useful isolated offline Python may remain. Production Python, Playwright and Chromium retirement is still incomplete.
 
 ## Recovery checkpoint — 2026-10-15, 20:06 UTC

@@ -1224,12 +1224,19 @@ rollback_compose_defines_service() {
 repair_umantis_identity_cutover() {
   local operation_label="$1"
   local park_monitors="${2:-0}"
+  local maintenance_backend="${3:-legacy}"
   local -a command_args=(go-typesense-exporter --repair-umantis-identity-cutover)
 
   if [[ "$park_monitors" == 1 ]]; then
-    # Historical rollback images predate the native command. Retain their
-    # supported CLI until those complete rollback generations expire.
-    command_args=(uv run --no-sync crawler repair-umantis-identity-cutover --park-monitors)
+    if [[ "$maintenance_backend" == native ]]; then
+      command_args+=(--park-monitors)
+    elif [[ "$maintenance_backend" == legacy ]]; then
+      # Retained images without the native capability keep their original CLI.
+      command_args=(uv run --no-sync crawler repair-umantis-identity-cutover --park-monitors)
+    else
+      echo "ERROR: rollback maintenance backend is invalid" >&2
+      return 1
+    fi
   fi
 
   docker run --rm \
@@ -1254,7 +1261,8 @@ repair_worker_route_cutover() {
 }
 
 rollback_sync_previous_config() {
-  local crawler_ref restored_web_database_url status
+  local crawler_ref restored_web_database_url status maintenance_backend
+  local -a sync_command=(uv run --no-sync crawler sync)
   local -a data_args=() restored_web_database_urls=() sync_env_args=()
 
   # Do not let a failed prior attempt leak its legacy credential into a retry.
@@ -1268,6 +1276,10 @@ rollback_sync_previous_config() {
     echo "ERROR: restored crawler image identity is invalid for config rollback" >&2
     return 1
   }
+  maintenance_backend="$(crawler_image_maintenance_backend "$crawler_ref")" || return 1
+  if [[ "$maintenance_backend" == native ]]; then
+    sync_command=(go-typesense-exporter --sync-registry)
+  fi
   # The first rollout after retiring public-watchlist indexing may still need
   # to roll back to an older image whose sync command opens WEB_DATABASE_URL.
   # Preserve that credential only when it is present in the restored release;
@@ -1293,7 +1305,7 @@ rollback_sync_previous_config() {
     echo "ERROR: exact previous CSV rollback evidence is unavailable" >&2
     return 1
   fi
-  if (( ${#restored_web_database_urls[@]} == 1 )); then
+  if [[ "$maintenance_backend" == legacy ]] && (( ${#restored_web_database_urls[@]} == 1 )); then
     ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
     sync_env_args=(-e WEB_DATABASE_URL)
   fi
@@ -1304,8 +1316,8 @@ rollback_sync_previous_config() {
     -e CRAWLER_DB_POOL_MIN=0 \
     -e CRAWLER_DB_POOL_MAX=4 \
     worker-1 \
-    uv run --no-sync crawler sync && \
-    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1 && \
+    "${sync_command[@]}" && \
+    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1 "$maintenance_backend" && \
     repair_worker_route_cutover rollback-worker-route-cutover
   then
     status=0

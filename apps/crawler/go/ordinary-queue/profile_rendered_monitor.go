@@ -51,7 +51,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			options[key] = v
 		}
 	}
-	selfIdentifying := selfIdentifyingDOMSource(config, md)
+	selfIdentifying := selfIdentifyingDOMMonitorSource(config, md)
 	if selfIdentifying {
 		// These sources have direct verified-TLS replacement evidence. Original
 		// transport_attempts controls proxy-origin rotation, which has no role
