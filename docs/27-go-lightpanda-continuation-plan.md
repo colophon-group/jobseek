@@ -2,65 +2,64 @@
 
 ## Durable delivery checkpoint — 2026-10-15
 
-Source1056 `e115abb0a39b0d218dce63213d9de9bedd21d904` is deployed.
-The original crawler38662379966 and renderer38662477948 workflows succeeded.
-Independent immutable image/source/CSV checks, seven restored base writers, six
-health checks and exporter progress pass. Native ownership remains inactive in
-supported cold epoch333. Preserve the last active floor of7830 monitor boards and
-7742 detail boards from epoch332; readiness alone does not prove fleet freshness.
+Source1057 `f7de6c2d103e9120f8f4e7b104d72f6360f49027` is fully deployed and
+independently verified: original crawler38664164280 and renderer38665411872
+succeeded; immutable source/images/CSV, seven base writers, six health checks and
+exporter progress pass. Native ownership remains inactive in supported cold
+epoch333. Preserve the last active7830monitor/7742detail floor from epoch332.
 
-PR #10540 merged as source1057 `f7de6c2d103e9120f8f4e7b104d72f6360f49027`
-after fresh head/base/tree/checks/hold/operator audit. Its six original qualification
-workflows pass; the tested PR merge revision has exactly the frozen reviewed tree.
-Wait for both original deployments and independent cold/source/image/CSV/exporter
-verification before the next release or ownership operation. Never restart an
-in-progress deployment merely because observation timed out.
+PR #10541 merged as source1058 `d785e7ab42a130e766ebad083fa7e7a57921f63d`
+after exact-head Required CI, installed-runtime, both Linux Lightpanda architectures,
+original ARM and fresh merge/hold/operator audit. The ARM report independently
+passes16arms and8complete-output pairs. Original crawler38667848333 and renderer
+38667900629 are incoming. Wait for both whole workflows and independent installed
+source/image/data/cold/exporter verification before ownership or another merge.
 
-The0.13.1058 candidate repairs stale existing detail queue projections in256-row
-pages inside the original staged cold adoption path. Thirteen real PostgreSQL/Redis
-regressions and the existing cold/ordered/Workday race suite pass. The compiled
-native executable also proves repair, SAVE failure/retry, activation, real claim
-and retirement with the canonical SQL deadline preserved. Existing worker admin
-race checks and all17 original wrapper tests pass.
+The canonical projection repair runs only inside original staged cold adoption,
+validating every selected SQL source in256-row pages before Redis SAVE or SQL
+grant. Thirteen new real-store regressions and the compiled executable's SAVE
+failure/retry/activation/claim/retirement pass. The original native admin is bounded
+at20minutes and its wrapper1220seconds; operator callers must allow at least
+35minutes for complete stop/readiness/containment. Leases expire naturally.
+Use only Git-deployed wrappers and bind their exact installed hashes.
 
-Full parser validation covers1663792 source1053 routes with zero invalid routes,
-including all previous7742details plus43cached-mismatch candidates (115.1s locally).
-Complete cold adoption with10001postings across129domains takes1.03s unchanged,
-1.05s with1% stale and1.76s with all stale on local private SQL/Redis. These are
-macOS measurements, not installed Linux or whole-fleet resource proof. The existing
-admin now has a20-minute parent deadline, its original wrapper1220seconds, and
-operator callers must allow at least35minutes for complete stop/readiness and
-containment. SQL leases still expire naturally under the original exclusive locks.
-The existing lifecycle SQL scope inherits the earlier parent deadline.
+One grouped candidate now adds30detail boards:47complete actual field samples
+across27boards, plus three actual JOIN empty-mapping configurations whose original
+no-request/content-retention path is proved. This includes37complete Workday
+samples across20boards; all20 pass real canonical writers with exact original
+requests, title/source/description and deadline/lease conservation. The30configs
+bind current source1057 canonical/cache fingerprints. A complete retained-source
+rehearsal preserves7830monitors/7742details and prepares7772details across1665691
+scheduled postings;20boards contain395cached projection mismatches that must be
+repaired by the original source1058 cold path. This is staged preparation, not
+production admission. Repeat the complete actual-route/config/floor binding on
+final deployed source, then independently verify the repaired projection before
+claiming new ownership. Never excuse an unsupported canonical route or worker.
 
-Next deliver this candidate through full required CI, actual Crawler Deploy Gate,
-original ARM and installed-runtime qualification. Measure the complete selected
-fleet on Linux before granting ownership. Bind later operator drivers to the exact
-Git-deployed wrapper hash and whole-operation budget. Never replace live wrappers
-or edit production SQL/Redis/leases/receipts manually.
+The following0.13.1059 batch covers11more existing configurations together:
+nine already-owned rich API monitors infer no scraping in the original Python
+runtime and SQL, while two DOM boards carry ignored map/replacement metadata.
+The native classifier now retains those exact no-transport semantics, explicit
+scraper/enrichment overrides, and canonical source/config guards. Existing and
+new real-store clear/refusal/cold retirement tests pass. Four actual DOM samples
+match every field and effective HTTP request through the native worker; all four
+canonical writer checks pass. Native explicit HTTPS443 and omitted default ports
+are compared as the same authority. See the candidate evidence; full installed,
+CI/ARM and supported delivery/admission remain required.
 
-Keep intermediate qualified releases in supported ownerless cold state while
-sequential original deployments finish. Consolidate one fresh current-source
-admission for the qualified DOM, Oracle/Nextdata, Workday recovery and browser wait
-batches, then activate once through the original B0/ordinary wrappers. Preserve
-every prior member and strict validation of every selected actual source route.
+Keep intermediate qualified releases in supported ownerless cold state and
+consolidate grouped admission through the original B0/ordinary wrappers, locks and
+recovery protocols. Never manually edit production SQL/Redis/leases/receipts or
+replace wrappers ad hoc. Avoid repeating full lease drains for each small port.
 
-The source1053 advisory screen has67unowned monitors and155unowned details.
-Of93compiled details,43have cached-route mismatches and50still need complete
-output qualification. A repeated2292posting sample found249different cached board
-IDs,3different source URLs,69sole wrong-lane entries and3dual-lane entries. This
-sample is not a whole-fleet count or admission. All43candidate boards agree on
-canonical legacy/native worker lanes. Original cold adoption accepted four stale
-variants but left each unclaimable; the candidate repair makes them claimable and
-preserves exact retry/cancellation and valid fallback progress.
+The retained source1053 advisory screen has67unowned monitors and155unowned
+details. Remaining actual-render differences and browser proxy/stealth/channel/
+persistent-context controls need grouped implementation and output qualification.
+The final browser comparison qualifies AIG; nine other sampled rendered boards
+remain held. Six API samples yielded two empty originals and four HTTP failures,
+so no complete live API output admission was inferred from them.
 
-The next bulk coverage gap spans browser proxy/controls across DOM and JSON-LD:
-62detail boards do not compile;31include proxy,26stealth,16channel and13persistent
-context options. Port multiple variants together, with original behavior and actual
-output proof. Continue existing compiled monitor/detail qualification in the same
-iteration; compilation alone grants no ownership.
-
-Lightpanda1.0.0 is the latest official stable release, rechecked2026-10-15.
+Lightpanda1.0.0 remains the latest official stable release, rechecked2026-10-15.
 Complete enabled coverage, fleet freshness and queue conservation, comparable
 CPU/RAM/density/cost, supported cold reversal and the rollback window before
 retiring production Python, Playwright, Chromium and legacy runtime assets.

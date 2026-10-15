@@ -65,7 +65,10 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 				return "", queue.ErrAuthorityLost
 			}
 			tag, e := tx.Exec(ctx, `UPDATE job_posting p SET next_scrape_at=NULL,leased_until=NULL FROM job_board b
-WHERE p.id=$1::uuid AND p.board_id=b.id AND b.metadata->>'scraper_type'='skip'
+WHERE p.id=$1::uuid AND p.board_id=b.id
+AND (b.metadata->>'scraper_type'='skip' OR (
+ b.metadata->>'scraper_type' IS NULL AND b.crawler_type IN ('api_sniffer','nextdata')
+ AND jsonb_typeof(b.metadata->'fields')='object' AND b.metadata->'fields'<>'{}'::jsonb))
 AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.PostingID())
 			if e != nil {
 				return "", e

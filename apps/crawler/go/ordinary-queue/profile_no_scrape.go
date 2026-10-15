@@ -17,8 +17,8 @@ func NoScrapeDetailProfile(profile string) bool {
 	return profile == noScrapeDetailProfile || profile == browserNoScrapeDetailProfile
 }
 
-// Bind only the explicit skip case whose original runtime classifier and SQL
-// clear predicate both agree. An enrich key, including an empty/null value,
+// Bind explicit skip and supported rich API/Nextdata inference whose original
+// runtime classifier and SQL clear predicate agree. An enrich key, including an empty/null value,
 // retains its existing consumer. This never grants origin-fetch authority.
 func InspectNoScrapeDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
 	fail := func() (WorkdayDetailProfile, error) { return WorkdayDetailProfile{}, ErrUnsupportedProfile }
@@ -51,8 +51,24 @@ func InspectNoScrapeDetail(boardID string, config map[string]string, source stri
 		return fail()
 	}
 	var scraper string
-	if json.Unmarshal(md["scraper_type"], &scraper) != nil || scraper != "skip" {
-		return fail()
+	raw, present := md["scraper_type"]
+	if present && string(raw) != "null" {
+		if json.Unmarshal(raw, &scraper) != nil || scraper != "skip" {
+			return fail()
+		}
+	} else {
+		if config["crawler_type"] != "api_sniffer" && config["crawler_type"] != "nextdata" {
+			return fail()
+		}
+		fields, e := profileMetadataFields(string(md["fields"]), nil)
+		if e != nil || len(fields) == 0 {
+			return fail()
+		}
+		// Inference never grants transport: the same canonical monitor must
+		// already pass its full native HTTP/browser configuration contract.
+		if _, e := InspectRichMonitor(boardID, config); e != nil {
+			return fail()
+		}
 	}
 	if raw, present := md["scraper_config"]; present && string(raw) != "null" {
 		sc, e := profileMetadataFields(string(raw), nil)
