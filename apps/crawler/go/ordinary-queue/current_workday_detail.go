@@ -67,6 +67,10 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 		body, _ := json.Marshal(p.OracleFields)
 		json.Unmarshal(body, &p.OracleFields)
 	}
+	if p.JSONLDRecovery != nil {
+		value := *p.JSONLDRecovery
+		p.JSONLDRecovery = &value
+	}
 	if p.JSONLDConfig != nil {
 		body, _ := json.Marshal(p.JSONLDConfig)
 		json.Unmarshal(body, &p.JSONLDConfig)

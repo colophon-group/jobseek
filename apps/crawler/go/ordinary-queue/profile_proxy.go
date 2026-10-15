@@ -142,6 +142,20 @@ func (a *Authority) RequiresProxyHTTP() bool {
 		}
 	}
 	for _, d := range a.ownership.document.Details {
+		if d.Profile == orderedHTTPDetailProfile || d.Profile == orderedProxyHTTPDetailProfile {
+			if ordered, err := InspectOrderedDetail(d.BoardID, d.Config, d.Config["board_url"], Simple); err == nil {
+				for _, stage := range ordered.Stages {
+					if stage.JSONLDRecovery != nil && stage.JSONLDRecovery.Proxy {
+						return true
+					}
+				}
+			}
+		}
+		if d.Profile == jsonldDetailProfile || d.Profile == jsonldProxyDetailProfile {
+			if profile, err := InspectJSONLDDetail(d.BoardID, d.Config, d.Config["board_url"], Simple); err == nil && profile.JSONLDRecovery != nil && profile.JSONLDRecovery.Proxy {
+				return true
+			}
+		}
 		if ProfileRequiresProxy(d.Profile) {
 			return true
 		}

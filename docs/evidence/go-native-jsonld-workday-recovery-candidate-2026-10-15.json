@@ -1,0 +1,25 @@
+{
+  "version": "jobseek.jsonld-workday-recovery-candidate/v1",
+  "runtime_version": "0.13.1056",
+  "depends_on_pr": 10538,
+  "scope": [
+    "JSON-LD exhausted403 recovery",
+    "exact requisition Workday API resolution",
+    "separate protected direct/proxy transport"
+  ],
+  "original_python_cases": 8,
+  "canonical_writer_cases": 5,
+  "cold_retirement_states": 8,
+  "fresh_actual_primary_field_matches": 2,
+  "fresh_actual_secondary_field_matches": 2,
+  "secondary_scope": "live configured Workday recovery after synthetic primary403",
+  "held_unresolved_requisition_samples": 1,
+  "production_admission": false,
+  "installed_qualification": "pending",
+  "global_migration_complete": false,
+  "current_source1053_routes_compiled": 14623,
+  "current_source1053_cache_mismatches": 0,
+  "local_full_queue_suite": "incomplete: default10minute timeout in existing Redis restart fixture; mandatory CI pending",
+  "actual_secondary_canonical_writer_cases": 2,
+  "actual_secondary_canonical_writer_result": "pass; real private Postgres/Redis; canonical title,source,deadlines,leases conserved"
+}

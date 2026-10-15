@@ -393,6 +393,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 			return runtimeStartupFailure("proxy_transport")
 		}
 	}
+	httpClient.workdayRecoveryProxy = proxyHTTP
+	workdayHTTP.workdayRecoveryProxy = proxyHTTP
+	if proxyHTTP != nil {
+		proxyHTTP.workdayRecoveryDirect = workdayHTTP
+	}
 	circuits, err := queue.NewHostCircuits(client, c.circuits)
 	if err != nil {
 		cleanup()

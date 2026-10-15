@@ -1,0 +1,273 @@
+[
+  {
+    "name": "exact",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": [
+        null,
+        5,
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/job/NY/Engineer_REQ100"
+      }
+    ],
+    "expected": {
+      "title": "Engineer",
+      "description": "<p>Build systems.</p>",
+      "locations": [
+        "New York, NY, US"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-14",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "jobReqId": "REQ100"
+      }
+    }
+  },
+  {
+    "name": "duplicate",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": [
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        },
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/job/NY/Engineer_REQ100"
+      }
+    ],
+    "expected": {
+      "title": "Engineer",
+      "description": "<p>Build systems.</p>",
+      "locations": [
+        "New York, NY, US"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-14",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "jobReqId": "REQ100"
+      }
+    }
+  },
+  {
+    "name": "ambiguous",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": [
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        },
+        {
+          "externalPath": "/job/LA/Engineer_REQ100"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      }
+    ],
+    "expected": null
+  },
+  {
+    "name": "wrong-id",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": [
+        {
+          "externalPath": "/job/NY/Engineer_REQ101"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      }
+    ],
+    "expected": null
+  },
+  {
+    "name": "malformed-rows",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": {}
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      }
+    ],
+    "expected": null
+  },
+  {
+    "name": "missing-rows",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {},
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      }
+    ],
+    "expected": null
+  },
+  {
+    "name": "no-id",
+    "source": "https://careers.phenom.example/careers",
+    "search": {
+      "jobPostings": [
+        null,
+        5,
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "Engineer",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [],
+    "expected": null
+  },
+  {
+    "name": "empty-title",
+    "source": "https://careers.phenom.example/job/REQ100/engineer",
+    "search": {
+      "jobPostings": [
+        null,
+        5,
+        {
+          "externalPath": "/job/NY/Engineer_REQ100"
+        }
+      ]
+    },
+    "detail": {
+      "jobPostingInfo": {
+        "title": "",
+        "jobDescription": "<p>Build systems.</p>",
+        "location": "US-NY-NEW YORK",
+        "timeType": "Full time",
+        "remoteType": "Hybrid",
+        "startDate": "2026-10-14",
+        "jobReqId": "REQ100"
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/jobs"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.wd5.myworkdayjobs.com/wday/cxs/fixture/External/job/NY/Engineer_REQ100"
+      }
+    ],
+    "expected": null
+  }
+]
