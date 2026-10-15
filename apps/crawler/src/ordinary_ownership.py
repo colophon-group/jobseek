@@ -137,6 +137,8 @@ def ownership_projection(payload: str) -> str:
                     "bytedance.partition-items/v1",
                     "accenture.http-items/v1",
                     "candidatus.http-postback-urls/v1",
+                    "brassring.session-items/v1",
+                    "njoyn.session-urls/v1",
                 }
                 else "simple"
             )
