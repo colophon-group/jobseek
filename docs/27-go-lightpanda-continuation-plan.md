@@ -23,7 +23,7 @@ gates, installed contracts, both Lightpanda architectures and original ARM
 qualification. Deliver the parent release before a fresh merge audit. Use merge
 commits for the stacked runtime PRs so their qualified ancestry survives.
 
-The next local group ports JSON-LD 403 recovery into the existing Workday API
+Draft PR #10539 ports JSON-LD 403 recovery into the existing Workday API
 client with separately configured protected proxy selection. Eight original
 Python fixtures, five real PostgreSQL/Redis writer cases and eight retirement
 states pass. Two reachable RTX samples match all original fields on both the
@@ -34,7 +34,8 @@ complete current-route publication remain required.
 Visible/hidden/default browser waits are the following local batch. All21
 original Chromium fixtures and the existing physical interaction suite pass on
 official Lightpanda1.0.0. WTW's captured output matches original canonical fields;
-canonical writer, retirement and installed qualification remain required.
+the real private canonical writer and six cold-retirement states pass. Installed
+qualification and fresh complete current routes remain required.
 
 Lightpanda1.0.0 is still the latest official stable release, reverified October15.
 Continue grouped contracts, then prove remaining enabled coverage, global

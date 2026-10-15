@@ -71,7 +71,7 @@ func validInteraction(a Action) bool {
 	case "click":
 		return interactionSelector(a.Selector, false) && a.State == "" && a.Maximum == 0 && a.WaitMS == 0 && a.NextSelector == "" && a.MaxPages == 0 && a.PageSizeSelector == "" && a.PageSize == ""
 	case "wait_for":
-		return interactionSelector(a.Selector, false) && (a.State == "attached" || a.State == "detached") && a.Maximum == 0 && a.WaitMS == 0 && a.NextSelector == "" && a.MaxPages == 0 && a.PageSizeSelector == "" && a.PageSize == ""
+		return interactionSelector(a.Selector, false) && (a.State == "attached" || a.State == "detached" || a.State == "visible" || a.State == "hidden") && a.Maximum == 0 && a.WaitMS == 0 && a.NextSelector == "" && a.MaxPages == 0 && a.PageSizeSelector == "" && a.PageSize == ""
 	case "repeat":
 		return interactionSelector(a.Selector, false) && a.State == "" && a.Maximum >= 1 && a.Maximum <= 1000 && interactionWait(a.WaitMS) && a.NextSelector == "" && a.MaxPages == 0 && a.PageSizeSelector == "" && a.PageSize == ""
 	case "paginate_collect":

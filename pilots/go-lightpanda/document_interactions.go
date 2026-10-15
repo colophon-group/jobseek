@@ -16,7 +16,22 @@ import (
 // Selector strings remain data. Interpret CSS, quoted has-text and a terminal
 // visible predicate. Visibility keeps Playwright's nonempty-box/style rule;
 // opacity zero remains visible (https://playwright.dev/docs/actionability#visible).
-const interactionPickerJS = `function pick(selector) {
+const interactionPickerJS = `function elementVisible(n) {
+ const style=getComputedStyle(n);
+ if(style.display==='contents'){
+  return Array.from(n.childNodes).some(child=>{
+   if(child.nodeType===Node.ELEMENT_NODE)return elementVisible(child);
+   if(child.nodeType!==Node.TEXT_NODE)return false;
+   if(parseFloat(style.fontSize)===0)return false;
+   if(/^[ \t\n\r\f]*$/.test(child.textContent||'')&&!['pre','pre-wrap','break-spaces'].includes(style.whiteSpace))return false;
+   const range=document.createRange();range.selectNodeContents(child);const rect=range.getBoundingClientRect();
+   return rect.width>0&&rect.height>0;
+  });
+ }
+ const rect=n.getBoundingClientRect();
+ return style.visibility!=='hidden'&&style.visibility!=='collapse'&&style.display!=='none'&&rect.width>0&&rect.height>0;
+}
+function pick(selector) {
  const texts=[];
  const visible=selector.endsWith(':visible');
  const base=visible?selector.slice(0,-8):selector;
@@ -26,7 +41,7 @@ const interactionPickerJS = `function pick(selector) {
  });
  if(css.includes(':has-text(')||css.includes(':visible'))throw new Error('unsupported selector');
  return Array.from(document.querySelectorAll(css)).find(n=>{
-  if(visible){const style=getComputedStyle(n);const rect=n.getBoundingClientRect();if(style.visibility==='hidden'||style.visibility==='collapse'||style.display==='none'||rect.width<=0||rect.height<=0)return false;}
+  if(visible&&!elementVisible(n))return false;
   return texts.every(t=>(n.textContent||'').replace(/\s+/g,' ').trim().toLowerCase().includes(t));
  })||null;
 }`
@@ -127,6 +142,22 @@ func interactionExists(ctx context.Context, selector string) (bool, error) {
 	return present, err
 }
 
+func interactionWaitState(ctx context.Context, selector, state string) (bool, error) {
+	encoded, _ := json.Marshal(selector)
+	predicate := "node!==null"
+	switch state {
+	case "detached":
+		predicate = "node===null"
+	case "visible":
+		predicate = "node!==null&&elementVisible(node)"
+	case "hidden":
+		predicate = "node===null||!elementVisible(node)"
+	}
+	var ready bool
+	err := interactionValue(ctx, `(()=>{`+interactionPickerJS+`;const node=pick(`+string(encoded)+`);return `+predicate+`})()`, &ready)
+	return ready, err
+}
+
 func interactionPolicy(check func() (bool, error)) (bool, error) {
 	if check == nil {
 		return false, errDocumentAction
@@ -140,8 +171,8 @@ func executeDocumentInteraction(ctx context.Context, action actions.Action, chec
 		return interactionClick(ctx, action.Selector)
 	case "wait_for":
 		for {
-			present, err := interactionExists(ctx, action.Selector)
-			if err != nil || present == (action.State == "attached") {
+			ready, err := interactionWaitState(ctx, action.Selector, action.State)
+			if err != nil || ready {
 				return err
 			}
 			if err := interactionDelay(ctx, 50); err != nil {

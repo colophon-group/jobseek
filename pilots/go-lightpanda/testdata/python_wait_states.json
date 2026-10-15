@@ -1,0 +1,295 @@
+[
+  {
+    "name": "visible-contents-preserved-space",
+    "html": "<div id=\"target\" style=\"display:contents;white-space:pre\">   </div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "visible-contents-nbsp",
+    "html": "<div id=\"target\" style=\"display:contents\">&nbsp;</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-contents-zero-percent-font",
+    "html": "<div id=\"target\" style=\"display:contents;font-size:0%\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-contents-zero-rem-font",
+    "html": "<div id=\"target\" style=\"display:contents;font-size:0rem\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "default-visible",
+    "html": "<div id=\"target\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "visible-opacity-zero",
+    "html": "<div id=\"target\" style=\"opacity:0\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-display-none",
+    "html": "<div id=\"target\" style=\"display:none\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-visibility",
+    "html": "<div id=\"target\" style=\"visibility:hidden\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-absent",
+    "html": "<div>Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "visible-zero-box",
+    "html": "<div id=\"target\" style=\"width:0;height:0;padding:0\"></div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": false
+  },
+  {
+    "name": "visible-hidden",
+    "html": "<div id=\"target\" style=\"visibility:hidden\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": false
+  },
+  {
+    "name": "first-hidden",
+    "html": "<div id=\"target\" style=\"display:none\">First</div><div id=\"target\">Second</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": false
+  },
+  {
+    "name": "visible-display-contents",
+    "html": "<div id=\"target\" style=\"display:contents\"><span>Role</span></div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "visible-contents-text",
+    "html": "<div id=\"target\" style=\"display:contents\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-empty-contents",
+    "html": "<div id=\"target\" style=\"display:contents\"></div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "attached-hidden",
+    "html": "<div id=\"target\" style=\"display:none\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "attached"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "detached-absent",
+    "html": "<div>Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "detached"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-contents-space",
+    "html": "<div id=\"target\" style=\"display:contents\">   </div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-contents-child",
+    "html": "<div id=\"target\" style=\"display:contents\"><span style=\"display:none\">Role</span></div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "hidden-contents-zero-font",
+    "html": "<div id=\"target\" style=\"display:contents;font-size:0\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "hidden"
+      }
+    ],
+    "success": true
+  },
+  {
+    "name": "contents-hidden-parent",
+    "html": "<div id=\"target\" style=\"display:contents;visibility:hidden\">Role</div>",
+    "actions": [
+      {
+        "action": "wait_for",
+        "selector": "#target",
+        "required": true,
+        "timeout": 0.25,
+        "state": "visible"
+      }
+    ],
+    "success": true
+  }
+]

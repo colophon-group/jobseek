@@ -46,7 +46,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		address = "127.0.0.1"
 	}
-	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "visible-repeat", "visible-publisher", "has-text-click", "mouse-down-click", "delegated-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
+	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "visible-repeat", "visible-publisher", "has-text-click", "mouse-down-click", "delegated-click", "wait-attached-detached", "wait-visible-hidden", "wait-first-hidden", "missing-required", "missing-optional", "page-size", "history-transition"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var mu sync.Mutex
@@ -95,6 +95,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 					html += `<button id="history" onclick="history.replaceState({},'', '/page/1?page=2');document.body.dataset.history='1'">Next</button>`
 				case "wait-attached-detached":
 					html += `<span id="old">Old</span><script>setTimeout(()=>{document.querySelector('#old').remove();const n=document.createElement('span');n.id='new';document.body.appendChild(n)},20)</script>`
+				case "wait-visible-hidden":
+					html += `<div id="appear" style="display:none;width:80px;height:24px;opacity:0">Role</div><div id="disappear" style="width:80px;height:24px">Old</div><script>setTimeout(()=>{document.querySelector('#appear').style.display='block';document.querySelector('#disappear').style.visibility='hidden';document.body.dataset.waited='1'},350)</script>`
+				case "wait-first-hidden":
+					html += `<div class="choice" style="display:none;width:80px;height:24px">First hidden</div><div class="choice" style="width:80px;height:24px">Second visible</div>`
 				case "page-size":
 					html += `<select id="size" onchange="const a=document.createElement('a');a.href='/jobs/size'+this.value;document.body.appendChild(a)"><option>10</option><option>100</option></select>`
 				}
@@ -130,6 +134,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				pipeline = []actions.Action{{Kind: "click", Selector: "#history", TimeoutMS: 5000, Required: true}}
 			case "wait-attached-detached":
 				pipeline = []actions.Action{{Kind: "wait_for", Selector: "#new", State: "attached", TimeoutMS: 5000, Required: true}, {Kind: "wait_for", Selector: "#old", State: "detached", TimeoutMS: 5000, Required: true}}
+			case "wait-visible-hidden":
+				pipeline = []actions.Action{{Kind: "wait_for", Selector: "#appear", State: "visible", TimeoutMS: 5000, Required: true}, {Kind: "wait_for", Selector: "#disappear", State: "hidden", TimeoutMS: 5000, Required: true}, {Kind: "wait_for", Selector: "#missing", State: "hidden", TimeoutMS: 5000, Required: true}}
+			case "wait-first-hidden":
+				pipeline = []actions.Action{{Kind: "wait_for", Selector: ".choice", State: "visible", TimeoutMS: 500, Required: true}}
 			case "missing-required", "missing-optional":
 				pipeline = []actions.Action{{Kind: "click", Selector: "#missing", TimeoutMS: 500, Required: mode == "missing-required"}, {Kind: "evaluate", Script: `()=>document.body.dataset.continued='1'`, TimeoutMS: 1000, Required: true}}
 			case "page-size":
@@ -140,7 +148,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			defer cancel()
 			task := Task{URL: "https://jobs.dayforcehcm.com/page/1", Actions: pipeline}
 			result, err := runTaskWithDependencies(ctx, Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: proxy.URL, ca: ca, fixtureLoopback: address}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, task)
-			if mode == "no-progress" || mode == "cap" || mode == "missing-required" {
+			if mode == "no-progress" || mode == "cap" || mode == "missing-required" || mode == "wait-first-hidden" {
 				if err == nil {
 					t.Fatal("incomplete interaction published a document")
 				}
@@ -151,6 +159,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			}
 			html := result.HTML
 			switch mode {
+			case "wait-visible-hidden":
+				if !strings.Contains(html, `data-waited="1"`) {
+					t.Fatal("visibility wait returned before original state")
+				}
 			case "history-transition":
 				if result.FinalURL != "https://jobs.dayforcehcm.com/page/1?page=2" || !strings.Contains(html, `data-history="1"`) || result.Status != 200 {
 					t.Fatal("witnessed history transition lost document provenance")
