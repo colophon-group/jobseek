@@ -3913,3 +3913,30 @@ across these eight configurations. Fresh admission must preserve all current
 repairs only inside the original cold activation. No additional ownership has
 been granted. The release is version 0.13.1066 because concurrent main work used
 0.13.1065; the earlier qualification was cancelled after its version check failed.
+
+### Latest Lightpanda release during cutover — 2026-10-15
+
+Lightpanda 1.0.1 published at 14:55:37 UTC immediately before PR #10552 merged
+as `9b67eb14c1b50d895c5e5ebbf38c846d408a1b18`. Source 1064 ordinary retirement,
+original B0 reversal and selector restoration succeeded; independent cold epoch
+345 verification retains all 5,298 ordinary write fences. Original crawler
+workflow 38756030287 is deploying source 1066. Its renderer workflow has not been
+dispatched and its incoming Go/B0 cohort has not been activated.
+
+The latest-release requirement carries delivery forward to candidate 0.13.1067
+with Lightpanda 1.0.1. Both official Linux OCI executables match their published
+release assets after independent index, platform manifest, layer and executable
+hash verification. The macOS ARM asset checksum and `version` output also match.
+The active build and integration pins now use the immutable 1.0.1 image; local
+physical and final-head Linux/ARM qualification precede deployment and admission.
+See the [upgrade evidence](evidence/go-lightpanda-1.0.1-candidate-2026-10-15.json).
+
+Fresh Boeing references extend the same pending admission to thirteen detail
+configurations across DOM, JSON-LD and Workday. All ten live Go Workday reads
+match every original field; five configurations pass actual native settlement.
+The complete retained-route preflight preserves 7,830 monitors and 7,783 details
+and plans 7,796 details, with zero qualified candidates held. It includes 24
+complete-description references, 19 canonical writer references and 3,357 cached
+projection repairs. Incoming fresh source/config/route validation and the original
+cold repair remain mandatory. Full migration and production Python retirement
+remain active and incomplete.

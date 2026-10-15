@@ -27,7 +27,7 @@ func interactionIntegrationBinary(t *testing.T) string {
 	}
 	expected, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		expected, supported = "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d", true
+		expected, supported = "d4b66ac8484f49d7a49e05b6f9342716c747129527fcbe8ffe36679ffa18dd60", true
 	} else if runtime.GOOS != "linux" {
 		supported = false
 	}
