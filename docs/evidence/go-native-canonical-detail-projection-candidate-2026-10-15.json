@@ -26,7 +26,7 @@
   "local_validation": {
     "new_regression_cases": 13,
     "new_regressions": "pass with real private Postgres/Redis",
-    "existing_cold_and_ordered_workday_regressions": "pass; focused combined race suite97.383s beforefinalallroute/step tightening; finalrepeat97s passed",
+    "existing_cold_and_ordered_workday_regressions": "pass; combined focused race suite97.383s on final all-route and step validation",
     "vet": "pass",
     "parser_lower_bound": {
       "elapsed_seconds": 115.1154435,
