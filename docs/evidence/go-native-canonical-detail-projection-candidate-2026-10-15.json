@@ -1,0 +1,50 @@
+{
+  "version": "jobseek.native-canonical-detail-projection-candidate/v1",
+  "runtime_version": "0.13.1058",
+  "scope": "existing queued canonical board/source/domain/worker projections during original staged cold adoption",
+  "prospective_legacy_mismatch_boards": 43,
+  "prior_floor_detail_boards": 7742,
+  "canonical_legacy_native_worker_agreement": "all43mismatch candidates andall7742prior floor details in source1053 census",
+  "source_sql_and_receipt_mutation": false,
+  "original_host_and_cold_sql_scope_required": true,
+  "repair_page_size": 256,
+  "strict_all_selected_source_route_validation": true,
+  "preservation": [
+    "SQL deadlines/content/leases and retained attempt receipts",
+    "existing first-time ordering",
+    "valid independent fallback step/hash/interval",
+    "foreign queue members and shared-domain readiness",
+    "B0 ownership and guarded postings"
+  ],
+  "refusal": [
+    "unbound scope or staged plan",
+    "live legacy lease or retained native token on a projection needing repair",
+    "unsupported current source/profile",
+    "invalid current step/hash/interval",
+    "malformed queue types or scores"
+  ],
+  "local_validation": {
+    "new_regression_cases": 13,
+    "new_regressions": "pass with real private Postgres/Redis",
+    "existing_cold_and_ordered_workday_regressions": "pass; focused combined race suite97.383s beforefinalallroute/step tightening; finalrepeat97s passed",
+    "vet": "pass",
+    "parser_lower_bound": {
+      "elapsed_seconds": 115.1154435,
+      "invalid_by_slug": {},
+      "invalid_routes": 0,
+      "prior_floor_invalid_routes": 0,
+      "routes": 1663792,
+      "scope": "local parser-only lower bound for full cold source validation; source1053 census; frozen prior7742details plus43mismatch candidates; noSQL/Redis/network effects; not full runtime cost"
+    }
+  },
+  "remaining": [
+    "measure complete repair including SQL/Redis on representative fleet data under installed Linux limits",
+    "confirm repair+lease drain+restart fits original cold/host budgets",
+    "finish cold reversal and installed CLI qualification for changed publication contract",
+    "strict actual current source route/cohort proof before production ownership",
+    "full required CI, actual deployment gate and original ARM qualification"
+  ],
+  "production_repair_performed": false,
+  "production_admission": false,
+  "global_migration_complete": false
+}

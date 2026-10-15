@@ -2,6 +2,25 @@
 
 ## Durable delivery checkpoint — 2026-10-15
 
+Source1056 is now incoming: PR #10539 merged as
+`e115abb0a39b0d218dce63213d9de9bedd21d904`; original crawler38662379966 is
+building and renderer38662477948 succeeded. PR #10540 is ready after Required CI,
+installed contracts, browser conformance, both Lightpanda architectures, PR renderer
+build and original ARM qualification. Its tested PR merge revision800e5c9e has the
+exact frozen reviewed82789b05f tree. Deliver and independently verify source1056
+before the next fresh merge audit.
+
+The isolated0.13.1058 candidate now repairs existing stale detail projections in
+256-row pages before staged ownership publication. It changes no canonical rows
+or receipts, preserves first-time and valid fallback progress, refuses live/native
+leases, and keeps repaired prefixes safe for exact retry or original cancellation.
+Thirteen new real PostgreSQL/Redis regression cases and the existing focused cold
+suite pass. Full route parser validation of1663792 source1053 routes found zero
+invalid routes (including all previous7742details and43mismatch candidates), taking
+115.1s locally. This is only a parser lower bound; measure full SQL/Redis operation
+and installed Linux cold-window budgets before publishing the candidate.
+
+
 Source1055 `c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649` is deployed and
 independently verified in supported cold epoch333. Its exact immutable images,
 selected CSV revision, seven restored base writers, six health checks and exporter
