@@ -63,6 +63,42 @@ describe("fixed shared worker", () => {
     await runAiFilterRefreshSweep({ dependencies: deps });
     expect(deps.repair).not.toHaveBeenCalled();
   });
+  it("spends the first-page start window on checkpoints before slow repair", async () => {
+    vi.useFakeTimers();
+    try {
+      deps.claim.mockResolvedValue(target);
+      deps.step.mockImplementation(async () => {
+        vi.setSystemTime(Date.now() + 7_000);
+        return { status: "continue", segmentId: "segment" };
+      });
+      const result = await runAiFilterRefreshSweep({ dependencies: deps });
+      expect(result.started).toBe(3);
+      expect(deps.repair).not.toHaveBeenCalled();
+      expect(deps.releaseWorker).toHaveBeenCalledWith(target.leaseOwner, false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("verifies an unchanged scope once per admitted slice", async () => {
+    deps.claim.mockResolvedValue({ ...target, query: "query", candidateLanguages: [] });
+    deps.assertScope.mockResolvedValue(639);
+    deps.configure.mockResolvedValue({ queryVersionId: target.queryVersionId });
+    await runAiFilterRefreshSweep({ dependencies: deps });
+    expect(deps.configure).toHaveBeenCalledOnce();
+    expect(deps.assertScope).toHaveBeenCalledOnce();
+    expect(deps.step).toHaveBeenCalledTimes(5);
+  });
+  it("rechecks hard-filter or company edits made during an admitted slice", async () => {
+    deps.claim
+      .mockResolvedValueOnce({ ...target, query: "query", scopeVersion: "before" })
+      .mockResolvedValueOnce({ ...target, query: "query", scopeVersion: "edited" });
+    deps.configure.mockResolvedValue({ queryVersionId: target.queryVersionId });
+    deps.assertScope.mockResolvedValueOnce(639).mockResolvedValueOnce(10_001);
+    const result = await runAiFilterRefreshSweep({ dependencies: deps });
+    expect(deps.assertScope).toHaveBeenCalledTimes(2);
+    expect(deps.step).toHaveBeenCalledOnce();
+    expect(result.deferred).toBe(1);
+  });
   it("persists failed work and releases the slot for the circuit breaker", async () => {
     deps.claim.mockResolvedValueOnce(target);
     deps.step.mockRejectedValue(new Error("private detail"));

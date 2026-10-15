@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { companyDocument } from "./fixture";
 
 /** HTTP boundary fixture used by the unmodified Typesense SDK in the actual Next app. */
-export async function startTypesenseFixture(companies: ReturnType<typeof companyDocument>[], delays: Record<string, number> = {}) {
+export async function startTypesenseFixture(companies: ReturnType<typeof companyDocument>[], delays: Record<string, number> = {}, postings: Record<string, unknown>[] = []) {
   const requests: { pathname: string; method: string; filter?: string; delayMs?: number }[] = [];
   const server = createServer(async (request, response) => {
     const url = new URL(request.url!, "http://localhost");
@@ -32,6 +32,14 @@ export async function startTypesenseFixture(companies: ReturnType<typeof company
       const collection = query.collection ?? url.pathname.split("/")[2];
       const filter = String(query.filter_by ?? "");
       requests.push({ pathname: url.pathname, method: request.method!, filter, delayMs });
+      if (collection === "job_posting" && postings.length) {
+        const ids = filter.match(/\bid:\[([^\]]+)\]/)?.[1]?.split(",");
+        const docs = postings.filter(doc => !ids || ids.includes(String(doc.id)));
+        const offset = Number(query.offset ?? 0);
+        const limit = Number(query.limit ?? query.per_page ?? 20);
+        return { found: docs.length, hits: docs.slice(offset, offset + limit).map(document => ({ document, highlights: [], text_match: 1 })),
+          facet_counts: [], search_time_ms: 1, page: 1 };
+      }
       if (collection !== "company") {
         return { found: 0, hits: [], facet_counts: [], grouped_hits: [], search_time_ms: 1, page: 1 };
       }

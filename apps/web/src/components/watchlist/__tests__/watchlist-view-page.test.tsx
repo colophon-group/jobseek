@@ -279,6 +279,25 @@ describe("WatchlistViewPage private detail", () => {
     latestEventSequence: 1,
   };
 
+  it("renders server-authorized narrowed results read-only before account hydration", () => {
+    mocks.isLoggedIn = false;
+    mocks.isPending = true;
+    mocks.plan = "free";
+    renderPage(true, {}, false, 24, savedAiState);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit matching criteria" })).toBeNull();
+    expect(mocks.jobListProps.mock.calls.find(([props]) => props.resultMode === "narrowed")?.[0].aiFilterReadOnly).toBe(true);
+    expect(mocks.jobListProps.mock.calls.find(([props]) => props.resultMode === "broad")?.[0].drawerOpen).toBe(true);
+  });
+
+  it("keeps an unentitled owner snapshot closed while account hydration is pending", () => {
+    mocks.isLoggedIn = false;
+    mocks.isPending = true;
+    mocks.plan = "free";
+    renderPage(true, {}, false, 24, { ...savedAiState, entitled: false });
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+  });
+
   it.each(["Clear salary", "Clear all"])("disables a configured narrowed feed when the last filters are removed via %s", (action) => {
     renderPage(true, {}, false, 24, savedAiState);
     expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();

@@ -85,11 +85,16 @@ Verify a new eligible job receives a persisted decision without visiting its
 watchlist. Large existing backlogs clear in bounded newest-first batches rather
 than delaying new arrivals behind historical pagination.
 
-Production uses Vercel Hobby. Its cron facility cannot run every minute, so
-`deploy-ai-filter-refresh.yml` installs a minute systemd timer on the existing
-Hetzner crawler host after the web deployment. This uses existing protected SSH credentials and a root-only systemd credential file; it does not
-change plans or restart crawler writers. The manual workflow binds to current
-main, and its host preflight requires the deployed `narrowed-refresh-v1` endpoint.
+The protected `deploy-ai-filter-refresh.yml` workflow installs a persistent,
+resource-limited HTTP driver on the existing Hetzner host. It continues active
+work two seconds after each bounded response, backs off idle reads to 30 seconds,
+and uses the same database singleton as immediate owner wakes. Migration 0105
+adds expiring first-page priority and accepted-result targets. Apply it through
+the routine workflow before promoting this web revision; the production verifier
+blocks promotion while the database is behind. Activation disables the old
+minute timer and enables the service. Pause disables both units. The runner has
+only its endpoint bearer and does not restart crawler writers.
+See [rollout and rollback](../../../docs/24-ai-filter.md#interactive-worker-rollout).
 
 Before the web deployment, provision one random `AI_FILTER_REFRESH_SECRET` in
 both the production Vercel project and the production GitHub environment. Turbo

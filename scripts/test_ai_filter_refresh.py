@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 
 ROOT = Path(__file__).resolve().parent
 
@@ -37,6 +38,44 @@ class FakeOpener:
 
 
 class RefreshTimerTests(unittest.TestCase):
+    def test_shared_driver_continues_active_work_backs_off_idle_and_stops(self):
+        class Stop:
+            waits = []
+            def is_set(self):
+                return len(self.waits) == 3
+            def wait(self, seconds):
+                self.waits.append(seconds)
+
+        stop = Stop()
+        outcomes = iter([
+            {"status": "completed", "started": 1, "claimed": 1},
+            {"status": "completed", "started": 0, "claimed": 0},
+            {"status": "completed", "started": 0, "claimed": 0},
+        ])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            runner.serve(lambda: next(outcomes), stop)
+        self.assertEqual(stop.waits, [2, 30, 30])
+        self.assertEqual(len(output.getvalue().splitlines()), 2)
+
+    def test_shared_driver_backs_off_failures_without_logging_exception_data(self):
+        class Stop:
+            waits = []
+            def is_set(self):
+                return len(self.waits) == 3
+            def wait(self, seconds):
+                self.waits.append(seconds)
+
+        def fail():
+            raise ValueError("sensitive upstream text")
+
+        stop = Stop()
+        output = io.StringIO()
+        with redirect_stdout(output):
+            runner.serve(fail, stop)
+        self.assertEqual(stop.waits, [60, 120, 240])
+        self.assertNotIn("sensitive", output.getvalue())
+
     def test_dispatches_to_only_the_fixed_endpoint_and_omits_private_response_fields(self):
         opener = FakeOpener([{"contractVersion": "narrowed-worker-v2", "status": "completed", "claimed": 1, "started": 1, "deferred": 0, "failed": 0, "private": "do not log"}])
         with tempfile.TemporaryDirectory() as folder:
@@ -93,6 +132,8 @@ if a[0] == 'show' and a[1] == 'jobseek-ai-filter-refresh.timer':
 elif a == ['disable', '--now', 'jobseek-ai-filter-refresh.timer']:
     state['enabled'] = False
     state['timer'] = 'inactive'
+elif a == ['disable', 'jobseek-ai-filter-refresh.service']:
+    state['service_enabled'] = False
 elif a == ['stop', 'jobseek-ai-filter-refresh.service']:
     if state['service'] != 'failed': state['service'] = 'unloaded'
 elif a == ['is-failed', '--quiet', 'jobseek-ai-filter-refresh.service']:
@@ -139,6 +180,11 @@ sys.exit(code)
         self.assertIn("DynamicUser=true", service)
         self.assertIn("LoadCredential=refresh-bearer:", service)
         self.assertIn("InaccessiblePaths=-/var/run/docker.sock", service)
+        self.assertIn("Type=simple", service)
+        self.assertIn("runner.py --worker", service)
+        self.assertIn("TimeoutStopSec=65s", service)
+        self.assertIn("CPUQuota=10%", service)
+        self.assertIn("MemoryMax=64M", service)
         self.assertIn("OnCalendar=*-*-* *:*:00", timer)
         self.assertNotIn("EnvironmentFile", service)
 

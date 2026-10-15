@@ -263,7 +263,33 @@ export class PostgresAiFilterExecutionRepository
       const waitingCacheKeys: string[] = [];
       const leaseExpiresAt = new Date(input.now.getTime() + CACHE_LEASE_MS);
 
+      // The normal cold first page must not pay a database round trip per job.
+      // Conflicting inserts still follow the locked reservation/cache recovery path.
+      const missing = unresolved.filter(candidate => !existingByKey.has(candidate.cacheKey));
+      const inserted = missing.length ? await tx
+        .insert(aiFilterGlobalCache)
+        .values(missing.map(candidate => ({
+          cacheKey: candidate.cacheKey,
+          keyVersion: AI_FILTER_CACHE_KEY_VERSION,
+          contentIdentity: candidate.classifierInput.contentIdentity,
+          status: "pending" as const,
+          model: JEV_MODEL,
+          promptVersion: AI_FILTER_PROMPT_VERSION,
+          schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+          normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+          leaseOwner: input.context.leaseOwner,
+          leaseExpiresAt,
+          expiresAt: new Date(candidate.expiresAt),
+        })))
+        .onConflictDoNothing()
+        .returning({ cacheKey: aiFilterGlobalCache.cacheKey }) : [];
+      const insertedKeys = new Set(inserted.map(row => row.cacheKey));
+
       for (const candidate of unresolved) {
+        if (insertedKeys.has(candidate.cacheKey)) {
+          claims.push(candidate);
+          continue;
+        }
         let existing = existingByKey.get(candidate.cacheKey);
         if (
           existing?.status === "ready" &&
@@ -281,30 +307,6 @@ export class PostgresAiFilterExecutionRepository
         ) {
           waitingCacheKeys.push(candidate.cacheKey);
           continue;
-        }
-
-        if (!existing) {
-          const inserted = await tx
-            .insert(aiFilterGlobalCache)
-            .values({
-              cacheKey: candidate.cacheKey,
-              keyVersion: AI_FILTER_CACHE_KEY_VERSION,
-              contentIdentity: candidate.classifierInput.contentIdentity,
-              status: "pending",
-              model: JEV_MODEL,
-              promptVersion: AI_FILTER_PROMPT_VERSION,
-              schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
-              normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
-              leaseOwner: input.context.leaseOwner,
-              leaseExpiresAt,
-              expiresAt: new Date(candidate.expiresAt),
-            })
-            .onConflictDoNothing()
-            .returning({ cacheKey: aiFilterGlobalCache.cacheKey });
-          if (inserted.length === 1) {
-            claims.push(candidate);
-            continue;
-          }
         }
 
         const [unresolvedReservation] = await tx

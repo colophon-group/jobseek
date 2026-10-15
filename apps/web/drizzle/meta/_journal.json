@@ -652,6 +652,13 @@
       "when": 1791716400000,
       "tag": "0104_ai_filter_shared_worker",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1792080000000,
+      "tag": "0105_ai_filter_interactive_demand",
+      "breakpoints": true
     }
   ]
 }

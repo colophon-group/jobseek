@@ -478,15 +478,25 @@ function WatchlistJobListContent({
           : Math.min(aiResults.evaluated, candidateTotal),
     },
   });
+  const reviewProgressLabel = candidateTotal == null ? evaluatedCountLabel : i18n._({
+    id: "watchlists.jobList.reviewProgress",
+    comment: "Progress of natural-language job review; reviewed and total are job counts",
+    message: "{reviewed} of {total} jobs reviewed",
+    values: {
+      reviewed: aiFilterState?.status === "caught_up" ? candidateTotal : Math.min(aiResults.evaluated, candidateTotal),
+      total: candidateTotal,
+    },
+  });
   const listColumn = (
     <div className="min-w-0">
       <div
         id={resultMode === "narrowed" ? undefined : "watchlist-results-boundary"}
+        style={resultMode === "broad" && drawerOpen ? { display: "none" } : undefined}
         className={resultMode === "narrowed"
           ? "sticky top-14 z-20 -mx-2 space-y-2 bg-surface-glass px-2 py-2 backdrop-blur-md md:top-[5.5rem]"
           : "sticky top-0 z-30 -mx-2 flex min-h-10 scroll-mt-0 items-center bg-background/80 px-2 py-2 backdrop-blur-md md:top-12 md:scroll-mt-12"}
       >
-        {resultMode !== "narrowed" && (
+        {resultMode !== "narrowed" && !drawerOpen && (
           <LanguageStatsRow
             jobLanguages={jobLanguages}
             locale={locale}
@@ -505,8 +515,8 @@ function WatchlistJobListContent({
                 Matching results
               </Trans>
             </span>
-            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 font-medium tabular-nums text-primary">
-              {acceptedCountLabel} · {evaluatedCountLabel}
+            <span role="status" className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 font-medium tabular-nums text-primary">
+              {acceptedCountLabel} · {reviewProgressLabel}
             </span>
           </div>
         )}

@@ -450,8 +450,12 @@ export function WatchlistViewPage({
   const initiallyNarrowed = Boolean(
     initialAiFilterState?.enabled && initialAiFilterState.query.trim(),
   );
+  // The owner loader already authorized these persisted results. Show that
+  // snapshot read-only while account hydration keeps mutations unavailable.
+  const ownerNarrowedHydrating = isOwner && isSessionPending &&
+    initiallyNarrowed && initialAiFilterState?.entitled === true;
   const [aiDrawerOpen, setAiDrawerOpen] = useState(
-    initiallyNarrowed && (!isOwner || (canManage && plan === "unlimited")),
+    initiallyNarrowed && (!isOwner || ownerNarrowedHydrating || (canManage && plan === "unlimited")),
   );
   const scopeRevisionRef = useRef(0);
   const [scopeRevision, setScopeRevision] = useState(0);
@@ -916,9 +920,9 @@ export function WatchlistViewPage({
       state.unavailable ? undefined : state.candidateCount,
     );
   }, []);
-  const aiFilterControl = canManage || (!isOwner && aiFilterState?.enabled === true) ? (
+  const aiFilterControl = canManage || ownerNarrowedHydrating || (!isOwner && aiFilterState?.enabled === true) ? (
     <AiSearchFilter
-      isSubscribed={!isOwner || (canManage && plan === "unlimited")}
+      isSubscribed={!isOwner || ownerNarrowedHydrating || (canManage && plan === "unlimited")}
       hasSearchFilters={hasAiFilterScope}
       candidateCount={aiCandidateCount}
       isSearchPending={aiCandidateCount === undefined}

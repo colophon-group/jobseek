@@ -27,6 +27,7 @@ import {
 } from "./policy";
 import { CLASSIFIER_INPUT_NORMALIZER_VERSION, CLASSIFIER_INPUT_SCHEMA_VERSION } from "./classifier-input";
 import { aiFilterHistoricalHorizonStart, aiFilterHorizonEnd } from "./horizon";
+import { AI_FILTER_MAX_SEARCH_CANDIDATES } from "./search-eligibility";
 
 const SEGMENT_LEASE_MS = 70_000;
 
@@ -97,6 +98,7 @@ async function claimSegment(input: {
   maxSegmentsPerUser: number;
   maxSegmentsPerProject: number;
   demandTargetOffset: number;
+  acceptedTarget?: number;
   kind?: "historical" | "freshness";
   queryVersionId?: string;
   now: Date;
@@ -214,6 +216,7 @@ async function claimSegment(input: {
     }
     if (
       input.kind !== "freshness" &&
+      !input.acceptedTarget &&
       !active &&
       previous?.status === "completed" &&
       !previous.idempotencyKey.startsWith("repair:") &&
@@ -408,6 +411,8 @@ export async function runAiFilterCatchupStep(input: {
   now?: Date;
   signal?: AbortSignal;
   candidateLimit?: number;
+  /** Interactive work continues until its accepted page is filled or exhausted. */
+  acceptedTarget?: number;
 }): Promise<AiFilterCatchupStepResult> {
   if (
     !Number.isSafeInteger(input.demandTargetOffset) ||
@@ -512,6 +517,22 @@ export async function runAiFilterCatchupStep(input: {
     return { status: "paused_provider", segmentId: claim.segment.id };
   }
 
+  // New indexing can expand an unchanged scope after its slice admission.
+  // Enforce the product ceiling on each loaded page before reserving any spend.
+  if (page.total > AI_FILTER_MAX_SEARCH_CANDIDATES) {
+    await pauseSegment({
+      segmentId: claim.segment.id,
+      ownerId: input.ownerId,
+      watchlistId: input.watchlistId,
+      queryVersionId: claim.segment.queryVersionId,
+      leaseOwner: input.leaseOwner,
+      status: "paused_kill",
+      reason: "scope_too_broad",
+      now: new Date(),
+    });
+    return { status: "paused_kill", segmentId: claim.segment.id };
+  }
+
   const checkpointAt = new Date();
   const checkpoint = await db
     .update(aiFilterSegment)
@@ -563,7 +584,7 @@ export async function runAiFilterCatchupStep(input: {
   }
 
   const coveredOffset = claim.segment.selectionOffset + page.scannedCount;
-  if (input.kind !== "freshness" && coveredOffset >= input.demandTargetOffset) {
+  if (input.kind !== "freshness" && !input.acceptedTarget && coveredOffset >= input.demandTargetOffset) {
     return { status: "demand_satisfied", segmentId: claim.segment.id };
   }
   if (
