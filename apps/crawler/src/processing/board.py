@@ -385,6 +385,19 @@ def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
 
             if _johdi_offer_id(url) is not None:
                 return None
+            # The verified Midea listing and posting share their network path;
+            # its public API carries the posting ID in this exact SPA route.
+            if (
+                p.scheme == bp.scheme == "https"
+                and p.netloc.lower() == bp.netloc.lower() == "recruit.midea.com"
+                and path == "/recruitOut/ihr/home/index"
+                and not p.params
+                and not bp.params
+                and not bp.query
+                and not bp.fragment
+                and re.fullmatch(r"/positionDetail/[0-9a-f]{32}", p.fragment)
+            ):
+                return None
             return "board_homepage"
     return None
 

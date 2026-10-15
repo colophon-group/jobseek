@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	greenhouse "github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor"
@@ -92,5 +93,26 @@ func TestGreenhouseInventoryRetainsAllAboveCapAndRejectsCancellation(t *testing.
 	cancel()
 	if result, err := NormalizeGreenhouseInventory(ctx, "", greenhouse.Inventory{Jobs: jobs}); !errors.Is(err, context.Canceled) || len(result.Jobs) != 0 {
 		t.Fatal("cancelled inventory supplied partial success")
+	}
+}
+
+func TestMideaSPAIdentityPreservesJobsWithoutAdmittingHomepages(t *testing.T) {
+	const board = "https://recruit.midea.com/recruitOut/ihr/home/index"
+	const id = "1234567890abcdef1234567890abcdef"
+	source := board + "#/positionDetail/" + id
+	found, err := NormalizeRichInventory(context.Background(), board, []RichMonitorJob{{URL: source, URLOnly: true}}, true)
+	if err != nil || len(found.Jobs) != 1 || found.Jobs[0].URL != source || !found.Truncated || len(found.DropReasons) != 0 {
+		t.Fatal("verified Midea SPA identity was filtered", err)
+	}
+	for _, fragment := range []string{"0", "", "/positionDetail/", "/positionDetail/" + id[:31], "/positionDetail/" + strings.ToUpper(id), "/positionDetail/" + id + "/", "/positionDetail/" + id + "?other=1", "/other/" + id} {
+		if classifyJobURL(board+"#"+fragment, board) != "board_homepage" {
+			t.Fatal("unverified Midea fragment accepted")
+		}
+	}
+	for _, other := range []string{strings.Replace(board, "https:", "http:", 1), strings.Replace(board, "recruit.midea.com", "example.com", 1), strings.Replace(board, "recruit.midea.com", "recruit.midea.com:443", 1), strings.Replace(board, "recruit.midea.com", "user:pass@recruit.midea.com", 1), strings.Replace(board, "/index", "/other", 1), board + ";param", board + "?listing=1", board + "#listing"} {
+		base := strings.Split(strings.Split(other, "#")[0], "?")[0]
+		if classifyJobURL(base+"#/positionDetail/"+id, other) != "board_homepage" {
+			t.Fatal("Midea exception escaped verified listing")
+		}
 	}
 }

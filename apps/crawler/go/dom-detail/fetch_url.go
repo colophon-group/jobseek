@@ -18,18 +18,9 @@ func AlternateFetchURL(source string, value any) (string, error) {
 	if value == nil {
 		return source, nil
 	}
-	c, ok := value.(map[string]any)
-	if !ok || len(c) != 2 {
-		return "", ErrFetchURL
-	}
-	find, fok := c["find"].(string)
-	replacement, rok := c["replace"].(string)
-	if !fok || !rok || find == "" || replacement == "" || utf8.RuneCountInString(find) > 2048 || utf8.RuneCountInString(replacement) > 4096 || strings.ContainsRune(find, 0) || strings.ContainsRune(replacement, 0) {
-		return "", ErrFetchURL
-	}
-	re, e := CompileURLPattern(find)
+	re, replacement, e := alternateFetchTransform(value)
 	if e != nil {
-		return "", ErrFetchURL
+		return "", e
 	}
 	m, e := re.FindStringMatch(source)
 	if e != nil || m == nil {
@@ -136,4 +127,31 @@ func pythonReplacement(m *regexp2.Match, s string) (string, error) {
 		}
 	}
 	return out.String(), nil
+}
+
+// ValidateFetchURLTransform checks a bound template before any posting exists.
+// A concrete source must still pass AlternateFetchURL before each origin read.
+func ValidateFetchURLTransform(value any) error {
+	if value == nil {
+		return nil
+	}
+	_, _, err := alternateFetchTransform(value)
+	return err
+}
+
+func alternateFetchTransform(value any) (*regexp2.Regexp, string, error) {
+	c, ok := value.(map[string]any)
+	if !ok || len(c) != 2 {
+		return nil, "", ErrFetchURL
+	}
+	find, fok := c["find"].(string)
+	replacement, rok := c["replace"].(string)
+	if !fok || !rok || find == "" || replacement == "" || utf8.RuneCountInString(find) > 2048 || utf8.RuneCountInString(replacement) > 4096 || strings.ContainsRune(find, 0) || strings.ContainsRune(replacement, 0) {
+		return nil, "", ErrFetchURL
+	}
+	re, e := CompileURLPattern(find)
+	if e != nil {
+		return nil, "", ErrFetchURL
+	}
+	return re, replacement, nil
 }

@@ -28,17 +28,32 @@ func ParseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMes
 	if result != nil && result.GetSuccess() != nil && result.GetSuccess().ResourcePolicy == nil {
 		return nil, publisherpolicy.ErrSignals
 	}
-	html, err := RenderedHTML(result, sourceURL)
-	if err != nil {
-		return nil, err
+	invalidParser := func() error {
+		if _, err := RenderedHTML(result, sourceURL); err != nil {
+			return err
+		}
+		return ErrProtocol
 	}
 	value, err := b0task.ParseCanonicalValue(parserConfig)
 	if err != nil {
-		return nil, ErrProtocol
+		return nil, invalidParser()
 	}
 	config, ok := value.(map[string]any)
 	if !ok {
-		return nil, ErrProtocol
+		return nil, invalidParser()
+	}
+	requestedURL := sourceURL
+	if scraperType == "dom" {
+		requestedURL, err = dom.AlternateFetchURL(sourceURL, config["fetch_url_transform"])
+		if err != nil {
+			return nil, invalidParser()
+		}
+	}
+	// Publisher policy and navigation status belong to the actual read. DOM
+	// extraction still receives the canonical posting URL, as in Python.
+	html, err := RenderedHTML(result, requestedURL)
+	if err != nil {
+		return nil, err
 	}
 	var content map[string]any
 	switch scraperType {
@@ -49,7 +64,7 @@ func ParseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMes
 		}
 		switch classification["classification"] {
 		case "gone":
-			return nil, &NavigationHTTPError{RequestedURL: sourceURL, ResponseURL: result.GetSuccess().FinalUrl, Status: 404}
+			return nil, &NavigationHTTPError{RequestedURL: requestedURL, ResponseURL: result.GetSuccess().FinalUrl, Status: 404}
 		case "challenge":
 			return nil, ErrBotChallenge
 		case "okay":

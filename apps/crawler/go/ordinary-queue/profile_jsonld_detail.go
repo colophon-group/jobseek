@@ -146,7 +146,7 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 		profile.Domain = "*"
 		return profile, nil
 	}
-	if profile, err := InspectRenderedDetail(boardID, config, config["board_url"], Browser); err == nil {
+	if profile, err := inspectRenderedDetail(boardID, config, config["board_url"], Browser, true); err == nil {
 		profile.Domain = "*"
 		return profile, nil
 	}

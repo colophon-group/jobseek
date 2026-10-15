@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"os"
+	"strings"
 	"testing"
 
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
@@ -119,5 +121,45 @@ func TestDirectRenderedPolicyAndFailureBudgets(t *testing.T) {
 	_, err = ParseRendered(task, invalid)
 	if !errors.Is(err, ErrRenderedResult) || FailureClass(err) != FailureTransient {
 		t.Fatal("invalid gone manifest consumed budget")
+	}
+}
+
+func TestRenderedDOMAlternateReadKeepsCanonicalDefaultsAndHTTPAttribution(t *testing.T) {
+	source := "https://jobs.example.net/job/42"
+	target := "https://jobs.example.net/print/42"
+	config := json.RawMessage(`{"render":true,"steps":[{"tag":"h1","field":"title"},{"tag":"p","field":"description","html":true}],"defaults_by_url":{"https://jobs.example.net/job/42":{"employment_type":"FULL_TIME"}},"fetch_url_transform":{"find":"/job/","replace":"/print/"}}`)
+	html := "<h1>Engineer</h1><p>Role details</p>"
+	content, err := ParseRenderedDetail(source, "dom", config, renderedFixture(html, target, 200))
+	if err != nil || content["title"] != "Engineer" || content["employment_type"] != "FULL_TIME" {
+		t.Fatal("canonical defaults used alternate read URL", err, content)
+	}
+	_, err = ParseRenderedDetail(source, "dom", config, renderedFixture("", target, 404))
+	var status *NavigationHTTPError
+	if !errors.As(err, &status) || status.RequestedURL != target || FailureClass(err) != FailureGone {
+		t.Fatal("alternate HTTP attribution changed", err)
+	}
+	bad := renderedFixture(html, target, 200)
+	bad.GetSuccess().Html.TotalSha256 = strings.Repeat("0", 64)
+	if _, err := ParseRenderedDetail(source, "dom", config, bad); !errors.Is(err, ErrRenderedResult) {
+		t.Fatal("alternate read bypassed held manifest integrity", err)
+	}
+	bad = renderedFixture(html, target, 200)
+	bad.GetSuccess().ResourcePolicy = nil
+	if _, err := ParseRenderedDetail(source, "dom", config, bad); !errors.Is(err, publisherpolicy.ErrSignals) {
+		t.Fatal("alternate read bypassed publisher signals", err)
+	}
+}
+
+func TestMalformedRenderedParserRetainsHeldFailurePrecedence(t *testing.T) {
+	const source = "https://jobs.example.net/job/42"
+	for _, parser := range []json.RawMessage{json.RawMessage(`{`), json.RawMessage(`[]`)} {
+		broken := renderedFixture("", source, 404)
+		broken.GetSuccess().Html.Complete = false
+		if _, err := ParseRenderedDetail(source, "dom", parser, broken); !errors.Is(err, ErrRenderedResult) {
+			t.Fatal("invalid parser bypassed manifest verification", err)
+		}
+		if _, err := ParseRenderedDetail(source, "dom", parser, renderedFixture("", source, 404)); FailureClass(err) != FailureGone {
+			t.Fatal("invalid parser changed existing navigation precedence", err)
+		}
 	}
 }
