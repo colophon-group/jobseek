@@ -1,0 +1,26 @@
+{
+  "version": "jobseek.browser-wait-states-candidate/v1",
+  "runtime_version": "0.13.1057",
+  "depends_on_pr": 10539,
+  "scope": [
+    "wait_for visible",
+    "wait_for hidden",
+    "original default visible",
+    "display:contents text visibility"
+  ],
+  "original_chromium_cases": 21,
+  "original_chromium_case_parity": "pass; no skips",
+  "physical_existing_interactions": "pass on official LP1.0.0",
+  "lightpanda_version": "1.0.0",
+  "actual_wtw_all_canonical_fields_equal": true,
+  "actual_wtw_private_canonical_writer": "pass; actual physical captured result; source,title,description,deadline,lease conservation",
+  "cold_retirement_states": 6,
+  "production_admission": false,
+  "required_remaining": [
+    "exact-head required CI",
+    "installed Linux and original ARM qualification",
+    "fresh complete current-route binding",
+    "supported deployment and activation"
+  ],
+  "global_migration_complete": false
+}

@@ -10,6 +10,13 @@ func firstDocumentInteractionFixture(t *testing.T, kind string) firstOwnerFixtur
 	p := firstRenderedMonitorFixture(t)
 	action := map[string]any{"action": kind, "selector": "button"}
 	switch kind {
+	case "wait-visible", "wait-hidden":
+		action["action"] = "wait_for"
+		if kind == "wait-visible" {
+			action["state"] = "visible"
+		} else {
+			action["state"] = "hidden"
+		}
 	case "visible-repeat":
 		action["action"], action["selector"] = "repeat", "button:visible"
 	case "long-evaluate", "required-evaluate":
@@ -53,4 +60,8 @@ func firstDocumentInteractionFixture(t *testing.T, kind string) firstOwnerFixtur
 
 func TestRealDocumentInteractionsColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"click", "wait_for", "repeat", "paginate_collect", "long-pipeline", "visible-repeat", "long-evaluate", "required-evaluate"}, firstDocumentInteractionFixture)
+}
+
+func TestRealDocumentWaitStatesColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"wait-visible", "wait-hidden"}, firstDocumentInteractionFixture)
 }

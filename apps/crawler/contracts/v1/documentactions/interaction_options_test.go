@@ -21,7 +21,7 @@ func TestInteractionDefaultsAndMandatoryCollector(t *testing.T) {
 	if err != nil || len(got) != 4 || got[0].Required || got[1].State != "attached" || got[2].Maximum != 50 || got[2].WaitMS != 2000 || got[2].TimeoutMS != 300000 || got[2].Required || !got[3].Required || got[3].MaxPages != 50 || got[3].WaitMS != 5000 || got[3].PageSize != "100" {
 		t.Fatal("original interaction order, defaults or collector failure policy changed", err)
 	}
-	for _, body := range []string{`[{"action":"wait_for","selector":"a"}]`, `[{"action":"repeat","selector":"a","frame":"iframe"}]`, `[{"action":"repeat","selector":"a:visible span"}]`, `[{"action":"repeat","selector":"a","max":0}]`, `[{"action":"repeat","selector":"a","max":1.5}]`, `[{"action":"repeat","selector":"a","wait_ms":-1}]`, `[{"action":"click","selector":"a","script":"private"}]`, `[{"action":"paginate_collect","max_pages":1001}]`} {
+	for _, body := range []string{`[{"action":"wait_for","selector":"a","state":"unknown"}]`, `[{"action":"repeat","selector":"a","frame":"iframe"}]`, `[{"action":"repeat","selector":"a:visible span"}]`, `[{"action":"repeat","selector":"a","max":0}]`, `[{"action":"repeat","selector":"a","max":1.5}]`, `[{"action":"repeat","selector":"a","wait_ms":-1}]`, `[{"action":"click","selector":"a","script":"private"}]`, `[{"action":"paginate_collect","max_pages":1001}]`} {
 		json.Unmarshal([]byte(body), &raw)
 		if _, err := Parse(raw); err == nil {
 			t.Fatal("unqualified or mixed interaction admitted")
@@ -59,6 +59,23 @@ func TestTerminalVisibleInteractionSelectors(t *testing.T) {
 	for _, selector := range []string{`:visible`, `a:visible span`, `a:visible:visible`, `a,b:visible`, `a:visible, b`, strings.Repeat("a", 4090) + ":visible"} {
 		if interactionSelector(selector, false) {
 			t.Fatal("ancestor, union or repeated visibility predicate admitted")
+		}
+	}
+}
+
+func TestWaitStatesRetainOriginalDefaultAndWireBounds(t *testing.T) {
+	for _, state := range []string{"attached", "detached", "visible", "hidden", ""} {
+		step := map[string]any{"action": "wait_for", "selector": ".job"}
+		if state != "" {
+			step["state"] = state
+		}
+		parsed, err := Parse([]any{step})
+		want := state
+		if want == "" {
+			want = "visible"
+		}
+		if err != nil || len(parsed) != 1 || parsed[0].State != want || !Valid(parsed) {
+			t.Fatal("wait state rejected", state, err)
 		}
 	}
 }
