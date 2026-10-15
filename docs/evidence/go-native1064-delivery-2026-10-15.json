@@ -1,0 +1,86 @@
+{
+  "schema": "jobseek.native1064-delivery/v1",
+  "date": "2026-10-15",
+  "version": "0.13.1064",
+  "source_revision": "f010c87dd3e339abbe2ce3518197f437a9680e0d",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10548",
+  "reviewed_head": "830a01acca869ff8043634ad6acd2098deacb471",
+  "tested_arm_merge_revision": "5539e578aa50d971df430a640708cf39ae9e0e46",
+  "tested_merge_parents": [
+    "d8397e0a39ced279203af1d884d68af4ccce7658",
+    "830a01acca869ff8043634ad6acd2098deacb471"
+  ],
+  "qualified_and_merged_tree": "02523344b4494ccd507f7be458d67e8590e97937",
+  "candidate_tested_merged_trees_equal": true,
+  "original_qualification_runs": [
+    38726012847,
+    38726012835,
+    38726012891,
+    38726012980
+  ],
+  "original_crawler_run": 38730896891,
+  "original_renderer_run": 38730917611,
+  "original_deploy_attempts": 1,
+  "routing_epoch": 344,
+  "b0_active": true,
+  "ordinary_active": true,
+  "monitor_boards": 7830,
+  "detail_boards": 7783,
+  "new_detail_additions": 41,
+  "health_endpoints_passed": 8,
+  "selected_cache_mismatches": 0,
+  "stale_routes_repaired": 35,
+  "queue_conservation": {
+    "before_scheduled": 1650095,
+    "before_queued": 1509577,
+    "preexisting_scheduled_minus_queued": 140518,
+    "after_scheduled": 1650116,
+    "after_queued": 1509598,
+    "retained_ids": 1509577,
+    "before_only_ids": 0,
+    "after_only_ids": 21,
+    "before_queued_ids_sha256": "072e01218c1cadb135a6d355c20304ed99b5f75a05fefd52c1660c999581f6b0",
+    "after_queued_ids_sha256": "76cba8844a10ea6fa1ea8a4e968a11bb6ada7e8bdf0a6f1888fc8f0726d67d9c",
+    "all_baseline_queued_ids_retained_in_postcapture": true
+  },
+  "serving_sample": {
+    "seconds": 40.04522102046758,
+    "go_monitor_success": 11,
+    "go_scrape_success": 21,
+    "go_errors": 0,
+    "go_cancellations": 0,
+    "service_cpu_cores": 3.1686000418163864,
+    "service_mean_ram_bytes": 3015221248,
+    "oom_kill_delta": 0,
+    "scope": "natural unpaired sampled service cgroups; no causal whole-host savings or attributable cost claim"
+  },
+  "freshness": {
+    "scheduled": 1709450,
+    "overdue_24h": 1588094,
+    "backlog_resolved": false
+  },
+  "remaining_frontier": {
+    "monitor_configs": 67,
+    "compiled_monitors_awaiting_output_qualification": 22,
+    "unsupported_monitor_configs": 45,
+    "detail_configs": 114,
+    "compiled_details_awaiting_output_qualification": 68,
+    "unsupported_detail_configs": 46,
+    "compiled_detail_cached_route_gaps": 23,
+    "compiled_detail_missing_output_qualification": 45,
+    "newly_compiling_fragment_configs": 4,
+    "additional_ownership_inferred": false
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "latest_stable_checked": "2026-10-15",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "full_migration_complete": false,
+  "remaining_runtime_contracts": [
+    "Complete enabled monitor/detail and browser coverage",
+    "Native-to-native deployment and CSV publication with supported reversal",
+    "Fleet freshness and comparable resource/cost evidence",
+    "Rollback window and production Python/Playwright/Chromium retirement; useful offline Python retained"
+  ]
+}
