@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
+	workday "github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor"
 )
 
 const jsonldDetailProfile = "jsonld.direct-detail/v1"
@@ -69,6 +70,11 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 	if err != nil {
 		return fail()
 	}
+	recovery, err := workday.ParseRecoveryConfig(options["workday_fallback"])
+	if err != nil || recovery != nil && skipSSL {
+		return fail()
+	}
+	delete(options, "workday_fallback")
 	if jsonld.ValidateConfig(options) != nil {
 		return fail()
 	}
@@ -104,7 +110,7 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 	if proxy {
 		profile = jsonldProxyDetailProfile
 	}
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields, SkipSSL: skipSSL}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, JSONLDRecovery: recovery, EnrichmentFields: enrichmentFields, SkipSSL: skipSSL}, nil
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {

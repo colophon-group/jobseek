@@ -23,6 +23,7 @@ type WorkdayDetailProfile struct {
 	// The explicit board setting selects this detail's sealed HTTP client.
 	SkipSSL          bool
 	JSONLDConfig     map[string]any
+	JSONLDRecovery   *workday.RecoveryConfig
 	DOMConfig        map[string]any
 	PDFConfig        map[string]any
 	APITokenOverride string
