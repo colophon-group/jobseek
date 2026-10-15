@@ -16,6 +16,7 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -54,6 +55,11 @@ func detailActionIdentity(t *testing.T, root *x509.Certificate, key ed25519.Priv
 
 func detailActionTLSFixture(t *testing.T, profile queue.WorkdayDetailProfile, html, mode string, cancel context.CancelFunc) (*NativeRenderedDetails, <-chan struct{}) {
 	t.Helper()
+	fetchURL, fetchErr := dom.AlternateFetchURL(profile.SourceURL, profile.DOMConfig["fetch_url_transform"])
+	if fetchErr != nil {
+		t.Fatal(fetchErr)
+	}
+
 	pub, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +127,7 @@ func detailActionTLSFixture(t *testing.T, profile queue.WorkdayDetailProfile, ht
 			t.Error("action order or source binding differs")
 		}
 		var input runtimev1.BrowserExecutionInput
-		if proto.Unmarshal(request.Input, &input) != nil || input.Plan.TargetUrl != profile.SourceURL {
+		if proto.Unmarshal(request.Input, &input) != nil || input.Plan.TargetUrl != fetchURL {
 			t.Error("action navigation source differs")
 		}
 		var zero [1]byte
@@ -133,7 +139,7 @@ func detailActionTLSFixture(t *testing.T, profile queue.WorkdayDetailProfile, ht
 			conn.Read(zero[:])
 			return
 		}
-		held := heldRenderedResult(html, profile.SourceURL, 200)
+		held := heldRenderedResult(html, fetchURL, 200)
 		if mode == "reserved" {
 			one := "1"
 			held.GetSuccess().ResourcePolicy.TdmReservationHeader = &one
@@ -210,5 +216,35 @@ func TestNativeRenderedDetailsExecuteBoundActionsOverPinnedMutualTLS(t *testing.
 				}
 			})
 		}
+	}
+}
+
+func TestRenderedAlternateReadUsesBoundNavigationAndCanonicalDefaults(t *testing.T) {
+	for _, mode := range []string{"success", "reserved"} {
+		t.Run(mode, func(t *testing.T) {
+			source := "https://jobs.example.net/job/42"
+			profile := queue.WorkdayDetailProfile{BoardID: "11111111-1111-4111-8111-111111111111", CompanyID: "22222222-2222-4222-8222-222222222222", SourceURL: source, Profile: "dom.rendered-detail/v1", EffectiveBoardSHA256: strings.Repeat("a", 64), DOMConfig: map[string]any{
+				"render": true, "steps": []any{map[string]any{"tag": "h1", "field": "title"}, map[string]any{"tag": "h2", "text": "Role", "offset": 1, "field": "description", "html": true}},
+				"actions":             []any{map[string]any{"action": "wait", "ms": float64(0)}, map[string]any{"action": "click", "selector": "#details", "required": true}},
+				"fetch_url_transform": map[string]any{"find": "/job/", "replace": "/print/"},
+				"defaults_by_url":     map[string]any{source: map[string]any{"employment_type": "FULL_TIME"}},
+			}}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			renderer, done := detailActionTLSFixture(t, profile, nativeDOMHTML, mode, cancel)
+			content, reservation, err := renderer.Fetch(ctx, profile)
+			select {
+			case <-done:
+			case <-time.After(6 * time.Second):
+				t.Fatal("alternate read cleanup failed")
+			}
+			if mode == "success" {
+				if err != nil || reservation != nil || content["title"] != "Senior Software Engineer" || content["employment_type"] != "FULL_TIME" {
+					t.Fatal("alternate navigation lost canonical fields", err, content)
+				}
+			} else if err != nil || reservation == nil || content != nil {
+				t.Fatal("alternate read lost publisher policy", err)
+			}
+		})
 	}
 }

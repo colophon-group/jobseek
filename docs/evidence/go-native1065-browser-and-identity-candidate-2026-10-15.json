@@ -1,0 +1,80 @@
+{
+  "schema": "jobseek.go-migration.candidate/v1",
+  "candidate_version": "0.13.1065",
+  "production_version": "0.13.1064",
+  "status": "candidate; not deployed or additional ownership",
+  "observed_at_utc": "2026-10-15T13:56:35.259532+00:00",
+  "source_baseline": "f010c87dd3e339abbe2ce3518197f437a9680e0d",
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "rechecked": "2026-10-15"
+  },
+  "changes": [
+    "Preserve verified Midea 32-hex SPA posting fragments through both Go and transitional Python homepage classification",
+    "Apply configured rendered DOM alternate fetch URL before navigation while retaining canonical source/configuration and source-based defaults"
+  ],
+  "midea": {
+    "captured_jobs": 743,
+    "response_truncated": true,
+    "baseline_accepted": 0,
+    "candidate_accepted": 743,
+    "same_capture_real_postgres_redis_settlement": "passed",
+    "unseen_existing_posting_retained": true,
+    "origin_requests_during_settlement_replay": 0,
+    "complete_inventory_claim": false
+  },
+  "qualification": {
+    "fresh_detail_boards": 8,
+    "fresh_detail_samples": 15,
+    "kaiser_permanente": {
+      "samples": 2,
+      "all_original_fields_equal": true,
+      "description_characters": [
+        2812,
+        1739
+      ],
+      "ownership_granted": false
+    },
+    "rendered_dom_alternate_read": "pinned physical 1.0.0 passed; one alternate read, JavaScript rendered output and canonical defaults",
+    "canonical_browser_api_tests": "rich, truncated, publisher reservation, failure and wrong-binding cases passed in real PostgreSQL/Redis",
+    "python_midea_tests_passed": 17,
+    "dom_and_executor_full_race_suites": "passed"
+  },
+  "held_evidence": {
+    "ltimindtree_and_axis": "original samples include empty descriptions and timeout; no complete-description admission",
+    "skadden": "same captured original HTML matches every field; independent Lightpanda document lacks original posting fields",
+    "ecodrop": "original output succeeds; native rendered result fails; retained for browser execution diagnosis",
+    "richemont_and_vertiv": "original samples fail HTTP; native successes alone do not qualify equivalence",
+    "four_direct_monitors": "original runs fail pagination, PDF proof or board-gone; no ownership",
+    "user_agent": "Lightpanda 1.0.0 refuses Mozilla overrides while returning success; do not silently admit configured browser identity"
+  },
+  "remaining": [
+    "Exact revision required CI, actual Crawler Deploy Gate, Linux and ARM installation qualification",
+    "Fresh source/config/actual-route admission preserving current native floor and exact queued IDs",
+    "Supported original cutover and independent active verification",
+    "Remaining browser contracts, production lifecycle consumers, backlog/freshness and Python retirement"
+  ],
+  "private_evidence": [
+    {
+      "name": "native1064-midea-accounting1/native-accounting-summary1.json",
+      "sha256": "21874bfdba4c7261b76e10359970fe00f6f536baf5a23aa09bbd7057e8d0f48d"
+    },
+    {
+      "name": "native1064-midea-accounting1/native-accounting-summary2.json",
+      "sha256": "b075afedb5cd57b532851075c501fbc166f3e2ab9733c740e38cad9e5537cb36"
+    },
+    {
+      "name": "native1064-midea-accounting1/candidate-writer-proof1.json",
+      "sha256": "30fc3d6621b5a75d877560b4602bfcd70c74a6df89a50743a335499f7066f989"
+    },
+    {
+      "name": "native1065-grouped-detail1/comparison1.json",
+      "sha256": "42ea0b8e5d9d9aadb6a205da0cb1a3b541e043aef09c3eccfbb2b5767b81ebf7"
+    },
+    {
+      "name": "native1065-direct-monitor1/original-results1.json",
+      "sha256": "f03ee43c113e81bc27616677a0a20616d8d9644bde54f17030190f3654b35a22"
+    }
+  ]
+}

@@ -21,12 +21,17 @@ func TestRealRenderedAPIURLTransformCanonicalSettlement(t *testing.T) {
 }
 
 func TestRealHashRoutedAPICanonicalSettlementAndFailureAuthority(t *testing.T) {
-	testRealRenderedAPICanonicalSettlement(t, false, true)
+	testRealRenderedAPICanonicalSettlement(t, false, "trip")
 }
 
-func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool, hashRoute ...bool) {
+func TestRealMideaSPAAPICanonicalSettlementAndFailureAuthority(t *testing.T) {
+	testRealRenderedAPICanonicalSettlement(t, false, "midea")
+}
+
+func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool, hashRoute ...string) {
 	t.Helper()
-	trip := len(hashRoute) > 0 && hashRoute[0]
+	trip := len(hashRoute) > 0 && hashRoute[0] == "trip"
+	midea := len(hashRoute) > 0 && hashRoute[0] == "midea"
 	for _, mode := range []string{"rich", "truncated", "publisher", "failed", "wrong_binding"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := `{"browser":true,"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title","description":"body","locations":"city"},"scraper_type":"skip"}`
@@ -35,6 +40,10 @@ func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool, hashRo
 				boardURL = "https://careers.trip.com/#/jobList"
 				metadata = strings.Replace(metadata, `https://example.com/api`, `https://careers.trip.com/api/oversea/getOverseaJobAd`, 1)
 				metadata = strings.Replace(metadata, `"browser":true`, `"browser":true,"method":"POST"`, 1)
+			}
+			if midea {
+				boardURL = "https://recruit.midea.com/recruitOut/ihr/home/index"
+				metadata = strings.Replace(metadata, "https://example.com/api", "https://recruit.midea.com/api/jobs", 1)
 			}
 			if transform {
 				metadata = strings.TrimSuffix(metadata, "}") + `,"url_transform":{"find":"/new$","replace":"/canonical"}}`
@@ -45,6 +54,10 @@ func testRealRenderedAPICanonicalSettlement(t *testing.T, transform bool, hashRo
 			if trip {
 				postingURL = "https://careers.trip.com/#/job-detail?fromId=aB12cD34&atsApiType=Moka_Overseas"
 				policyURL = "https://careers.trip.com/api/oversea/getOverseaJobAd"
+			}
+			if midea {
+				postingURL = boardURL + "#/positionDetail/1234567890abcdef1234567890abcdef"
+				policyURL = "https://recruit.midea.com/api/jobs"
 			}
 			ctx := context.Background()
 			claim, err := f.a.Claim(ctx, queue.Browser)

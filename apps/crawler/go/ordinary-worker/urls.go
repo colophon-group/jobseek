@@ -57,9 +57,25 @@ func classifyJobURL(raw, board string) string {
 		if api.JohdiOfferFragment(p.fragment) {
 			return ""
 		}
+		if mideaPostingIdentity(p, bp) {
+			return ""
+		}
 		return "board_homepage"
 	}
 	return ""
+}
+
+var mideaPostingFragment = regexp.MustCompile(`^/positionDetail/[0-9a-f]{32}$`)
+
+// Midea's public inventory binds a 32-hex posting ID in its SPA fragment.
+// Restrict the exception to the verified HTTPS listing path; ordinary hashes,
+// aliases and other publishers retain the existing homepage rejection.
+func mideaPostingIdentity(p, board pythonURL) bool {
+	return p.scheme == "https" && board.scheme == "https" &&
+		strings.EqualFold(p.host, "recruit.midea.com") && strings.EqualFold(board.host, p.host) &&
+		strings.TrimRight(p.path, "/") == "/recruitOut/ihr/home/index" && strings.TrimRight(board.path, "/") == "/recruitOut/ihr/home/index" &&
+		p.params == "" && board.params == "" && p.query == "" && board.query == "" && board.fragment == "" &&
+		mideaPostingFragment.MatchString(p.fragment)
 }
 
 // Trip's posting ID lives in the SPA route at the site root. The legacy bare

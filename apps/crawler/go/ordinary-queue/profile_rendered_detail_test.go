@@ -3,6 +3,7 @@ package queue
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -188,5 +189,39 @@ func TestRenderedDetailSelectsFieldsAndBindsCanonicalConfiguration(t *testing.T)
 				}
 			}
 		})
+	}
+}
+
+func TestRenderedDOMAlternateReadRetainsCanonicalBrowserBinding(t *testing.T) {
+	c := renderedDetailConfig("dom")
+	c["metadata"] = `{"scraper_type":"dom","scraper_config":{"render":true,"steps":[{"tag":"h1","field":"title"}],"fetch_url_transform":{"find":"/job/","replace":"/print/"}}}`
+	source := "https://jobs.example.net/job/42"
+	p, err := InspectRenderedDetail(jsonldBoardID, c, source, Browser)
+	if err != nil || p.SourceURL != source || p.Domain != "jobs.example.net" || detailWorker(p.Profile) != Browser {
+		t.Fatal("alternate read changed canonical browser ownership", err)
+	}
+	owned, err := inspectDetailOwnership(jsonldBoardID, c)
+	if err != nil || owned.EffectiveBoardSHA256 != p.EffectiveBoardSHA256 {
+		t.Fatal("posting-only rewrite lost canonical ownership template", err)
+	}
+	if _, err := InspectRenderedDetail(jsonldBoardID, c, c["board_url"], Browser); err == nil {
+		t.Fatal("template authority bypassed concrete route matching")
+	}
+	changed := cloneConfig(c)
+	changed["metadata"] = strings.Replace(c["metadata"], "/print/", "/alternate/", 1)
+	next, err := InspectRenderedDetail(jsonldBoardID, changed, source, Browser)
+	if err != nil || next.EffectiveBoardSHA256 == p.EffectiveBoardSHA256 {
+		t.Fatal("alternate target escaped full config binding", err)
+	}
+	if _, err := InspectRenderedDetail(jsonldBoardID, c, source, Simple); err == nil {
+		t.Fatal("alternate read downgraded the browser lane")
+	}
+	for _, target := range []string{"file:///print/42", "https://user:pass@jobs.example.net/print/42"} {
+		bad := cloneConfig(c)
+		body, _ := json.Marshal(map[string]any{"scraper_type": "dom", "scraper_config": map[string]any{"render": true, "steps": []any{map[string]any{"tag": "h1", "field": "title"}}, "fetch_url_transform": map[string]any{"find": "^.*$", "replace": target}}})
+		bad["metadata"] = string(body)
+		if _, err := InspectRenderedDetail(jsonldBoardID, bad, source, Browser); err == nil {
+			t.Fatal("unsafe alternate read admitted")
+		}
 	}
 }

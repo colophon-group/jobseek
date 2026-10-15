@@ -3873,3 +3873,28 @@ Local qualification: the production executable matches the proven text for 16 re
 Next: complete Linux installed-image qualification, broader monitor policy parity and live document samples; then use the supported ownership/deployment workflow for admission. Python retirement and global freshness/conservation remain incomplete. Browser-detail PR #10535 stays independently qualified at its exact head; PDF work does not invalidate that candidate.
 
 The broader monitor text comparison now matches24/24 retained actual documents exactly. A three-page discrepancy was repaired by restoring font, decoder, size and leading with q/Q graphics state; a synthetic regression verifies this behavior. Fresh original SICTIC public HTTP and native sealed verified-CA HTTP return all equal canonical fields (race4.352s). Focused PDF/OCR/policy/private-writer tests pass again after repair (race16.814s). The PDF draft targets main and includes a network-disabled installed-binary check over seven reference PDFs and malformed inputs; current-head CI and supported admission remain required.
+
+### Grouped browser and URL identity candidate — 2026-10-15
+
+Candidate 0.13.1065 fixes the active Midea API-browser monitor's SPA URL identity
+in both Go and transitional Python, and supports configured alternate reads for
+rendered DOM details. Canonical posting source, defaults, browser lane and complete
+configuration binding remain authoritative; navigation policy and status use the
+actual alternate read. Pinned physical Lightpanda 1.0.0, mTLS, real store/lease and
+parser checks pass. The same captured 743-job Midea prefix previously normalized
+to zero jobs in both runtimes; it now persists all 743 and retains the unseen tail.
+The response remains truncated and cannot authorize tail delisting.
+
+Fresh 15-posting/eight-board comparisons qualify both Kaiser JSON-LD samples on
+every original field, with descriptions of 2812 and 1739 characters. Skadden's
+original captured HTML matches every Go parser field, but independent Lightpanda
+navigation lacks the posting fields. LTIMindtree/Axis originals include empty
+content and timeout; Richemont/Vertiv originals fail HTTP; four direct monitor
+originals fail pagination/PDF proof/board-gone. These failures remain held.
+Lightpanda 1.0.0 is still the latest stable release. Its implementation refuses
+Mozilla user-agent overrides while returning success, so configured browser
+identity must remain unadmitted until an effective route is proved. See the
+[candidate evidence](evidence/go-native1065-browser-and-identity-candidate-2026-10-15.json).
+Exact-head CI, fresh admission, supported original deployment/cutover and independent
+active verification are still required. Production remains 0.13.1064, epoch 344;
+full migration remains active and incomplete.

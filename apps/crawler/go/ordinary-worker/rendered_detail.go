@@ -18,6 +18,7 @@ import (
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
@@ -99,6 +100,13 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	if err != nil {
 		return nil, nil, queue.ErrConfiguration
 	}
+	fetchURL := profile.SourceURL
+	if scraper == "dom" {
+		fetchURL, err = dom.AlternateFetchURL(profile.SourceURL, options["fetch_url_transform"])
+		if err != nil {
+			return nil, nil, queue.ErrConfiguration
+		}
+	}
 	wait, fallback, timeout := "networkidle", "domcontentloaded", uint64(30000)
 	if value, ok := options["wait"].(string); ok {
 		wait = value
@@ -141,7 +149,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if scraper == "dom" {
 			retries = 1
 		}
-		input, err := lp.NavigationInput(lp.Navigation{URL: profile.SourceURL, RoutingRevision: revision, OriginRequestID: requestID, Wait: wait, WaitFallback: fallbackWait, TimeoutMS: timeout, TransportRetries: retries})
+		input, err := lp.NavigationInput(lp.Navigation{URL: fetchURL, RoutingRevision: revision, OriginRequestID: requestID, Wait: wait, WaitFallback: fallbackWait, TimeoutMS: timeout, TransportRetries: retries})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -248,7 +256,19 @@ func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser
 	// Attribute only a held, validated navigation response. A renderer
 	// connection/protocol failure is not evidence of an origin failure.
 	if success := result.GetSuccess(); success != nil && !errors.Is(err, executor.ErrRenderedResult) && !errors.Is(err, executor.ErrProtocol) && !errors.Is(err, policy.ErrSignals) {
-		requested, _ := url.Parse(source)
+		requestedURL := source
+		if scraper == "dom" {
+			value, parseErr := b0task.ParseCanonicalValue(parser)
+			options, ok := value.(map[string]any)
+			if parseErr != nil || !ok {
+				return nil, nil, executor.ErrProtocol
+			}
+			requestedURL, parseErr = dom.AlternateFetchURL(source, options["fetch_url_transform"])
+			if parseErr != nil {
+				return nil, nil, executor.ErrProtocol
+			}
+		}
+		requested, _ := url.Parse(requestedURL)
 		final, _ := url.Parse(success.FinalUrl)
 		observation := httpObservation(ctx)
 		observation.noteRequest(requested.Hostname())

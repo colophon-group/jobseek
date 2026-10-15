@@ -13,6 +13,7 @@ import (
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
@@ -84,8 +85,9 @@ func heldRenderedResult(html, final string, status uint32) *runtimev1.BrowserRes
 }
 
 func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testing.T) {
-	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
-		t.Run(scraper, func(t *testing.T) {
+	for _, variant := range []string{"dom", "dom-alternate", "json-ld", "nextdata"} {
+		scraper := strings.TrimSuffix(variant, "-alternate")
+		t.Run(variant, func(t *testing.T) {
 			parser := `{"render":true,"defaults":{"language":"en"}}`
 			html := nativeJSONLDHTML
 			if scraper == "dom" {
@@ -95,6 +97,13 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 			if scraper == "nextdata" {
 				parser = `{"render":true,"wait":"domcontentloaded","path":"job","fields":{"title":"title","description":"description","locations":"locations","employment_type":"employment","responsibilities":"responsibilities"}}`
 				html = nativeEmbeddedHTML
+			}
+			if variant == "dom-alternate" {
+				var cfg map[string]any
+				json.Unmarshal([]byte(parser), &cfg)
+				cfg["fetch_url_transform"] = map[string]any{"find": "/job/", "replace": "/print/"}
+				body, _ := json.Marshal(cfg)
+				parser = string(body)
 			}
 			f, a, claim := independentDetailOwnedFixture(t, `{"scraper_type":"`+scraper+`","scraper_config":`+parser+`}`, "", queue.Browser)
 			if !a.RequiresRenderedDetails() {
@@ -106,7 +115,11 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 				if p.SourceURL != "https://example.com/job/"+f.original || p.Profile != map[string]string{"dom": "dom.rendered-detail/v1", "json-ld": "jsonld.rendered-detail/v1", "nextdata": "embedded.rendered-detail/v1"}[scraper] {
 					t.Fatal("rendered canonical context differs")
 				}
-				return parseHeldDetail(ctx, p, heldRenderedResult(html, p.SourceURL, 200))
+				fetchURL, err := dom.AlternateFetchURL(p.SourceURL, p.DOMConfig["fetch_url_transform"])
+				if err != nil {
+					t.Fatal(err)
+				}
+				return parseHeldDetail(ctx, p, heldRenderedResult(html, fetchURL, 200))
 			})
 			client := richPipelineHTTP(t, func(http.ResponseWriter, *http.Request) { t.Error("rendered detail issued direct HTTP") })
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
@@ -116,6 +129,10 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 			result, err := RunDetail(context.Background(), a, claim, client, richPipelinePreparer(t, f).Processor, circuits, renderer)
 			if err != nil || !result.Settled || result.Cycle.Status != "succeeded" || calls != 1 || result.HTTP.Requests != 1 || result.HTTP.Responses != 1 {
 				t.Fatal("rendered detail failed", result, err)
+			}
+			var canonicalSource string
+			if err := f.pg.QueryRow(context.Background(), "SELECT source_url FROM job_posting WHERE id=$1::uuid", f.original).Scan(&canonicalSource); err != nil || canonicalSource != "https://example.com/job/"+f.original {
+				t.Fatal("alternate read changed canonical posting source", err)
 			}
 			var title, descriptionHTML, employment, currency string
 			var locations []int32

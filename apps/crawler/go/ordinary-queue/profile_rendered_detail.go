@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	"net/url"
 	"regexp"
 )
@@ -25,6 +26,10 @@ func detailWorker(profile string) WorkerType {
 // Request defaults match shared.browser.navigate; the full original canonical
 // configuration remains the ownership binding.
 func InspectRenderedDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	return inspectRenderedDetail(boardID, config, source, worker, false)
+}
+
+func inspectRenderedDetail(boardID string, config map[string]string, source string, worker WorkerType, ownership bool) (WorkdayDetailProfile, error) {
 	fail := func() (WorkdayDetailProfile, error) { return WorkdayDetailProfile{}, ErrUnsupportedProfile }
 	if worker != Browser || config["scraper_needs_browser"] != "1" {
 		return fail()
@@ -65,7 +70,7 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	}
 	navigation := make(map[string]any, len(options))
 	for key, value := range options {
-		if key != "enrich" {
+		if key != "enrich" && !(scraper == "dom" && key == "fetch_url_transform") {
 			navigation[key] = value
 		}
 	}
@@ -85,6 +90,14 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	}
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy"} {
 		delete(parser, key)
+	}
+	if ownership && scraper == "dom" {
+		if dom.ValidateFetchURLTransform(options["fetch_url_transform"]) != nil {
+			return fail()
+		}
+		// Listing URLs need not match a posting-only rewrite. Every actual SQL
+		// source and claimed read still uses the strict public inspector.
+		delete(parser, "fetch_url_transform")
 	}
 	parser["render"] = false
 	parserBody, err := json.Marshal(parser)
