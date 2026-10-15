@@ -2029,6 +2029,7 @@ davita,davita-portugal,https://www.davita.pt/en/recrutamento/,inline,"{""render"
 davita,davita-singapore,https://www.davita.com.sg/physician-resources,dom,"{""render"": false, ""url_filter"": ""^https://www\\.davita\\.com\\.sg/(?:nurse-manager|global-clinicl-leadership|clincal-outcomes|clinical-research-1)$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""stop"": ""To inquire about other opportunities""}], ""defaults"": {""locations"": [""Singapore""]}}"
 daylight,daylight-greenhouse,https://job-boards.greenhouse.io/daylight,greenhouse,"{""token"": ""daylight""}",skip,
 daymark-health,daymark-health-greenhouse,https://job-boards.greenhouse.io/daymarkhealth,greenhouse,"{""token"": ""daymarkhealth""}",skip,
+dayton-freight,dayton-freight-careers,https://careers-daytonfreight.icims.com/,icims,,json-ld,
 db-e-c-o-north-america,db-e-c-o-north-america-greenhouse,https://job-boards.greenhouse.io/dbeconorthamerica,greenhouse,"{""token"": ""dbeconorthamerica""}",skip,
 dbs,dbs-careers,https://dbs.wd3.myworkdayjobs.com/DBS_Careers,workday,"{""company"": ""dbs"", ""wd_instance"": ""wd3"", ""site"": ""DBS_Careers"", ""all_sites"": false}",workday,
 dbt-capital,dbt-capital-teamtailor,https://careers.dbt.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.dbt.se/jobs.rss""}",skip,
