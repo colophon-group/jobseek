@@ -1,48 +1,70 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery checkpoint — 2026-10-15
+## Durable delivery checkpoint — 2026-10-15
 
-PR #10537 is merged as `e8c991476c0f6801c2bc9e4def6ab992b7c505e5`
-(0.13.1054). It groups alternate DOM reads and linked descriptions. Its exact
-reviewed head passed Required CI, the actual Crawler Deploy Gate, installed
-runtime parity, both Lightpanda architectures, and 16 original ARM qualification
-arms. The original crawler workflow 38657849689 and renderer workflow
-38657977457 are delivering that source; deployed ownership is not yet claimed.
+Source1056 `e115abb0a39b0d218dce63213d9de9bedd21d904` is deployed.
+The original crawler38662379966 and renderer38662477948 workflows succeeded.
+Independent immutable image/source/CSV checks, seven restored base writers, six
+health checks and exporter progress pass. Native ownership remains inactive in
+supported cold epoch333. Preserve the last active floor of7830 monitor boards and
+7742 detail boards from epoch332; readiness alone does not prove fleet freshness.
 
-Outgoing source1053 completed the supported ordinary retirement, B0 cold
-reversal, and selector clearing. Independent readback verifies cold epoch333,
-zero active ordinary plans, absent owner receipts, stopped native actors and
-six restored base-lane health checks. The last verified active native floor was
-7830 monitor boards and7742 detail boards at epoch332. Preserve that entire
-floor when qualifying and activating the incoming source from fresh canonical
-SQL/Redis/configuration and complete posting routes.
+PR #10540 merged as source1057 `f7de6c2d103e9120f8f4e7b104d72f6360f49027`
+after fresh head/base/tree/checks/hold/operator audit. Its six original qualification
+workflows pass; the tested PR merge revision has exactly the frozen reviewed tree.
+Wait for both original deployments and independent cold/source/image/CSV/exporter
+verification before the next release or ownership operation. Never restart an
+in-progress deployment merely because observation timed out.
 
-PR #10538 groups Oracle vanity-board ownership and empty JOIN Nextdata behavior.
-Its frozen head `c9d7faf837f71cb638dd0a562935968d7a998964` passed the required
-gates, installed contracts, both Lightpanda architectures and original ARM
-qualification. Deliver the parent release before a fresh merge audit. Use merge
-commits for the stacked runtime PRs so their qualified ancestry survives.
+The0.13.1058 candidate repairs stale existing detail queue projections in256-row
+pages inside the original staged cold adoption path. Thirteen real PostgreSQL/Redis
+regressions and the existing cold/ordered/Workday race suite pass. The compiled
+native executable also proves repair, SAVE failure/retry, activation, real claim
+and retirement with the canonical SQL deadline preserved. Existing worker admin
+race checks and all17 original wrapper tests pass.
 
-Draft PR #10539 ports JSON-LD 403 recovery into the existing Workday API
-client with separately configured protected proxy selection. Eight original
-Python fixtures, five real PostgreSQL/Redis writer cases and eight retirement
-states pass. Two reachable RTX samples match all original fields on both the
-primary path and live Workday recovery after a synthetic primary403; one exact
-requisition is unresolved and remains held. Fresh installed qualification and
-complete current-route publication remain required.
+Full parser validation covers1663792 source1053 routes with zero invalid routes,
+including all previous7742details plus43cached-mismatch candidates (115.1s locally).
+Complete cold adoption with10001postings across129domains takes1.03s unchanged,
+1.05s with1% stale and1.76s with all stale on local private SQL/Redis. These are
+macOS measurements, not installed Linux or whole-fleet resource proof. The existing
+admin now has a20-minute parent deadline, its original wrapper1220seconds, and
+operator callers must allow at least35minutes for complete stop/readiness and
+containment. SQL leases still expire naturally under the original exclusive locks.
+The existing lifecycle SQL scope inherits the earlier parent deadline.
 
-Visible/hidden/default browser waits are the following local batch. All21
-original Chromium fixtures and the existing physical interaction suite pass on
-official Lightpanda1.0.0. WTW's captured output matches original canonical fields;
-the real private canonical writer and six cold-retirement states pass. Installed
-qualification and fresh complete current routes remain required.
+Next deliver this candidate through full required CI, actual Crawler Deploy Gate,
+original ARM and installed-runtime qualification. Measure the complete selected
+fleet on Linux before granting ownership. Bind later operator drivers to the exact
+Git-deployed wrapper hash and whole-operation budget. Never replace live wrappers
+or edit production SQL/Redis/leases/receipts manually.
 
-Lightpanda1.0.0 is still the latest official stable release, reverified October15.
-Continue grouped contracts, then prove remaining enabled coverage, global
-freshness and queue conservation, comparable fleet cost and the rollback window.
-Retire production Python, Playwright and Chromium only after replacement and
-rollback authority are established. Preserve useful isolated offline Python.
-The full migration goal remains active.
+Keep intermediate qualified releases in supported ownerless cold state while
+sequential original deployments finish. Consolidate one fresh current-source
+admission for the qualified DOM, Oracle/Nextdata, Workday recovery and browser wait
+batches, then activate once through the original B0/ordinary wrappers. Preserve
+every prior member and strict validation of every selected actual source route.
+
+The source1053 advisory screen has67unowned monitors and155unowned details.
+Of93compiled details,43have cached-route mismatches and50still need complete
+output qualification. A repeated2292posting sample found249different cached board
+IDs,3different source URLs,69sole wrong-lane entries and3dual-lane entries. This
+sample is not a whole-fleet count or admission. All43candidate boards agree on
+canonical legacy/native worker lanes. Original cold adoption accepted four stale
+variants but left each unclaimable; the candidate repair makes them claimable and
+preserves exact retry/cancellation and valid fallback progress.
+
+The next bulk coverage gap spans browser proxy/controls across DOM and JSON-LD:
+62detail boards do not compile;31include proxy,26stealth,16channel and13persistent
+context options. Port multiple variants together, with original behavior and actual
+output proof. Continue existing compiled monitor/detail qualification in the same
+iteration; compilation alone grants no ownership.
+
+Lightpanda1.0.0 is the latest official stable release, rechecked2026-10-15.
+Complete enabled coverage, fleet freshness and queue conservation, comparable
+CPU/RAM/density/cost, supported cold reversal and the rollback window before
+retiring production Python, Playwright, Chromium and legacy runtime assets.
+Preserve useful isolated offline Python tooling. The full migration goal is active.
 
 
 ## Latest checkpoint — 2026-10-15, source1053

@@ -109,8 +109,10 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (r
 		return nil, ErrStartup
 	}
 	// Legacy cancellation retains ten-minute SQL leases after every process
-	// stops. The protected host remains cold while they expire naturally.
-	ctx, cancel := context.WithTimeout(ctx, 14*time.Minute)
+	// stops. Reserve a further ten minutes for complete canonical route
+	// validation and paged projection repair; never clear a lease to fit the
+	// budget. The protected host remains cold throughout this bounded window.
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 	phase = "database"
 	config, err := pgxpool.ParseConfig(c.database)
@@ -138,7 +140,7 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (r
 	}
 	r := c.request
 	phase = "host-cold-scope"
-	err = queue.WithHostColdSQL(ctx, pool, queue.HostColdSQLBinding{SourceRevision: r.SourceRevision, RequestSHA256: c.digest, ContainmentIntentSHA256: r.ColdHostSHA256}, func(ctx context.Context, _ *queue.HostColdSQL) error {
+	err = queue.WithHostColdSQLLifecycle(ctx, pool, queue.HostColdSQLBinding{SourceRevision: r.SourceRevision, RequestSHA256: c.digest, ContainmentIntentSHA256: r.ColdHostSHA256}, func(ctx context.Context, _ *queue.HostColdSQL) error {
 		// Validate the legacy/native startup projection identity before any
 		// Redis or SQL ownership effect; the queue API validates the full plan.
 		phase = "projection"

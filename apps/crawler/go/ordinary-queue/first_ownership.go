@@ -319,6 +319,12 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 	}
 	completed := (!retire && state == "active") || (retire && state == "retired")
 	retirement := "[]"
+	if !retire && state == "staged" {
+		phase = "canonical-detail-projection"
+		if err := repairStagedDetailProjection(ctx, pool, client, plan); err != nil {
+			return nil, err
+		}
+	}
 	if (retire && state == "active") || (!retire && state == "staged") {
 		// First adoption uses the same canonical deadline restoration as cold
 		// reversal. Expired legacy claims may outlive their SQL leases when the

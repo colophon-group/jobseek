@@ -208,7 +208,11 @@ printf '{"version":"jobseek.ordinary.first-owner-request/v1","operation":"%s","s
 # Ten-minute legacy SQL leases can survive graceful process cancellation. Keep
 # the same cold host and pending identity while the native command observes
 # their natural expiry, then rechecks all exclusive SQL barriers.
-bounded 860s "${native[@]}" -v "$REQUEST:/run/jobseek/ordinary-request.json:ro" \
+# The native command has a twenty-minute parent deadline: natural ten-minute
+# SQL lease expiry plus complete fleet route validation/repair. Allow TERM
+# containment after its deadline. Operator callers must also budget complete
+# stack stop/readiness and containment (at least thirty-five minutes).
+bounded 1220s "${native[@]}" -v "$REQUEST:/run/jobseek/ordinary-request.json:ro" \
   -e "ORDINARY_GO_WORKER_MODE=$effect-first-ownership" \
   -e ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE=/run/jobseek/ordinary-request.json \
   -e ORDINARY_OWNERSHIP_SOURCE_REVISION -e ORDINARY_OWNERSHIP_ROUTING_EPOCH \

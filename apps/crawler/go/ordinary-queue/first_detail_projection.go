@@ -1,0 +1,175 @@
+package queue
+
+import (
+	"context"
+	_ "embed"
+	"encoding/json"
+	"strconv"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+//go:embed first_detail_projection.lua
+var firstDetailProjectionLua string
+
+type canonicalDetailProjection struct {
+	ID, BoardID, Source, Domain, Worker, Due, Hash, Interval string
+	Steps                                                    int
+}
+
+// Repair only existing queued legacy projections, under the original cold
+// session and immutable staged plan. Canonical SQL rows and receipts never
+// change. Correct projections and absent queues remain untouched. Every batch
+// is preflighted before its first Redis effect and can be replayed from SQL.
+func repairStagedDetailProjection(ctx context.Context, pool *pgxpool.Pool, client *Client, plan *OwnershipPlan) error {
+	if plan == nil || client == nil || CheckHostColdSQLScope(ctx, pool, plan.SourceRevision()) != nil {
+		return ErrAuthorityLost
+	}
+	var staged bool
+	if err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ordinary_worker_ownership_plan
+ WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3 AND state='staged'
+ AND $3=(SELECT last_value FROM lightpanda_b0_routing_epoch_seq))`, plan.SHA256(), plan.SourceRevision(), plan.Epoch()).Scan(&staged)
+	}); err != nil || !staged {
+		return ErrAuthorityLost
+	}
+	owner, err := client.redis.Get(ctx, ownershipProjectionKey).Result()
+	if err == nil {
+		// Publication follows every repair batch. An exact pending retry must
+		// preserve that published prefix and use the existing SAVE recovery.
+		if owner == plan.projection {
+			return nil
+		}
+		return ErrAuthorityLost
+	}
+	if err != redis.Nil {
+		return ErrObservation
+	}
+	bindings := make(map[string]ownershipDetail, len(plan.document.Details))
+	contexts := make(map[string]ownershipMember, len(plan.document.Details))
+	boards := make([]string, 0, len(plan.document.Details))
+	for _, d := range plan.document.Details {
+		bound, err := plan.detailContext(d)
+		if err != nil {
+			return err
+		}
+		bindings[d.BoardID] = d
+		contexts[d.BoardID] = bound
+		boards = append(boards, d.BoardID)
+	}
+	if len(boards) == 0 {
+		return nil
+	}
+	var cursor *string
+	for {
+		if CheckHostColdSQLScope(ctx, pool, plan.SourceRevision()) != nil {
+			return ErrAuthorityLost
+		}
+		batch := []canonicalDetailProjection{}
+		err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
+			rows, err := tx.Query(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,p.next_scrape_at,
+ p.description_r2_hash,b.scraper_needs_browser
+ FROM job_posting p JOIN job_board b ON b.id=p.board_id
+ WHERE p.board_id=ANY($1::uuid[]) AND p.is_active AND b.is_enabled AND p.next_scrape_at IS NOT NULL
+ AND ($2::uuid IS NULL OR p.id>$2::uuid) ORDER BY p.id LIMIT 256 FOR SHARE OF p,b`, boards, cursor)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var row canonicalDetailProjection
+				var due time.Time
+				var hash *int64
+				var browser bool
+				if err := rows.Scan(&row.ID, &row.BoardID, &row.Source, &due, &hash, &browser); err != nil {
+					return err
+				}
+				binding := bindings[row.BoardID]
+				bound := contexts[row.BoardID]
+				row.Worker = string(Simple)
+				if browser {
+					row.Worker = string(Browser)
+				}
+				// Keeping the canonical legacy lane makes a cancelled staged
+				// adoption safe for the original cold rollback as well.
+				if row.Worker != string(binding.Worker) {
+					return ErrUnsupportedProfile
+				}
+				profile, err := inspectDetail(row.BoardID, bound.Config, row.Source, binding.Worker)
+				if err != nil || profile.Profile != binding.Profile || profile.CompanyID != bound.CompanyID || profile.EffectiveBoardSHA256 != bound.EffectiveConfigHash || !detailDomainMatches(binding.Domain, profile) {
+					return ErrAuthorityLost
+				}
+				row.Domain, err = detailSourceDomain(binding, row.Source)
+				if err != nil || due.IsZero() {
+					return ErrAuthorityLost
+				}
+				row.Due, row.Steps = number(seconds(due)), 1
+				if hash != nil {
+					row.Hash = strconv.FormatInt(*hash, 10)
+				}
+				row.Interval = bound.Config["scrape_interval_hours"]
+				if binding.Profile == orderedHTTPDetailProfile || binding.Profile == orderedProxyHTTPDetailProfile {
+					chain, err := InspectOrderedDetail(row.BoardID, bound.Config, row.Source, binding.Worker)
+					if err != nil {
+						return err
+					}
+					row.Steps = len(chain.Stages)
+				}
+				batch = append(batch, row)
+			}
+			return rows.Err()
+		})
+		if err != nil {
+			return err
+		}
+		if len(batch) == 0 {
+			return nil
+		}
+		body, err := json.Marshal(batch)
+		if err != nil {
+			return ErrConfiguration
+		}
+		// Reuse the existing cold ready-index recomputation; no new scheduler
+		// or alternate enqueue surface is introduced.
+		result, err := client.redis.Eval(ctx, firstRetirementLua+firstDetailProjectionLua, nil, string(body), "inspect").Text()
+		var changed []string
+		if err != nil || json.Unmarshal([]byte(result), &changed) != nil {
+			return ErrAuthorityLost
+		}
+		selected := make(map[string]bool, len(changed))
+		for _, id := range changed {
+			if selected[id] {
+				return ErrAuthorityLost
+			}
+			selected[id] = true
+		}
+		repairs := make([]canonicalDetailProjection, 0, len(changed))
+		for _, row := range batch {
+			if !selected[row.ID] {
+				continue
+			}
+			repairs = append(repairs, row)
+		}
+		if len(repairs) != len(changed) {
+			return ErrAuthorityLost
+		}
+		if len(repairs) > 0 {
+			body, err = json.Marshal(repairs)
+			if err != nil {
+				return ErrConfiguration
+			}
+			result, err = client.redis.Eval(ctx, firstRetirementLua+firstDetailProjectionLua, nil, string(body), "apply").Text()
+			if err != nil || result != "ok" {
+				return ErrAuthorityLost
+			}
+		}
+		last := batch[len(batch)-1].ID
+		cursor = &last
+		if len(batch) < 256 {
+			return nil
+		}
+	}
+}
