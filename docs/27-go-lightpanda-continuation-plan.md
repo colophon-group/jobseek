@@ -8,7 +8,32 @@ The complete postactive census preserves the exact cohort with zero owned cache 
 
 Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
-## Following batch — 0.13.1068 candidate, 2026-10-15
+## Following release — 0.13.1069 candidate, 2026-10-15
+
+Combine the HTTP/profile batch below with recovery of wholly missing scheduled
+detail caches in the existing cold activation path. A complete read-only serving
+scan observes 1,685,843 selected SQL schedules and 1,536,144 represented posting
+IDs, with 149,699 absent from both ordinary lanes/inflight and missing their
+scrape cache across 1,637 boards. This observation spans a live serving interval;
+it does not establish a single atomic gap count or a deletion root cause. The
+earlier guarded cold baseline's pre-existing 149,028-posting gap remains valid.
+
+The candidate reconstructs only currently active, enabled, scheduled, owned SQL
+rows whose cache and queued/leased/deadletter representations are wholly absent.
+It uses the original staged plan, host mutation lock, complete writer quiescence,
+exclusive SQL barriers, strict current source/profile validation, bounded stream
+and per-batch preflight. It preserves SQL content/deadlines and restores first-time
+priority only when the canonical description hash is absent. Deadletters, orphan
+fallback caches, inactive/unscheduled rows and native tokens retain their existing
+contracts. Existing SAVE-before-SQL-grant, cancellation and reversal remain required.
+
+Keep this recovery in the same release as the proposed two-monitor/nine-detail
+batch, so one supported whole deployment and cold admission delivers both. Complete
+exact-head CI, installed executable, physical Linux/ARM qualification and fresh
+full-floor reconciliation before any ownership change. See [recovery candidate
+evidence](evidence/go-native1069-missing-schedules-candidate-2026-10-15.json).
+
+### Included HTTP and profile batch
 
 Seven explicit HTTP detail replacements cover McDonald's Australia, Bridgestone
 Australia, both dnata Australia boards, CMA CGM Air Belgium, MUFG Trust and Wix.

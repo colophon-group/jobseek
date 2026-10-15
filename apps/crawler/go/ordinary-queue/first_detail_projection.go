@@ -22,10 +22,11 @@ type canonicalDetailProjection struct {
 	Steps                                                    int
 }
 
-// Repair only existing queued legacy projections, under the original cold
-// session and immutable staged plan. Canonical SQL rows and receipts never
-// change. Correct projections and absent queues remain untouched. Every batch
-// is preflighted before its first Redis effect and can be replayed from SQL.
+// Repair queued legacy projections and wholly absent scheduled caches under
+// the original cold session and immutable staged plan. Canonical SQL rows and
+// receipts never change. Correct projections, deadletters and orphaned caches
+// remain untouched. Every batch is preflighted before its first Redis effect
+// and can be replayed from SQL.
 func repairStagedDetailProjection(ctx context.Context, pool *pgxpool.Pool, client *Client, plan *OwnershipPlan) error {
 	if plan == nil || client == nil || CheckHostColdSQLScope(ctx, pool, plan.SourceRevision()) != nil {
 		return ErrAuthorityLost

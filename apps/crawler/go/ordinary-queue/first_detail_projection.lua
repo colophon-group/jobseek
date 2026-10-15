@@ -55,13 +55,13 @@ for _, row in ipairs(rows) do
     if type(old_domain) ~= "string" or #old_domain < 1 or #old_domain > 253 or string.find(old_domain,"[%c|]") then
         return redis.error_reply("invalid previous detail domain")
     end
-    local queued, first, lease, wrong_lane, unsafe = false, nil, false, false, false
+    local queued, first, lease, wrong_lane, unsafe, deadletter = false, nil, false, false, false, false
     local contexts = {}
     for _, worker in ipairs({"simple", "browser"}) do
         for _, domain in ipairs(old_domain == row.Domain and {row.Domain} or {row.Domain, old_domain}) do
             local task = "scrape|" .. domain .. "|" .. row.ID
             local ft, recurring = "ft_scrapes_" .. worker .. ":" .. domain, "scrapes_" .. worker .. ":" .. domain
-            for _, name in ipairs({ft, recurring,"ft_monitors_"..worker..":"..domain,"monitors_"..worker..":"..domain,"inflight:"..worker,"ready:rotation:"..worker}) do
+            for _, name in ipairs({ft, recurring,"ft_monitors_"..worker..":"..domain,"monitors_"..worker..":"..domain,"inflight:"..worker,"deadletter:"..worker,"ready:rotation:"..worker}) do
                 local queue_error=projection_queue(name)
                 if queue_error then return redis.error_reply(queue_error) end
             end
@@ -77,6 +77,7 @@ for _, row in ipairs(rows) do
             if rate~=false and not retirement_finite(tonumber(rate)) or rotation~=false and not retirement_finite(tonumber(rotation)) then return redis.error_reply("invalid ready floor") end
             local f,r,l=redis.call("ZSCORE",ft,row.ID),redis.call("ZSCORE",recurring,row.ID),redis.call("ZSCORE","inflight:"..worker,task)
             local token=redis.call("HGET","inflight_tokens:"..worker,task)
+            deadletter=deadletter or redis.call("ZSCORE","deadletter:"..worker,task)~=false
             if token~=false or l~=false and (not retirement_finite(tonumber(l)) or tonumber(l)>now) then unsafe=true end
             if f~=false then first=math.min(first or math.huge,tonumber(f)) end
             if f~=false or r~=false or l~=false then
@@ -102,10 +103,14 @@ for _, row in ipairs(rows) do
         if not valid_handoff_hash(hash) then return redis.error_reply("invalid detail handoff hash") end
     end
     if queued and (not retirement_finite(tonumber(interval)) or tonumber(interval)<1 or tonumber(interval)>2562047) then return redis.error_reply("invalid detail interval") end
-    if queued and (not identity or wrong_lane) then
+    -- A SQL schedule can outlive every Redis representation. Reconstruct
+    -- only a wholly absent cache, with no queued/leased/deadletter state.
+    -- Existing orphan caches may carry a pending fallback and stay untouched.
+    local missing=not queued and not deadletter and redis.call("EXISTS",key)==0
+    if missing or queued and (not identity or wrong_lane) then
         if unsafe then return redis.error_reply("live or native detail lease retained") end
         if redis.call("HEXISTS","lightpanda-b0:legacy-guard",row.ID)==1 then return redis.error_reply("B0 detail overlap") end
-        if lease and first==nil and row.Hash=="" then first=0 end
+        if (lease or missing) and first==nil and row.Hash=="" then first=0 end
         changes[#changes+1]={row=row,contexts=contexts,first=first,step=step,hash=hash,interval=interval,identity_changed=not identity}
     end
 end

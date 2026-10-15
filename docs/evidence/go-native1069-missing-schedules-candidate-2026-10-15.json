@@ -1,0 +1,56 @@
+{
+  "schema": "jobseek.native-migration-candidate/v1",
+  "version": "0.13.1069",
+  "base_revision": "ef3a485cbfb7c79b3ba3db171c263a7fb8f25753",
+  "serving_revision": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+  "serving_ownership": {
+    "epoch": 346,
+    "monitors": 7830,
+    "details": 7802
+  },
+  "stage": "candidate; no production queue or ownership mutation",
+  "included_http_batch": "go-native1068-browser-http-batch-candidate-2026-10-15.json",
+  "included_profile_additions": {
+    "monitors": 2,
+    "details": 9
+  },
+  "read_only_observation": {
+    "selected_sql_schedules": 1685843,
+    "represented_posting_ids": 1536144,
+    "unrepresented_missing_cache": 149699,
+    "affected_boards": 1637,
+    "scope": "complete selected ownership, live SQL snapshot followed by bounded Redis observations; not one atomic snapshot or a proven deletion root cause",
+    "evidence_sha256": "de8adb066e0d5e617c3c1f046f11c4faca8b5777a5ee4fa5ad19c70eca745215"
+  },
+  "recovery_contract": {
+    "entrypoint": "original native ordinary cold activation",
+    "authority": "exact staged ownership plan and installed source; original host mutation lock and complete quiescence; SQL writer barriers; every current canonical row/profile/source inspected",
+    "eligible": "active enabled scheduled owned rows with wholly absent scrape cache and no queued/leased/deadletter state",
+    "retain": [
+      "SQL content and deadlines",
+      "canonical source/board",
+      "existing first-time and recurring memberships",
+      "deadletters and orphan fallback caches",
+      "inactive or unscheduled rows",
+      "live or native leases",
+      "B0 guards and unrelated queues"
+    ],
+    "priority": "zero first-time score only when canonical description hash is absent; otherwise current SQL due time",
+    "durability": "existing SAVE-before-SQL-grant; failed prefix remains staged and replayable; cancellation retains usable canonical legacy schedules"
+  },
+  "validation": {
+    "new_private_store_cases": "10 pass:both lanes with and without description hash;deadletters,orphan cache,inactive,unscheduled,native-token refusal",
+    "stream_missing_prefix_retry_and_cancellation": "pass",
+    "compiled_original_entrypoint": "pass:missing cache reconstruction, failed SAVE refuses SQL grant, exact retry, canonical claim, cold retirement",
+    "all_cold_projection_race_checks": "pass including missing stream prefix/retry/cancellation"
+  },
+  "still_required": [
+    "exact-head required CI and actual Crawler Deploy Gate",
+    "installed runtime and Linux/ARM qualification",
+    "fresh complete source/data/config/route admission preserving7830/7802 floor",
+    "supported whole deployment and original activation",
+    "independent new source/image/receipt/SQL/Redis identities and exact queued-ID conservation",
+    "post-recovery freshness and matched resource/cost evidence",
+    "native lifecycle/recovery window and production Python retirement"
+  ]
+}
