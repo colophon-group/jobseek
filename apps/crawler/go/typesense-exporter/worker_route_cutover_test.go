@@ -21,6 +21,9 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 	ctx, conn, _ := registryTestDatabase(t)
 	c := capacityRedisFixture(t, ctx)
 	cfg := map[string]any{"scraper_type": "api_sniffer", "scraper_config": map[string]any{"api_url": target.APIURL}}
+	if target.StaticConfigs != nil {
+		cfg = map[string]any{"scraper_type": target.LegacyType, "scraper_config": target.StaticConfigs.Forward}
+	}
 	raw, _ := json.Marshal(cfg)
 	var board, company string
 	if err := conn.QueryRow(ctx, `INSERT INTO job_board(company_id,board_slug,board_url,scraper_needs_browser,metadata) VALUES(gen_random_uuid(),$1,$2,false,$3::jsonb) RETURNING id::text,company_id::text`, target.Slug, target.BoardURL, string(raw)).Scan(&board, &company); err != nil {
@@ -35,6 +38,18 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 		}
 		if target.Slug == "venturelab-careers" {
 			url = fmt.Sprintf("https://%s/jobs/_publicJob%d_/apply?language=en", target.Domain, i+1)
+		}
+		if target.StaticConfigs != nil {
+			path := map[string]string{
+				"mcdonalds-au-restaurants":         "/crew-member/job/%d",
+				"bridgestone-careers-australia":    "/jobDetailsModern?selectJob=%d",
+				"emirates-group-dnata-au":          "/jobDetailsModern?selectJob=%d",
+				"emirates-group-dnata-catering-au": "/jobDetailsModern?selectJob=%d",
+				"wix-careers":                      "/position/REF%d",
+				"cma-cgm-air-belgium":              "/jobs/first-officer-%d/",
+				"mufg-trust-jp":                    "/u/job.phtml?job_code=%d",
+			}[target.Slug]
+			url = "https://" + target.Domain + fmt.Sprintf(path, i+1)
 		}
 		var hash any = "123"
 		if i == 0 {
@@ -125,6 +140,9 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 	cfg = map[string]any{"scraper_type": target.LegacyType, "scraper_config": map[string]any{"fields": map[string]any{"description": "description"}}}
 	if target.LegacyType == "dom" {
 		cfg["scraper_config"] = map[string]any{"render": true, "steps": []any{map[string]any{"field": "description"}}}
+	}
+	if target.StaticConfigs != nil {
+		cfg["scraper_config"] = target.StaticConfigs.Reverse
 	}
 	raw, _ = json.Marshal(cfg)
 	if _, err := conn.Exec(ctx, `UPDATE job_board SET scraper_needs_browser=true,metadata=$1::jsonb WHERE id=$2::uuid`, string(raw), board); err != nil {

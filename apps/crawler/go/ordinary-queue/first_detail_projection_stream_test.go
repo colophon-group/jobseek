@@ -66,6 +66,14 @@ func (h *projectionBatchHook) ProcessHook(next redis.ProcessHook) redis.ProcessH
 }
 
 func TestRealColdDetailProjectionStreamPrefixIsContainedAndReplayable(t *testing.T) {
+	testColdDetailProjectionStreamPrefix(t, false)
+}
+
+func TestRealColdMissingSchedulesStreamPrefixIsContainedAndReplayable(t *testing.T) {
+	testColdDetailProjectionStreamPrefix(t, true)
+}
+
+func testColdDetailProjectionStreamPrefix(t *testing.T, missing bool) {
 	p := projectionFixture(t, Simple, `{"scraper_type":"json-ld"}`)
 	ctx, r := context.Background(), p.f.client.redis
 	board := p.plan.document.Details[0].BoardID
@@ -82,6 +90,9 @@ func TestRealColdDetailProjectionStreamPrefixIsContainedAndReplayable(t *testing
 		t.Fatal(err)
 	}
 	for _, id := range ids {
+		if missing {
+			continue
+		}
 		if _, err := p.f.client.EnqueueURLDetail(ctx, URLOnlyDetail{ID: id, BoardID: p.plan.document.Members[0].BoardID, URL: "https://example.com/job/" + id, Due: due, Browser: true}); err != nil {
 			t.Fatal(err)
 		}
@@ -152,6 +163,14 @@ func (h *projectionCancelHook) ProcessHook(next redis.ProcessHook) redis.Process
 	}
 }
 func TestRealColdDetailProjectionStreamCancellationBetweenInspectionAndEffects(t *testing.T) {
+	testColdDetailProjectionStreamCancellation(t, false)
+}
+
+func TestRealColdMissingSchedulesStreamCancellationBetweenInspectionAndEffects(t *testing.T) {
+	testColdDetailProjectionStreamCancellation(t, true)
+}
+
+func testColdDetailProjectionStreamCancellation(t *testing.T, missing bool) {
 	p := projectionFixture(t, Simple, `{"scraper_type":"json-ld"}`)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -160,6 +179,10 @@ func TestRealColdDetailProjectionStreamCancellationBetweenInspectionAndEffects(t
 	oldBoard := p.plan.document.Members[0].BoardID
 	if err := r.HSet(ctx, key, "board_id", oldBoard).Err(); err != nil {
 		t.Fatal(err)
+	}
+	if missing {
+		r.Del(ctx, key)
+		r.ZRem(ctx, "ft_scrapes_simple:example.com", p.f.task.ID)
 	}
 	before := r.HGetAll(ctx, key).Val()
 	h := &projectionCancelHook{cancel: cancel}

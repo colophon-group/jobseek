@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 
-def test_dnata_australia_expr3ss_boards_use_canonical_headful_proxy_paths() -> None:
+def test_dnata_australia_expr3ss_monitor_and_detail_transports() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         rows = {
@@ -25,11 +25,6 @@ def test_dnata_australia_expr3ss_boards_use_canonical_headful_proxy_paths() -> N
     }
     expected_scraper_config = {
         "render": True,
-        "proxy": True,
-        "transport_attempts": 5,
-        "channel": "chrome",
-        "headless": False,
-        "stealth": True,
         "wait": "domcontentloaded",
         "timeout": 30000,
     }
@@ -58,12 +53,15 @@ def test_dnata_australia_expr3ss_boards_use_canonical_headful_proxy_paths() -> N
             expected
         }
 
-        assert {
-            key: scraper_config[key] for key in expected_scraper_config
-        } == expected_scraper_config
+        if row["board_slug"] == "emirates-group-dnata-catering-au":
+            assert scraper_config == {"render": False}
+        else:
+            assert {
+                key: scraper_config[key] for key in expected_scraper_config
+            } == expected_scraper_config
 
     catering_config = json.loads(rows["emirates-group-dnata-catering-au"]["scraper_config"])
-    assert catering_config == expected_scraper_config
+    assert catering_config == {"render": False}
 
     main_config = json.loads(rows["emirates-group-dnata-au"]["scraper_config"])
     assert set(main_config) == {*expected_scraper_config, "actions"}

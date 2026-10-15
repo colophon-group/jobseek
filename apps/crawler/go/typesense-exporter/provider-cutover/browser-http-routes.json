@@ -1,0 +1,250 @@
+[
+  {
+    "slug": "mcdonalds-au-restaurants",
+    "board_url": "https://careers.mcdonalds.com.au/jobs",
+    "domain": "careers.mcdonalds.com.au",
+    "scraper_type": "json-ld",
+    "source_pattern": "^https://careers\\.mcdonalds\\.com\\.au/[^/?#]+/job/[^#]+$",
+    "forward_config": {
+      "render": false
+    },
+    "reverse_config": {
+      "render": true,
+      "persistent_context": true,
+      "channel": "chrome",
+      "proxy": true
+    }
+  },
+  {
+    "slug": "bridgestone-careers-australia",
+    "board_url": "https://bridgestone.expr3ss.com/homeModern",
+    "domain": "bridgestone.expr3ss.com",
+    "scraper_type": "json-ld",
+    "source_pattern": "^https://bridgestone\\.expr3ss\\.com/jobDetailsModern\\?[^#]+$",
+    "forward_config": {
+      "render": false
+    },
+    "reverse_config": {
+      "render": true,
+      "proxy": true
+    }
+  },
+  {
+    "slug": "emirates-group-dnata-catering-au",
+    "board_url": "https://dnatacatering.expr3ss.com/home",
+    "domain": "dnatacatering.expr3ss.com",
+    "scraper_type": "json-ld",
+    "source_pattern": "^https://dnatacatering\\.expr3ss\\.com/jobDetailsModern\\?[^#]+$",
+    "forward_config": {
+      "render": false
+    },
+    "reverse_config": {
+      "render": true,
+      "proxy": true,
+      "transport_attempts": 5,
+      "channel": "chrome",
+      "headless": false,
+      "stealth": true,
+      "wait": "domcontentloaded",
+      "timeout": 30000
+    }
+  },
+  {
+    "slug": "wix-careers",
+    "board_url": "https://careers.wix.com/positions",
+    "domain": "careers.wix.com",
+    "scraper_type": "dom",
+    "source_pattern": "^https://careers\\.wix\\.com/position/[^/?#]+/?$",
+    "forward_config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "p",
+          "attr": "class=font_8",
+          "from": 0,
+          "field": "locations",
+          "offset": 0
+        },
+        {
+          "from": 0,
+          "html": true,
+          "stop": "About the Team",
+          "text": "Job Description",
+          "field": "description"
+        }
+      ],
+      "render": false,
+      "request_headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+      }
+    },
+    "reverse_config": {
+      "render": true,
+      "user_agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      "wait": "load",
+      "timeout": 30000,
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "p",
+          "offset": 0,
+          "field": "locations",
+          "from": 0,
+          "attr": "class=font_8"
+        },
+        {
+          "text": "Job Description",
+          "field": "description",
+          "stop": "About the Team",
+          "html": true,
+          "from": 0
+        }
+      ]
+    }
+  },
+  {
+    "slug": "cma-cgm-air-belgium",
+    "board_url": "https://www.airbelgium.com/jobs/",
+    "domain": "www.airbelgium.com",
+    "scraper_type": "dom",
+    "source_pattern": "^https://www\\.airbelgium\\.com/jobs/[^/?#]+/?$",
+    "forward_config": {
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "p",
+          "text": "Employment type",
+          "field": "employment_type",
+          "regex": "(?i)Employment type\\s*:?\\s*(.+)"
+        },
+        {
+          "tag": "p",
+          "html": true,
+          "field": "description",
+          "stop_count": 200
+        }
+      ],
+      "defaults": {
+        "locations": [
+          "Mont-Saint-Guibert, BE"
+        ]
+      },
+      "render": false
+    },
+    "reverse_config": {
+      "render": true,
+      "wait": "domcontentloaded",
+      "timeout": 30000,
+      "stealth": true,
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "tag": "p",
+          "text": "Employment type",
+          "field": "employment_type",
+          "regex": "(?i)Employment type\\s*:?\\s*(.+)"
+        },
+        {
+          "tag": "p",
+          "field": "description",
+          "html": true,
+          "stop_count": 200
+        }
+      ],
+      "defaults": {
+        "locations": [
+          "Mont-Saint-Guibert, BE"
+        ]
+      }
+    }
+  },
+  {
+    "slug": "mufg-trust-jp",
+    "board_url": "https://mutb.jposting.net/u/job.phtml",
+    "domain": "mutb.jposting.net",
+    "scraper_type": "dom",
+    "source_pattern": "^https://mutb\\.jposting\\.net/u/job.phtml\\?[^#]+$",
+    "forward_config": {
+      "steps": [
+        {
+          "tag": "h4",
+          "field": "title"
+        },
+        {
+          "html": true,
+          "stop": "職種一覧",
+          "field": "description"
+        },
+        {
+          "tag": "td",
+          "from": 0,
+          "text": "勤務地",
+          "field": "location",
+          "regex": "^(?!待遇$)(.+)$",
+          "offset": 1,
+          "optional": true,
+          "match_regex": "^勤務地$"
+        },
+        {
+          "tag": "td",
+          "from": 0,
+          "text": "応募資格",
+          "field": "qualifications",
+          "offset": 1,
+          "optional": true,
+          "match_regex": "^応募資格$"
+        }
+      ],
+      "render": false
+    },
+    "reverse_config": {
+      "render": true,
+      "resource_policy": "lean",
+      "wait": "domcontentloaded",
+      "timeout": 30000,
+      "stealth": true,
+      "steps": [
+        {
+          "tag": "h4",
+          "field": "title"
+        },
+        {
+          "field": "description",
+          "html": true,
+          "stop": "職種一覧"
+        },
+        {
+          "tag": "td",
+          "text": "勤務地",
+          "match_regex": "^勤務地$",
+          "offset": 1,
+          "field": "location",
+          "regex": "^(?!待遇$)(.+)$",
+          "from": 0,
+          "optional": true
+        },
+        {
+          "tag": "td",
+          "text": "応募資格",
+          "match_regex": "^応募資格$",
+          "offset": 1,
+          "field": "qualifications",
+          "from": 0,
+          "optional": true
+        }
+      ]
+    }
+  }
+]

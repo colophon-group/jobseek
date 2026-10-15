@@ -1,0 +1,58 @@
+{
+  "schema": "jobseek.go-native.candidate-evidence/v1",
+  "status": "included component of combined1070candidate; no production admission",
+  "version": "0.13.1070",
+  "base": "4230af8d23d05292f7c80ad4bb1e017fcd795991",
+  "observed_date": "2026-10-15",
+  "lightpanda": "1.0.1",
+  "proposed_monitors": 1,
+  "proposed_details": 4,
+  "details": [
+    "bbva-garanti",
+    "emirates-group-dnata-au",
+    "mcdonalds-us-restaurants",
+    "republic-services-robinson-waste"
+  ],
+  "detail_references": 7,
+  "detail_fields": "all original fields equal on seven actual fresh references",
+  "detail_writers": "seven canonical PostgreSQL/Redis writers pass; title,description,source,deadline,lease and zero extra origins",
+  "monitor": {
+    "slug": "adm-global",
+    "rich_jobs": 306,
+    "fields": "all original fields equal",
+    "canonical_insertions": 306,
+    "unseen_row_retained": true,
+    "extra_origin_calls": 0
+  },
+  "profile_binding": {
+    "source_snapshot": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+    "actual_scheduled_sources": 29089,
+    "boards": 4,
+    "fresh_installed_binding_required": true
+  },
+  "browser_contract": "Reuse pointer interaction helper for BrassRing search,sort and pagination; response,page,total,policy and cleanup barriers retained. Production code byte-identical to qualified actual overlay.",
+  "cold_contract": "Keep render/actions/waits/parser; remove only explicit unsupported browser transport controls. Ordinary native ownership selects Lightpanda. Preserve valid legacy cold fallback without incomplete B0 routing assignments.",
+  "local_validation": {
+    "physical_release_session_cases": 13,
+    "whole_renderer_race_suite": "pass38.538s",
+    "focused_registry_tests": "6passed",
+    "data_census": "regenerated; validationpass"
+  },
+  "held": {
+    "alten-netherlands": "Earlier two original/native matches and writers pass; final-shape fresh native references both navigationHTTPfail, omitted from CSVbatch.",
+    "adm-us": "Old535versus536native mismatch unresolved; fresh original navigationHTTPfails.",
+    "caterpillar-progressrail-us": "Native capture fails; omitted."
+  },
+  "remaining": "Final source-bound CI,physicalLinux/ARM,complete floor/routes/cache admission and original deployment/activation. Production remains0.13.1067,7830monitors/7802details. This component is included in PR10599; native lifecycle,freshness,cost/recovery/runtime retirement remain fullgoal requirements.",
+  "combined_release": {
+    "monitors": 3,
+    "details": 12,
+    "detail_references": 23,
+    "nonempty_descriptions": 22,
+    "explicit_blank_originals": 1,
+    "canonical_monitor_inserts": 386,
+    "proposed_monitor_floor": 7833,
+    "proposed_detail_floor": 7814,
+    "includes_schedule_recovery": true
+  }
+}

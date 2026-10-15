@@ -16,6 +16,14 @@ import (
 )
 
 func TestRealFirstOwnershipExecutableRepairsAndRetiresCanonicalDetail(t *testing.T) {
+	testFirstOwnershipExecutableProjection(t, false)
+}
+
+func TestRealFirstOwnershipExecutableRestoresMissingScheduleAndRetires(t *testing.T) {
+	testFirstOwnershipExecutableProjection(t, true)
+}
+
+func testFirstOwnershipExecutableProjection(t *testing.T, missing bool) {
 	f, executable, _ := firstExecutableOwnershipFixture(t)
 	ctx := context.Background()
 	board, source := fixtureID(t), "https://example.com/job/cold-repair"
@@ -35,6 +43,16 @@ func TestRealFirstOwnershipExecutableRepairsAndRetiresCanonicalDetail(t *testing
 	}
 	if _, err := f.client.EnqueueURLDetail(ctx, queue.URLOnlyDetail{ID: f.original, BoardID: f.board, URL: source, Due: due, Browser: true}); err != nil {
 		t.Fatal(err)
+	}
+	if missing {
+		f.r.Del(ctx, "scrape:"+f.original)
+		for _, lane := range []string{"simple", "browser"} {
+			for _, prefix := range []string{"ft_scrapes_", "scrapes_"} {
+				if err := f.r.ZRem(ctx, prefix+lane+":example.com", f.original).Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
 	}
 	if _, err := f.pg.Exec(ctx, "UPDATE job_board SET next_check_at=now()+interval '1 hour' WHERE id=$1::uuid", f.board); err != nil {
 		t.Fatal(err)
@@ -68,6 +86,10 @@ func TestRealFirstOwnershipExecutableRepairsAndRetiresCanonicalDetail(t *testing
 	}
 	f.r.Do(ctx, "ACL", "SETUSER", "default", "-save")
 	call(false)
+	var state string
+	if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&state); err != nil || state != "staged" {
+		t.Fatal("failed SAVE granted SQL ownership", state, err)
+	}
 	f.r.Do(ctx, "ACL", "SETUSER", "default", "+save")
 	call(true)
 	if f.r.HGet(ctx, "scrape:"+f.original, "board_id").Val() != board || f.r.ZScore(ctx, "ft_scrapes_simple:example.com", f.original).Err() != nil || f.r.ZScore(ctx, "ft_scrapes_browser:example.com", f.original).Err() != redis.Nil {

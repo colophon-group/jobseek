@@ -8,6 +8,107 @@ The complete postactive census preserves the exact cohort with zero owned cache 
 
 Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
+## Following release — 0.13.1070 combined candidate, 2026-10-15
+
+Combine the HTTP/profile batch below with recovery of wholly missing scheduled
+detail caches in the existing cold activation path. A complete read-only serving
+scan observes 1,686,382 selected SQL schedules and 1,536,574 represented posting
+IDs, with 149,808 absent from both ordinary lanes/inflight and missing their
+scrape cache across 1,636 boards. Explicit Redis `EXISTS` confirms every
+unrepresented posting has no scrape-cache key. This observation spans a live serving interval;
+it does not establish a single atomic gap count or a deletion root cause. The
+earlier guarded cold baseline's pre-existing 149,028-posting gap remains valid.
+
+The candidate reconstructs only currently active, enabled, scheduled, owned SQL
+rows whose cache and queued/leased/deadletter representations are wholly absent.
+It uses the original staged plan, host mutation lock, complete writer quiescence,
+exclusive SQL barriers, strict current source/profile validation, bounded stream
+and per-batch preflight. It preserves SQL content/deadlines and restores first-time
+priority only when the canonical description hash is absent. Deadletters, orphan
+fallback caches, inactive/unscheduled rows and native tokens retain their existing
+contracts. Existing SAVE-before-SQL-grant, cancellation and reversal remain required.
+
+Combine this recovery, the HTTP/profile batch and the rendered/BrassRing batch
+below into one three-monitor/twelve-detail release. One supported whole deployment
+and cold admission delivers the complete batch. Complete
+exact-head CI, installed executable, physical Linux/ARM qualification and fresh
+full-floor reconciliation before any ownership change. See [recovery candidate
+evidence](evidence/go-native1069-missing-schedules-candidate-2026-10-15.json).
+
+### Included HTTP and profile batch
+
+Six explicit HTTP detail replacements cover McDonald's Australia, Bridgestone
+Australia, dnata catering Australia, CMA CGM Air Belgium, MUFG Trust and Wix.
+Twelve nonempty actual references match every original scraper field and pass
+real PostgreSQL/Redis writers. Preserve Wix's configured User-Agent verbatim as
+an HTTP request header and McDonald's original `rescrape_policy=never` behavior.
+All 362 scheduled source URLs in the source1067 census pass the proposed native
+profiles and source-bound cold route contracts. The existing route-repair command
+now supports both directions for these six exact configurations, preserving
+queue membership, first-time priority, scores, lifecycle hashes and unrelated
+entries. It retains ownership, inflight and whole-board validation guards.
+
+ADM early careers (49 rich postings) and Alaska Airlines (31 URLs) also pass
+canonical monitor writers with no additional origin calls. Carry these two
+monitor candidates with the previously qualified ITC and UBS-student details and
+the six HTTP replacements. This is a proposed two-monitor/eight-detail batch;
+fresh complete admission, required qualification and supported deployment remain
+necessary. Production ownership is still 7,830 monitors / 7,802 details at epoch
+346. See [candidate evidence](evidence/go-native1068-browser-http-batch-candidate-2026-10-15.json).
+
+The main dnata board stays rendered: its second actual source returns no JSON-LD
+over HTTP while the original browser adapter produces a full posting. The included
+rendered batch preserves that adapter and both actual field references.
+
+The broader HTTP screen covered 51 actual sources across 26 further configurations.
+One Bright Horizons reference matches and passes its writer, but its other sample
+failed the native request, so that board stays held. Remaining native monitor
+failures are retained separately: three navigation HTTP failures, four API/session
+inventory failures and two failures with invalid resource-policy evidence. Matching
+empty inventories do not establish positive content or authoritative absence.
+
+A later unpaired 40-second source1067 sample records two successful Go monitors,
+eight monitor timeouts and no completed Go details. Whole crawler cgroups average
+0.755 CPU cores / 2.422 GB, with no OOM delta. A separate read-only SQL snapshot
+finds no blocked connections; five authority connections are idle in transactions
+aged 0.21–1.36 seconds. These observations do not establish a root cause or savings.
+Freshness, the pre-existing scheduling gap, native lifecycle and runtime retirement
+remain part of the full delivery goal.
+
+### Included rendered and BrassRing batch
+
+This batch is included with schedule recovery and the HTTP/profile changes in
+release 0.13.1070. It reuses the existing pointer helper for BrassRing search, sort and pagination.
+ADM Global matches all original fields for 306 rich jobs and passes 306 canonical
+inserts with no extra origins. The physical session suite passes all 13 cases,
+including a widget that requires pointer events before click, publisher refusal,
+changed inventories, complete retry and cleanup. The full physical renderer race
+suite passes. The fixture search now commits page one rather than racing a later
+page-zero update against the sort barrier.
+
+Four rendered detail configurations retain their actions and parsers: BBVA Garanti,
+dnata Australia, McDonald's US restaurants and Republic Services Robinson Waste.
+Seven fresh actual references match every original field and pass canonical
+PostgreSQL/Redis writers. All 29,089 scheduled sources for these four boards in
+the source1067 snapshot compile against the proposed profiles. The configurations
+retain valid legacy cold fallback; ordinary native ownership selects Lightpanda.
+Fresh installed full-floor admission and original qualification/deployment remain
+required. This preparation grants no production ownership.
+
+The combined candidate adds three monitors and twelve details, preserving the
+7,830/7,802 floor and proposing 7,833/7,814 after fresh admission. Twenty-three
+detail references cover 22 nonempty descriptions and one explicitly blank
+original; the three monitor references pass 386 canonical inserts. Both original
+UKG conservation assertions remain strict: the binding fixture now uses a normal
+legacy enqueue so it tests represented schedules while separate tests exercise
+wholly missing recovery. Its six positive/refusal cases pass with the race detector.
+
+Alten Netherlands' earlier two matches and writers remain retained, but both fresh
+final-shape requests fail HTTP navigation; leave it out of the batch. ADM US's
+old 535/536 inventory mismatch remains unresolved and its fresh original fails
+navigation. Caterpillar capture also remains held. See [following candidate
+evidence](evidence/go-native1070-brassring-rendered-candidate-2026-10-15.json).
+
 ## Historical source1060 qualification correction — 2026-10-15
 
 Source1059 `67ed605cccc55caa03dcae268f958a76dd67f179` passed both original

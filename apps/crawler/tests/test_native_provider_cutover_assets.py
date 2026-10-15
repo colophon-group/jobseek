@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import json
 from pathlib import Path
 
 from src.nw_provider_cutover import _migration_sql as nw_sql
@@ -12,6 +14,23 @@ from src.umantis_identity_cutover import (
     _migration_sql,
     _posting_query,
 )
+
+
+def test_browser_http_route_contracts_match_published_registry() -> None:
+    root = Path(__file__).parents[1]
+    targets = json.loads(
+        (root / "go/typesense-exporter/provider-cutover/browser-http-routes.json").read_text()
+    )
+    with (root / "data/boards.csv").open(newline="") as file:
+        boards = {row["board_slug"]: row for row in csv.DictReader(file)}
+    assert len(targets) == 6
+    for target in targets:
+        row = boards[target["slug"]]
+        assert row["board_url"] == target["board_url"]
+        assert row["scraper_type"] == target["scraper_type"]
+        assert json.loads(row["scraper_config"]) == target["forward_config"]
+        assert target["forward_config"]["render"] is False
+        assert target["reverse_config"]["render"] is True
 
 
 def test_native_provider_retry_assets_match_existing_python_contracts() -> None:
