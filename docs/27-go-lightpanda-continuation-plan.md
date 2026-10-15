@@ -3876,7 +3876,7 @@ The broader monitor text comparison now matches24/24 retained actual documents e
 
 ### Grouped browser and URL identity candidate — 2026-10-15
 
-Candidate 0.13.1065 fixes the active Midea API-browser monitor's SPA URL identity
+Candidate 0.13.1066 fixes the active Midea API-browser monitor's SPA URL identity
 in both Go and transitional Python, and supports configured alternate reads for
 rendered DOM details. Canonical posting source, defaults, browser lane and complete
 configuration binding remain authoritative; navigation policy and status use the
@@ -3894,7 +3894,22 @@ originals fail pagination/PDF proof/board-gone. These failures remain held.
 Lightpanda 1.0.0 is still the latest stable release. Its implementation refuses
 Mozilla user-agent overrides while returning success, so configured browser
 identity must remain unadmitted until an effective route is proved. See the
-[candidate evidence](evidence/go-native1065-browser-and-identity-candidate-2026-10-15.json).
+[candidate evidence](evidence/go-native1066-browser-and-identity-candidate-2026-10-15.json).
 Exact-head CI, fresh admission, supported original deployment/cutover and independent
 active verification are still required. Production remains 0.13.1064, epoch 344;
 full migration remains active and incomplete.
+
+The same release now groups eight qualified detail configurations across three
+DOM and five JSON-LD profiles: Kaiser, Ferring Czechia, both State Street boards,
+Rieter, OVHcloud corporate, Activision Blizzard King and King. The second
+16-posting comparison matches all original fields for 14 samples, including
+12 full descriptions. All 12 complete references pass real PostgreSQL/Redis
+canonical settlement and exact original request replay; both Kaiser references
+also pass. Rieter preserves existing titles under its configured description-only
+enrichment. Blank samples remain explicit and do not count as description proofs.
+The retained census has 3,979 scheduled routes and 2,504 cached projection repairs
+across these eight configurations. Fresh admission must preserve all current
+7,830 monitors and 7,783 details, validate every selected source, and perform
+repairs only inside the original cold activation. No additional ownership has
+been granted. The release is version 0.13.1066 because concurrent main work used
+0.13.1065; the earlier qualification was cancelled after its version check failed.

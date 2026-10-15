@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-migration.candidate/v1",
-  "candidate_version": "0.13.1065",
+  "candidate_version": "0.13.1066",
   "production_version": "0.13.1064",
   "status": "candidate; not deployed or additional ownership",
   "observed_at_utc": "2026-10-15T13:56:35.259532+00:00",
@@ -34,12 +34,45 @@
         2812,
         1739
       ],
-      "ownership_granted": false
+      "ownership_granted": false,
+      "canonical_writer_samples": 2
     },
     "rendered_dom_alternate_read": "pinned physical 1.0.0 passed; one alternate read, JavaScript rendered output and canonical defaults",
     "canonical_browser_api_tests": "rich, truncated, publisher reservation, failure and wrong-binding cases passed in real PostgreSQL/Redis",
     "python_midea_tests_passed": 17,
-    "dom_and_executor_full_race_suites": "passed"
+    "dom_and_executor_full_race_suites": "passed",
+    "additional_direct_detail_batch": {
+      "boards_compared": 8,
+      "samples_compared": 16,
+      "all_field_equal_samples": 14,
+      "complete_description_samples": 12,
+      "real_postgres_redis_writer_samples": 12,
+      "qualified_detail_configurations_total": 8,
+      "qualified_detail_profile_counts": {
+        "dom.direct-detail/v1": 3,
+        "jsonld.direct-detail/v1": 5
+      },
+      "scheduled_routes_in_retained_census": 3979,
+      "cached_projection_repairs_required": 2504,
+      "production_admission": false,
+      "boards": [
+        "kaiser-permanente-careers",
+        "ferring-pharmaceuticals-careers-cz",
+        "state-street-careers",
+        "rieter-global-solique",
+        "ovhcloud-careers-corporate",
+        "activision-blizzard-king",
+        "king-careers",
+        "state-street-state-street"
+      ],
+      "limits": [
+        "Two blank samples are equivalent extraction outcomes, not complete-description references",
+        "Rieter description-only enrichment preserves existing titles according to the original contract",
+        "Wustl original HTTP failures remain held",
+        "Fresh source/configuration and every actual route must be revalidated before supported cold repair and ownership"
+      ]
+    },
+    "release_version_note": "Concurrent main change already consumed0.13.1065. First head qualification was cancelled after version check failure; candidate0.13.1066 requires fresh exact-head qualification."
   },
   "held_evidence": {
     "ltimindtree_and_axis": "original samples include empty descriptions and timeout; no complete-description admission",
@@ -75,6 +108,22 @@
     {
       "name": "native1065-direct-monitor1/original-results1.json",
       "sha256": "f03ee43c113e81bc27616677a0a20616d8d9644bde54f17030190f3654b35a22"
+    },
+    {
+      "name": "native1065-grouped-detail1/writer-proof1.json",
+      "sha256": "27d20ca3fcee4449d23dd4ede5db9b70eddd4610ed9c5c8433e845b754efeb49"
+    },
+    {
+      "name": "native1065-grouped-detail2/comparison2.json",
+      "sha256": "a53b45be2e5abcb6a9968f3db356b99c4ce34203f76a84a9320983d2d1a119a6"
+    },
+    {
+      "name": "native1065-grouped-detail2/writer-proof1.json",
+      "sha256": "2bdfff9ddfffd0e5130d14c22bdc4c688803b334a35aa419ef78746990d46ecc"
+    },
+    {
+      "name": "native1065-grouped-detail2/original-capture-lineage1.json",
+      "sha256": "732f8897032d094169d5e31334da9a5d6dccc6f7fe60a027dd5d1ede28f0c9a0"
     }
   ]
 }
