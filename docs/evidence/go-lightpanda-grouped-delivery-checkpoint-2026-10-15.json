@@ -1,7 +1,7 @@
 {
   "version": "jobseek.native-grouped-delivery-checkpoint/v1",
-  "observed_at_utc": "2026-10-15T00:35:47.740033+00:00",
-  "verified_source": "e8c991476c0f6801c2bc9e4def6ab992b7c505e5",
+  "observed_at_utc": "2026-10-15T00:39:19.843227+00:00",
+  "verified_source": "c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649",
   "verified_state": "supported cold",
   "routing_epoch": 333,
   "active_native_ownership_plans": 0,
@@ -10,7 +10,7 @@
     "monitors": 7830,
     "details": 7742
   },
-  "incoming_source": "c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649",
+  "incoming_source": null,
   "original_crawler_run": 38659628557,
   "original_renderer_run": 38659690458,
   "renderer_independently_verified": true,
@@ -43,7 +43,38 @@
   "proof_sha256": {
     "native-source1054-postdeploy-cold-independent1-2026-10-15.json": "c662a059661f328c54d2e0145a4736fb9ff72e26fa474c31498b2286f8fd1173",
     "native-source1055-renderer-independent1-2026-10-15.json": "760b545d84ac4a94057ac52748c9df769e6ea2113a9cffa705f2d77cbe48b095",
-    "native1057-frontier1/route-diagnostic2.json": "f67fe5a44042350bb026ff94d94120b66999ff48c73cee2b767e40f2fdc4a963"
+    "native1057-frontier1/route-diagnostic2.json": "f67fe5a44042350bb026ff94d94120b66999ff48c73cee2b767e40f2fdc4a963",
+    "native-source1055-postdeploy-cold-independent1-2026-10-15.json": "f843375ab2ee6fdbd176eacb9d9500d004222c7024a4aa63fb64066b04569583",
+    "native1057-frontier1/projection-behavior1.json": "864425a301b189786c20fc941d4d188fe378cc68545322a56576d0835e0459a0"
   },
-  "global_migration_complete": false
+  "global_migration_complete": false,
+  "source1055_original_crawler_workflow_result": "success",
+  "source1055_independent_cold_exporter_result": "pass",
+  "projection_behavior_cases": [
+    {
+      "claim_error": false,
+      "claimed": false,
+      "cold_adoption_accepted": true,
+      "variant": "board"
+    },
+    {
+      "claim_error": false,
+      "claimed": false,
+      "cold_adoption_accepted": true,
+      "variant": "source"
+    },
+    {
+      "claim_error": false,
+      "claimed": false,
+      "cold_adoption_accepted": true,
+      "variant": "simple-to-browser"
+    },
+    {
+      "claim_error": false,
+      "claimed": false,
+      "cold_adoption_accepted": true,
+      "variant": "browser-to-simple"
+    }
+  ],
+  "canonical_legacy_native_worker_agreement_boards": 43
 }

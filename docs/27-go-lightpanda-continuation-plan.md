@@ -2,7 +2,7 @@
 
 ## Durable delivery checkpoint — 2026-10-15
 
-Source1054 `e8c991476c0f6801c2bc9e4def6ab992b7c505e5` is deployed and
+Source1055 `c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649` is deployed and
 independently verified in supported cold epoch333. Its exact immutable images,
 selected CSV revision, seven restored base writers, six health checks and exporter
 progress pass. Native ownership is currently inactive. The last verified active
@@ -11,7 +11,7 @@ must survive the next activation. Global freshness and queue conservation are no
 proved by these readiness checks.
 
 PR #10538 merged as source1055 `c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649`.
-The original crawler workflow38659628557 is deploying. Original renderer workflow
+The original crawler workflow38659628557 succeeded. Original renderer workflow
 38659690458 succeeded and its source/digest/running/no-OOM identity is independently
 verified. Never restart an observed in-progress deployment. Verify the incoming
 whole workflow and independent cold/source/image/CSV/exporter state before the
@@ -42,6 +42,11 @@ identical typed counts, found249 different cached board IDs,3 different cached
 source URLs,69 sole wrong-lane entries and3 dual-lane entries. It found no missing
 board IDs or invalid steps in that sample. These are bounded observations, not a
 whole-fleet count or repair authority.
+
+Private PostgreSQL/Redis fixtures show that the existing cold adoption accepts
+four stale board/source/lane variants but none becomes claimable. All43 candidate
+mismatch boards have matching canonical legacy/native worker lanes, so repair to
+the canonical SQL lane can also preserve cold cancellation compatibility.
 
 The native URL publisher already locks fresh canonical posting/board rows and
 checks due/hash/owner; foreign relists use the canonical owner. Do not invent or
