@@ -8,7 +8,7 @@ The complete postactive census preserves the exact cohort with zero owned cache 
 
 Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
-## Following release — 0.13.1069 candidate, 2026-10-15
+## Following release — 0.13.1070 combined candidate, 2026-10-15
 
 Combine the HTTP/profile batch below with recovery of wholly missing scheduled
 detail caches in the existing cold activation path. A complete read-only serving
@@ -28,8 +28,9 @@ priority only when the canonical description hash is absent. Deadletters, orphan
 fallback caches, inactive/unscheduled rows and native tokens retain their existing
 contracts. Existing SAVE-before-SQL-grant, cancellation and reversal remain required.
 
-Keep this recovery in the same release as the proposed two-monitor/eight-detail
-batch, so one supported whole deployment and cold admission delivers both. Complete
+Combine this recovery, the HTTP/profile batch and the rendered/BrassRing batch
+below into one three-monitor/twelve-detail release. One supported whole deployment
+and cold admission delivers the complete batch. Complete
 exact-head CI, installed executable, physical Linux/ARM qualification and fresh
 full-floor reconciliation before any ownership change. See [recovery candidate
 evidence](evidence/go-native1069-missing-schedules-candidate-2026-10-15.json).
@@ -55,9 +56,9 @@ fresh complete admission, required qualification and supported deployment remain
 necessary. Production ownership is still 7,830 monitors / 7,802 details at epoch
 346. See [candidate evidence](evidence/go-native1068-browser-http-batch-candidate-2026-10-15.json).
 
-The main dnata board stays on its original browser route: its second actual source
-returns no JSON-LD over HTTP while the original browser adapter produces a full
-posting. Do not admit it until a native replacement preserves that fallback.
+The main dnata board stays rendered: its second actual source returns no JSON-LD
+over HTTP while the original browser adapter produces a full posting. The included
+rendered batch preserves that adapter and both actual field references.
 
 The broader HTTP screen covered 51 actual sources across 26 further configurations.
 One Bright Horizons reference matches and passes its writer, but its other sample
@@ -74,10 +75,10 @@ aged 0.21–1.36 seconds. These observations do not establish a root cause or sa
 Freshness, the pre-existing scheduling gap, native lifecycle and runtime retirement
 remain part of the full delivery goal.
 
-## Following batch — 0.13.1070 preparation, 2026-10-15
+### Included rendered and BrassRing batch
 
-Keep release 0.13.1069 frozen through delivery. The separate following batch
-reuses the existing pointer helper for BrassRing search, sort and pagination.
+This batch is included with schedule recovery and the HTTP/profile changes in
+release 0.13.1070. It reuses the existing pointer helper for BrassRing search, sort and pagination.
 ADM Global matches all original fields for 306 rich jobs and passes 306 canonical
 inserts with no extra origins. The physical session suite passes all 13 cases,
 including a widget that requires pointer events before click, publisher refusal,
@@ -93,6 +94,14 @@ the source1067 snapshot compile against the proposed profiles. The configuration
 retain valid legacy cold fallback; ordinary native ownership selects Lightpanda.
 Fresh installed full-floor admission and original qualification/deployment remain
 required. This preparation grants no production ownership.
+
+The combined candidate adds three monitors and twelve details, preserving the
+7,830/7,802 floor and proposing 7,833/7,814 after fresh admission. Twenty-three
+detail references cover 22 nonempty descriptions and one explicitly blank
+original; the three monitor references pass 386 canonical inserts. Both original
+UKG conservation assertions remain strict: the binding fixture now uses a normal
+legacy enqueue so it tests represented schedules while separate tests exercise
+wholly missing recovery. Its six positive/refusal cases pass with the race detector.
 
 Alten Netherlands' earlier two matches and writers remain retained, but both fresh
 final-shape requests fail HTTP navigation; leave it out of the batch. ADM US's

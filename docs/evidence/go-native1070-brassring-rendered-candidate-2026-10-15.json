@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-native.candidate-evidence/v1",
-  "status": "following candidate; no production admission",
+  "status": "included component of combined1070candidate; no production admission",
   "version": "0.13.1070",
   "base": "4230af8d23d05292f7c80ad4bb1e017fcd795991",
   "observed_date": "2026-10-15",
@@ -43,5 +43,16 @@
     "adm-us": "Old535versus536native mismatch unresolved; fresh original navigationHTTPfails.",
     "caterpillar-progressrail-us": "Native capture fails; omitted."
   },
-  "remaining": "Final source-bound CI,physicalLinux/ARM,complete floor/routes/cache admission and original deployment/activation. Production remains0.13.1067,7830monitors/7802details;10599currentrelease takes precedence. Native lifecycle,freshness,cost/recovery/runtime retirement remain fullgoal requirements."
+  "remaining": "Final source-bound CI,physicalLinux/ARM,complete floor/routes/cache admission and original deployment/activation. Production remains0.13.1067,7830monitors/7802details. This component is included in PR10599; native lifecycle,freshness,cost/recovery/runtime retirement remain fullgoal requirements.",
+  "combined_release": {
+    "monitors": 3,
+    "details": 12,
+    "detail_references": 23,
+    "nonempty_descriptions": 22,
+    "explicit_blank_originals": 1,
+    "canonical_monitor_inserts": 386,
+    "proposed_monitor_floor": 7833,
+    "proposed_detail_floor": 7814,
+    "includes_schedule_recovery": true
+  }
 }
