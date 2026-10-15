@@ -1,0 +1,49 @@
+{
+  "version": "jobseek.native-grouped-delivery-checkpoint/v1",
+  "observed_at_utc": "2026-10-15T00:35:47.740033+00:00",
+  "verified_source": "e8c991476c0f6801c2bc9e4def6ab992b7c505e5",
+  "verified_state": "supported cold",
+  "routing_epoch": 333,
+  "active_native_ownership_plans": 0,
+  "last_verified_active_native_floor": {
+    "epoch": 332,
+    "monitors": 7830,
+    "details": 7742
+  },
+  "incoming_source": "c83d3902e69f1cca3c2f96efdf93fbcdc1fb8649",
+  "original_crawler_run": 38659628557,
+  "original_renderer_run": 38659690458,
+  "renderer_independently_verified": true,
+  "drafts": [
+    10539,
+    10540
+  ],
+  "strategy": "combined current-source admission/activation after sequential qualified original deployments",
+  "advisory_frontier": {
+    "census_source": "e613b9c363dcae51313cc9383226a2366c08f765",
+    "candidate_sdk": "82789b05f4cb8f46507d05a2c6cfbe1c0f066bca",
+    "unowned_monitors": 67,
+    "unowned_details": 155,
+    "compiled_details": 93,
+    "compiled_details_with_cache_mismatch": 43,
+    "sampled_postings": 2292,
+    "typed_projection_sample": {
+      "compatible": 1441,
+      "not_queued": 533,
+      "board_id": 249,
+      "board_id_different": 249,
+      "browser_lane": 66,
+      "sole_wrong_lane": 69,
+      "dual_lane": 3,
+      "source_url": 3,
+      "source_url_different": 3,
+      "simple_lane": 6
+    }
+  },
+  "proof_sha256": {
+    "native-source1054-postdeploy-cold-independent1-2026-10-15.json": "c662a059661f328c54d2e0145a4736fb9ff72e26fa474c31498b2286f8fd1173",
+    "native-source1055-renderer-independent1-2026-10-15.json": "760b545d84ac4a94057ac52748c9df769e6ea2113a9cffa705f2d77cbe48b095",
+    "native1057-frontier1/route-diagnostic2.json": "f67fe5a44042350bb026ff94d94120b66999ff48c73cee2b767e40f2fdc4a963"
+  },
+  "global_migration_complete": false
+}
