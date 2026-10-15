@@ -1,0 +1,158 @@
+{
+  "schema": "jobseek.native-delivery/v1",
+  "version": "0.13.1067",
+  "source_revision": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+  "pull_request": 10554,
+  "qualified_head": "5c6cac92a977b099d23b2fd3e9e7c6d5163419bc",
+  "qualified_and_merged_tree": "610a8534302363abdfe194043d9206a9288a6c95",
+  "lightpanda": {
+    "version": "1.0.1",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1",
+    "oci_index": "sha256:e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a",
+    "installed_arm_binary_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c"
+  },
+  "deployments": {
+    "crawler": 38763210077,
+    "renderer": 38763309555,
+    "both_successful_attempt": 1
+  },
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:43db54ba76e52fc0774a85cff37e9f402a9dfdddde382d42f8c8b63b7dd86ee7",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:6f4305d45ae7b64a02954e2cfe99ab9fb251f64469365e53d2be868cf0052552",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:464e8eea8054dab96401d7086f984b75610cdeec33160bf06102d08320133deb"
+  },
+  "qualification": {
+    "all16_ARM_arms_audited": true,
+    "all8_complete_output_pairs_equal": true,
+    "report_sha256": "cf548e745a943c7e1631d49be78f7e334fb2bbd9bb8830bb8f390fecdd732f69"
+  },
+  "b0": {
+    "epoch": 346,
+    "receipt_sha256": "1c43f32440669198eff885479c1d6b5698e7f23447914965f6eb884a89e16759",
+    "independently_active": true
+  },
+  "ordinary": {
+    "status": "independently active; full postactive configuration/route/queue conservation verification passed",
+    "prior_monitors": 7830,
+    "prior_details": 7783,
+    "qualified_detail_additions": 19,
+    "target_monitors": 7830,
+    "target_details": 7802,
+    "qualified_references": 38,
+    "nonempty_description_references": 36,
+    "explicit_blank_references": 2,
+    "additional_boards": [
+      "activision-blizzard-king",
+      "axis-bank-careers",
+      "boeing-careers",
+      "boeing-clearance",
+      "boeing-hire",
+      "boeing-mfg",
+      "boeing-subsidiary",
+      "ferring-pharmaceuticals-careers-cz",
+      "kaiser-permanente-careers",
+      "king-careers",
+      "ltimindtree-careers-india-europe",
+      "ltimindtree-careers-us-canada",
+      "mercedes-benz-careers-taleo",
+      "ovhcloud-careers-corporate",
+      "rieter-global-solique",
+      "skadden-careers-allhires-lawyers",
+      "skadden-careers-allhires-support",
+      "state-street-careers",
+      "state-street-state-street"
+    ],
+    "enabled_boards": 7900,
+    "scheduled_detail_postings": 1725535,
+    "scheduled_owned_postings": 1683537,
+    "held_qualified_candidates": 0,
+    "plan_sha256": "e8b6076f9c5db4c128300a215cf2421e22e689a792d8f584a9147b9fb62d19b2",
+    "projection_sha1": "071f160d230f38236b58997618ae51868eefd2b0",
+    "guarded_queued_id_baseline": {
+      "selected_detail_configs": 7802,
+      "selected_scheduled": 1684592,
+      "selected_queued_ids": 1535564,
+      "preexisting_scheduled_minus_queued": 149028,
+      "queued_ids_sha256": "4cb2701eb8413fa9e8982069bf161fed0aa444e7efc6cea101b327ddc45d3f08",
+      "capture_sha256": "963a22616a20c3a5310d5149e893ebbb6d0b5482d644034a50e88801d9905e8b",
+      "guard_scope": "pending source1067 originaloperation; live legacy lease before/after proves native repair not started; exact queued IDs retained privately"
+    },
+    "epoch": 346,
+    "monitors": 7830,
+    "details": 7802,
+    "ordinary_receipt_sha256": "138bdf18f97d1e70ea18bfd6c2ed04267947996f145cf6a0b5612572d5ab3bf6",
+    "postactive_scheduled_routes": 1726585,
+    "postactive_scheduled_owned": 1684591,
+    "postactive_owned_cache_mismatches": 0,
+    "all_prior_floor_and19_additions_preserved": true,
+    "required_pre_activation_projection_repair": {
+      "boards": 13,
+      "rows": 3357
+    }
+  },
+  "baseline": {
+    "scheduled": 1725440,
+    "overdue24h": 1599920,
+    "resource_sample_seconds": 40.038974380120635,
+    "mean_cpu_cores": 3.747024775801662,
+    "mean_memory_bytes": 3190612787.2,
+    "oom_kill_delta": 0,
+    "scope": "natural unpaired base observation; no causal savings or production cost claim"
+  },
+  "full_migration_complete": false,
+  "following_qualification": {
+    "ITC_and_UBS_students": "corrected original-contract real-store writer checks passed; excluded from current fixed19 plan",
+    "Wix": "two direct HTTP samples all fields equal and canonical writers passed; public config change pending",
+    "no_runtime_code_change_for_corrected_expectations": true,
+    "compiled_monitors": {
+      "configurations": 22,
+      "profiles": 5,
+      "original_successes": 15,
+      "original_failures": 7,
+      "actual_native_worker_LP1_0_1_comparison": "complete:2nonempty inventories all fields match (ADM early49rich jobs, Alaska31URLs),3empty matches,1inventory mismatch,9native failures; original7failures separate; writers and fresh admission still required"
+    }
+  },
+  "queue_conservation": {
+    "source_revision": "1d3df42e2d6692c933f0a5e8f3cece874d60cd51",
+    "routing_epoch": 346,
+    "pre_capture_sha256": "963a22616a20c3a5310d5149e893ebbb6d0b5482d644034a50e88801d9905e8b",
+    "post_capture_sha256": "fc3af1b452f9f1a5de5e923ba99217cc324886a8376c34a978b9be9aa85b6ea2",
+    "selected_details": 7802,
+    "before_scheduled": 1684592,
+    "before_queued": 1535564,
+    "preexisting_scheduled_minus_queued": 149028,
+    "after_scheduled": 1684591,
+    "after_queued": 1535566,
+    "retained_ids": 1535564,
+    "before_only_ids": 0,
+    "after_only_ids": 2,
+    "before_queued_ids_sha256": "4cb2701eb8413fa9e8982069bf161fed0aa444e7efc6cea101b327ddc45d3f08",
+    "after_queued_ids_sha256": "13d965522a66d3d8b2afb1a874cc26cac86f6d98b8c04ac42db7b1b145e81bee",
+    "before_only_ids_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after_only_ids_sha256": "6087ab0697187b595a26b60dadf810a67cc9c5934ee7fa01ddb235adc97260a3",
+    "all_baseline_queued_ids_retained_in_postcapture": true,
+    "scope": "exact private selected queued-ID comparison; before-only IDs require current canonical eligibility/queue/receipt accounting before conservation can be claimed"
+  },
+  "postactive_natural_observation": {
+    "duration_seconds": 40.0546888159588,
+    "crawler_mean_cpu_cores": 2.3523688183656297,
+    "crawler_mean_memory_bytes": 2963776307.2,
+    "renderer_mean_cpu_cores": 0.1073754972312845,
+    "renderer_mean_memory_bytes": 31304089.6,
+    "oom_kill_delta": 0,
+    "go_successful_monitors": 8,
+    "go_successful_scrapes": 2,
+    "go_host_circuit_half_open": 4,
+    "remaining_python_successful_monitors": 3,
+    "scheduled": 1726613,
+    "overdue24h": 1599867,
+    "scope": "natural unpaired observations; no causal savings, comparable throughput or attributable fleet cost claim"
+  },
+  "remaining_coverage": {
+    "enabled_boards": 7900,
+    "B0_boards": 3,
+    "remaining_monitor_configurations": 67,
+    "remaining_detail_configurations": 95
+  },
+  "delivery_audit_sha256": "80ad7a878ea88c406e3ab4c5b901d82d42db944242ab04afc755105fb2f9422f"
+}

@@ -2,31 +2,11 @@
 
 ## Current delivery checkpoint — 2026-10-15
 
-Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
-for current state and completion order. Source1064
-`f010c87dd3e339abbe2ce3518197f437a9680e0d` passed both original deployments and
-independent installed checks. Original B0 and ordinary activation succeeded at
-epoch 344. Go ownership is independently verified for 7,830 monitors and 7,783 details,
-including all 41 prepared detail additions, with eight passing health endpoints.
+Use the [durable delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md) for authoritative state and execution order. Source `1d3df42e2d6692c933f0a5e8f3cece874d60cd51` (0.13.1067) and latest stable Lightpanda 1.0.1 passed original deployments and independent source/image/data/binary/health/export checks. B0 and ordinary Go are independently active at epoch 346, owning **7,830 monitors / 7,802 details** and delivering all 19 additions.
 
-The guarded baseline preserves 1,509,577 queued posting IDs after cutover: zero
-missing baseline IDs and 21 additional queued IDs. The pre-existing 140,518 scheduled-
-versus-queued gap remains explicit. All 35 selected stale routes were repaired;
-complete postactive census verifies zero selected cache mismatches. A 40-second
-sample records 11 successful Go monitors and 21 successful Go scrapes, no Go errors
-or cancellations and no OOM. Freshness and comparable resource/cost evidence
-remain incomplete. See the [delivery evidence](evidence/go-native1064-delivery-2026-10-15.json).
+The complete postactive census preserves the exact cohort with zero owned cache mismatches after 3,357 repairs. Every one of 1,535,564 baseline queued IDs remains present, with zero missing and two additional IDs. The pre-existing 149,028 scheduled-versus-queued gap remains unresolved. See the [delivery evidence](evidence/go-native1067-delivery-2026-10-15.json).
 
-Next, group 22 compiled monitors and 68 compiled details across families for complete-
-output and canonical-writer qualification. Four fragment boards now compile;
-45 monitor and 46 detail configurations still need shared contracts or diagnosis.
-Combine DOM/JSON-LD/API browser controls and browser-lane ordered fallback in
-substantial batches. Preserve current serving while preparing them. Complete
-native-to-native deployment/CSV/rollback support, fleet freshness, resource evidence
-and the supported recovery window before production Python/Playwright/Chromium
-retirement. Useful isolated offline Python may remain. Lightpanda 1.0.0 is the
-latest stable release, rechecked October 15. The full goal remains active; earlier
-entries below are historical.
+Keep this cohort serving. Continue the remaining 67 monitor / 95 detail configurations in substantial shared-contract batches, including the 22 compiled monitor comparison and qualified following details. Finish native-to-native deployment/CSV/rollback, freshness/conservation, comparable resource/cost evidence and supported recovery-window drills before production Python/Playwright/Chromium retirement. Useful offline Python may remain. The full goal is active. Earlier entries below are historical and do not override this checkpoint.
 
 ## Historical source1060 qualification correction — 2026-10-15
 
