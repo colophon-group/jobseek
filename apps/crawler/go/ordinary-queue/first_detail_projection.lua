@@ -4,6 +4,28 @@
 -- ownership. Cancelling the stage leaves canonical legacy lanes intact.
 local owner = redis.call("GET", "ordinary:ownership:active")
 if owner ~= false then return redis.error_reply("detail projection already owned") end
+-- Redis runs this entire preflight atomically before any repair effects.
+-- Shared key types and queue score edges cannot change between these rows.
+-- Cache only those invariant checks within this invocation; each row still
+-- rechecks its own identity, source, stage, priority and live/native leases.
+local checked_types, checked_edges = {}, {}
+local function projection_type(key, expected)
+    local cache_key=key .. "\0" .. expected
+    if checked_types[cache_key] then return true end
+    if not retirement_type(key,expected) then return false end
+    checked_types[cache_key]=true
+    return true
+end
+local function projection_queue(name)
+    if not projection_type(name,"zset") then return "invalid detail queue type" end
+    if not checked_edges[name] then
+        for _, position in ipairs({0,-1}) do
+            local edge=redis.call("ZRANGE",name,position,position,"WITHSCORES")
+            if #edge>=2 and not retirement_finite(tonumber(edge[2])) then return "invalid detail queue score" end
+        end
+        checked_edges[name]=true
+    end
+end
 local ok, rows = pcall(cjson.decode, ARGV[1])
 if not ok or type(rows) ~= "table" or #rows > 1024 then
     return redis.error_reply("invalid cold detail batch")
@@ -27,7 +49,7 @@ for _, row in ipairs(rows) do
         return redis.error_reply("invalid canonical detail")
     end
     local key = "scrape:" .. row.ID
-    if not retirement_type(key, "hash") then return redis.error_reply("invalid detail hash") end
+    if not projection_type(key, "hash") then return redis.error_reply("invalid detail hash") end
     local config = redis.call("HMGET", key, "board_id", "source_url", "domain", "scrape_step", "description_r2_hash", "scrape_interval_hours")
     local old_domain = config[3] or row.Domain
     if type(old_domain) ~= "string" or #old_domain < 1 or #old_domain > 253 or string.find(old_domain,"[%c|]") then
@@ -40,19 +62,16 @@ for _, row in ipairs(rows) do
             local task = "scrape|" .. domain .. "|" .. row.ID
             local ft, recurring = "ft_scrapes_" .. worker .. ":" .. domain, "scrapes_" .. worker .. ":" .. domain
             for _, name in ipairs({ft, recurring,"ft_monitors_"..worker..":"..domain,"monitors_"..worker..":"..domain,"inflight:"..worker,"ready:rotation:"..worker}) do
-                if not retirement_type(name,"zset") then return redis.error_reply("invalid detail queue type") end
-                for _, position in ipairs({0,-1}) do
-                    local edge=redis.call("ZRANGE",name,position,position,"WITHSCORES")
-                    if #edge>=2 and not retirement_finite(tonumber(edge[2])) then return redis.error_reply("invalid detail queue score") end
-                end
+                local queue_error=projection_queue(name)
+                if queue_error then return redis.error_reply(queue_error) end
             end
             for _, prefix in ipairs({"inflight_tokens:","inflight_strikes:"}) do
-                if not retirement_type(prefix..worker,"hash") then return redis.error_reply("invalid detail lease type") end
+                if not projection_type(prefix..worker,"hash") then return redis.error_reply("invalid detail lease type") end
             end
             for tier=0,2 do
-                if not retirement_type("ready:"..worker..":"..tier,"zset") then return redis.error_reply("invalid ready type") end
+                if not projection_type("ready:"..worker..":"..tier,"zset") then return redis.error_reply("invalid ready type") end
             end
-            if not retirement_type("ratelimit:"..domain,"string") then return redis.error_reply("invalid rate type") end
+            if not projection_type("ratelimit:"..domain,"string") then return redis.error_reply("invalid rate type") end
             local rate=redis.call("GET","ratelimit:"..domain)
             local rotation=redis.call("ZSCORE","ready:rotation:"..worker,domain)
             if rate~=false and not retirement_finite(tonumber(rate)) or rotation~=false and not retirement_finite(tonumber(rotation)) then return redis.error_reply("invalid ready floor") end
