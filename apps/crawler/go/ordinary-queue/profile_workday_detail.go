@@ -12,6 +12,7 @@ import (
 // WorkdayDetailProfile is detached admission evidence, never a claim or write
 // grant. Detail ownership must separately bind the canonical posting and board.
 type WorkdayDetailProfile struct {
+	BrowserProxy                                    bool
 	BoardID, CompanyID, SourceURL, Endpoint, Domain string
 	Profile, EffectiveBoardSHA256                   string
 	FacilityTenantAliases                           []string

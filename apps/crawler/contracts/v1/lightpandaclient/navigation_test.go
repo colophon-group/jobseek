@@ -1,9 +1,13 @@
 package lightpandaclient
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNavigationPreservesWaitFallbackAndOriginRetryAttribution(t *testing.T) {
@@ -37,5 +41,32 @@ func TestNavigationPreservesWaitFallbackAndOriginRetryAttribution(t *testing.T) 
 	input, err = NavigationInput(n)
 	if err != nil || input.Plan.Navigation.Fallback != nil {
 		t.Fatal("identical fallback duplicated", err)
+	}
+}
+
+func TestNavigationProxyWireContainsOnlyBoundReference(t *testing.T) {
+	endpoint, err := browserproxy.Parse("http://fixture-user:fixture-secret@proxy.example:8000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Navigation{URL: "https://example.com/job", RoutingRevision: "proxy-fixture", OriginRequestID: "fixture-request", Wait: "load", TimeoutMS: 1000, ProxyPolicyRef: endpoint.Reference()}
+	input, err := NavigationInput(config)
+	if err != nil || input.Plan.GetSession().GetProxyPolicyRef() != endpoint.Reference() || len(input.Plan.RequiredCapabilities) != 2 {
+		t.Fatal("navigation lost its explicit proxy binding")
+	}
+	wire, err := proto.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"fixture-user", "fixture-secret", "proxy.example"} {
+		if bytes.Contains(wire, []byte(forbidden)) {
+			t.Fatal("navigation wire contains proxy configuration")
+		}
+	}
+	for _, ref := range []string{"http://user:password@proxy.example", "crawler-proxy/v1:" + strings.Repeat("a", 65)} {
+		config.ProxyPolicyRef = ref
+		if _, err := NavigationInput(config); err == nil {
+			t.Fatal("raw or unbounded proxy policy accepted")
+		}
 	}
 }

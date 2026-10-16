@@ -24,6 +24,7 @@ import (
 	"time"
 
 	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	df "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/dayforcesession"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
@@ -157,6 +158,19 @@ func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1Serv
 	if config.Binary != lightpandaServiceBinary {
 		return nil, errors.New("runtime-v1 service requires the pinned lightpanda binary")
 	}
+	if len(config.proxyEndpoints) > 64 {
+		return nil, errBrowserProxy
+	}
+	if len(config.proxyEndpoints) > 0 {
+		proxies := make(map[string]browserproxy.Endpoint, len(config.proxyEndpoints))
+		for ref, endpoint := range config.proxyEndpoints {
+			if !browserproxy.ValidReference(ref) || ref != endpoint.Reference() {
+				return nil, errBrowserProxy
+			}
+			proxies[ref] = endpoint
+		}
+		config.proxyEndpoints = proxies
+	}
 	config.isolateChild = true
 	execution := &runtimeV1ServiceExecution{egressPolicy: config.EgressPolicy}
 	if run == nil {
@@ -170,7 +184,11 @@ func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1Serv
 		return result, err
 	}
 	execution.dayforceConfig, execution.dayforceRun = config, monitoredRun
-	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
+	constructor := lightpandaadapter.NewNavigationRenderOnly
+	if len(config.proxyEndpoints) > 0 {
+		constructor = lightpandaadapter.NewConfiguredProxyNavigationRenderOnly
+	}
+	adapter, err := constructor(runtimeV1Runner{config: config, run: monitoredRun})
 	if err != nil {
 		return nil, err
 	}

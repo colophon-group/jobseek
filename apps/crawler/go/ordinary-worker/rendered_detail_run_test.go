@@ -85,8 +85,9 @@ func heldRenderedResult(html, final string, status uint32) *runtimev1.BrowserRes
 }
 
 func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testing.T) {
-	for _, variant := range []string{"dom", "dom-alternate", "json-ld", "nextdata"} {
-		scraper := strings.TrimSuffix(variant, "-alternate")
+	for _, variant := range []string{"dom", "dom-alternate", "json-ld", "nextdata", "dom-proxy", "json-ld-proxy", "nextdata-proxy", "embedded-proxy"} {
+		useProxy := strings.HasSuffix(variant, "-proxy")
+		scraper := strings.TrimSuffix(strings.TrimSuffix(variant, "-proxy"), "-alternate")
 		t.Run(variant, func(t *testing.T) {
 			parser := `{"render":true,"defaults":{"language":"en"}}`
 			html := nativeJSONLDHTML
@@ -94,7 +95,7 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 				parser = `{"render":true,"steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}`
 				html = nativeDOMHTML
 			}
-			if scraper == "nextdata" {
+			if scraper == "nextdata" || scraper == "embedded" {
 				parser = `{"render":true,"wait":"domcontentloaded","path":"job","fields":{"title":"title","description":"description","locations":"locations","employment_type":"employment","responsibilities":"responsibilities"}}`
 				html = nativeEmbeddedHTML
 			}
@@ -105,6 +106,17 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 				body, _ := json.Marshal(cfg)
 				parser = string(body)
 			}
+			if useProxy {
+				var cfg map[string]any
+				json.Unmarshal([]byte(parser), &cfg)
+				cfg["proxy"] = true
+				cfg["transport_attempts"] = float64(3)
+				if scraper == "embedded" {
+					cfg["script_id"] = "__NEXT_DATA__"
+				}
+				body, _ := json.Marshal(cfg)
+				parser = string(body)
+			}
 			f, a, claim := independentDetailOwnedFixture(t, `{"scraper_type":"`+scraper+`","scraper_config":`+parser+`}`, "", queue.Browser)
 			if !a.RequiresRenderedDetails() {
 				t.Fatal("browser ownership hid required installed renderer")
@@ -112,7 +124,7 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 			calls := 0
 			renderer := heldRenderedDetail(func(ctx context.Context, p queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
 				calls++
-				if p.SourceURL != "https://example.com/job/"+f.original || p.Profile != map[string]string{"dom": "dom.rendered-detail/v1", "json-ld": "jsonld.rendered-detail/v1", "nextdata": "embedded.rendered-detail/v1"}[scraper] {
+				if p.SourceURL != "https://example.com/job/"+f.original || p.Profile != map[string]string{"dom": "dom.rendered-detail/v1", "json-ld": "jsonld.rendered-detail/v1", "nextdata": "embedded.rendered-detail/v1", "embedded": "embedded.rendered-detail/v1"}[scraper] || p.BrowserProxy != useProxy {
 					t.Fatal("rendered canonical context differs")
 				}
 				fetchURL, err := dom.AlternateFetchURL(p.SourceURL, p.DOMConfig["fetch_url_transform"])
@@ -122,6 +134,10 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 				return parseHeldDetail(ctx, p, heldRenderedResult(html, fetchURL, 200))
 			})
 			client := richPipelineHTTP(t, func(http.ResponseWriter, *http.Request) { t.Error("rendered detail issued direct HTTP") })
+			client.proxyRequired = useProxy
+			if required, err := runtimeClaimUsesProxy(context.Background(), a, claim); err != nil || required != useProxy || a.RequiresProxyHTTP() != useProxy {
+				t.Fatal("canonical detail selected wrong proxy transport", err)
+			}
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
 				t.Fatal(err)

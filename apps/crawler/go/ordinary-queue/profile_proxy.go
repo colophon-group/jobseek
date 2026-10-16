@@ -140,8 +140,18 @@ func (a *Authority) RequiresProxyHTTP() bool {
 		if ProfileRequiresProxy(m.Profile) {
 			return true
 		}
+		if m.Worker == Browser {
+			if profile, err := InspectRichMonitor(m.BoardID, m.Config); err == nil && profile.BrowserProxy {
+				return true
+			}
+		}
 	}
 	for _, d := range a.ownership.document.Details {
+		if d.Worker == Browser {
+			if profile, err := inspectDetailOwnership(d.BoardID, d.Config); err == nil && profile.BrowserProxy {
+				return true
+			}
+		}
 		if d.Profile == orderedHTTPDetailProfile || d.Profile == orderedProxyHTTPDetailProfile {
 			if ordered, err := InspectOrderedDetail(d.BoardID, d.Config, d.Config["board_url"], Simple); err == nil {
 				for _, stage := range ordered.Stages {

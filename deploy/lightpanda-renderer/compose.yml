@@ -101,6 +101,12 @@ services:
         mode: host
     volumes:
       - type: bind
+        source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/proxies.json"
+        target: /run/lightpanda/proxies.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/ca.pem"
         target: /run/credentials/ca.pem
         read_only: true

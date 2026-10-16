@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,7 +28,10 @@ type navigationOptions struct {
 
 // Only explicit native receive/send failures and the canonical browser network
 // markers permit a retry. Provider text remains private to this classifier.
-type navigationTransportError struct{ retryable bool }
+type navigationTransportError struct {
+	retryable                 bool
+	proxyAuth, proxyTransport bool
+}
 
 func (failure *navigationTransportError) Error() string {
 	return "main-document navigation transport failed"
@@ -35,7 +39,10 @@ func (failure *navigationTransportError) Error() string {
 func navigationError(text string) error {
 	retryable := text == "RecvError" || text == "SendError" || text == "net::ERR_CONNECTION_RESET" ||
 		text == "net::ERR_NETWORK_CHANGED" || text == "net::ERR_SOCKET_NOT_CONNECTED"
-	return &navigationTransportError{retryable: retryable}
+	upper := strings.ToUpper(text)
+	proxyAuth := strings.Contains(upper, "407") && (strings.Contains(upper, "PROXY") || strings.Contains(upper, "TUNNEL"))
+	proxyTransport := text == "Proxy" || text == "CouldntResolveProxy" || strings.Contains(upper, "ERR_PROXY_") || strings.Contains(upper, "ERR_TUNNEL_") || strings.Contains(upper, "ERR_NO_SUPPORTED_PROXIES")
+	return &navigationTransportError{retryable: retryable, proxyAuth: proxyAuth, proxyTransport: proxyTransport}
 }
 
 type navigationState struct {

@@ -23,7 +23,6 @@ import (
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	whatwg "github.com/nlnwa/whatwg-url/url"
 	"golang.org/x/net/html"
-	"google.golang.org/protobuf/proto"
 )
 
 type renderedMonitorClient interface {
@@ -149,6 +148,9 @@ func collectRenderedDOMPages(ctx context.Context, profile queue.GreenhouseMonito
 // Navigation is shared by DOM and embedded document monitors. Parsing remains
 // provider-specific and never grants queue/database authority.
 func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, profile queue.GreenhouseMonitorProfile, options map[string]any, attempt int) (*runtimev1.BrowserResult, error) {
+	if profile.BrowserProxy != (options["proxy"] == true) {
+		return nil, queue.ErrConfiguration
+	}
 	wait, fallback, timeout := "networkidle", "domcontentloaded", uint64(30000)
 	if v, ok := options["wait"].(string); ok {
 		wait = v
@@ -178,38 +180,11 @@ func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, pr
 	if err != nil {
 		return nil, err
 	}
-	held, err := waitRenderedReservation(ctx, r.client.Reserve)
-	if err != nil {
-		return nil, err
-	}
 	pipeline, err := actions.Parse(options["actions"])
 	if err != nil {
-		held.Close()
 		return nil, err
 	}
-	var body []byte
-	if len(pipeline) > 0 {
-		payload, marshalErr := proto.Marshal(input)
-		if marshalErr != nil {
-			held.Close()
-			return nil, marshalErr
-		}
-		requestDigest := sha256.Sum256([]byte(requestID))
-		response, actionErr := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, Input: payload, Actions: pipeline})
-		body, err = response.Result, actionErr
-	} else {
-		body, err = held.Execute(ctx, input)
-	}
-	held.Close()
-	if err != nil {
-		return nil, err
-	}
-	value, err := executor.DecodeResult(body)
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
+	return r.executeDocumentNavigation(ctx, input, options, profile.EffectiveConfigSHA256, pipeline)
 }
 
 func (r *NativeRenderedDetails) FetchNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, endpoint string) nextdataPage {
