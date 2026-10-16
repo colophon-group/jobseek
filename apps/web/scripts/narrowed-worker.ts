@@ -47,6 +47,8 @@ async function main() {
   readAiFilterRuntimePolicy();
   if (narrowedWorkerPaused()) throw new Error("worker_paused");
   await db.execute(sql`SELECT interactive_until FROM ai_filter_work LIMIT 0`);
+  const [slot] = await db.execute<{ id: number }>(sql`SELECT id FROM ai_filter_worker WHERE id=1`);
+  if (!slot) throw new Error("worker_database_rows_invisible");
   const [fence] = await db.execute<{ enabled: boolean }>(sql`SELECT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname='ai_filter_shared_worker_fence' AND tgenabled='O') AS enabled`);
   if (!fence?.enabled) throw new Error("worker_database_contract_unavailable");

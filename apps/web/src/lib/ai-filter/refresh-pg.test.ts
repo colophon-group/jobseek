@@ -252,7 +252,11 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       const input = await fixture();
       mocks.postings = [posting()];
       await enqueueAiFilterWork({...input,kind:"historical",demandTargetOffset:500,acceptedTarget:20});
+      const secured = await sql()`SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind='r' AND (c.relname LIKE 'ai_filter_%' OR c.relname IN ('watchlist','watchlist_company','user_preferences','subscription','currency_rate'))`;
+      for (const table of secured) await sql().unsafe(`ALTER TABLE public.${table.relname} ENABLE ROW LEVEL SECURITY`);
       await provisionNarrowedWorkerRole(sql(),"fixture".repeat(8));
+      const { verifyNarrowedWorkerReadAccess } = await import("../../../scripts/narrowed-worker-role");
       const [permissions] = await sql()`SELECT
         has_table_privilege('jobseek_narrowed_worker','watchlist','SELECT') AS can_read,
         has_table_privilege('jobseek_narrowed_worker','watchlist','UPDATE') AS can_update,
@@ -265,6 +269,13 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       const client=rawClient;
       mocks.workerDb=drizzle(client,{schema});
       try {
+        await verifyNarrowedWorkerReadAccess(sql(),client);
+        const [policy] = await sql()`SELECT count(*)::int AS n FROM pg_policies WHERE policyname LIKE 'jobseek_narrowed_worker_%'
+          AND (roles<>ARRAY['jobseek_narrowed_worker']::name[] OR cmd NOT IN ('SELECT','INSERT','UPDATE'))`;
+        expect(policy?.n).toBe(0);
+        await sql().unsafe("DROP POLICY jobseek_narrowed_worker_select ON ai_filter_configuration");
+        await expect(verifyNarrowedWorkerReadAccess(sql(),client)).rejects.toThrow("Worker row visibility differs");
+        await provisionNarrowedWorkerRole(sql(),"fixture".repeat(8));
         await expect(client`UPDATE watchlist SET title='forbidden'`).rejects.toThrow();
         await expect(client`SELECT * FROM "user"`).rejects.toThrow();
         const result=await tick();
@@ -298,6 +309,14 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
         try {
           await held`SELECT pg_advisory_lock(hashtextextended(${narrowedWorkerReadinessKey(hash)},0))`;
           expect(verification()).toContain('"status":"ready"');
+          const recoveredPolicy = { version: 1, hmacSha256: createHash("sha256").update(config.AI_FILTER_CACHE_HMAC_SECRET).digest("hex"),
+            typesafeSha256: createHash("sha256").update(config.TYPESAFE_AI_TOKEN).digest("hex"), values: {
+              ...Object.fromEntries(["AI_FILTER_ENABLED", "AI_FILTER_JEV_1_13_0_ENABLED", "AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS",
+                "AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS", "AI_FILTER_MAX_SEGMENTS_PER_USER", "AI_FILTER_MAX_SEGMENTS_PROJECT",
+                "STRIPE_ENVIRONMENT", "PADDLE_ENVIRONMENT"].map(name => [name, process.env[name] || null])),
+              TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: receipt,
+            } };
+          expect(verification({ AI_FILTER_ENABLED: "", AI_FILTER_JEV_1_13_0_ENABLED: "", NARROWED_RUNTIME_POLICY_JSON: JSON.stringify(recoveredPolicy) })).toContain('"status":"ready"');
           expect(()=>verification({AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS:"1"})).toThrow();
         } finally { await held`SELECT pg_advisory_unlock_all()`; held.release(); }
         expect(verification).toThrow();
