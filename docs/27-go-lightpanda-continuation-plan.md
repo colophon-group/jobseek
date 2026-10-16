@@ -1,37 +1,43 @@
 # Go and Lightpanda migration delivery plan
 
-Current checkpoint (2026-10-16): **0.13.1073** is deployed with latest stable
-Lightpanda **1.0.1**. B0 and ordinary Go are independently active at epoch **352**,
-serving **7,833 monitor / 7,820 detail boards** and delivering three monitors and
-eighteen details together. The complete postactive cohort and actual source
-routes agree, with zero owned cache mismatches. Every baseline-only queued ID
-is canonically inactive or unscheduled; the later owned scheduled/queued gap is
-zero. These are live observations, not atomic historical conservation evidence.
+Current checkpoint (2026-10-16): **0.13.1074** is installed from source
+`52f6c637a4bb11da0009fde1cd185560cffa75e8`, with latest stable Lightpanda **1.0.1**.
+Both original deployments and the supported cold activation succeeded. B0 and
+ordinary Go are independently serving at epoch **354**, preserving every previous
+member in the **7,833-monitor / 7,825-detail** cohort and adding five Phenom/Workday
+details together. Exact receipts, SQL, Redis, all ten actors and eight health
+endpoints agree.
 
-The ordinary worker has restarted five times by 02:27 UTC; a retained fatal detail configuration
-error is still being localized. Large freshness backlog, remaining 64 monitor /
-77 detail configurations, native lifecycle handoff, recovery-window drills and
-comparable whole-lane cost evidence remain. Continue multiple types per batch
-and finish production Python/Playwright/Chromium retirement. The full goal is
-active. Use the [October 16 delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
-for current authority and execution order; entries below are historical.
+Full postactive replay preserves the identical complete cohort and every actual
+route, with zero owned cache mismatches. All 5,449 outgoing-only queued IDs are
+currently inactive or unscheduled. Both incoming capture gaps are currently
+canonical-ineligible; retain the raw non-atomic gap of two rather than asserting
+an atomic zero-gap result.
 
-Next combined candidate **0.13.1074** qualifies five unchanged Phenom/Workday
-detail configurations through direct Go HTTP. Eight positive original/live
-references match every field, both original and current captured HTML match the
-frozen parser, and all 878 captured source routes match the exact configuration,
-origin and path bindings. Real PostgreSQL/Redis writer replays preserve original
-canonical title/description/source and browser-queue deadlines/leases with one
-HTTP request per reference and no renderer call. Changed configurations or other
-origins/paths retain their rendered route. No CSV or ownership-profile change is
-needed. The proposed full floor is **7,833 monitors / 7,825 details**; deployment,
-fresh admission and serving verification remain pending.
+A production restart now identifies `detail_render_actions`. A currently owned
+profile reproduces numeric action rejection after its opaque copy retains
+`json.Number`. The 0.13.1075 candidate accepts valid retained numbers with unchanged
+limits; regression tests fail before the fix and pass afterward. Deliver that
+fix through original qualification/deployment while preserving the full floor,
+then prove sustained runtime/content progress. The fix is not deployed yet.
 
-The same candidate retains bounded code-owned cause stages and validated detail
-profiles in fatal diagnostics without raw URLs, IDs, messages or bodies. Fatal
-sentinels, shutdown and recovery attempts stay intact. This improves localization;
-it does **not** establish or fix the production restart's root cause. See the
-[candidate evidence](evidence/go-native1074-http-batch-candidate-2026-10-16.json).
+The same candidate groups **seven detail configurations across four profile
+families** with the fix. Six have matching original/native empty inventories and
+no scheduled detail work. ADP has a matching inventory of 20 monitor URLs and two
+field-exact HTTP references whose original missing-title transient lifecycle is
+preserved by real canonical SQL/Redis replay. The proposed floor is **7,833/7,832**;
+qualification, original deployment and fresh admission are pending. See the
+[combined candidate evidence](evidence/go-native1075-actions-multitype-candidate-2026-10-16.json).
+
+Continue multiple types per batch across the remaining **64 monitor / 72 detail**
+configurations, including the 19/37 compiled candidates. Finish native lifecycle
+handoff, freshness, matched whole-lane costs, supported reversal and recovery-window
+proof, then retire production Python/Playwright/Chromium. Preserve useful offline
+Python and every enabled board. The full goal is **active and incomplete**.
+
+Use the [October 16 delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
+and [1074 delivery evidence](evidence/go-native1074-delivery-2026-10-16.json) for
+current authority and execution order. Entries below are historical.
 
 ## Earlier checkpoint — source1071 recovery and source1072 candidate
 

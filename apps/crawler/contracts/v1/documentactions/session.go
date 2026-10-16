@@ -98,6 +98,30 @@ func Budget(actions []Action) time.Duration {
 
 // Parse preserves Python's sequential order, ten-second action timeout and
 // optional failure default. Unsupported interactions retain their current owner.
+// Opaque detail-profile copies retain JSON numbers with UseNumber. Decode that
+// representation with the same numeric semantics as ordinary JSON action input.
+func actionNumber(value any) (float64, bool) {
+	switch value := value.(type) {
+	case float64:
+		return value, true
+	case json.Number:
+		if value == "" {
+			return 0, false
+		}
+		body, err := json.Marshal(value)
+		if err != nil {
+			return 0, false
+		}
+		var number float64
+		if json.Unmarshal(body, &number) != nil {
+			return 0, false
+		}
+		return number, true
+	default:
+		return 0, false
+	}
+}
+
 func Parse(raw any) ([]Action, error) {
 	if raw == nil {
 		return nil, nil
@@ -132,7 +156,7 @@ func Parse(raw any) ([]Action, error) {
 			}
 		}
 		if v, exists := m["timeout"]; exists {
-			n, yes := v.(float64)
+			n, yes := actionNumber(v)
 			limit := float64(120)
 			if a.Kind == "evaluate" || a.Kind == "repeat" || a.Kind == "paginate_collect" {
 				limit = 300
@@ -146,7 +170,7 @@ func Parse(raw any) ([]Action, error) {
 		case "wait":
 			a.Milliseconds = 1000
 			if v, exists := m["ms"]; exists {
-				a.Milliseconds, ok = v.(float64)
+				a.Milliseconds, ok = actionNumber(v)
 				if !ok {
 					return nil, ErrActions
 				}
