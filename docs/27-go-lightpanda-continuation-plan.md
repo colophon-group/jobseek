@@ -1,15 +1,20 @@
 # Go and Lightpanda migration delivery plan
 
-Current checkpoint (2026-10-15): source1072 is deployed with Lightpanda 1.0.1.
-Its complete 7,833-monitor / 7,814-detail admission passed, but activation failed
-legacy startup because the projection validator omitted BrassRing's browser
-profile. Supported pending recovery restored the legacy/B0 lane at epoch **350**;
-ordinary Go ownership is inactive. Release **0.13.1073** corrects that exact boundary
-for compiled BrassRing and Njoyn profiles. Qualify/deploy it, then repeat fresh
-source-bound full-floor admission and batch activation. See the
-[delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md).
-Do not count the proposed cohort as serving until readiness and independent
-receipt/SQL/Redis/health, cache and exact-ID checks pass.
+Current checkpoint (2026-10-16): **0.13.1073** is deployed with latest stable
+Lightpanda **1.0.1**. B0 and ordinary Go are independently active at epoch **352**,
+serving **7,833 monitor / 7,820 detail boards** and delivering three monitors and
+eighteen details together. The complete postactive cohort and actual source
+routes agree, with zero owned cache mismatches. Every baseline-only queued ID
+is canonically inactive or unscheduled; the later owned scheduled/queued gap is
+zero. These are live observations, not atomic historical conservation evidence.
+
+The ordinary worker has restarted twice; a retained fatal detail configuration
+error is still being localized. Large freshness backlog, remaining 64 monitor /
+77 detail configurations, native lifecycle handoff, recovery-window drills and
+comparable whole-lane cost evidence remain. Continue multiple types per batch
+and finish production Python/Playwright/Chromium retirement. The full goal is
+active. Use the [October 16 delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
+for current authority and execution order; entries below are historical.
 
 ## Earlier checkpoint — source1071 recovery and source1072 candidate
 
