@@ -298,6 +298,14 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
         try {
           await held`SELECT pg_advisory_lock(hashtextextended(${narrowedWorkerReadinessKey(hash)},0))`;
           expect(verification()).toContain('"status":"ready"');
+          const recoveredPolicy = { version: 1, hmacSha256: createHash("sha256").update(config.AI_FILTER_CACHE_HMAC_SECRET).digest("hex"),
+            typesafeSha256: createHash("sha256").update(config.TYPESAFE_AI_TOKEN).digest("hex"), values: {
+              ...Object.fromEntries(["AI_FILTER_ENABLED", "AI_FILTER_JEV_1_13_0_ENABLED", "AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS",
+                "AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS", "AI_FILTER_MAX_SEGMENTS_PER_USER", "AI_FILTER_MAX_SEGMENTS_PROJECT",
+                "STRIPE_ENVIRONMENT", "PADDLE_ENVIRONMENT"].map(name => [name, process.env[name] || null])),
+              TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: receipt,
+            } };
+          expect(verification({ AI_FILTER_ENABLED: "", AI_FILTER_JEV_1_13_0_ENABLED: "", NARROWED_RUNTIME_POLICY_JSON: JSON.stringify(recoveredPolicy) })).toContain('"status":"ready"');
           expect(()=>verification({AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS:"1"})).toThrow();
         } finally { await held`SELECT pg_advisory_unlock_all()`; held.release(); }
         expect(verification).toThrow();

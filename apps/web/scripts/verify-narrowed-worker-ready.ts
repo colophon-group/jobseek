@@ -6,9 +6,11 @@ import postgres from "postgres";
 import availability from "../src/config/service-availability.json";
 import { narrowedHostExecutionState, narrowedWorkerReadinessKey } from "../src/lib/ai-filter/host-contract";
 import { appendFileSync } from "node:fs";
+import { applyNarrowedDeploymentPolicy } from "../src/lib/ai-filter/deployment-policy";
 
 dotenv.config({ path: resolve(process.cwd(), "../../.vercel/.env.production.local"), quiet: true });
 async function main() {
+  applyNarrowedDeploymentPolicy(process.env.NARROWED_RUNTIME_POLICY_JSON);
   if (narrowedHostExecutionState(availability.narrowedWorkerPaused) === "disabled") {
     console.info(JSON.stringify({ event: "narrowed_worker_gate", status: "disabled" }));
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, "status=disabled\n");

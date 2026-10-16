@@ -89,6 +89,7 @@ jobs:
           scripts/vercel-company-cache.test.mjs
           scripts/vercel-production-sha.test.mjs
           scripts/vercel-promotion-identity.test.mjs
+          scripts/narrowed-secret-transfer.test.mjs
 
       - name: Check dates on changed blog content
         if: github.event_name == 'pull_request'

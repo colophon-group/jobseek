@@ -46,6 +46,46 @@ Keep the old worker running and block activation until a reviewed, authenticated
 runtime transfer or cache-safe rotation procedure preserves decision reuse.
 Do not substitute a new random value merely to satisfy the deployment check.
 
+### Sealed runtime transfer
+
+When protected local stores and Keychain have no copy, use the reviewed
+`recover-narrowed-runtime.yml` workflow before considering rotation. Generate
+an ephemeral RSA 3072/4096-bit keypair locally; keep the private PEM in a
+mode-0600 file outside the repository. Dispatch on exact current main as the
+owner with a fresh 32-hex `transfer_id`, the public PEM encoded as base64,
+and the current canonical production deployment ID.
+
+The workflow creates a minimal production-environment deployment with
+`--skip-domain`, verifies the canonical deployment remains unchanged, and
+authenticates with the existing refresh bearer. Its only route returns an
+AES-256-GCM payload whose ephemeral key is wrapped using RSA-OAEP SHA-256 to
+the supplied public key. It expires after 20 minutes. The workflow deletes
+the unaliased deployment afterward and retains only the sealed payload and
+public manifest for one day. The private key, decrypted credentials, and
+database/provider requests never enter this workflow.
+
+Download the artifact from the exact protected run, then decrypt locally:
+
+```sh
+node scripts/narrowed-secret-transfer.mjs decrypt sealed-runtime.json private.pem TRANSFER_ID recovered.private.json
+```
+
+The output is created once with mode 0600. Transfer `hmac` and `typesafe` to
+the corresponding GitHub production secrets through stdin without printing
+them. Preserve the original HMAC in Keychain. Store the allowlisted `policy`
+object as the GitHub production environment variable
+`NARROWED_RUNTIME_POLICY_JSON`. It contains execution flags, the stable-order
+receipt, optional budgets/entitlement environments, and credential fingerprints;
+it contains no credentials or user queries. CI applies this validated runtime
+snapshot instead of inferring policy from sensitive variables omitted by pull.
+Worker preparation requires the original HMAC and TypeSafe fingerprints to
+match before provisioning or activating. Delete private transfer files when
+the protected stores and host activation have been verified.
+
+Future runtime policy changes must update this protected snapshot alongside
+the Vercel configuration. A source pause remains independently available.
+Do not regenerate the cache key as part of an ordinary policy change.
+
 Existing protected database-owner, read-only Typesense, R2 domain, Vercel and
 host-key-pinned SSH settings are reused by deployment. Non-sensitive feature
 switches, stable-order receipt and spending limits are copied from the pulled

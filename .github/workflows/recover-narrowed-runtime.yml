@@ -1,0 +1,97 @@
+name: Recover Narrowed runtime credentials
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact current main SHA containing the reviewed transfer function
+        required: true
+        type: string
+      production_deployment_id:
+        description: Existing live deployment ID; the canonical domain must remain on it
+        required: true
+        type: string
+      transfer_id:
+        description: Fresh 32-character lowercase hexadecimal transfer identifier
+        required: true
+        type: string
+      public_key_base64:
+        description: Base64 of an ephemeral RSA 3072/4096-bit public PEM; never supply the private key
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jobseek-narrowed-runtime-transfer
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Bind the protected owner dispatch to exact current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+          ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_REF" = refs/heads/main
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$DISPATCH_SHA" = "$EXPECTED_SHA"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Validate the transfer contract
+        run: node --test scripts/narrowed-secret-transfer.test.mjs
+      - name: Verify the existing Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: pnpm dlx vercel@62.1.0 project inspect jobseek-web --scope viktor-shcherbakovs-projects --non-interactive
+      - name: Recheck current main immediately before recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+        run: test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Seal the runtime configuration through an isolated deployment
+        id: recover
+        env:
+          EXPECTED_SHA: ${{ inputs.revision }}
+          EXPECTED_PRODUCTION_DEPLOYMENT_ID: ${{ inputs.production_deployment_id }}
+          TRANSFER_ID: ${{ inputs.transfer_id }}
+          TRANSFER_PUBLIC_KEY_BASE64: ${{ inputs.public_key_base64 }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          AI_FILTER_REFRESH_SECRET: ${{ secrets.AI_FILTER_REFRESH_SECRET }}
+        run: node scripts/recover-narrowed-runtime.mjs
+      - name: Preserve only the sealed payload and public manifest
+        if: always() && steps.recover.outputs.sealed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: narrowed-runtime-${{ inputs.transfer_id }}
+          path: |
+            ${{ steps.recover.outputs.sealed_path }}
+            ${{ steps.recover.outputs.manifest_path }}
+          if-no-files-found: error
+          retention-days: 1
