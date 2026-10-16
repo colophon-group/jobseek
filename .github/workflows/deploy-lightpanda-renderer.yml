@@ -51,28 +51,34 @@ jobs:
             deploy/lightpanda-renderer/lock.sh
           python3 -m py_compile \
             deploy/lightpanda-renderer/verify.py \
+            deploy/lightpanda-renderer/proxy-settings.py \
             deploy/lightpanda-renderer/validate_pki.py \
             deploy/lightpanda-renderer/network-policy.py \
             deploy/lightpanda-renderer/testdata/legacy-verify.py
           cd apps/crawler
           uv run --frozen ruff check \
             ../../deploy/lightpanda-renderer/verify.py \
+            ../../deploy/lightpanda-renderer/proxy-settings.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
             ../../deploy/lightpanda-renderer/testdata/legacy-verify.py \
-            tests/test_lightpanda_renderer_deployment.py
+            tests/test_lightpanda_renderer_deployment.py \
+            tests/test_lightpanda_proxy_settings.py
           uv run --frozen ruff format --check \
             ../../deploy/lightpanda-renderer/verify.py \
+            ../../deploy/lightpanda-renderer/proxy-settings.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
             ../../deploy/lightpanda-renderer/testdata/legacy-verify.py \
-            tests/test_lightpanda_renderer_deployment.py
+            tests/test_lightpanda_renderer_deployment.py \
+            tests/test_lightpanda_proxy_settings.py
           uv run --frozen pyright \
             ../../deploy/lightpanda-renderer/verify.py \
+            ../../deploy/lightpanda-renderer/proxy-settings.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
             ../../deploy/lightpanda-renderer/testdata/legacy-verify.py
-          uv run --frozen pytest tests/test_lightpanda_renderer_deployment.py -q
+          uv run --frozen pytest tests/test_lightpanda_renderer_deployment.py tests/test_lightpanda_proxy_settings.py -q
 
   build:
     if: github.event_name == 'pull_request'
@@ -245,6 +251,9 @@ jobs:
           LIGHTPANDA_B0_SERVER_CERT_PEM: ${{ secrets.LIGHTPANDA_B0_SERVER_CERT_PEM }}
           LIGHTPANDA_B0_SERVER_KEY_PEM: ${{ secrets.LIGHTPANDA_B0_SERVER_KEY_PEM }}
           LIGHTPANDA_B0_CLIENT_CERT_PEM: ${{ secrets.LIGHTPANDA_B0_CLIENT_CERT_PEM }}
+          PROXY_PROVIDER: ${{ secrets.PROXY_PROVIDER }}
+          WEBSHARE_PROXY_URLS: ${{ secrets.WEBSHARE_PROXY_URLS }}
+          WEBSHARE_PROXY_URL: ${{ secrets.WEBSHARE_PROXY_URL }}
           SOURCE_COMMIT: ${{ needs.publish.outputs.source_commit }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.image_digest }}
           JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE: disabled

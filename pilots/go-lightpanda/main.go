@@ -14,6 +14,16 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == configuredBrowserProxyCheckFlag {
+		if len(args) != 2 {
+			os.Exit(1)
+		}
+		if checkBrowserProxySettings(configuredBrowserProxyFile, args[1]) != nil {
+			os.Exit(1)
+		}
+		_, _ = fmt.Fprintln(os.Stdout, "browser proxy settings valid")
+		return
+	}
 	if len(args) > 0 && args[0] == runtimeV1ChildIsolationCheckFlag {
 		if len(args) != 2 {
 			os.Exit(1)
