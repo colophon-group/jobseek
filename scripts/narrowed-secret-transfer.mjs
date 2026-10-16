@@ -10,6 +10,8 @@ export function buildTransferBundle(root, { publicKey, transferId, revision, pro
   const expiresAt = new Date(now + 20 * 60_000).toISOString();
   const functionRoot = resolve(root, ".vercel/output/functions/transfer.func");
   mkdirSync(functionRoot, { recursive: true });
+  // Vercel validates the linked monorepo root even for prebuilt-only uploads.
+  mkdirSync(resolve(root, "apps/web"), { recursive: true });
   writeFileSync(resolve(root, ".vercel/project.json"), JSON.stringify({ projectId, orgId }));
   writeFileSync(resolve(root, ".vercel/output/config.json"), JSON.stringify({ version: 3, crons: [], routes: [{ src: "/api/narrowed-secret-transfer", dest: "/transfer" }, { src: "/.*", status: 404 }] }));
   writeFileSync(resolve(root, ".vercel/output/builds.json"), JSON.stringify({ target: "production" }));

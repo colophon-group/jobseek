@@ -78,6 +78,7 @@ test("the isolated artifact has no cron, no app routes and no operator secrets",
     assert.deepEqual(routes.crons, []);
     assert.deepEqual(routes.routes, [{ src: "/api/narrowed-secret-transfer", dest: "/transfer" }, { src: "/.*", status: 404 }]);
     assert.equal(JSON.parse(readFileSync(join(output, "builds.json"), "utf8")).target, "production");
+    assert.deepEqual(readdirSync(join(root, "apps/web")), []);
     assert.deepEqual(readdirSync(join(output, "functions")), ["transfer.func"]);
     const source = readFileSync(join(output, "functions/transfer.func/handler.mjs"), "utf8");
     assert.ok(!source.includes(privateKey));
@@ -90,7 +91,7 @@ test("recovery transport never promotes and preserves only sealed artifacts", ()
   const transport = readFileSync("scripts/recover-narrowed-runtime.mjs", "utf8");
   assert.match(transport, /"--prod", "--skip-domain"/);
   assert.doesNotMatch(transport, /vc\(\["promote"|"--public"/);
-  assert.ok(transport.indexOf('candidate = JSON.parse(vc(["deploy"') < transport.indexOf("writeFileSync(authPath"));
+  assert.ok(transport.indexOf('const deployed = JSON.parse(vc(["deploy"') < transport.indexOf("writeFileSync(authPath"));
   assert.match(transport, /requireLiveUnchanged/);
   assert.match(transport, /Refusing to delete an aliased deployment/);
   const workflow = readFileSync(".github/workflows/recover-narrowed-runtime.yml", "utf8");
@@ -102,7 +103,8 @@ test("recovery transport never promotes and preserves only sealed artifacts", ()
 });
 
 test("transport captures the sealed payload, excludes auth from upload, deletes its deployment and refuses aliases", async () => {
-  for (const acquireAlias of [false, true]) {
+  for (const aliasState of ["none", "stale", "assigned"]) {
+    const acquireAlias = aliasState === "assigned";
     const root = mkdtempSync(join(tmpdir(), "narrowed-transport-test-"));
     const stage = join(root, `narrowed-transfer-${transferId}`);
     const project = "prj_NqkWn9aYWWGsrxGjQf69vkR1POAi";
@@ -116,14 +118,16 @@ test("transport captures the sealed payload, excludes auth from upload, deletes 
       const action = args[2];
       if (action === "api") {
         const path = args[3];
+        if (path.includes("/v4/aliases/")) return JSON.stringify({ deploymentId: path.includes("jobseek-web-") || !acquireAlias ? "dpl_existing" : "dpl_transfer" });
         if (path.includes("/v9/projects/")) return JSON.stringify({ id: project, accountId: org });
         if (path.includes("/deployments/jseek.co")) return JSON.stringify({ id: "dpl_existing" });
-        return JSON.stringify({ projectId: project, target: "production", meta: { narrowedTransfer: transferId }, alias: acquireAlias ? ["jseek.co"] : [] });
+        return JSON.stringify({ projectId: project, target: "production", meta: { narrowedTransfer: transferId }, alias: aliasState === "none" ? [] : ["jseek.co"] });
       }
       if (action === "deploy") {
         assert.ok(args.includes("--skip-domain"));
         assert.equal(existsSync(join(stage, "request.private.curl")), false);
-        return JSON.stringify({ id: "dpl_transfer", url: "https://transfer.vercel.app" });
+        assert.deepEqual(readdirSync(join(stage, "apps/web")), []);
+        return JSON.stringify({ status: "ok", deployment: { id: "dpl_transfer", url: "https://transfer.vercel.app" } });
       }
       if (action === "inspect") return "";
       if (action === "curl") {
