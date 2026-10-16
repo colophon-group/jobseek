@@ -8,13 +8,30 @@ routes agree, with zero owned cache mismatches. Every baseline-only queued ID
 is canonically inactive or unscheduled; the later owned scheduled/queued gap is
 zero. These are live observations, not atomic historical conservation evidence.
 
-The ordinary worker has restarted twice; a retained fatal detail configuration
+The ordinary worker has restarted five times by 02:27 UTC; a retained fatal detail configuration
 error is still being localized. Large freshness backlog, remaining 64 monitor /
 77 detail configurations, native lifecycle handoff, recovery-window drills and
 comparable whole-lane cost evidence remain. Continue multiple types per batch
 and finish production Python/Playwright/Chromium retirement. The full goal is
 active. Use the [October 16 delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
 for current authority and execution order; entries below are historical.
+
+Next combined candidate **0.13.1074** qualifies five unchanged Phenom/Workday
+detail configurations through direct Go HTTP. Eight positive original/live
+references match every field, both original and current captured HTML match the
+frozen parser, and all 878 captured source routes match the exact configuration,
+origin and path bindings. Real PostgreSQL/Redis writer replays preserve original
+canonical title/description/source and browser-queue deadlines/leases with one
+HTTP request per reference and no renderer call. Changed configurations or other
+origins/paths retain their rendered route. No CSV or ownership-profile change is
+needed. The proposed full floor is **7,833 monitors / 7,825 details**; deployment,
+fresh admission and serving verification remain pending.
+
+The same candidate retains bounded code-owned cause stages and validated detail
+profiles in fatal diagnostics without raw URLs, IDs, messages or bodies. Fatal
+sentinels, shutdown and recovery attempts stay intact. This improves localization;
+it does **not** establish or fix the production restart's root cause. See the
+[candidate evidence](evidence/go-native1074-http-batch-candidate-2026-10-16.json).
 
 ## Earlier checkpoint — source1071 recovery and source1072 candidate
 

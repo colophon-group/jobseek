@@ -27,8 +27,8 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 	return RunDetail(ctx, authority, claim, http, processor, circuits)
 }
 
-func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits, renderers ...renderedDetailClient) (*GreenhouseClaimResult, error) {
-	result := &GreenhouseClaimResult{TaskKind: queue.Scrape}
+func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits, renderers ...renderedDetailClient) (result *GreenhouseClaimResult, err error) {
+	result = &GreenhouseClaimResult{TaskKind: queue.Scrape}
 	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || processor == nil || circuits == nil {
 		return result, claimRunError("detail_startup", queue.ErrConfiguration)
 	}
@@ -59,6 +59,14 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		return result, claimRunError("detail_read", err)
 	}
 	profile := detail.Profile()
+	defer func() {
+		var diagnostic *ClaimRunError
+		if errors.As(err, &diagnostic) {
+			// This profile is a compiled value from the authority's validated
+			// canonical read. Board IDs, URLs and upstream errors stay private.
+			diagnostic.detailProfile = profile.Profile
+		}
+	}()
 	if queue.NoScrapeDetailProfile(profile.Profile) {
 		receipt, e := authority.FinishWorkdayDetail(ctx, detail, nil, queue.GreenhouseHostObservation{}, func(ctx context.Context, tx pgx.Tx, current *queue.CurrentWorkdayDetail, _ *queue.HostCircuitOutcome) (string, error) {
 			if !queue.NoScrapeDetailProfile(current.Profile().Profile) {
@@ -185,12 +193,12 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if profile.Profile == "api_sniffer.browser-detail/v1" || profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" || profile.Profile == "embedded.rendered-detail/v1" {
+	if !qualifiedJSONLDHTTPDetail(profile) && (profile.Profile == "api_sniffer.browser-detail/v1" || profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" || profile.Profile == "embedded.rendered-detail/v1") {
 		content, reservation, err = renderer.Fetch(ctx, profile)
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0
 		hostFailure = observed.LastStatus == 401 || observed.LastStatus == 403 || observed.LastStatus == 429 || observed.LastStatus >= 500
-	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "jsonld.proxy-detail/v1" || profile.Profile == "dom.direct-detail/v1" || profile.Profile == "dom.proxy-detail/v1" || profile.Profile == "embedded.direct-detail/v1" {
+	} else if qualifiedJSONLDHTTPDetail(profile) || profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "jsonld.proxy-detail/v1" || profile.Profile == "dom.direct-detail/v1" || profile.Profile == "dom.proxy-detail/v1" || profile.Profile == "embedded.direct-detail/v1" {
 		fetched, failure := fetchDirectDetail(ctx, http, profile)
 		err = failure
 		hostReachable = fetched.Responses > 0
@@ -287,6 +295,9 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (jsonld.FetchResult, error) {
 	if verified == nil || verified.client == nil || verified.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return jsonld.FetchResult{}, queue.ErrConfiguration
+	}
+	if qualifiedJSONLDHTTPDetail(profile) {
+		profile = jsonldHTTPDetailProfile(profile)
 	}
 	client := *verified.client
 	jar, err := cookiejar.New(nil)

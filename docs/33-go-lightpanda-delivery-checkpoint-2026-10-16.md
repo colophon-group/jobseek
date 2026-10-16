@@ -36,7 +36,7 @@ IDs. Fresh read-only canonical accounting classifies every baseline-only ID:
 zero. These are non-atomic live observations; they do not establish historical
 global conservation or a causal explanation for every intervening change.
 
-The worker has restarted **twice** by the independent 01:52 UTC observation.
+The worker has restarted **five times** by the independent 02:27 UTC observation.
 The first retained log shows a fatal `detail_execution: configuration` at
 01:37:51 UTC, followed by cancellation and process exit. Its exact source remains
 unlocalized. Offline admission/actions/API/alternate-URL checks accept all 7,820
@@ -57,6 +57,13 @@ still finds 1,605,783 scheduled postings overdue by more than 24 hours. Complete
 attempt receipts are not proof of successful content writes or adequate freshness.
 
 ## Continue to full migration
+
+The next combined 0.13.1074 candidate qualifies five more unchanged detail boards
+through direct Go HTTP and adds safe profile/inner-stage diagnostics. Its eight
+positive real references, 878 source-route bindings and canonical writer replays
+pass. The proposed complete cohort is 7,833 monitors / 7,825 details; **it is not
+serving authority yet**. See [candidate evidence](evidence/go-native1074-http-batch-candidate-2026-10-16.json).
+The production restart remains unlocalized.
 
 1. Localize and correct the fatal detail configuration path while preserving
    fail-closed ownership and supported deployment/recovery. Keep the full serving
