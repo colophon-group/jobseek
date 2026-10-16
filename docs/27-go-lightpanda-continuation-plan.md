@@ -6,44 +6,40 @@ remove production Python, Playwright and Chromium. Keep useful offline Python.
 
 ## Current checkpoint — 2026-10-16
 
-**0.13.1075** is independently serving from source
-`cbd1f37f3803a29dcd6693aa0a120992513edda6`, with latest stable Lightpanda **1.0.1**
-and its installed official ARM binary checksum verified. Both original deployments,
-supported cold activation, exact-head CI and physical/ARM qualification passed.
+**0.13.1077** is independently serving source
+`25901ab3e61b5c9866aaff03eba5771b8e49d20a`, with latest stable Lightpanda **1.0.1**.
+The complete **7,838-monitor / 7,832-detail** floor is active at epoch **360**.
+Original supported retirement/reversal/staging/activation and complete deployments
+passed. Exact source/image/receipt/SQL/Redis/all-ten-actor/health readback passed
+at 13:57 UTC; bounded 14:02 worker readback has zero restarts, OOMs or classified
+fatal configuration failures.
 
-The full **7,838-monitor / 7,832-detail** cohort is active at epoch **358**,
-preserving every previous member and adding two Brassring and three complete-empty
-DOM monitors without changing runtime images. Original supported retirement,
-cold reversal, staging and activation passed; independent SQL, Redis, receipts,
-all ten actors and health readback agree. Postactive compiled replay validates
-every owned route, with **zero owned cache mismatches**. Of **1,723,120 scheduled
-postings**, **1,723,119** are queued. All **2,107 outgoing-only queued IDs** are
-currently inactive or unscheduled. One newly discovered API-browser posting still
-requires enrichment but has no queue/cache state; investigate that unresolved
-publication gap first. These are non-atomic captures and current eligibility
-accounting, not a historical or global zero-loss guarantee.
+The scheduled-enrichment upload race is fixed in both publishers. Postactive
+compiled replay validates every owned route and all **1,729,024 scheduled URLs**
+with zero owned cache mismatches; all are queued in the non-atomic capture.
+All 195 outgoing-only queued IDs are currently 191 inactive/four unscheduled.
+The previously held posting is queued; historical cause and race-fix attribution
+remain unproved. This is current exact-ID accounting, not historical/global loss proof.
 
-The retained-number action fix is deployed. All 12 current owned configurations
-that failed their opaque copy before the fix pass afterward. Source 1074 had
-three observed action-related restarts; the current source has **zero observed
-restarts, OOMs or classified fatal configuration failures** in the bounded
-11:51 UTC readback of the current epoch. Continue observing it.
+See the [latest portable checkpoint](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
+and [aggregate evidence](evidence/go-native1077-serving-checkpoint-2026-10-16.json).
+The [previous checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
+retains qualification of the five delivered monitors.
 
-The 06:49 UTC production snapshot records 59 monitor and 205 detail completion receipts,
-and 424 successful exports with zero errors or unknown writers. Completion
-receipts are not successful-content proof. Freshness remains unfinished: about
-**1.61 million scheduled postings are over 24 hours overdue**. Isolated ARM density
-qualification does not establish matched production fleet cost.
+The next [shared-document batch, PR #10653](https://github.com/colophon-group/jobseek/pull/10653),
+is undeployed with remaining CI/admission checks pending. Both Linux architecture
+suites pass. It covers DOM, JSON-LD, embedded-data and inline document handling;
+fresh original/native and private canonical capture replays support a proposed
+**7,840-monitor / 7,833-detail** cohort: two DOM monitors and one browser-API detail.
+Preserve all current members and prove installed/current source-bound admission.
 
-See the [latest portable checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
-and [aggregate evidence](evidence/go-native1075-five-monitors-2026-10-16.json)
-for current ownership, queue accounting and continuation limits. The
-[previous checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md) retains
-the earlier source/image qualification and seven-detail batch.
+Freshness remains unfinished: the earlier snapshot had about 1.61 million postings
+more than 24 hours overdue. Queue conservation and isolated ARM density do not
+establish sustained production freshness or matched production fleet cost.
 
 ## Continue in substantial shared-contract batches
 
-After the delivered five monitors, the captured frontier is **59 monitors / 65
+The captured remaining frontier is **59 monitors / 65
 details**, excluding the three B0 records. Counts require a fresh census if data
 changes. Preserve the admitted floor through every subsequent batch.
 
@@ -71,7 +67,9 @@ local DNS checks do not pin a remote proxy resolver. Repeated live evidence also
 includes HTTP403 and changing inventories, and the two compared detail outputs
 have no positive descriptions. Complete these proofs before deployment/admission.
 
-Qualify multiple profile families per iteration. Keep the serving release and its qualification intact while developing the next
+Prioritize the qualified multiple-profile document/API batch, then native HTTP/API
+alternatives for content that Lightpanda does not render completely. Qualify multiple
+profile families per iteration. Keep the serving release and its qualification intact while developing the next
 batch in an isolated worktree. Reuse the successful installed source for unchanged
 compiled profiles when possible; ownership expansion still needs the supported
 B0 incarnation rotation and fresh full-cohort admission.
@@ -90,6 +88,6 @@ pagination and source-identity differences without dropping fields or members.
 - Supported cold reversal and the recovery window are proved before deleting
   production Python/Playwright/Chromium and their runtime-only assets.
 
-Use the [portable delivery checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
+Use the [portable delivery checkpoint](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
 and its linked evidence for the detailed prior proofs. Earlier chronological
 notes are preserved in [Git history](https://github.com/colophon-group/jobseek/blob/cbd1f37f3803a29dcd6693aa0a120992513edda6/docs/27-go-lightpanda-continuation-plan.md).

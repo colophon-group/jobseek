@@ -1,0 +1,156 @@
+{
+  "schema": "jobseek.go-lightpanda.native1077-checkpoint/v1",
+  "status": "independently_serving_full_floor_with_current_queue_accounting",
+  "full_goal": "active; incomplete",
+  "source_revision": "25901ab3e61b5c9866aaff03eba5771b8e49d20a",
+  "version": "0.13.1077",
+  "lightpanda": "1.0.1",
+  "routing_epoch": 360,
+  "last_verified_cold_epoch": 359,
+  "active_cohort": {
+    "monitors": 7838,
+    "details": 7832
+  },
+  "new_ownership_added_by_runtime_fix": 0,
+  "plan_sha256": "dc5b427884e35018c0ee2422d6f3013e3578a86938475a1fa80e3cb350844f15",
+  "projection_sha1": "a26cef0da123524ebc414d1fa7ea147293ea5a5c",
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:9597d86f17f1f5ecffd13483c5b4564d80c883845a6480b77b888bf46ef501b6",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3601b3075966e0ba79177afb39196beda5dcbb883b25ce002f439b9711f8b9f2",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:47d5a1f6f314b16a37d3b5d5d6d62d708ecdef3f9cb954ee8ab2961ae2c09b3e"
+  },
+  "fix": {
+    "pr": 10651,
+    "qualified_head": "950b8105619bd0d32f603948a6a09ddd95ba5e39",
+    "single_and_batch_scheduled_enrichment_survives_hash_only_upload_change": true,
+    "first_time_priority_preserved": true,
+    "historical_live_gap_cause_proven": false,
+    "runtime_tree_binding": "qualified crawler/runtime/data/deploy tree equals installed merge; three unrelated reviewed Narrowed helper files differ outside that scope"
+  },
+  "ci": {
+    "required": 38897971566,
+    "runtime_contracts": 38897971588,
+    "crawler_original_deploy": 38901319282,
+    "crawler_deploy_attempt": 2,
+    "renderer_original_deploy": 38902831952
+  },
+  "supported_rollout": {
+    "ordinary_retirement": true,
+    "outgoing_b0_cold_reversal": true,
+    "incoming_b0_activation": true,
+    "incoming_ordinary_stage": true,
+    "incoming_ordinary_activation": true,
+    "natural_lease_drain": true,
+    "manual_production_queue_receipt_lease_edits": false,
+    "first_deploy_attempt": "environment drift; original rollback restored outgoing source/images; original retry used existing committed COMPOSE_FILE normalization"
+  },
+  "activation_completed_at_utc": "2026-10-16T13:56:38.647681+00:00",
+  "independent_serving_observed_at_utc": "2026-10-16T13:57:25.468709+00:00",
+  "all_ten_actors_running": true,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "claimant": 204,
+    "ordinary-go": 204
+  },
+  "preactivation": {
+    "scheduled_owned_postings": 1728108,
+    "queued_owned_postings": 1727108,
+    "raw_nonatomic_gap": 1000,
+    "owned_cache_mismatches": 0
+  },
+  "postactivation": {
+    "census_observed_at": "2026-10-16T13:57:54.91026+00:00",
+    "census_sha256": "c9aa8b73818e19e3fa6b3d51a675900db7f622a3bdc807c4389921488d0541f4",
+    "scheduled_owned_postings": 1729024,
+    "queued_owned_postings": 1729024,
+    "captured_owned_scheduled_minus_queued": 0,
+    "owned_cache_mismatches": 0,
+    "all_actual_owned_routes_checked": true
+  },
+  "queue_comparison": {
+    "before_queued": 1727108,
+    "after_queued": 1729024,
+    "retained": 1726913,
+    "before_only": 195,
+    "after_only": 2111,
+    "before_sha256": "f68455991b72892b1f8f9e2cbba9bb762ec9a87f005661b10fee4e71692f71df",
+    "after_sha256": "3af5cefa2d2cbcc5e1d2b442891e1100d35b16efccb82e3132b78ef2899101e5"
+  },
+  "outgoing_only_current_canonical": {
+    "total": 195,
+    "missing": 0,
+    "inactive": 191,
+    "unscheduled": 4,
+    "board_disabled": 0,
+    "outside_owned_details": 0,
+    "eligible_queued": 0,
+    "eligible_unqueued": 0,
+    "current_epoch_native_completed": 0
+  },
+  "previous_held_case": {
+    "currently_active_scheduled_and_queued": true,
+    "current_epoch_native_completion_observed": false,
+    "specific_race_fix_causally_proven_for_historical_case": false,
+    "supported_projection_may_account_for_current_queue_presence": true
+  },
+  "runtime": {
+    "observed_at_utc": "2026-10-16T14:02:51.784639+00:00",
+    "running": true,
+    "oom_killed": false,
+    "restart_count": 0,
+    "fatal_configuration_classes": []
+  },
+  "protected_evidence_sha256": {
+    "independent-five-serving1.json": "df8abce9e1075a3673c591a2c860c548997b98138046e71596c0405cb0a38e8f",
+    "window-after-ordinary-active1.json": "f5b56c93b4f1e02582d84b7a07c126333200b086844a408588910e1f391bc219",
+    "exact-queue-comparison1.json": "9b3f7eb9b050a25fcae28a18a7c5dcc53cefaea8b3cfe35b2501de1313b865a7",
+    "current-eligibility1.json": "655c3f77227d21966cc3b8915efdce99ec9d634eb3310ee2ba90ae9df21b30e7",
+    "admission/postactive-current-floor-routes1.json": "55c789d70325c43b101553381caee95e2f24818a711798d75fbdb0e440644434"
+  },
+  "scope": "Exact source/image/receipt/SQL/Redis/health readback and full route replay. Exact-ID/current-eligibility accounting across non-atomic captures; no historical/global zero-loss, causal race attribution, sustained freshness or matched production cost claim.",
+  "remaining_frontier_snapshot": {
+    "monitors": 59,
+    "details": 65,
+    "excluded_b0_records": 3
+  },
+  "next_candidate": {
+    "pr": 10653,
+    "head": "65b8483810734399adc3585c678c43b934998f63",
+    "version": "0.13.1078",
+    "state": "CI pending; undeployed; no ownership grant",
+    "shared_families": [
+      "DOM",
+      "JSON-LD",
+      "embedded data",
+      "inline"
+    ],
+    "complete_html_limit_bytes": 4000000,
+    "proposed_additions": {
+      "dom.rendered-urls/v1": 2,
+      "api_sniffer.browser-detail/v1": 1
+    },
+    "proposed_cohort": {
+      "monitors": 7840,
+      "details": 7833
+    },
+    "positive_monitor_urls_equal": 10,
+    "verified_empty_monitors_equal": 1,
+    "positive_api_detail_description_chars_equal": 10326,
+    "private_canonical_capture_replays_passed": true,
+    "linux_amd64_arm64_physical_suites": "SUCCESS38909234916"
+  },
+  "unfinished": [
+    "remaining route/config/transport coverage",
+    "proxy upstream destination enforcement",
+    "runtime maintenance/deployment consumers",
+    "production freshness",
+    "matched whole-lane attributable cost",
+    "final supported reversal and recovery window",
+    "production Python/Playwright/Chromium retirement"
+  ]
+}
