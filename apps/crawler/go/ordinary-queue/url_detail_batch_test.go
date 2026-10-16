@@ -68,6 +68,53 @@ func clearDetailPublications(t *testing.T, f authorityFixture, details []URLOnly
 	}
 }
 
+func TestRealDetailPublicationSurvivesDescriptionUpload(t *testing.T) {
+	for _, batch := range []bool{false, true} {
+		for _, firstTime := range []bool{false, true} {
+			t.Run(fmt.Sprintf("batch=%t/first-time=%t", batch, firstTime), func(t *testing.T) {
+				f, cycle, details := batchDetailIntents(t, 1)
+				ctx := context.Background()
+				intent := &details[0]
+				if !firstTime {
+					hash := int64(12)
+					intent.DescriptionHash = &hash
+					if _, err := f.observer.Exec(ctx, "UPDATE job_posting SET description_r2_hash=12 WHERE id=$1::uuid", intent.ID); err != nil {
+						t.Fatal(err)
+					}
+				}
+				// The R2 drain changes content authority without changing the
+				// pending enrichment deadline between commit and publication.
+				if _, err := f.observer.Exec(ctx, `UPDATE job_posting SET description_r2_hash=99,to_be_enriched=true,
+ updated_at=CASE WHEN description_r2_hash IS DISTINCT FROM 99 THEN now() ELSE updated_at END WHERE id=$1::uuid`, intent.ID); err != nil {
+					t.Fatal(err)
+				}
+				if batch {
+					if n, err := cycle.EnqueueURLDetails(ctx, details); err != nil || n != 1 {
+						t.Fatal("upload discarded scheduled batch enrichment", n, err)
+					}
+				} else if added, err := cycle.EnqueueURLDetail(ctx, *intent); err != nil || !added {
+					t.Fatal("upload discarded scheduled enrichment", err)
+				}
+				if hash, err := f.client.redis.HGet(ctx, "scrape:"+intent.ID, "description_r2_hash").Result(); err != nil || hash != "99" {
+					t.Fatal("publication lost current uploaded content hash", err)
+				}
+				lane, other := "scrapes_simple:fixture.invalid", "ft_scrapes_simple:fixture.invalid"
+				wantScore := seconds(intent.Due)
+				if firstTime {
+					lane, other = other, lane
+					wantScore = 0
+				}
+				if score, err := f.client.redis.ZScore(ctx, lane, intent.ID).Result(); err != nil || score != wantScore {
+					t.Fatal("upload changed publication priority or deadline", err)
+				}
+				if _, err := f.client.redis.ZScore(ctx, other, intent.ID).Result(); !errors.Is(err, redis.Nil) {
+					t.Fatal("upload duplicated publication across tiers", err)
+				}
+			})
+		}
+	}
+}
+
 func TestRealDetailBatchMatchesOriginalPublicationAndStaleIntents(t *testing.T) {
 	for _, mode := range []string{"current", "changed-due", "changed-hash", "inactive", "foreign-browser", "duplicate"} {
 		t.Run(mode, func(t *testing.T) {

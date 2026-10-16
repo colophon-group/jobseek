@@ -20,6 +20,12 @@ var enqueueScript = redis.NewScript(enqueueLua)
 // after committing canonical URL stubs; ambiguous enqueue errors are recovered
 // by the existing missing-content inventory repair/reconciliation path.
 func (c *Client) EnqueueURLDetail(ctx context.Context, detail URLOnlyDetail) (bool, error) {
+	return c.enqueueURLDetail(ctx, detail, false)
+}
+
+// Preserve a committed first-time intent even if its description was uploaded
+// before publication; content availability does not complete other enrichment.
+func (c *Client) enqueueURLDetail(ctx context.Context, detail URLOnlyDetail, firstTime bool) (bool, error) {
 	if c == nil || c.redis == nil || !canonicalUUID.MatchString(detail.ID) || !canonicalUUID.MatchString(detail.BoardID) || detail.Due.IsZero() {
 		return false, ErrConfiguration
 	}
@@ -32,10 +38,11 @@ func (c *Client) EnqueueURLDetail(ctx context.Context, detail URLOnlyDetail) (bo
 		worker = Browser
 	}
 	first, score, hash := "0", seconds(detail.Due), ""
-	if detail.DescriptionHash == nil {
+	if firstTime || detail.DescriptionHash == nil {
 		first = "1"
 		score = 0
-	} else {
+	}
+	if detail.DescriptionHash != nil {
 		hash = strconv.FormatInt(*detail.DescriptionHash, 10)
 	}
 	if !validTime(score) {

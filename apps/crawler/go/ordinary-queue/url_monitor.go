@@ -232,7 +232,9 @@ func (c *GreenhouseCycle) WriteURLOnlyBatch(ctx context.Context, urls []string) 
 
 // EnqueueURLDetail requires an earlier committed URL from this live cycle and
 // checks its fresh canonical due/content/owner before publishing queue config.
-// A concurrent completed detail makes the stale intent unnecessary.
+// A concurrent completed detail makes a changed-deadline intent unnecessary.
+// A description upload can change the content hash without completing required
+// enrichment. Publish its current hash while retaining first-time priority.
 func (c *GreenhouseCycle) EnqueueURLDetail(ctx context.Context, detail URLOnlyDetail) (bool, error) {
 	if c == nil || c.authority == nil {
 		return false, ErrConfiguration
@@ -255,15 +257,15 @@ func (c *GreenhouseCycle) EnqueueURLDetail(ctx context.Context, detail URLOnlyDe
 		err := tx.QueryRow(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,p.description_r2_hash,p.next_scrape_at,b.scraper_needs_browser
  FROM job_posting p JOIN job_board b ON b.id=p.board_id
  WHERE p.id=$1::uuid AND p.board_id=$2::uuid AND p.source_url=$3 AND p.is_active AND NOT b.tdm_reserved
- AND p.next_scrape_at=$4 AND p.description_r2_hash IS NOT DISTINCT FROM $5::bigint
- FOR SHARE OF p,b`, detail.ID, detail.BoardID, detail.URL, detail.Due, detail.DescriptionHash).Scan(&current.ID, &current.BoardID, &current.URL, &current.DescriptionHash, &current.Due, &current.Browser)
+ AND p.next_scrape_at=$4
+ FOR SHARE OF p,b`, detail.ID, detail.BoardID, detail.URL, detail.Due).Scan(&current.ID, &current.BoardID, &current.URL, &current.DescriptionHash, &current.Due, &current.Browser)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		added, err = c.authority.queue.EnqueueURLDetail(ctx, current)
+		added, err = c.authority.queue.enqueueURLDetail(ctx, current, detail.DescriptionHash == nil)
 		return err
 	})
 	if err != nil {
