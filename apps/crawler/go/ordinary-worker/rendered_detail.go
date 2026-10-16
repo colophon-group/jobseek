@@ -22,7 +22,6 @@ import (
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
-	"google.golang.org/protobuf/proto"
 )
 
 type renderedDetailClient interface {
@@ -32,8 +31,9 @@ type renderedDetailClient interface {
 const renderedConcurrency = 4
 
 type NativeRenderedDetails struct {
-	client *lp.Client
-	slots  chan struct{}
+	client    *lp.Client
+	slots     chan struct{}
+	proxyHTTP *VerifiedHTTP
 }
 
 // The installed service receives the same scoped claimant credential files as
@@ -155,22 +155,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if err != nil {
 			return nil, nil, err
 		}
-		held, err := waitRenderedReservation(ctx, r.client.Reserve)
-		if err != nil {
-			return nil, nil, err
-		}
-		payload, marshalErr := proto.Marshal(input)
-		if marshalErr != nil {
-			held.Close()
-			return nil, nil, marshalErr
-		}
-		requestDigest := sha256.Sum256([]byte(requestID))
-		response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveBoardSHA256, Input: payload, Actions: pipeline, LargeDocument: true})
-		held.Close()
-		if err != nil {
-			return nil, nil, err
-		}
-		result, err := executor.DecodeDocumentResult(response.Result)
+		result, err := r.executeDocumentNavigation(ctx, input, options, profile.EffectiveBoardSHA256, pipeline)
 		if err != nil {
 			return nil, nil, err
 		}

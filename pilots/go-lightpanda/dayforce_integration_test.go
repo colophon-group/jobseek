@@ -77,6 +77,11 @@ func dayforceOriginTLS(t *testing.T, hosts ...string) (tls.Certificate, string) 
 		t.Fatal(e)
 	}
 	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "jobs.dayforcehcm.com"}, DNSNames: append([]string{"jobs.dayforcehcm.com"}, hosts...), NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	for _, host := range hosts {
+		if ip := net.ParseIP(host); ip != nil {
+			leaf.IPAddresses = append(leaf.IPAddresses, ip)
+		}
+	}
 	der, e := x509.CreateCertificate(rand.Reader, leaf, root, &leafKey.PublicKey, rootKey)
 	if e != nil {
 		t.Fatal(e)

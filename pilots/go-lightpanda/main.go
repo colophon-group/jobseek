@@ -44,9 +44,15 @@ func main() {
 			err = attestRuntimeV1ChildIsolation(config.PrivateKeyPath)
 		}
 		if err == nil {
+			proxies, proxyErr := readBrowserProxies(configuredBrowserProxyFile)
+			if proxyErr != nil {
+				cancel()
+				os.Exit(1)
+			}
 			execution, executionErr := newRuntimeV1ServiceExecution(Config{
-				Binary:       os.Getenv("LIGHTPANDA_BIN"),
-				EgressPolicy: config.serviceEgressPolicy.egressPolicy,
+				Binary:         os.Getenv("LIGHTPANDA_BIN"),
+				EgressPolicy:   config.serviceEgressPolicy.egressPolicy,
+				proxyEndpoints: proxies,
 			}, nil)
 			if executionErr != nil {
 				err = executionErr
