@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
@@ -32,6 +33,16 @@ func (e *NavigationHTTPError) Error() string       { return "browser navigation 
 func (e *NavigationHTTPError) PermanentGone() bool { return e.Status == 404 || e.Status == 410 }
 
 func RenderedHTML(result *runtimev1.BrowserResult, requestedURL string) (string, error) {
+	return renderedHTML(result, requestedURL, HTMLLimit)
+}
+
+// RenderedDocumentHTML consumes the explicitly larger document-session result.
+// Manifest integrity, publisher policy and status checks remain identical.
+func RenderedDocumentHTML(result *runtimev1.BrowserResult, requestedURL string) (string, error) {
+	return renderedHTML(result, requestedURL, actions.LargeDocumentHTMLLimit)
+}
+
+func renderedHTML(result *runtimev1.BrowserResult, requestedURL string, limit int) (string, error) {
 	if result == nil {
 		return "", ErrRenderedResult
 	}
@@ -41,7 +52,7 @@ func RenderedHTML(result *runtimev1.BrowserResult, requestedURL string) (string,
 		return "", ErrRenderedResult
 	}
 	manifest := success.Html
-	if !manifest.Complete || manifest.TotalSizeBytes > HTMLLimit || !hexDigest.MatchString(manifest.TotalSha256) ||
+	if !manifest.Complete || manifest.TotalSizeBytes > uint64(limit) || !hexDigest.MatchString(manifest.TotalSha256) ||
 		uint64(len(manifest.Chunks)) != (manifest.TotalSizeBytes+HTMLChunkLimit-1)/HTMLChunkLimit {
 		return "", ErrRenderedResult
 	}
@@ -57,7 +68,7 @@ func RenderedHTML(result *runtimev1.BrowserResult, requestedURL string) (string,
 		expectedSize := min(uint64(HTMLChunkLimit), manifest.TotalSizeBytes-uint64(len(body)))
 		piece := inline.InlineBody
 		digest := sha256.Sum256(piece)
-		if uint64(len(piece)) != expectedSize || chunk.SizeBytes != expectedSize || !hexDigest.MatchString(chunk.Sha256) || hex.EncodeToString(digest[:]) != chunk.Sha256 || len(piece) > HTMLLimit-len(body) {
+		if uint64(len(piece)) != expectedSize || chunk.SizeBytes != expectedSize || !hexDigest.MatchString(chunk.Sha256) || hex.EncodeToString(digest[:]) != chunk.Sha256 || len(piece) > limit-len(body) {
 			return "", ErrRenderedResult
 		}
 		body = append(body, piece...)

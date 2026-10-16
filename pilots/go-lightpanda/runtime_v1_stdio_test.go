@@ -430,6 +430,28 @@ func TestRuntimeV1StdioAcceptsAdapterMaximumHTMLWithinOutputBound(t *testing.T) 
 	}
 }
 
+func TestRuntimeV1StdioCannotInheritLargeDocumentSessionBudget(t *testing.T) {
+	request := bridgeInput("https://example.test/jobs", "", 0)
+	status := uint32(200)
+	adapter, err := lightpandaadapter.NewLargeDocumentSessionRenderOnly(runtimeV1AdapterRunnerFunc(func(_ context.Context, bound lightpandaadapter.BoundInput) lightpandaadapter.RunnerOutcome {
+		return lightpandaadapter.NewRunnerSuccess(bound, &lightpandaadapter.RawSuccess{FinalURL: request.Plan.TargetUrl, Status: &status, HTML: bytes.Repeat([]byte("x"), 2_800_000)})
+	}), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adapter.Execute(context.Background(), request).GetSuccess() == nil {
+		t.Fatal("large adapter fixture rejected")
+	}
+	var output bytes.Buffer
+	if code := runRuntimeV1Stdio(context.Background(), runtimeV1BorrowedInput(frameRuntimeV1Input(t, request)), &output, adapter); code != 0 {
+		t.Fatal("stdio transport failed")
+	}
+	result := decodeRuntimeV1Result(t, output.Bytes())
+	if result.GetSuccess() != nil || result.GetError() == nil || uint64(output.Len()) > runtimeV1ResultFrameLimit {
+		t.Fatal("large document grant escaped into default stdio")
+	}
+}
+
 func TestRuntimeV1StdioWriterFailuresDoNotAppendFallback(t *testing.T) {
 	request := frameRuntimeV1Input(t, bridgeInput("https://example.test/jobs", "", 0))
 	executor := runtimeV1ExecutorFunc(func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {

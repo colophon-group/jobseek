@@ -155,6 +155,12 @@ func fixture(t *testing.T, mode string) (*Client, <-chan struct{}) {
 				return
 			}
 			response := actions.Response{Protocol: actions.Protocol, RequestID: request.RequestID, ConfigFingerprint: request.ConfigFingerprint, Result: []byte{1}}
+			if mode == "document_large" {
+				response.Result = make([]byte, actions.LegacyResultLimit+1)
+			}
+			if mode == "document_oversized" {
+				response.Result = make([]byte, actions.ResultLimit+1)
+			}
 			if mode == "document_binding" {
 				response.ConfigFingerprint = strings.Repeat("c", 64)
 			}

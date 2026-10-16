@@ -40,11 +40,11 @@ func (r *NativeRenderedDetails) fetchInlineCards(ctx context.Context, p q.Greenh
 		return empty, err
 	}
 	defer held.Close()
-	response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: id, ConfigFingerprint: p.EffectiveConfigSHA256, Input: payload, Actions: pipeline, InlineCards: cards})
+	response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: id, ConfigFingerprint: p.EffectiveConfigSHA256, Input: payload, Actions: pipeline, InlineCards: cards, LargeDocument: true})
 	if err != nil {
 		return empty, err
 	}
-	value, err := executor.DecodeResult(response.Result)
+	value, err := executor.DecodeDocumentResult(response.Result)
 	if err != nil {
 		return empty, err
 	}

@@ -136,7 +136,7 @@ func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
 	if len(raw.Captures) == 1 && uint64(len(raw.Captures[0].Body)) > ResponseBodyPayloadLimit {
 		return RunnerOutcome{kind: runnerOutcomeResourceLimit, bindingFingerprint: bound.fingerprint}
 	}
-	if uint64(len(raw.HTML)) > HTMLPayloadLimit ||
+	if uint64(len(raw.HTML)) > documentHTMLLimit(bound.largeDocument) ||
 		(len(raw.Evaluations) == 1 && uint64(len(raw.Evaluations[0].JSON)) > EvaluationPayloadLimit) {
 		return RunnerOutcome{
 			kind: runnerOutcomeResourceLimit, bindingFingerprint: bound.fingerprint,
@@ -191,8 +191,9 @@ func NewRunnerCleanupFailure(bound BoundInput) RunnerOutcome {
 // BoundInput retains an immutable full clone. Every accessor returns another
 // clone, so an injected runner cannot mutate the adapter's binding.
 type BoundInput struct {
-	input       *runtimev1.BrowserExecutionInput
-	fingerprint [sha256.Size]byte
+	input         *runtimev1.BrowserExecutionInput
+	fingerprint   [sha256.Size]byte
+	largeDocument bool
 }
 
 // Input returns an isolated clone of the complete bound input.
@@ -215,6 +216,7 @@ type Adapter struct {
 	renderOnly      bool
 	navigationWaits bool
 	sessionBudget   time.Duration
+	largeDocument   bool
 }
 
 // New rejects missing dependencies rather than providing implicit behavior.
@@ -264,6 +266,7 @@ func (adapter *Adapter) Execute(
 	}
 
 	bound, unsupported, ok := bindNavigation(input, adapter.navigationWaits)
+	bound.largeDocument = adapter.largeDocument
 	if !ok {
 		return failureResult(
 			runtimev1.ErrorCode_ERROR_CODE_INVALID_CONFIG,
@@ -618,7 +621,7 @@ func (adapter *Adapter) mapSuccess(
 		len(raw.Evaluations) != len(plan.Evaluations) || len(raw.Captures) != len(plan.Captures) || len(raw.Captures) == 1 && len(raw.HTML) != 0 {
 		return nil, false, false
 	}
-	if uint64(len(raw.HTML)) > HTMLPayloadLimit {
+	if uint64(len(raw.HTML)) > documentHTMLLimit(adapter.largeDocument) {
 		return nil, true, false
 	}
 

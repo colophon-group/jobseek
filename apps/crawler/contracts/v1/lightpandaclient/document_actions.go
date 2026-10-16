@@ -37,11 +37,11 @@ func (r *Reservation) DocumentActions(ctx context.Context, request replay.Reques
 	if WriteAll(r.connection, append(record, 0)) != nil {
 		return response, replay.ErrActions
 	}
-	body, err = framing.ReadRecord(r.connection, replay.ResponseLimit)
+	body, err = framing.ReadRecord(r.connection, request.ResponseLimit())
 	if ctx.Err() != nil {
 		return response, ctx.Err()
 	}
-	if err != nil || replay.Decode(body, replay.ResponseLimit, &response) != nil || !response.Valid() || response.RequestID != request.RequestID || response.ConfigFingerprint != request.ConfigFingerprint {
+	if err != nil || replay.Decode(body, int(request.ResponseLimit()), &response) != nil || !response.Valid() || len(response.Result) > request.ResultLimit() || response.RequestID != request.RequestID || response.ConfigFingerprint != request.ConfigFingerprint {
 		return replay.Response{}, replay.ErrActions
 	}
 	if request.InlineCards == nil && len(response.InlineIdentities) != 0 || request.InlineCards != nil && len(response.InlineIdentities) > int(request.InlineCards.Maximum) {

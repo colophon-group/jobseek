@@ -7,6 +7,26 @@ import (
 	"time"
 )
 
+func TestLargeDocumentBudgetIsExplicitAndKeepsLegacyBounds(t *testing.T) {
+	r := Request{Protocol: Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Input: []byte{1}}
+	if r.Valid() || r.ResultLimit() != 2<<20 || r.ResponseLimit() != 3<<20 {
+		t.Fatal("empty legacy session or its limits changed")
+	}
+	r.LargeDocument = true
+	if !r.Valid() || r.ResultLimit() != 4<<20 || r.ResponseLimit() != 8<<20 {
+		t.Fatal("explicit bounded document session rejected")
+	}
+	r.Actions = []Action{{Kind: "wait", TimeoutMS: 120001}}
+	if r.Valid() {
+		t.Fatal("large document admitted invalid actions")
+	}
+	r.Actions = nil
+	r.Input = make([]byte, 65537)
+	if r.Valid() {
+		t.Fatal("large document bypassed navigation input bound")
+	}
+}
+
 func TestLongEvaluateKeepsBoundedAggregateAndDefaults(t *testing.T) {
 	var raw any
 	if json.Unmarshal([]byte(`[{"action":"evaluate","script":"async () => {}","timeout":300},{"action":"evaluate","script":"() => {}"}]`), &raw) != nil {

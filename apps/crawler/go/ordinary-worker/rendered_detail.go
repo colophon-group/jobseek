@@ -157,24 +157,18 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if err != nil {
 			return nil, nil, err
 		}
-		var body []byte
-		if len(pipeline) > 0 {
-			payload, marshalErr := proto.Marshal(input)
-			if marshalErr != nil {
-				held.Close()
-				return nil, nil, marshalErr
-			}
-			requestDigest := sha256.Sum256([]byte(requestID))
-			response, actionErr := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveBoardSHA256, Input: payload, Actions: pipeline})
-			body, err = response.Result, actionErr
-		} else {
-			body, err = held.Execute(ctx, input)
+		payload, marshalErr := proto.Marshal(input)
+		if marshalErr != nil {
+			held.Close()
+			return nil, nil, marshalErr
 		}
+		requestDigest := sha256.Sum256([]byte(requestID))
+		response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveBoardSHA256, Input: payload, Actions: pipeline, LargeDocument: true})
 		held.Close()
 		if err != nil {
 			return nil, nil, err
 		}
-		result, err := executor.DecodeResult(body)
+		result, err := executor.DecodeDocumentResult(response.Result)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -227,7 +221,7 @@ func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser
 			err = policy.ErrSignals
 		} else {
 			var html string
-			html, err = executor.RenderedHTML(result, source)
+			html, err = executor.RenderedDocumentHTML(result, source)
 			if err == nil {
 				value, parseErr := b0task.ParseCanonicalValue(parser)
 				options, ok := value.(map[string]any)
@@ -251,7 +245,7 @@ func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser
 			}
 		}
 	} else {
-		content, err = executor.ParseRenderedDetail(source, scraper, parser, result)
+		content, err = executor.ParseRenderedDocumentDetail(source, scraper, parser, result)
 	}
 	// Attribute only a held, validated navigation response. A renderer
 	// connection/protocol failure is not evidence of an origin failure.

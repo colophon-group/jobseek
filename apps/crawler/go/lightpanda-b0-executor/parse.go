@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
@@ -25,11 +26,20 @@ func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[strin
 // ParseRenderedDetail consumes only the already-held document and parser inputs.
 // It does not accept a B0 envelope or confer any queue/database authority.
 func ParseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMessage, result *runtimev1.BrowserResult) (map[string]any, error) {
+	return parseRenderedDetail(sourceURL, scraperType, parserConfig, result, HTMLLimit)
+}
+
+// ParseRenderedDocumentDetail keeps the larger document budget outside B0.
+func ParseRenderedDocumentDetail(sourceURL, scraperType string, parserConfig json.RawMessage, result *runtimev1.BrowserResult) (map[string]any, error) {
+	return parseRenderedDetail(sourceURL, scraperType, parserConfig, result, actions.LargeDocumentHTMLLimit)
+}
+
+func parseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMessage, result *runtimev1.BrowserResult, htmlLimit int) (map[string]any, error) {
 	if result != nil && result.GetSuccess() != nil && result.GetSuccess().ResourcePolicy == nil {
 		return nil, publisherpolicy.ErrSignals
 	}
 	invalidParser := func() error {
-		if _, err := RenderedHTML(result, sourceURL); err != nil {
+		if _, err := renderedHTML(result, sourceURL, htmlLimit); err != nil {
 			return err
 		}
 		return ErrProtocol
@@ -51,14 +61,20 @@ func ParseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMes
 	}
 	// Publisher policy and navigation status belong to the actual read. DOM
 	// extraction still receives the canonical posting URL, as in Python.
-	html, err := RenderedHTML(result, requestedURL)
+	html, err := renderedHTML(result, requestedURL, htmlLimit)
 	if err != nil {
 		return nil, err
 	}
 	var content map[string]any
 	switch scraperType {
 	case "dom":
-		classification, err := dom.ClassifyRendered(html, config, result.GetSuccess().FinalUrl)
+		classify := dom.ClassifyRendered
+		if htmlLimit > HTMLLimit {
+			// The complete manifest has already enforced the smaller document-
+			// session ceiling. Reuse the identical document policy classifier.
+			classify = dom.ClassifyDocument
+		}
+		classification, err := classify(html, config, result.GetSuccess().FinalUrl)
 		if err != nil {
 			return nil, err
 		}

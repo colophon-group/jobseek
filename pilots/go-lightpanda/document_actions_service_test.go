@@ -14,6 +14,44 @@ import (
 	"time"
 )
 
+func TestLargeDocumentServicePreservesCompleteHTMLWithoutSyntheticActions(t *testing.T) {
+	for _, withActions := range []bool{false, true} {
+		t.Run(map[bool]string{false: "no-actions", true: "actions"}[withActions], func(t *testing.T) {
+			input, err := lp.NavigationInput(lp.Navigation{URL: "https://example.com/careers", RoutingRevision: "large-document", OriginRequestID: "large-document", Wait: "load", TimeoutMS: 1000})
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload, _ := proto.Marshal(input)
+			request := actions.Request{Protocol: actions.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Input: payload, LargeDocument: true}
+			if withActions {
+				request.Actions = []actions.Action{{Kind: "wait", TimeoutMS: 1}}
+			}
+			execution, err := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary}, func(_ context.Context, _ Config, task Task) (Result, error) {
+				if !task.LargeDocument || len(task.Actions) != len(request.Actions) || validateTask(task) != nil {
+					t.Fatal("document budget or original actions lost")
+				}
+				return Result{Status: 200, FinalURL: task.URL, HTML: strings.Repeat("x", 2_800_000), HTMLPresent: true}, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := execution.executeDocumentActions(context.Background(), request)
+			if err != nil || !response.Valid() || len(response.Result) > request.ResultLimit() {
+				t.Fatal("large response rejected", err)
+			}
+			result := new(runtimev1.BrowserResult)
+			if proto.Unmarshal(response.Result, result) != nil || result.GetSuccess() == nil || result.GetSuccess().Html.TotalSizeBytes != 2_800_000 {
+				t.Fatal("complete HTML lost")
+			}
+			body, err := json.Marshal(response)
+			var decoded actions.Response
+			if err != nil || len(body) > int(request.ResponseLimit()) || actions.Decode(body, int(request.ResponseLimit()), &decoded) != nil || !decoded.Valid() {
+				t.Fatal("large wire response rejected")
+			}
+		})
+	}
+}
+
 func TestDocumentActionsServicePreflightCleanupAndBinding(t *testing.T) {
 	for _, mode := range []string{"success", "large-document", "oversized-document", "cleanup", "evaluation", "malformed"} {
 		t.Run(mode, func(t *testing.T) {
