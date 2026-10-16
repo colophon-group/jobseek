@@ -132,16 +132,13 @@ provider retry budget remains. Three failed slices still open the shared
 
 The singleton admission statement checks enabled, entitled, current demand or
 due repair. An idle tick performs one statement and leaves cadence/circuit state
-untouched. The host driver runs continuously under the existing systemd
-CPU/memory/task limits, with two seconds between active slices and 30 seconds
-when idle. It has no database credentials or Docker socket. Owner requests
-commit durable demand before waking the same worker via Next.js `after`; the
-host recovers missed wakes. No crawler writers are restarted.
-
-Activation disables the legacy minute timer and enables the persistent service.
-Pause disables both. The installer restores their prior state on failure.
-See [interactive rollout](../24-ai-filter.md#interactive-worker-rollout) for the
-migration, web promotion, host activation and bounded verification sequence.
+untouched. The standalone host worker runs continuously under container CPU/memory/task
+limits, with two seconds between active slices and a 30-second local database
+check when idle. Postgres notifications wake it immediately after owner demand
+commits. Vercel does not execute background matching. The worker has a restricted
+AI-table database login and read-only Typesense/provider credentials; its
+container has no Docker socket. See [the worker runbook](narrowed-worker.md) for
+coordinated rollout, maintenance, the exact-bundle promotion gate and rollback.
 
 Freshness currently uses bounded rotating repair, including late indexing and
 expired decisions. Per-posting commit signals and re-evaluation of enriched

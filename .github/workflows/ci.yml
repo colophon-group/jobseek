@@ -1518,8 +1518,9 @@ jobs:
           pnpm --filter @jobseek/web exec vitest run
           src/lib/services/__tests__/notification-delivery-pg.test.ts
 
-      - name: Verify narrowed refresh host trigger
+      - name: Verify standalone narrowed host worker
         run: |
+          pnpm --dir apps/web exec tsx scripts/build-narrowed-worker.ts
           python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
           bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh
           systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer

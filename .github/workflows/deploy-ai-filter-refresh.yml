@@ -1,10 +1,10 @@
-name: Control Narrowed Refresh Timer (Hetzner)
+name: Control Narrowed Worker (Hetzner)
 
 on:
   workflow_dispatch:
     inputs:
       action:
-        description: Pause the timer, or explicitly install and activate after maintenance
+        description: Pause or install the standalone worker; verify reads persisted recovery state
         required: true
         default: pause
         type: choice
@@ -14,7 +14,7 @@ on:
         required: false
         type: string
       revision:
-        description: Exact current main SHA after the freshness migration and web deployment
+        description: Exact current main SHA with a compatible web queue and migration head
         required: true
         type: string
 
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment: production
     permissions:
       contents: read
@@ -53,21 +53,64 @@ jobs:
         with:
           ref: ${{ inputs.revision }}
           persist-credentials: false
-      - name: Validate the timer and credential transport
+      - name: Validate the worker and credential transport
         run: |
           bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh deploy/ai-filter-refresh/pause-remote.sh deploy/ai-filter-refresh/pause-host.sh deploy/ai-filter-refresh/verify-remote.sh
           python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
           systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer
-      - name: Install and activate the bounded HTTP timer over pinned SSH
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        if: inputs.action == 'activate'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        if: inputs.action == 'activate'
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Build the standalone worker from the exact revision
+        if: inputs.action == 'activate'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir apps/web exec tsx scripts/build-narrowed-worker.ts
+      - name: Pull non-sensitive production settings
+        if: inputs.action == 'activate'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          pnpm dlx vercel@62.1.0 project inspect jobseek-web --scope viktor-shcherbakovs-projects --non-interactive
+          pnpm dlx vercel@62.1.0 pull --yes --environment production
+      - name: Verify migration head and prepare restricted worker credentials
+        if: inputs.action == 'activate'
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          NARROWED_WORKER_DATABASE_PASSWORD: ${{ secrets.NARROWED_WORKER_DATABASE_PASSWORD }}
+          TYPESAFE_AI_TOKEN: ${{ secrets.TYPESAFE_AI_TOKEN }}
+          AI_FILTER_CACHE_HMAC_SECRET: ${{ secrets.AI_FILTER_CACHE_HMAC_SECRET }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_SEARCH_KEY: ${{ secrets.TYPESENSE_SEARCH_KEY }}
+          R2_DOMAIN_URL: ${{ secrets.R2_DOMAIN_URL }}
+          NARROWED_PRODUCTION_ENV_FILE: ${{ github.workspace }}/.vercel/.env.production.local
+        run: |
+          pnpm --dir apps/web db:migrate:verify-head
+          pnpm --dir apps/web exec tsx scripts/prepare-narrowed-worker-config.ts "$RUNNER_TEMP/narrowed-worker.env"
+      - name: Recheck current main before activation
+        if: inputs.action == 'activate'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+        run: test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Install and activate the standalone worker over pinned SSH
         if: inputs.action == 'activate'
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
-          AI_FILTER_REFRESH_SECRET: ${{ secrets.AI_FILTER_REFRESH_SECRET }}
+          NARROWED_WORKER_ENV_FILE: ${{ runner.temp }}/narrowed-worker.env
           EXPECTED_SHA: ${{ inputs.revision }}
         run: bash deploy/ai-filter-refresh/deploy-remote.sh "$EXPECTED_SHA"
-      - name: Pause only the Narrowed refresh timer and service over pinned SSH
+      - name: Pause only the Narrowed worker service and legacy timer over pinned SSH
         if: inputs.action == 'pause'
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
@@ -84,3 +127,8 @@ jobs:
           EXPECTED_SHA: ${{ inputs.revision }}
           WATCHLIST_ID: ${{ inputs.watchlist_id }}
         run: bash deploy/ai-filter-refresh/verify-remote.sh "$EXPECTED_SHA" "$WATCHLIST_ID"
+      - name: Remove temporary worker credentials
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/narrowed-worker.env"
+          rm -f -- .vercel/.env.production.local

@@ -44,7 +44,7 @@ export async function enqueueAiFilterWork(input: {
   const kind = input.kind ?? "historical";
   const interactive = kind === "historical" && input.acceptedTarget !== undefined;
   const rows = await db.execute(sql`
-    INSERT INTO ai_filter_work (query_version_id,kind,watchlist_id,owner_id,target_offset,interactive_until,accepted_target)
+    WITH demand AS (INSERT INTO ai_filter_work (query_version_id,kind,watchlist_id,owner_id,target_offset,interactive_until,accepted_target)
     SELECT q.id,${kind},c.watchlist_id,c.owner_id,${input.demandTargetOffset},
       CASE WHEN ${interactive} THEN now()+interval '2 minutes' ELSE NULL END,${input.acceptedTarget ?? null}
     FROM ai_filter_configuration c JOIN ai_filter_query_version q ON q.configuration_id=c.id AND q.revision=c.current_revision
@@ -59,7 +59,8 @@ export async function enqueueAiFilterWork(input: {
       status=CASE WHEN ai_filter_work.status='processing' THEN 'processing' ELSE 'queued' END,
       available_at=CASE WHEN ai_filter_work.status='paused' THEN ai_filter_work.available_at ELSE LEAST(ai_filter_work.available_at,now()) END,
       updated_at=now()
-    RETURNING query_version_id
+    RETURNING query_version_id)
+    SELECT query_version_id,pg_notify('jobseek_narrowed_work','') FROM demand
   `);
   if (!rows.length) throw new Error("Narrowed demand is unavailable");
   // Legacy response field kept compatible; this identifies durable demand, not a Workflow run.

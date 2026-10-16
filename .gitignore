@@ -38,3 +38,6 @@ __pycache__/
 /apps/crawler/scripts/crawler-deploy-tools-arm64
 /apps/crawler/scripts/crawler-deploy-tools.source
 /apps/crawler/scripts/crawler-deploy-tools.sha256
+
+# Immutable standalone Narrowed worker, built from the reviewed revision.
+/deploy/ai-filter-refresh/bundle/

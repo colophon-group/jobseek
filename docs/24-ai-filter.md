@@ -90,13 +90,16 @@ coalesced Postgres work, unique by immutable query revision and historical or
 freshness lane. Criteria creation/revision commits enqueue freshness in the
 same database transaction. Shared GETs remain read-only.
 
-The resource-limited Hetzner driver calls the bearer-protected web worker
-continuously while work exists (two seconds between bounded slices), and backs
-off to 30 seconds when idle. Owner configuration and reconciliation commit
-interactive demand before a Next.js `after` callback wakes the same shared
-worker. Missed wakes are recovered by the host; there are no per-watchlist
-Workflow runs or detached promises. The host retains only the endpoint bearer,
-never database/provider credentials or Docker access.
+The resource-limited standalone Hetzner worker runs the shared classifier and
+freshness repair directly. It reads Postgres/Typesense/R2 and calls TypeSafe
+without a Vercel Function. Owner configuration and reconciliation commit
+interactive demand plus an empty Postgres notification; the host listener wakes
+immediately. A local 30-second database check recovers missed notifications, and
+active slices continue after two seconds. Vercel only handles the user request
+and persisted result reads. There is no classifier `after()` callback or
+per-watchlist Workflow. The container has a restricted AI-table database role,
+a search-only Typesense credential and the classifier/HMAC secrets, with no
+Docker socket or database-owner credential.
 
 The Postgres singleton permits one active worker with a 70-second crash lease.
 Background admission has a two-second floor; committed interactive demand may
@@ -216,13 +219,12 @@ hard-filter fingerprint.
 
 Migration `0103_ai_filter_freshness` adds the dispatch timestamp and independent
 historical/freshness segment lanes. Apply it through the allowlisted routine
-migration workflow before deploying the refreshed web worker. Then dispatch
-`deploy-ai-filter-refresh.yml` at current main to install and activate the host
-timer. Confirm local/public Typesense health and memory headroom before activation.
-Its preflight requires the deployed web endpoint's `narrowed-refresh-v1`
-contract before changing an existing timer. Leave the timer disabled after a search
-OOM or while index recovery is in progress; a successful deployment alone does
-not prove that background matching can run safely.
+migration workflow before deploying the matching runtime. The standalone host
+worker now uses the same schema directly; see the coordinated cutover in
+[the worker runbook](runbooks/narrowed-worker.md). Confirm Typesense health and
+resource headroom before activation. Keep the worker paused after a search OOM
+or during index recovery; successful deployment alone does not establish safe
+background execution.
 
 Migration `0104_ai_filter_shared_worker` creates durable demand and the singleton
 worker slot. It invalidates existing processing leases and installs a database
@@ -244,7 +246,7 @@ Required runtime configuration:
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
-AI_FILTER_REFRESH_SECRET=<dedicated random bearer, shared with the host timer>
+AI_FILTER_REFRESH_SECRET=<legacy bearer for read-only recovery inspection>
 TYPESAFE_AI_TOKEN=<secret>
 
 # Optional monthly ceilings and fairness controls
@@ -254,9 +256,12 @@ AI_FILTER_MAX_SEGMENTS_PER_USER=2
 AI_FILTER_MAX_SEGMENTS_PROJECT=20
 ```
 
-Runtime variables are forwarded in both root and web build tasks in
-`turbo.json`. Configure secrets and switches for the intended Vercel environment
-before promotion. Keep both switches false or absent until migrations, the
+The worker token and unchanged HMAC secret are delivered through the protected
+GitHub environment to Hetzner; they are not used by web background execution.
+Vercel retains request-facing execution switches and policy settings, mirrored
+into the worker configuration. The TypeSafe credential is also used by the
+immediate query-intent feature on Vercel. See the worker runbook for provisioning
+and the code/policy readiness gate before promotion. Keep both switches false or absent until migrations, the
 stable Typesense receipt and shared worker fence have been verified. If a
 monthly ceiling is configured, verify its amount before promotion. Paid
 execution requires both switches, a valid credential, a Pro entitlement,
@@ -277,7 +282,7 @@ unauthorized access share a not-found boundary.
 
 | Operation | Authorization and behavior |
 |---|---|
-| `GET /api/internal/ai-filter-refresh` | Scheduler bearer only; production-only shared worker, or read-only recovery inspection |
+| `GET /api/internal/ai-filter-refresh` | Legacy bearer only; dispatch returns 410, authenticated recovery inspection remains read-only |
 | `GET /api/web/watchlists/{id}/ai-filter/estimate` | Owner only; entitled owners receive candidate count, cost range, and monthly spend; ineligible owners receive entitlement and spend without an extra search count |
 | `PUT /api/web/watchlists/{id}/ai-filter` | Owner only; validate 1-10,000 candidate scope and enable/replace query |
 | `DELETE /api/web/watchlists/{id}/ai-filter` | Owner only; disable and cooperatively cancel new work |
@@ -337,49 +342,17 @@ is not completion evidence.
 
 ### Host scheduling and rollback
 
-The host runner performs one fixed-URL HTTPS request with a 55-second timeout,
-rejects redirects and oversized responses, and logs only aggregate counters.
-Systemd uses `DynamicUser` and `LoadCredential`; the bearer source is root-owned
-mode 0600 under `/etc/jobseek-ai-filter-refresh`. The runner has no Docker socket
-or database credentials. A single persistent service serializes host
-requests; PostgreSQL dispatch claims, leases and the semantic cache handle an
-ambiguous/lost response and duplicate requests.
+All Narrowed evaluation runs directly on Hetzner. Owner interactions on Vercel
+only commit durable demand and an empty Postgres notification; the standalone
+worker wakes on that notification and recovers missed wakes through a local
+30-second database check. It never polls a Vercel Function. Active slices retain
+the two-second floor, database singleton, current-revision/entitlement checks,
+bounded checkpoints and spending controls. Vercel dispatch returns 410 and
+`after()` no longer runs the classifier.
 
-The manual deployment workflow binds an owner dispatch to current main and uses
-host-key-pinned SSH and the dedicated protected `AI_FILTER_REFRESH_SECRET`.
-Provision the same random value in the production GitHub environment and Vercel
-project before deploying the web revision. It authorizes only this endpoint and
-is separate from the existing, unreadable sensitive Vercel cron credential.
-Credentials move over SSH stdin, never command arguments or logs. The
-installer records the revision, verifies the web contract before changing host
-state, and restores prior timer/service enablement and files on a failed installation. It does not
-restart crawler writers or any other timers. Rotate the host credential by
-rerunning the same deployment workflow after rotating the shared `AI_FILTER_REFRESH_SECRET`.
-
-Check `systemctl is-active jobseek-ai-filter-refresh.service` and bounded
-`journalctl -u jobseek-ai-filter-refresh.service` evidence. The legacy timer is
-disabled. Use the protected pause workflow to stop and disable both units; owner-driven
-matching remains available. Roll back web code only to a compatible reviewed
-revision, leaving the additive migration intact.
-
-### Interactive worker rollout
-
-1. Merge the additive migration and runtime changes, then apply migration 0105
-   with the exact-head protected routine migration workflow. The web production
-   verifier intentionally prevents promotion while its database is behind.
-2. Deploy the same main revision with the normal web production workflow.
-   Current owner demand can now wake the database-fenced worker immediately;
-   the old host timer remains compatible until its replacement is activated.
-3. Dispatch `deploy-ai-filter-refresh.yml`, `action=activate`, at current main.
-   The revision-bound installer disables the old timer and enables the
-   persistent service. Pause disables both service and timer, including on boot.
-4. Verify current-revision decisions, first-match delay, incremental rows and
-   reviewed/total progress on a bounded owned feed. Inspect aggregate host
-   receipts and confirm idle scopes create no decisions or provider calls.
-   Compare first-page latency under concurrent owners, selective/no-match feeds,
-   revision edits and worker restarts; the 5-second first-match and 15–20-second
-   common first-page goals are acceptance targets, not measured guarantees.
-
-Rollback keeps migration 0105 in place: it is additive and old web workers can
-still consume the queue. Reinstall a reviewed prior host revision through the
-same workflow to restore its timer/files; never edit a running host in place.
+The immutable bundle, restricted database role, root-only systemd credentials,
+unprivileged container, exact-bundle web promotion gate, inspection and rollback
+procedure are specified in [the host worker runbook](runbooks/narrowed-worker.md).
+Migration 0105 and the saved queue remain unchanged. The protected host workflow
+must activate the exact compatible worker before enabled web code can promote.
+No crawler writers or other timers are restarted.

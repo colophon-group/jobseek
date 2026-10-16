@@ -23,7 +23,6 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 import { aiFilterDemandLimiter } from "@/lib/rate-limit";
 import { AI_FILTER_RESULT_PAGE_SIZE } from "@/lib/ai-filter/demand";
-import { wakeAiFilterWorker } from "@/lib/ai-filter/wake-worker";
 
 export const maxDuration = 60;
 
@@ -125,8 +124,7 @@ export async function POST(
       demandTargetOffset,
       acceptedTarget: Math.min(10_000, Math.min(resultOffset, state.counts.accepted) + AI_FILTER_RESULT_PAGE_SIZE),
     });
-    wakeAiFilterWorker();
-    return NextResponse.json(
+      return NextResponse.json(
       { state, workflow },
       { status: 202, headers: AI_FILTER_PRIVATE_HEADERS },
     );

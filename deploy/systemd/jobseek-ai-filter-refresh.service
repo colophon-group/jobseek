@@ -1,17 +1,19 @@
 [Unit]
-Description=Refresh saved narrowed Jobseek watchlists
+Description=Match narrowed Jobseek watchlists directly on Hetzner
 Wants=network-online.target
 After=network-online.target
-ConditionPathExists=/etc/jobseek-ai-filter-refresh/refresh-bearer
+ConditionPathExists=/etc/jobseek-ai-filter-refresh/worker.env
 
 [Service]
 Type=simple
-DynamicUser=true
-LoadCredential=refresh-bearer:/etc/jobseek-ai-filter-refresh/refresh-bearer
-ExecStart=/usr/bin/python3 /usr/local/lib/jobseek-ai-filter-refresh/runner.py --worker
+LoadCredential=worker-env:/etc/jobseek-ai-filter-refresh/worker.env
+ExecStartPre=-/usr/bin/docker rm -f jobseek-narrowed-worker
+ExecStart=/bin/bash /usr/local/lib/jobseek-ai-filter-refresh/run-host.sh
+ExecStop=-/usr/bin/docker stop -t 50 jobseek-narrowed-worker
 Restart=on-failure
 RestartSec=30s
-TimeoutStopSec=65s
+TimeoutStopSec=70s
+KillMode=process
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
@@ -23,7 +25,6 @@ ProtectControlGroups=true
 ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
-InaccessiblePaths=-/var/run/docker.sock
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictSUIDSGID=true
 LockPersonality=true
@@ -31,7 +32,7 @@ CapabilityBoundingSet=
 
 CPUQuota=10%
 MemoryMax=64M
-TasksMax=8
+TasksMax=32
 
 [Install]
 WantedBy=multi-user.target

@@ -107,6 +107,10 @@ jobs:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
         run: pnpm db:migrate:verify-head
 
+      - name: Build the matching standalone worker identity
+        if: steps.paths.outputs.deploy == 'true'
+        run: pnpm --dir apps/web exec tsx scripts/build-narrowed-worker.ts
+
       - name: Pull production project settings
         if: steps.paths.outputs.deploy == 'true'
         run: >-
@@ -246,6 +250,25 @@ jobs:
         env:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
         run: pnpm db:migrate:verify-head
+
+      - name: Require the exact Narrowed host worker before promotion
+        id: narrowed_worker
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: pnpm --dir apps/web exec tsx scripts/verify-narrowed-worker-ready.ts
+
+      - name: Apply an intentional Narrowed pause to the host before promotion
+        if: steps.narrowed_worker.outputs.status == 'disabled'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+          EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+        run: |
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+          bash deploy/ai-filter-refresh/pause-remote.sh "$EXPECTED_SHA"
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'

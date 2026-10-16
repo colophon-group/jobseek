@@ -112,6 +112,8 @@ export async function runAiFilterRefreshSweep(
   const policy = readAiFilterRuntimePolicy();
   if (
     process.env.VERCEL_ENV !== "production" ||
+    Boolean(process.env.VERCEL) ||
+    process.env.JOBSEEK_NARROWED_WORKER !== "1" ||
     narrowedWorkerPaused() ||
     !policy.enabled ||
     !policy.routeEnabled ||

@@ -21,5 +21,5 @@ options=(
   -o KbdInteractiveAuthentication=no -o LogLevel=ERROR
 )
 timeout --foreground --signal=TERM --kill-after=10s 60s \
-  ssh "${options[@]}" "root@$TARGET_HOST" "CREDENTIALS_DIRECTORY=/etc/jobseek-ai-filter-refresh /usr/bin/python3 - --inspect '$watchlist_id'" \
-    < scripts/ai-filter-refresh.py
+  ssh "${options[@]}" "root@$TARGET_HOST" \
+    "cat /etc/jobseek-ai-filter-refresh/revision && systemd-run --quiet --wait --pipe --collect -p LoadCredential=worker-env:/etc/jobseek-ai-filter-refresh/worker.env /bin/bash /usr/local/lib/jobseek-ai-filter-refresh/run-host.sh --inspect '$watchlist_id'"

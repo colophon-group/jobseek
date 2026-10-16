@@ -85,22 +85,16 @@ Verify a new eligible job receives a persisted decision without visiting its
 watchlist. Large existing backlogs clear in bounded newest-first batches rather
 than delaying new arrivals behind historical pagination.
 
-The protected `deploy-ai-filter-refresh.yml` workflow installs a persistent,
-resource-limited HTTP driver on the existing Hetzner host. It continues active
-work two seconds after each bounded response, backs off idle reads to 30 seconds,
-and uses the same database singleton as immediate owner wakes. Migration 0105
-adds expiring first-page priority and accepted-result targets. Apply it through
-the routine workflow before promoting this web revision; the production verifier
-blocks promotion while the database is behind. Activation disables the old
-minute timer and enables the service. Pause disables both units. The runner has
-only its endpoint bearer and does not restart crawler writers.
-See [rollout and rollback](../../../docs/24-ai-filter.md#interactive-worker-rollout).
-
-Before the web deployment, provision one random `AI_FILTER_REFRESH_SECRET` in
-both the production Vercel project and the production GitHub environment. Turbo
-forwards it in both web build tasks. The existing sensitive `CRON_SECRET` cannot
-be read back and is retained for the other internal endpoints. The dedicated
-refresh bearer grants access only to refresh dispatch.
+Narrowed evaluation runs entirely on the standalone Hetzner worker. Vercel
+commits user demand plus an empty Postgres notification and reads results; it
+never classifies in `after()`. The host listens directly to Postgres and reads
+Typesense/R2/TypeSafe without calling Vercel. The protected worker workflow
+builds an immutable, framework-free artifact and delivers only restricted
+worker credentials. Web promotion requires that exact worker's live readiness
+lock while matching is enabled. Provision the existing classifier token and
+unchanged HMAC secret, plus the dedicated worker password, in the protected
+GitHub environment before cutover. See the complete
+[worker rollout, credential and rollback contract](../../../docs/runbooks/narrowed-worker.md).
 
 ### Maintenance and subscription pauses
 
