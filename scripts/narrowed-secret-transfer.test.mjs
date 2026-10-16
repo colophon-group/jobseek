@@ -103,6 +103,7 @@ test("recovery transport never promotes and preserves only sealed artifacts", ()
 });
 
 test("transport captures the sealed payload, excludes auth from upload, deletes its deployment and refuses aliases", async () => {
+  for (const outputMode of ["ci", "agent"]) {
   for (const aliasState of ["none", "stale", "assigned"]) {
     const acquireAlias = aliasState === "assigned";
     const root = mkdtempSync(join(tmpdir(), "narrowed-transport-test-"));
@@ -127,7 +128,8 @@ test("transport captures the sealed payload, excludes auth from upload, deletes 
         assert.ok(args.includes("--skip-domain"));
         assert.equal(existsSync(join(stage, "request.private.curl")), false);
         assert.deepEqual(readdirSync(join(stage, "apps/web")), []);
-        return JSON.stringify({ status: "ok", deployment: { id: "dpl_transfer", url: "https://transfer.vercel.app" } });
+        const deployment = { id: "dpl_transfer", url: "https://transfer.vercel.app" };
+        return JSON.stringify(outputMode === "agent" ? { status: "ok", deployment } : deployment);
       }
       if (action === "inspect") return "";
       if (action === "curl") {
@@ -162,5 +164,6 @@ test("transport captures the sealed payload, excludes auth from upload, deletes 
       assert.equal(existsSync(join(stage, "request.private.curl")), false);
       assert.ok(!JSON.stringify(commands).includes(env.AI_FILTER_REFRESH_SECRET));
     } finally { rmSync(root, { recursive: true, force: true }); }
+  }
   }
 });
