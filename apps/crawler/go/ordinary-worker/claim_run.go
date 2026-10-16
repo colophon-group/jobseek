@@ -16,11 +16,21 @@ import (
 // ClaimRunError is safe to log. Upstream bodies/URLs, SQL messages and arbitrary
 // preparation exceptions never enter its text; sentinel causes stay unwrap-able.
 type ClaimRunError struct {
-	Phase, Kind string
-	cause       error
+	Phase, Kind                          string
+	cause                                error
+	codePhase, causePhase, detailProfile string
 }
 
-func (e *ClaimRunError) Error() string { return "ordinary rich monitor " + e.Phase + ": " + e.Kind }
+func (e *ClaimRunError) Error() string {
+	message := "ordinary rich monitor " + e.Phase + ": " + e.Kind
+	if e.causePhase != "" {
+		message += " cause_phase=" + e.causePhase
+	}
+	if e.detailProfile != "" {
+		message += " profile=" + e.detailProfile
+	}
+	return message
+}
 func (e *ClaimRunError) Unwrap() error { return e.cause }
 
 func claimRunError(phase string, err error) error {
@@ -51,7 +61,17 @@ func claimRunError(phase string, err error) error {
 			}
 		}
 	}
-	return &ClaimRunError{Phase: phase, Kind: kind, cause: err}
+	diagnostic := &ClaimRunError{Phase: phase, Kind: kind, cause: err, codePhase: phase}
+	var previous *ClaimRunError
+	if errors.As(err, &previous) {
+		// Only inherit phases created inside this package. Public error fields
+		// or arbitrary wrapped messages are not trusted diagnostic context.
+		diagnostic.causePhase = previous.causePhase
+		if diagnostic.causePhase == "" && previous.codePhase != phase {
+			diagnostic.causePhase = previous.codePhase
+		}
+	}
+	return diagnostic
 }
 
 type GreenhouseClaimResult struct {

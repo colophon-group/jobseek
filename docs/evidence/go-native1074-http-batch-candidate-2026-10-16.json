@@ -1,0 +1,87 @@
+{
+  "schema": "jobseek.go-lightpanda.http-batch-candidate/v1",
+  "version": "0.13.1074",
+  "base_revision": "57024b1823e6b79521f2486f0de76b7ec2918f78",
+  "state": "candidate; not deployed or serving",
+  "current_serving_source": "262451ec122fe4cdc9d217da5274f41317f6a2a5",
+  "current_serving_monitors": 7833,
+  "current_serving_details": 7820,
+  "proposed_monitors": 7833,
+  "proposed_details": 7825,
+  "qualified_additional_detail_boards": 5,
+  "platforms": [
+    "Phenom JSON-LD",
+    "Workday JSON-LD"
+  ],
+  "boards": [
+    "oliver-wyman-marsh-eu",
+    "oliver-wyman-marsh-eu-early-careers",
+    "oliver-wyman-marsh-global",
+    "oliver-wyman-marsh-global-early-careers",
+    "tencent-careers"
+  ],
+  "positive_actual_original_native_references": 8,
+  "every_raw_field_matches": true,
+  "original_rendered_html_parser_parity": true,
+  "actual_http_same_response_original_parser_parity": true,
+  "existing_actual_source_routes_bound": 878,
+  "unchanged_canonical_configuration": true,
+  "unchanged_browser_queue_and_ownership_profile": true,
+  "changed_config_or_other_origin_path": "retain rendered route",
+  "runtime_origin_probes_or_new_fallbacks": 0,
+  "canonical_writer": {
+    "additional_origin_requests": 0,
+    "boards": 5,
+    "canonical_title_description_source_lease_deadline": "pass",
+    "origin_requests_per_reference": 1,
+    "original_config_and_actual_source_compiled_binding": true,
+    "production_mutations": 0,
+    "real_private_postgres_redis": true,
+    "rendered_calls": 0,
+    "samples": 8,
+    "schema": "jobseek.qualified-jsonld-http.canonical-proof/v1",
+    "source_scope": "working tree based on57024b1823e6b79521f2486f0de76b7ec2918f78; source digests bound by candidate evidence",
+    "unchanged_original_browser_queue": true
+  },
+  "privacy_diagnostics": {
+    "code_owned_inner_phase": true,
+    "validated_compiled_detail_profile": true,
+    "raw_urls_ids_bodies_database_messages": "excluded",
+    "fatal_sentinel_and_retained_attempt": "unchanged",
+    "production_restart_root_cause_proven": false
+  },
+  "held": [
+    "ecodrop-wttj: live valid_through changed; both same-body parsers match; not included in exact live-field group",
+    "zenline-ai-careers: HTTP title/description differ; original descriptions lack meaningful body text"
+  ],
+  "source_sha256": {
+    "apps/crawler/go/ordinary-worker/claim_run.go": "11da92e1632f41db085badbdf0dc2dcfb492033672feb3d92a2e185d7208ce3f",
+    "apps/crawler/go/ordinary-worker/workday_detail_run.go": "7650967d619e16a10f20800fecee70fb61b538bd5154a6a6e540be122e51f76d",
+    "apps/crawler/go/ordinary-worker/rendered_detail.go": "a31d09bcfc843c842eeb0bbb39d5d051e5678ed0572c24b02380ee51e08a330c",
+    "apps/crawler/go/ordinary-worker/qualified_jsonld_http.go": "2109297beb70bb06cbee358b07f4110efeaedb68c83babe92291511c41218a97"
+  },
+  "private_proof_sha256": {
+    "input1.json": "9b4a93a8d784f439b623485c4c172376f5cae5d8ef21bc265403ac5032ccdeab",
+    "results1.json": "173d843ab367ec18f4f54d4ed0d5e688e1a053efd93be78eea36d87fdff37630",
+    "captured-results2.json": "e0eeab98c1544e61c25f46fb3f1f89f71599d67cb28c674568e2dab1cd20af58",
+    "comparison1.json": "3261dce9ad51758994e872cda5bbc833901eae7fc4e251e0f59ce7cb11a5fe07",
+    "comparison2.json": "22be50913d2514cb6bbeade3f4e7eccfe7a562a8ac7fd93fd58d89c5a26d6796",
+    "selected-original-references1.json": "f237acbb3ebe436a04d523c6feb44bd9b7fc08dc8172ee48b71614d4f0bae0fc",
+    "canonical-references1.json": "775d8c9389ed325e824a48dafa3e580fe95528104ea80166cbd0332cd59d3e6e",
+    "original-profile-bindings1.json": "c7845ba5b00b95b5410aaf340232c0586de5e1e20fb702d8d97d1b98010d21a7",
+    "canonical-writer-proof1.json": "afe5aeecea193d942b8211f150d7dc34d2fb65e265b8dbd21ea20c110e2f0f8f",
+    "canonical_writer1_test.go": "4d906648563c0b100b713637c1aac4d8820aff1c2aa335e6bc0eb48d206c36e5",
+    "canonical-writer-proof2.json": "1dfd0b049169fb92b571d871dc85a7c666f5fecfefc603bd52a25e974b25df74",
+    "canonical_writer2_test.go": "88e38a0e9304bc69a1735b9e6a2f4597af249cc0ad8258e603988109ce2814ca"
+  },
+  "production_mutations": 0,
+  "production_admission": false,
+  "full_migration_complete": false,
+  "goal_status": "active",
+  "validation": [
+    "Focused real PostgreSQL/Redis, runtime, policy, cancellation and diagnostic tests pass with Go race detector",
+    "Eight actual canonical writer reference cases plus routing/diagnostic guard tests pass after final source-scope guard",
+    "All878 captured source routes satisfy frozen config/origin/path and no fragment or traversal",
+    "Documentation index tests and git diff --check pass"
+  ]
+}

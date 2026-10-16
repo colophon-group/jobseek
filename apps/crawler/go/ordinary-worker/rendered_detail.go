@@ -70,7 +70,7 @@ func NewNativeRenderedDetails(c lp.Config) (*NativeRenderedDetails, error) {
 
 func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
 	if r == nil || r.client == nil {
-		return nil, nil, queue.ErrConfiguration
+		return nil, nil, claimRunError("detail_render_client", queue.ErrConfiguration)
 	}
 	select {
 	case r.slots <- struct{}{}:
@@ -94,17 +94,17 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	}
 	pipeline, err := actions.Parse(options["actions"])
 	if err != nil {
-		return nil, nil, queue.ErrConfiguration
+		return nil, nil, claimRunError("detail_render_actions", queue.ErrConfiguration)
 	}
 	parser, err := json.Marshal(options)
 	if err != nil {
-		return nil, nil, queue.ErrConfiguration
+		return nil, nil, claimRunError("detail_render_parser", queue.ErrConfiguration)
 	}
 	fetchURL := profile.SourceURL
 	if scraper == "dom" {
 		fetchURL, err = dom.AlternateFetchURL(profile.SourceURL, options["fetch_url_transform"])
 		if err != nil {
-			return nil, nil, queue.ErrConfiguration
+			return nil, nil, claimRunError("detail_render_fetch_url", queue.ErrConfiguration)
 		}
 	}
 	wait, fallback, timeout := "networkidle", "domcontentloaded", uint64(30000)
@@ -125,7 +125,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	if value, ok := options["timeout"].(json.Number); ok {
 		n, e := value.Int64()
 		if e != nil || n < 1 {
-			return nil, nil, queue.ErrConfiguration
+			return nil, nil, claimRunError("detail_render_timeout", queue.ErrConfiguration)
 		}
 		timeout = uint64(n)
 	}
@@ -135,7 +135,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	}
 	identity, err := b0task.CanonicalJSON(map[string]any{"board_id": profile.BoardID, "config": profile.EffectiveBoardSHA256, "source_url": profile.SourceURL}, true)
 	if err != nil {
-		return nil, nil, queue.ErrConfiguration
+		return nil, nil, claimRunError("detail_render_identity", queue.ErrConfiguration)
 	}
 	// Identity is attribution only; queue and write authority remain the held claim.
 	digest := sha256.Sum256(identity)

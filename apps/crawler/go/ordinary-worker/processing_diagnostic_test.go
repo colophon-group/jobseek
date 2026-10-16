@@ -7,8 +7,26 @@ import (
 	"strings"
 	"testing"
 
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"github.com/jackc/pgx/v5/pgconn"
 )
+
+func TestConfigurationDiagnosticsKeepCodeOwnedCausePhaseAndFatalSentinel(t *testing.T) {
+	inner := claimRunError("detail_render_actions", queue.ErrConfiguration)
+	err := claimRunError("detail_execution", fmt.Errorf("never-print-secret: %w", inner))
+	err = claimRunError("task", err)
+	var diagnostic *ClaimRunError
+	if !errors.As(err, &diagnostic) || !errors.Is(err, queue.ErrConfiguration) || diagnostic.Kind != "configuration" || diagnostic.causePhase != "detail_render_actions" || !strings.Contains(err.Error(), "cause_phase=detail_render_actions") || strings.Contains(err.Error(), "never-print") {
+		t.Fatal("nested configuration diagnostic lost safe phase or fatal identity")
+	}
+	// External code can construct the exported error type. Its public fields
+	// must not become inherited context, even when it wraps a fatal sentinel.
+	untrusted := &ClaimRunError{Phase: "never-print-secret", Kind: "never-print-sql", cause: queue.ErrConfiguration}
+	err = claimRunError("detail_execution", untrusted)
+	if !errors.Is(err, queue.ErrConfiguration) || strings.Contains(err.Error(), "never-print") || strings.Contains(err.Error(), "cause_phase=") {
+		t.Fatal("public error fields became trusted cause context")
+	}
+}
 
 func TestProcessingFailureDiagnosticsRetainCauseWithoutDatabaseMessages(t *testing.T) {
 	for _, tc := range []struct{ code, kind string }{

@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-lightpanda.delivery-checkpoint/v1",
-  "observed_at_utc": "2026-10-16T01:52:09.420969+00:00",
+  "observed_at_utc": "2026-10-16T02:27:02.172140+00:00",
   "version": "0.13.1073",
   "source_revision": "262451ec122fe4cdc9d217da5274f41317f6a2a5",
   "pull_request": "https://github.com/colophon-group/jobseek/pull/10605",
@@ -27,7 +27,7 @@
     "repaired_projections": 805,
     "identical_full_postactive_cohort": true,
     "all_actual_routes_qualified": true,
-    "restart_count": 2,
+    "restart_count": 5,
     "all_eight_health_endpoints_pass": true
   },
   "queue_observation": {
@@ -91,6 +91,7 @@
     "native-source1073-active-resources-initial1.json": "0cffce5cc680fb1eb6fb8982ca3aae69da978677dbace4cc64320f3af7501cbf",
     "native-source1073-active-freshness-initial1.json": "3a1c63e8fbc09d6e143cfd16739c291a5de29201a809813d223f974cc51fbe35",
     "native-source1073-exporter-progress-active-verified1-2026-10-16.json": "ea74e598d3513ae969b090a24de7bdc6300976ea741caed51d2a9bf423d61c97",
-    "native-source1073-serving-independent3-2026-10-16.json": "fb1f2697b347f6bb20f01ec7b9f12ba15bbedaf44c5c6084bf0ba30804570809"
+    "native-source1073-serving-independent3-2026-10-16.json": "fb1f2697b347f6bb20f01ec7b9f12ba15bbedaf44c5c6084bf0ba30804570809",
+    "native-source1073-serving-independent4-2026-10-16.json": "e77271fca6dc65dd8d74be0077c010e76e56a29cb3bf9a68d7c293f87574f857"
   }
 }
