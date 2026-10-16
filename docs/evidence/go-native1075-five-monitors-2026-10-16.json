@@ -1,0 +1,105 @@
+{
+  "schema": "jobseek.go-lightpanda.five-monitor-checkpoint/v1",
+  "status": "independently_serving_with_one_new_posting_publication_gap_unresolved",
+  "source_revision": "cbd1f37f3803a29dcd6693aa0a120992513edda6",
+  "version": "0.13.1075",
+  "lightpanda": "1.0.1",
+  "routing_epoch": 358,
+  "retirement_epoch_verified": 357,
+  "previous_cohort": {
+    "monitors": 7833,
+    "details": 7832
+  },
+  "additions": {
+    "brassring.session-items/v1": 2,
+    "dom.rendered-urls/v1": 3
+  },
+  "proxy_additions": 0,
+  "positive_jobs_and_descriptions_compared": 664,
+  "matched_empty_monitor_configs": 3,
+  "staged_plan_sha256": "5b7450ac4e1c54c35c0c7a8f8eada9c8fad3328b1011b8799c3415132d460112",
+  "staged_projection_sha1": "b0dfec6beeda43ecbfedd77ba4d11ce68b188983",
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:46bf90b603610d34c687df6a6b449dbee99f6d8883c8590d22efc9f44786570d",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:cf5136ccee121526849e35414c06030a5bd7955f75940a0c9220de44027e23ae",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:42eb1af58489e534a2a4fccbb0904ef4b7d5162e45b3b89447535b024e05e857"
+  },
+  "preactivation": {
+    "scheduled_owned_postings": 1722975,
+    "queued_owned_postings": 1720772,
+    "captured_schedule_minus_queue": 2203,
+    "owned_cache_mismatches": 0,
+    "all_actual_owned_routes_checked": true,
+    "source_sha256": "88ba9a36bc200c875a085084b7e1249fa079ddd87f4303c29b16fdacf207566c"
+  },
+  "qualification_scope": "Actual original/native inventories and full configs; private canonical insert/description and empty-state SQL replays; controlled lookup/location fixtures; no production geography or original full rich-board-finalization SQL parity claim.",
+  "conservation_scope": "Every prior queued owned ID is retained or currently canonically inactive/unscheduled. Non-atomic postcapture has one new active scheduled API-browser enrichment posting with no queue/cache state; cause unresolved. No global/historical zero-loss guarantee.",
+  "full_goal": "active; incomplete",
+  "active_cohort": {
+    "monitors": 7838,
+    "details": 7832
+  },
+  "activation_completed_at_utc": "2026-10-16T11:23:17.059184Z",
+  "independent_serving_observed_at_utc": "2026-10-16T11:24:17.310225Z",
+  "all_ten_actors_running": true,
+  "postactivation": {
+    "scheduled_owned_postings": 1723120,
+    "queued_owned_postings": 1723119,
+    "captured_owned_scheduled_minus_queued": 1,
+    "owned_cache_mismatches": 0,
+    "all_actual_owned_routes_checked": true,
+    "census_observed_at": "2026-10-16T11:34:08.186868+00:00",
+    "census_sha256": "b44422c77d3a5d979b74395d62188fb917243df6d060e54ca1e84af3776e8558"
+  },
+  "queue_comparison": {
+    "previous_monitor_and_detail_sets_preserved": true,
+    "retained_queued_ids": 1717602,
+    "before_only_ids": 2107,
+    "after_only_ids": 5517,
+    "before_queued_ids_sha256": "58ca6f1a790568ca95b2eca8331df51710d683e7e1a87548c994c96bc956c6df",
+    "after_queued_ids_sha256": "998eacc63505ee73547a3ea3277be8d33851d201741b491b598843290b88361f",
+    "before_only_ids_sha256": "30b199f1c9140c0b4f5d9298f1fa6833c8c643ee8d03b0bca28e72d0fdae1869",
+    "after_only_ids_sha256": "519a3acc5a710488f88c8b786b92cb1c8ff2b212765840b135ce8fe92f0fe8a6"
+  },
+  "outgoing_only_current_canonical": {
+    "inactive": 2008,
+    "unscheduled": 99,
+    "still_eligible": 0,
+    "missing": 0
+  },
+  "unresolved_new_posting": {
+    "count": 1,
+    "monitor_provider": "api_sniffer",
+    "previously_owned_monitor": true,
+    "one_of_five_additions": false,
+    "new_since_activation": true,
+    "description_present": true,
+    "required_detail_enrichment": [
+      "locations",
+      "employment_type"
+    ],
+    "queue_cache_inflight_token_deadletter_present": false,
+    "native_detail_write_fence_present": false,
+    "root_cause": "unresolved",
+    "manual_production_repair_performed": false
+  },
+  "added_monitors_live_observation": {
+    "observed_at": "2026-10-16T11:39:19.213003+00:00",
+    "enabled": 5,
+    "current_zero_failure_streak": 5,
+    "current_failures": 0,
+    "new_success_after_activation": 3
+  },
+  "runtime_observation": {
+    "observed_at_utc": "2026-10-16T11:51:58.739271+00:00",
+    "running": true,
+    "oom_killed": false,
+    "restart_count": 0,
+    "fatal_configuration_classes": []
+  },
+  "remaining_frontier": {
+    "monitors": 59,
+    "details": 65,
+    "excluded_b0_records": 3
+  }
+}

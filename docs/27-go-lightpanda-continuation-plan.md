@@ -11,21 +11,23 @@ remove production Python, Playwright and Chromium. Keep useful offline Python.
 and its installed official ARM binary checksum verified. Both original deployments,
 supported cold activation, exact-head CI and physical/ARM qualification passed.
 
-The full **7,833-monitor / 7,832-detail** cohort is active at epoch **356**,
-preserving every previous member and adding seven details across four profiles.
-SQL, Redis, receipts, all ten actors and eight health endpoints agree. Postactive
-compiled replay preserves the identical full cohort and every captured route,
-with **zero owned cache mismatches**. The capture has **1,717,574 scheduled and
-queued IDs**, with zero captured gap. Every one of the **2,354 outgoing-only IDs**
-is currently inactive or unscheduled; none remains eligible or missing. These are
-non-atomic live captures and current eligibility accounting, not a historical or
-global zero-loss guarantee.
+The full **7,838-monitor / 7,832-detail** cohort is active at epoch **358**,
+preserving every previous member and adding two Brassring and three complete-empty
+DOM monitors without changing runtime images. Original supported retirement,
+cold reversal, staging and activation passed; independent SQL, Redis, receipts,
+all ten actors and health readback agree. Postactive compiled replay validates
+every owned route, with **zero owned cache mismatches**. Of **1,723,120 scheduled
+postings**, **1,723,119** are queued. All **2,107 outgoing-only queued IDs** are
+currently inactive or unscheduled. One newly discovered API-browser posting still
+requires enrichment but has no queue/cache state; investigate that unresolved
+publication gap first. These are non-atomic captures and current eligibility
+accounting, not a historical or global zero-loss guarantee.
 
 The retained-number action fix is deployed. All 12 current owned configurations
 that failed their opaque copy before the fix pass afterward. Source 1074 had
 three observed action-related restarts; the current source has **zero observed
-restarts, OOMs or fatal configuration failures** through the bounded readback at
-07:53 UTC, over an hour after serving verification. Continue observing it.
+restarts, OOMs or classified fatal configuration failures** in the bounded
+11:51 UTC readback of the current epoch. Continue observing it.
 
 The 06:49 UTC production snapshot records 59 monitor and 205 detail completion receipts,
 and 424 successful exports with zero errors or unknown writers. Completion
@@ -33,15 +35,16 @@ receipts are not successful-content proof. Freshness remains unfinished: about
 **1.61 million scheduled postings are over 24 hours overdue**. Isolated ARM density
 qualification does not establish matched production fleet cost.
 
-See the [1075 delivery evidence](evidence/go-native1075-delivery-2026-10-16.json)
-and [portable checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
-for exact workflows, images, limits and continuation order.
+See the [latest portable checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
+and [aggregate evidence](evidence/go-native1075-five-monitors-2026-10-16.json)
+for current ownership, queue accounting and continuation limits. The
+[previous checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md) retains
+the earlier source/image qualification and seven-detail batch.
 
 ## Continue in substantial shared-contract batches
 
-After the delivered seven details, the captured frontier is **64 monitors / 65
-details**: 19/30 already match compiled profiles, while 45/35 remain unsupported
-under their full current configuration. Counts require a fresh census if data
+After the delivered five monitors, the captured frontier is **59 monitors / 65
+details**, excluding the three B0 records. Counts require a fresh census if data
 changes. Preserve the admitted floor through every subsequent batch.
 
 Prioritize shared browser transport and configuration controls across DOM,
@@ -58,6 +61,15 @@ unsupported configs include 19 monitor and 26 detail proxy requests, overlapping
 other controls. Test a shared native transport against the full original config,
 with bounded attempts, existing publisher policy, egress isolation and scoped
 credentials. These occurrence counts are opportunities, not promised admissions.
+
+Draft [PR #10643](https://github.com/colophon-group/jobseek/pull/10643) implements
+shared configured browser-proxy transport across several profile families.
+Required CI, architecture and renderer rollback suites and all 16 isolated ARM
+whole-lane arms pass. Its deploy gate is intentionally red while draft. Proxy
+ownership remains held until upstream destination enforcement is qualified;
+local DNS checks do not pin a remote proxy resolver. Repeated live evidence also
+includes HTTP403 and changing inventories, and the two compared detail outputs
+have no positive descriptions. Complete these proofs before deployment/admission.
 
 Qualify multiple profile families per iteration. Keep the serving release and its qualification intact while developing the next
 batch in an isolated worktree. Reuse the successful installed source for unchanged
@@ -78,6 +90,6 @@ pagination and source-identity differences without dropping fields or members.
 - Supported cold reversal and the recovery window are proved before deleting
   production Python/Playwright/Chromium and their runtime-only assets.
 
-Use the [portable delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
+Use the [portable delivery checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
 and its linked evidence for the detailed prior proofs. Earlier chronological
 notes are preserved in [Git history](https://github.com/colophon-group/jobseek/blob/cbd1f37f3803a29dcd6693aa0a120992513edda6/docs/27-go-lightpanda-continuation-plan.md).
