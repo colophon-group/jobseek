@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,65 +14,69 @@ import (
 )
 
 func TestBrowserClaimCapacityKeepsHTTPProgressDuringSlowRendering(t *testing.T) {
-	c := fixtureLoopConfig()
-	c.concurrency = 20
-	c.taskTimeout, c.stallTimeout = 3*time.Second, 3*time.Second
-	ctx, stop := context.WithCancel(context.Background())
-	release := make(chan struct{})
-	var once sync.Once
-	defer func() { stop(); once.Do(func() { close(release) }) }()
-	b := &browserClaimCapacity{slots: make(chan struct{}, renderedConcurrency)}
-	var lanes sync.Map
-	var browserClaims, httpCompleted atomic.Int64
-	pop := func(_ context.Context, lane queue.WorkerType) (*queue.Claim, error) {
-		claim := &queue.Claim{}
-		lanes.Store(claim, lane)
-		if lane == queue.Browser {
-			browserClaims.Add(1)
-		}
-		return claim, nil
-	}
-	s := runtimeServices{
-		claim:        func(ctx context.Context) (*queue.Claim, error) { return b.claim(ctx, pop) },
-		releaseClaim: b.release,
-		heartbeat:    func(context.Context, *queue.Claim) error { return nil },
-		execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
-			lane, _ := lanes.LoadAndDelete(claim)
-			if lane == queue.Browser {
-				select {
-				case <-release:
-				case <-ctx.Done():
-					return nil, ctx.Err()
+	for _, concurrency := range []int{20, 60} {
+		t.Run(strconv.Itoa(concurrency), func(t *testing.T) {
+			c := fixtureLoopConfig()
+			c.concurrency = concurrency
+			c.taskTimeout, c.stallTimeout = 3*time.Second, 3*time.Second
+			ctx, stop := context.WithCancel(context.Background())
+			release := make(chan struct{})
+			var once sync.Once
+			defer func() { stop(); once.Do(func() { close(release) }) }()
+			b := &browserClaimCapacity{slots: make(chan struct{}, renderedConcurrency)}
+			var lanes sync.Map
+			var browserClaims, httpCompleted atomic.Int64
+			pop := func(_ context.Context, lane queue.WorkerType) (*queue.Claim, error) {
+				claim := &queue.Claim{}
+				lanes.Store(claim, lane)
+				if lane == queue.Browser {
+					browserClaims.Add(1)
 				}
-			} else {
-				httpCompleted.Add(1)
-				runtime.Gosched()
+				return claim, nil
 			}
-			return &GreenhouseClaimResult{Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}}, nil
-		},
-	}
-	m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
-	done := make(chan error, 1)
-	go func() { done <- runWorkerLoop(ctx, c, s, m) }()
-	deadline := time.Now().Add(time.Second)
-	for (browserClaims.Load() < renderedConcurrency || httpCompleted.Load() == 0) && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
-	before := httpCompleted.Load()
-	deadline = time.Now().Add(time.Second)
-	for httpCompleted.Load() <= before+20 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
-	if browserClaims.Load() != renderedConcurrency || httpCompleted.Load() <= before+20 {
-		t.Fatal("slow browser claims exceeded renderer capacity or starved ready HTTP work")
-	}
-	stop()
-	once.Do(func() { close(release) })
-	if err := awaitRuntime(t, done); err != nil {
-		t.Fatal(err)
-	}
-	if len(b.slots) != 0 || m.active.Load() != 0 {
-		t.Fatal("drained execution retained browser capacity or active claims")
+			s := runtimeServices{
+				claim:        func(ctx context.Context) (*queue.Claim, error) { return b.claim(ctx, pop) },
+				releaseClaim: b.release,
+				heartbeat:    func(context.Context, *queue.Claim) error { return nil },
+				execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+					lane, _ := lanes.LoadAndDelete(claim)
+					if lane == queue.Browser {
+						select {
+						case <-release:
+						case <-ctx.Done():
+							return nil, ctx.Err()
+						}
+					} else {
+						httpCompleted.Add(1)
+						runtime.Gosched()
+					}
+					return &GreenhouseClaimResult{Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}}, nil
+				},
+			}
+			m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
+			done := make(chan error, 1)
+			go func() { done <- runWorkerLoop(ctx, c, s, m) }()
+			deadline := time.Now().Add(time.Second)
+			for (browserClaims.Load() < renderedConcurrency || httpCompleted.Load() == 0) && time.Now().Before(deadline) {
+				time.Sleep(time.Millisecond)
+			}
+			before := httpCompleted.Load()
+			deadline = time.Now().Add(time.Second)
+			for httpCompleted.Load() <= before+20 && time.Now().Before(deadline) {
+				time.Sleep(time.Millisecond)
+			}
+			if browserClaims.Load() != renderedConcurrency || httpCompleted.Load() <= before+20 {
+				t.Fatal("slow browser claims exceeded renderer capacity or starved ready HTTP work")
+			}
+			stop()
+			once.Do(func() { close(release) })
+			if err := awaitRuntime(t, done); err != nil {
+				t.Fatal(err)
+			}
+			if len(b.slots) != 0 || m.active.Load() != 0 {
+				t.Fatal("drained execution retained browser capacity or active claims")
+			}
+		})
 	}
 }
 

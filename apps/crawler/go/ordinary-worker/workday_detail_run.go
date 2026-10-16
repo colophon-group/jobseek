@@ -193,7 +193,12 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if qualifiedADPDOMHTTPDetail(profile) {
+	if qualifiedAuraHTTPDetail(profile) {
+		content, reservation, err = fetchQualifiedAuraHTTP(ctx, http, profile)
+		observed := observation.Snapshot()
+		hostReachable = observed.Responses > 0
+		hostFailure = observed.LastStatus == 401 || observed.LastStatus == 403 || observed.LastStatus == 429 || observed.LastStatus >= 500
+	} else if qualifiedADPDOMHTTPDetail(profile) {
 		content, reservation, err = fetchQualifiedADPDOMHTTP(ctx, http, profile)
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0
