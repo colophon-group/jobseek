@@ -173,6 +173,7 @@ def ownership_projection(payload: str) -> str:
                         "embedded.rendered-detail/v1",
                         "api_sniffer.browser-detail/v1",
                         "skip.browser-unscheduled-detail/v1",
+                        "detail.ordered-browser/v1",
                     )
                     else "simple"
                 )
@@ -228,6 +229,7 @@ def ownership_projection(payload: str) -> str:
                     "peoplesoft.session-detail/v1",
                     "detail.ordered-http/v1",
                     "detail.ordered-proxy-http/v1",
+                    "detail.ordered-browser/v1",
                 )
                 or (
                     d["profile"] in ("workday.cxs-detail/v1", "workday.proxy-cxs-detail/v1")
