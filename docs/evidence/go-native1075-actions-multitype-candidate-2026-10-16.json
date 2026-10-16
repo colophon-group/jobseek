@@ -1,0 +1,91 @@
+{
+  "schema": "jobseek.native-multitype-candidate/v1",
+  "version": "0.13.1075",
+  "base_revision": "52f6c637a4bb11da0009fde1cd185560cffa75e8",
+  "state": "candidate; original CI/physical/whole-lane qualification and deployment pending",
+  "current_serving_source": "52f6c637a4bb11da0009fde1cd185560cffa75e8",
+  "current_serving_monitors": 7833,
+  "current_serving_details": 7825,
+  "proposed_monitors": 7833,
+  "proposed_details": 7832,
+  "additional_detail_boards": 7,
+  "additional_details_by_profile": {
+    "dom.rendered-detail/v1": 3,
+    "dom.direct-detail/v1": 2,
+    "api_sniffer.browser-detail/v1": 1,
+    "onlyfy.public-detail/v1": 1
+  },
+  "configuration_changes": false,
+  "numeric_action_fix": {
+    "production_phase": "detail_render_actions",
+    "production_profile": "dom.rendered-detail/v1",
+    "observed_restarts": 3,
+    "actual_owned_configs_reproduced_before": 12,
+    "actual_owned_configs_with_equal_executable_actions_after": 12,
+    "origin_requests_during_reproducer": 0,
+    "cause": "opaque profile copy retains json.Number; action numeric decoding previously accepted only float64",
+    "validation_limits_and_fatal_policy": "unchanged",
+    "malformed_numeric_literals": "rejected",
+    "production_fix_deployed": false
+  },
+  "empty_lifecycle_group": {
+    "configurations": 6,
+    "original_and_native_complete_empty_inventories_match": true,
+    "monitor_membership": "already preserved floor; no new monitor authority",
+    "scheduled_detail_work": 0,
+    "scope": "fresh independent original/native inventory, canonical zero-work audit and exact compiled config bindings; no positive detail-content write claim"
+  },
+  "adp_original_lifecycle": {
+    "configurations": 1,
+    "original_and_native_complete_monitor_urls": 20,
+    "all20_actual_sources_bind_compiled_guard": true,
+    "matching_actual_http_references": 2,
+    "every_raw_field_matches_original": true,
+    "same_body_original_parser_fields_equal": true,
+    "primary_title_missing_in_both_original_and_native": true,
+    "canonical_lifecycle": "original transient failure; every non-clock column equal frozen original SQL, last-scraped timestamp and due within5seconds",
+    "successful_canonical_content_write_claimed": false,
+    "preserved_current_active_unscheduled_postings": 20,
+    "origin_requests_per_reference": 1,
+    "renderer_calls": 0,
+    "extra_origin_requests": 0,
+    "unchanged_original_browser_queue_and_profile": true,
+    "source_binding": "full original canonical fingerprint plus exact ADP public origin/path and hashed client/center scope",
+    "changed_config_or_scope": "retain original renderer"
+  },
+  "held_group_candidates": 14,
+  "held_reason": "original fetch failures, differing live inventories, or absent original detail/lifecycle references; no empty success inferred from errors",
+  "local_validation": [
+    "All contracts packages pass Go race detector",
+    "Opaque detail action/immutability regressions pass and fail on original code",
+    "Seven real PostgreSQL/Redis worker route/policy/failure cases pass",
+    "Two actual ADP captured-response lifecycle replays equal frozen original SQL except bounded execution clock",
+    "Focused rendered/detail/diagnostic/qualified-route race suite passes",
+    "go vet ./... and git diff --check pass"
+  ],
+  "source_sha256": {
+    "apps/crawler/contracts/v1/documentactions/session.go": "6f99802e460b9ee676198b94534a580ed6b64bdc17250f57611e0ea306de519c",
+    "apps/crawler/contracts/v1/documentactions/interaction_options.go": "7ec18483415448102f92cc698d26f3a05e23aec4155241382d49b3ca8e631d81",
+    "apps/crawler/go/ordinary-worker/workday_detail_run.go": "759d958bceac26dfa5a5a0b2ea1acd2d56a350959d191c767c951a2baff523b7",
+    "apps/crawler/go/ordinary-worker/qualified_adp_dom_http.go": "7817a27911aeae08fcda2c109297bba87aaab44b0b2560ec47763365abb9fea0"
+  },
+  "private_proof_sha256": {
+    "action_current12_before": "b587ada66a4fe058e475221b6193ec8566db4d981447f6b82c68dbeaa5bf6448",
+    "action_current12_after": "23ec3adb5085a595ea9a850e5bad8d573ca36c0ece4a757411eddf67529f2665",
+    "production_action_diagnostic": "50e00f9f4afdc3cc76d4c6c2574ced1ee1062658f45ae06a7896d4743db43c48",
+    "six_empty_original_monitor_inventory": "53d8ea73bed0548e33c6e7f9fec28d4371f6d7ba82fb9e632547cb6a8e8494bc",
+    "six_empty_native_monitor_inventory": "3f20db5c152d172e96dc0ab7efabb3d8ec7541f9435535b2a7bc4645193eb1c2",
+    "six_empty_inventory_comparison": "ee1352ac42152758153b4e10b46103ff542089779b9257d63a2224e74096f9ba",
+    "canonical_no_scheduled_detail_work": "51d21564905fcd4118101cf7006c7556a993e113bd4534d011a9e10a97a1881b",
+    "candidate_config_bindings": "a3609538c058f27094b49adb7acd12a3d9704d35ca3c429e7c1a65056db359d8",
+    "candidate_group": "34cb0d2e2bf4648818b1491f974158756376c9ab99958ce3e67c2029f18d747e",
+    "adp_actual_current_worker_raw_fields": "72b1cb6bc6e646af153374871f80904550bb5b00348c6ad321271b21a34ca2c9",
+    "adp_same_body_original_parser": "bb23a663de2a0d73fbebbae2218214bbdae29ea957f1aa293da304df08920851",
+    "adp_frozen_original_sql_lifecycle": "3d25b4e2192eec4c68a7d064f59bbd490ead16bf072460ce8dd1489276ba3119",
+    "adp_all20_current_monitor_routes": "5097d68a0cd2ca102169636b584aa75ca89b48afbecdd92b8f73d8215440f19d",
+    "current1074_conservation": "2dad554d70b533a5f2f419116a9e67687046bb5a559b22dd6f6aebfa0b56ad15"
+  },
+  "production_admission": false,
+  "full_migration_complete": false,
+  "goal_status": "active"
+}

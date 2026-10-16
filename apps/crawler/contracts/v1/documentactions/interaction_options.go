@@ -85,7 +85,7 @@ func interactionNumber(m map[string]any, key string, fallback float64) (float64,
 	if !exists {
 		return fallback, nil
 	}
-	n, ok := v.(float64)
+	n, ok := actionNumber(v)
 	if !ok || math.IsNaN(n) || math.IsInf(n, 0) {
 		return 0, ErrActions
 	}
@@ -157,17 +157,16 @@ func parseInteraction(a *Action, m map[string]any) error {
 			switch value := value.(type) {
 			case string:
 				a.PageSize = value
-			case float64:
-				if value < 0 || value > 100000 || value != math.Trunc(value) {
+			default:
+				number, ok := actionNumber(value)
+				if !ok || number < 0 || number > 100000 || number != math.Trunc(number) {
 					return ErrActions
 				}
 				// Numeric zero is false in the original page-size guard; the
 				// nonempty string "0" still executes its change event.
-				if value != 0 {
-					a.PageSize = strconv.FormatUint(uint64(value), 10)
+				if number != 0 {
+					a.PageSize = strconv.FormatUint(uint64(number), 10)
 				}
-			default:
-				return ErrActions
 			}
 		}
 	}

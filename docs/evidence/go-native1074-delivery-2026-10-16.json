@@ -1,0 +1,131 @@
+{
+  "schema": "jobseek.go-native-delivery/v1",
+  "observed_at_utc": "2026-10-16T04:38:15.810104+00:00",
+  "version": "0.13.1074",
+  "source_revision": "52f6c637a4bb11da0009fde1cd185560cffa75e8",
+  "state": "independently serving; identical full postactive routes/cache and exact queued-ID/current canonical accounting verified",
+  "ordinary_serving": true,
+  "b0_owner_epoch": 354,
+  "writers_during_ordinary_activation": "cold; original activation completed and full fleet restored",
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:ba4baea78990650ed14a697672d2ece083202ea916add7f9462d1def3a91faf8",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:1bf6e5d99462775da645454ef0f34b7658de35b41630a77b99656d2c4657c062",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:f20e1168518e6eae94ff8e0d3870d21a167288f05e5ad85af4d11d44a5b32765"
+  },
+  "original_workflows": {
+    "crawler": 38846041386,
+    "renderer": 38846179020,
+    "ci": 38846041391,
+    "runtime_contracts": 38846041365
+  },
+  "lightpanda": {
+    "version": "1.0.1",
+    "official_latest_rechecked": "2026-10-16",
+    "arm64_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c"
+  },
+  "plan_sha256": "107f999ecd81b3aed5237e8482dd7a5c7f00151e704dbfeb6e48ecf475b7d572",
+  "projection_sha1": "d1120630bf4dc6915342bc6ea51a338eb5415738",
+  "outgoing_live_baseline": {
+    "queued_ids": 1715712,
+    "scheduled_postings": 1716986,
+    "scheduled_minus_queued_gap": 1274,
+    "scope": "non-atomic live outgoing1073 capture; incoming postactive accounting pending"
+  },
+  "remaining": {
+    "monitor_configurations": 64,
+    "detail_configurations": 72,
+    "compiled_unqualified_monitors": 19,
+    "compiled_unqualified_details": 37,
+    "unsupported_monitors": 45,
+    "unsupported_details": 35
+  },
+  "restart_issue": {
+    "ordinary_restart_count": 3,
+    "observed_at_utc": "2026-10-16T04:49:13.317995+00:00",
+    "cause_phase": "detail_render_actions",
+    "profile": "dom.rendered-detail/v1",
+    "reproduction": "one currently owned unchanged profile passes admission but its opaque copy uses json.Number, which action numeric decoding rejects before renderer contact",
+    "candidate_fix": "0.13.1075 accepts valid retained JSON numbers with unchanged action limits; action and opaque-profile regression tests fail before the change and pass afterward",
+    "production_fixed": false,
+    "matching_diagnostic_events": 3
+  },
+  "full_migration": "active; incomplete; production Python retirement pending",
+  "serving_observed_at_utc": "2026-10-16T04:24:38.307739+00:00",
+  "health_endpoints": 8,
+  "source_image_bound_actors": 10,
+  "initial_ordinary_restart_count": 0,
+  "queue_accounting": {
+    "observed_at_utc": "2026-10-16T04:32:07.111801+00:00",
+    "source_revision": "52f6c637a4bb11da0009fde1cd185560cffa75e8",
+    "routing_epoch": 354,
+    "outgoing_source_revision": "262451ec122fe4cdc9d217da5274f41317f6a2a5",
+    "outgoing_epoch": 352,
+    "outgoing_capture_sha256": "4c7b198947cc1ae2d6372ade6b199a7bad27854bd8e67b62f2a8adf9729297fb",
+    "post_capture_sha256": "ea50316042a2fb708b0b765fe8ffa5468d1d05de50f13aecf5550eb474e9d120",
+    "before_scheduled": 1716986,
+    "before_queued": 1715712,
+    "before_scheduled_minus_queued_gap": 1274,
+    "after_scheduled": 1715488,
+    "after_queued": 1715486,
+    "after_scheduled_minus_queued_gap": 2,
+    "retained_ids": 1710263,
+    "before_only_ids": 5449,
+    "after_only_ids": 5223,
+    "before_queued_ids_sha256": "ba751e2043eb91aadce137f04f9e1d26ada7c9a8463e83c093ae4eb81cc9e3eb",
+    "after_queued_ids_sha256": "ac16a4432df34283904c730d3fa9c918bf964fa3c030d0f0bc2877aedd4bbe7d",
+    "before_only_ids_sha256": "7d45f39bd3e48b58dfc79040eaca06684f577427dedfc929e4d102dec7146ed2",
+    "after_only_ids_sha256": "dee13830f3a70ae780d0db61d2c322574861fcee75fbc6d3c7a15b859fb1f3e5",
+    "same_previous_cohort_preserved": true,
+    "new_detail_boards": 5,
+    "owned_cache_mismatches": 0,
+    "scope": "non-atomic live outgoing1073/incoming1074 captures; all before-only IDs and both captured gap IDs are currently canonical-ineligible; no atomic historical/global or causal conservation claim",
+    "before_only_canonical_states": {
+      "inactive": 5398,
+      "unscheduled": 51,
+      "board_disabled": 0,
+      "missing_canonical": 0,
+      "still_eligible": 0
+    },
+    "captured_gap_current_canonical_states": {
+      "inactive": 1,
+      "unscheduled": 1,
+      "board_disabled": 0,
+      "still_eligible": 0
+    },
+    "all_outgoing_ids_retained_or_currently_canonical_ineligible": true,
+    "all_captured_gap_ids_currently_canonical_ineligible": true,
+    "same_complete_postactive_cohort": true,
+    "canonical_accounting_sha256": "f4c9410fab49ff3b060f05ee48a29b97a002405e8eb8186be6c0ba3534ea7a62",
+    "gap_accounting_sha256": "e30334831d4643badd44ad3500c42d6828535e9b23086c20c11544d06400ea12"
+  },
+  "postactive": {
+    "monitors": 7833,
+    "details": 7825,
+    "identical_cohort": true,
+    "every_actual_source_route_valid": true,
+    "owned_cache_mismatches": 0,
+    "staged_owned_cache_mismatches": 137
+  },
+  "initial_progress": {
+    "go_monitors_completed_receipts": 24,
+    "go_details_completed_receipts": 83,
+    "exported_documents": 272,
+    "export_errors": 0,
+    "unknown_writers": 0,
+    "global_scheduled": 1723471,
+    "global_overdue24h": 1607002,
+    "scope": "bounded independent initial observations; completed receipts do not imply content success"
+  },
+  "task_sample": {
+    "duration_seconds": 40.04422775004059,
+    "successful_monitors": 6,
+    "failed_monitors": 1,
+    "successful_details": 21,
+    "failed_details": 0,
+    "skipped_details": 3,
+    "crawler_cpu_cores": 3.6018111998639752,
+    "crawler_memory_bytes": 3721798451.2000003,
+    "oom_kill_delta": 0,
+    "scope": "ten crawler cgroups; excludes Redis and renderer; natural unpaired workload; no matched throughput or attributable cost claim"
+  }
+}
