@@ -181,10 +181,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
-  assert.match(
-    workflow,
-    /vercel@59\.25\.4 pull[\s\S]{0,400}verify-vercel-server-action-key\.mjs[\s\S]{0,400}vercel@59\.25\.4 build/,
-  );
+  const actionKeyCheck = workflow.indexOf("verify-vercel-server-action-key.mjs");
+  const workerPreflight = workflow.indexOf("Validate Narrowed worker readiness before building");
+  const build = workflow.indexOf("Build the production artifact");
+  const finalWorkerCheck = workflow.indexOf("Require the exact Narrowed host worker before promotion");
+  assert.ok(pull >= 0 && pull < actionKeyCheck && actionKeyCheck < workerPreflight && workerPreflight < build);
+  assert.ok(finalHeadCheck < finalWorkerCheck && finalWorkerCheck < promotion);
   assert.doesNotMatch(workflow, /environment:\n\s+name: Production\n\s+url:/);
   assert.doesNotMatch(workflow, /pull_request:/);
 });

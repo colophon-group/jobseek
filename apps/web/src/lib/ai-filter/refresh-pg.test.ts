@@ -290,6 +290,9 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
           env:{...process.env,DATABASE_URL_UNPOOLED:process.env.AI_FILTER_TEST_DATABASE_URL,
             AI_FILTER_ENABLED:"true",AI_FILTER_JEV_1_13_0_ENABLED:"true",GITHUB_OUTPUT:undefined,...extra},encoding:"utf8",stdio:"pipe"});
         expect(verification).toThrow();
+        expect(() => verification({ AI_FILTER_ENABLED: "" })).toThrow();
+        expect(() => verification({ AI_FILTER_JEV_1_13_0_ENABLED: undefined })).toThrow();
+        expect(verification({ AI_FILTER_ENABLED: "false" })).toContain('"status":"disabled"');
         const hash=createHash("sha256").update(await readFile("../../deploy/ai-filter-refresh/bundle/worker.mjs")).digest("hex");
         const held=await client.reserve();
         try {

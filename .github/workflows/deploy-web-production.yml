@@ -125,6 +125,12 @@ jobs:
           NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: node .github/scripts/verify-vercel-server-action-key.mjs
 
+      - name: Validate Narrowed worker readiness before building
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: pnpm --dir apps/web exec tsx scripts/verify-narrowed-worker-ready.ts
+
       - name: Build the production artifact
         if: steps.paths.outputs.deploy == 'true'
         env:
