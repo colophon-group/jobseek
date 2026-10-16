@@ -77,6 +77,7 @@ type EvaluationPrivacy interface {
 type ProviderFailure struct {
 	Code        runtimev1.ErrorCode
 	Disposition runtimev1.ErrorDisposition
+	HTTPStatus  *uint32
 }
 
 // RawEvaluation is a runner-produced JSON value awaiting mandatory privacy.
@@ -176,6 +177,10 @@ func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
 
 // NewRunnerFailure copies a typed provider failure after cleanup completes.
 func NewRunnerFailure(bound BoundInput, failure ProviderFailure) RunnerOutcome {
+	if failure.HTTPStatus != nil {
+		status := *failure.HTTPStatus
+		failure.HTTPStatus = &status
+	}
 	return RunnerOutcome{
 		kind: runnerOutcomeFailure, bindingFingerprint: bound.fingerprint, failure: failure,
 	}
@@ -323,7 +328,13 @@ func (adapter *Adapter) Execute(
 		)
 	}
 	if outcome.kind == runnerOutcomeFailure {
-		if !validFailurePair(outcome.failure.Code, outcome.failure.Disposition) {
+		if adapter.configuredProxy && bound.input.Plan.Session != nil && outcome.failure.Code == runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS && outcome.failure.Disposition == runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY && outcome.failure.HTTPStatus != nil && *outcome.failure.HTTPStatus == 407 {
+			result := failureResult(outcome.failure.Code, outcome.failure.Disposition)
+			status := uint32(407)
+			result.GetError().Error.HttpStatus = &status
+			return result
+		}
+		if outcome.failure.HTTPStatus != nil || !validFailurePair(outcome.failure.Code, outcome.failure.Disposition) {
 			return failureResult(
 				runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 				runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,

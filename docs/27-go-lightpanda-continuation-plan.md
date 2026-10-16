@@ -59,6 +59,15 @@ other controls. Test a shared native transport against the full original config,
 with bounded attempts, existing publisher policy, egress isolation and scoped
 credentials. These occurrence counts are opportunities, not promised admissions.
 
+Candidate **0.13.1076** implements configured proxy sessions for DOM monitors and
+DOM, JSON-LD, embedded and Nextdata details, shared endpoint health, and the
+original one-to-five origin-block attempts. The protected proxy registry belongs
+to the immutable renderer release. Local physical and canonical lifecycle tests
+pass; this candidate is **not installed and grants no new production ownership**.
+Finish exact-head CI, ARM physical/rollback checks and actual full-config
+original/native comparisons before the supported rollout and cohort expansion.
+API-browser conversations, inline and other unsupported controls still need work.
+
 Qualify multiple profile families per iteration. Keep the serving release and its qualification intact while developing the next
 batch in an isolated worktree. Reuse the successful installed source for unchanged
 compiled profiles when possible; ownership expansion still needs the supported

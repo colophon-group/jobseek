@@ -69,7 +69,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err := normalizeDOMLightpandaResourceOptions(options); err != nil {
 		return fail()
 	}
-	if err := validateRenderedNavigation(options, true); err != nil {
+	if err := validateConfiguredProxyNavigation(options); err != nil {
 		return fail()
 	}
 	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "title_matched_url_scan"} {
@@ -84,6 +84,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
 		delete(cloneMD, key)
 	}
+	delete(cloneMD, "proxy") // Navigation owns transport; this clone only parses.
 	if selfIdentifying {
 		for _, key := range []string{"stealth", "proxy", "skip_ssl", "transport_attempts"} {
 			delete(cloneMD, key)

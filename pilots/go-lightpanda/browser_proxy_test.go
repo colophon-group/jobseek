@@ -108,6 +108,34 @@ func TestConfiguredBrowserProxyServiceRejectsUnknownReferencesBeforeChild(t *tes
 	}
 }
 
+func TestConfiguredBrowserProxyRunnerUsesTypedHopFailureWithoutProviderText(t *testing.T) {
+	endpoint, _ := browserproxy.Parse("http://fixture:secret@proxy.example:8000")
+	for _, sample := range []struct {
+		text   string
+		code   runtimev1.ErrorCode
+		status uint32
+	}{
+		{"net::ERR_PROXY_AUTH_REQUESTED 407", runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, 407},
+		{"Proxy", runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, 0},
+		{"CouldntResolveProxy", runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, 0},
+		{"net::ERR_TUNNEL_CONNECTION_FAILED", runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, 0},
+		{"RecvError", runtimev1.ErrorCode_ERROR_CODE_NAVIGATION, 0},
+		{"net::ERR_NETWORK_CHANGED", runtimev1.ErrorCode_ERROR_CODE_NAVIGATION, 0},
+		{"unclassified fixture failure", runtimev1.ErrorCode_ERROR_CODE_INTERNAL, 0},
+	} {
+		execution, err := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary, EgressPolicy: defaultEgressPolicy(), proxyEndpoints: map[string]browserproxy.Endpoint{endpoint.Reference(): endpoint}}, func(context.Context, Config, Task) (Result, error) { return Result{}, navigationError(sample.text) })
+		if err != nil {
+			t.Fatal(err)
+		}
+		input, _ := lp.NavigationInput(lp.Navigation{URL: "https://example.com/job", RoutingRevision: "fixture", OriginRequestID: "fixture-job", Wait: "load", TimeoutMS: 1000, ProxyPolicyRef: endpoint.Reference()})
+		result := execution.Execute(context.Background(), input)
+		failure := result.GetError().GetError()
+		if failure.GetCode() != sample.code || failure.GetHttpStatus() != sample.status || failure.Message != "lightpanda execution failed" || len(failure.DiagnosticDetails) != 0 {
+			t.Fatal("proxy failure lost typed scope or disclosed provider text")
+		}
+	}
+}
+
 func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *testing.T) {
 	binary := interactionIntegrationBinary(t)
 	for _, mode := range []string{"success", "public-subresource", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {

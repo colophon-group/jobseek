@@ -96,7 +96,16 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	if err != nil {
 		return nil, nil, claimRunError("detail_render_actions", queue.ErrConfiguration)
 	}
-	parser, err := json.Marshal(options)
+	if profile.BrowserProxy != (options["proxy"] == true) {
+		return nil, nil, queue.ErrConfiguration
+	}
+	parserOptions := make(map[string]any, len(options))
+	for key, value := range options {
+		if key != "proxy" && key != "transport_attempts" {
+			parserOptions[key] = value
+		}
+	}
+	parser, err := json.Marshal(parserOptions)
 	if err != nil {
 		return nil, nil, claimRunError("detail_render_parser", queue.ErrConfiguration)
 	}
@@ -213,7 +222,7 @@ func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser
 				if parseErr != nil || !ok {
 					err = executor.ErrProtocol
 				} else {
-					for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
+					for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "transport_attempts"} {
 						delete(options, key)
 					}
 					options["render"] = false
