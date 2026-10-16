@@ -1,6 +1,5 @@
 {
   "schema": "jobseek.native1075-delivery/v1",
-  "observed_at_utc": "2026-10-16T07:55:08.468692+00:00",
   "version": "0.13.1075",
   "source_revision": "cbd1f37f3803a29dcd6693aa0a120992513edda6",
   "qualified_head": "af5c4620a9b613828b007a2c5faa098f3c25ace3",
@@ -53,7 +52,9 @@
       "still_eligible": 0
     },
     "unresolved_eligible_or_missing_ids": 0,
-    "scope": "non-atomic outgoing1074/incoming1075 captures; all2354 outgoing-only IDs currently inactive or unscheduled; captured owned schedule/queue gap0 and cache mismatches0; no atomic historical/global or causal conservation claim"
+    "scope": "non-atomic outgoing1074/incoming1075 captures; all2354 outgoing-only IDs currently inactive or unscheduled; captured owned schedule/queue gap0 and cache mismatches0; no atomic historical/global or causal conservation claim",
+    "capture_sql_observed_at_utc": "2026-10-16T06:45:00.463181+00:00",
+    "current_eligibility_accounted_at_utc": "2026-10-16T07:53:38.444755+00:00"
   },
   "retained_numeric_action_fix": {
     "current_owned_configs_rejected_before": 12,
@@ -76,7 +77,9 @@
     "unknown_writers": 0.0,
     "scheduled_active_enabled": 1725365,
     "overdue_24h": 1613799,
-    "scope": "bounded mixed native/legacy production observation; freshness backlog remains"
+    "scope": "bounded mixed native/legacy production observation; freshness backlog remains",
+    "native_receipts_and_freshness_observed_at_utc": "2026-10-16T06:49:11.540003+00:00",
+    "exporter_observed_at_utc": "2026-10-16T06:48:52.939410+00:00"
   },
   "qualification": {
     "all16_arm_arms_audited": true,
@@ -103,5 +106,6 @@
     "native1075-delivery-conservation-cache-accounting1.json": "0345799a4cf13f711819ee5a9fdaef3a906499901172ed2b6bb30dfe49e8c290",
     "native1075-runtime-observation-active3.json": "cef707883adf1a83339e8c69b9d92562cdf0f2194ceccf55af85a8e5e901b676",
     "native-source1075-installed-lightpanda101-independent1.json": "c195dee3395b2b73c5b51536c204026b8f3d2865c52589df2b7484aa648febad"
-  }
+  },
+  "evidence_created_at_utc": "2026-10-16T07:55:08.468692+00:00"
 }

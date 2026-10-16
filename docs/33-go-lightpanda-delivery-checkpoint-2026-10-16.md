@@ -54,7 +54,7 @@ IDs are currently inactive (2,290) or unscheduled (64). None is missing from
 canonical storage or remains eligible. There are 4,499 incoming-only IDs. Retain
 the live/current scope; do not claim historical, atomic or global conservation.
 
-A bounded postactive snapshot records 59 monitor and 205 detail completion
+The bounded 06:49 UTC postactive snapshot records 59 monitor and 205 detail completion
 receipts, plus 424 successful exports, zero export errors and zero unknown
 writers. Receipts alone do not prove successful content. The mixed native/legacy
 fleet still has about **1.61 million scheduled postings over 24 hours overdue**.

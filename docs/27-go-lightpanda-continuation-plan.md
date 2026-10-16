@@ -27,7 +27,7 @@ three observed action-related restarts; the current source has **zero observed
 restarts, OOMs or fatal configuration failures** through the bounded readback at
 07:53 UTC, over an hour after serving verification. Continue observing it.
 
-The production snapshot records 59 monitor and 205 detail completion receipts,
+The 06:49 UTC production snapshot records 59 monitor and 205 detail completion receipts,
 and 424 successful exports with zero errors or unknown writers. Completion
 receipts are not successful-content proof. Freshness remains unfinished: about
 **1.61 million scheduled postings are over 24 hours overdue**. Isolated ARM density
