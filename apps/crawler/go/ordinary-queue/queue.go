@@ -274,7 +274,7 @@ func (c *Client) rescheduleDetailHandoff(ctx context.Context, task *Task, nextDu
 	}
 	args := []any{string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host, expected, next}
 	if step != nil || at != nil {
-		if step == nil || at == nil || task.Kind != Scrape || task.Worker != Simple || !task.Fenced() || *step < 1 || *step > 7 || learned != nil || metadata != nil || !validTime(seconds(*at)) {
+		if step == nil || at == nil || task.Kind != Scrape || !validWorker(task.Worker) || !task.Fenced() || *step < 1 || *step > 7 || learned != nil || metadata != nil || !validTime(seconds(*at)) {
 			return false, ErrConfiguration
 		}
 		previous := task.Config["scrape_step"]

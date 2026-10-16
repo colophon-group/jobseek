@@ -358,7 +358,7 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 				return nil, ErrAuthorityLost
 			}
 			row := firstRetirementMember{BoardID: item.board, Domain: item.domain, Completed: completed, Config: config, Kind: Scrape, TaskID: id}
-			if item.due != nil && (bindings[item.board].Profile == orderedHTTPDetailProfile || bindings[item.board].Profile == orderedProxyHTTPDetailProfile) {
+			if item.due != nil && (isOrderedDetailProfile(bindings[item.board].Profile)) {
 				chain, err := InspectOrderedDetail(item.board, snapshots[item.board].canonical, item.source, bindings[item.board].Worker)
 				if err != nil {
 					return nil, ErrAuthorityLost

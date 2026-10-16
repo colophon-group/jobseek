@@ -67,7 +67,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			observations[board] = observed
 		}
 		profile, boardConfig := observed.profile, observed.config
-		if profile.Profile == orderedHTTPDetailProfile || profile.Profile == orderedProxyHTTPDetailProfile {
+		if isOrderedDetailProfile(profile.Profile) {
 			chain, e := InspectOrderedDetail(board, boardConfig, source, worker)
 			if e != nil {
 				return nil

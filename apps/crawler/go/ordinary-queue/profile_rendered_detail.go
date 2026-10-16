@@ -15,7 +15,7 @@ const jsonldRenderedDetailProfile = "jsonld.rendered-detail/v1"
 const embeddedRenderedDetailProfile = "embedded.rendered-detail/v1"
 
 func detailWorker(profile string) WorkerType {
-	if profile == browserAPIDetailProfile || profile == domRenderedDetailProfile || profile == jsonldRenderedDetailProfile || profile == embeddedRenderedDetailProfile || profile == browserNoScrapeDetailProfile {
+	if profile == orderedBrowserDetailProfile || profile == browserAPIDetailProfile || profile == domRenderedDetailProfile || profile == jsonldRenderedDetailProfile || profile == embeddedRenderedDetailProfile || profile == browserNoScrapeDetailProfile {
 		return Browser
 	}
 	return Simple

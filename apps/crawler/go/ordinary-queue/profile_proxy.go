@@ -142,10 +142,10 @@ func (a *Authority) RequiresProxyHTTP() bool {
 		}
 	}
 	for _, d := range a.ownership.document.Details {
-		if d.Profile == orderedHTTPDetailProfile || d.Profile == orderedProxyHTTPDetailProfile {
-			if ordered, err := InspectOrderedDetail(d.BoardID, d.Config, d.Config["board_url"], Simple); err == nil {
+		if isOrderedDetailProfile(d.Profile) {
+			if ordered, err := InspectOrderedDetail(d.BoardID, d.Config, d.Config["board_url"], d.Worker); err == nil {
 				for _, stage := range ordered.Stages {
-					if stage.JSONLDRecovery != nil && stage.JSONLDRecovery.Proxy {
+					if ProfileRequiresProxy(stage.Profile) || (stage.JSONLDRecovery != nil && stage.JSONLDRecovery.Proxy) {
 						return true
 					}
 				}

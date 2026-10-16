@@ -114,7 +114,11 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
-	if p, e := InspectOrderedDetail(boardID, config, config["board_url"], Simple); e == nil {
+	worker := Simple
+	if config["scraper_needs_browser"] == "1" {
+		worker = Browser
+	}
+	if p, e := InspectOrderedDetail(boardID, config, config["board_url"], worker); e == nil {
 		return orderedDetailOwnership(p), nil
 	}
 	if p, e := inspectNoScrapeDetailOwnership(boardID, config); e == nil {

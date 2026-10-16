@@ -9,6 +9,12 @@ import (
 
 const orderedHTTPDetailProfile = "detail.ordered-http/v1"
 const orderedProxyHTTPDetailProfile = "detail.ordered-proxy-http/v1"
+const orderedBrowserDetailProfile = "detail.ordered-browser/v1"
+const orderedEmptyDOMDetailProfile = "dom.empty-ordered-detail/v1"
+
+func isOrderedDetailProfile(profile string) bool {
+	return profile == orderedHTTPDetailProfile || profile == orderedProxyHTTPDetailProfile || profile == orderedBrowserDetailProfile
+}
 
 // OrderedDetailProfile is detached evidence for the retained static scraper
 // chain. It grants no pop/write authority. The attempt must bind its cached
@@ -16,6 +22,7 @@ const orderedProxyHTTPDetailProfile = "detail.ordered-proxy-http/v1"
 type OrderedDetailProfile struct {
 	BoardID, CompanyID, EffectiveBoardSHA256 string
 	Stages                                   []WorkdayDetailProfile
+	worker                                   WorkerType
 }
 
 func orderedDetailOwnership(p OrderedDetailProfile) WorkdayDetailProfile {
@@ -25,6 +32,9 @@ func orderedDetailOwnership(p OrderedDetailProfile) WorkdayDetailProfile {
 		if ProfileRequiresProxy(stage.Profile) {
 			r.Profile = orderedProxyHTTPDetailProfile
 		}
+	}
+	if p.worker == Browser {
+		r.Profile = orderedBrowserDetailProfile
 	}
 	return r
 }
@@ -40,12 +50,12 @@ func orderedDetailStep(raw string, count int) (int, error) {
 	return n, nil
 }
 
-// InspectOrderedDetail qualifies each configured parser separately while
-// retaining the full chain in the ownership fingerprint. Legacy single-item
+// InspectOrderedDetail qualifies each configured parser and transport separately
+// while retaining the full chain and original queue lane in ownership. Legacy single-item
 // execution does not apply fallback.fields as a mask; retain that behavior.
 func InspectOrderedDetail(boardID string, config map[string]string, source string, worker WorkerType) (OrderedDetailProfile, error) {
 	fail := func() (OrderedDetailProfile, error) { return OrderedDetailProfile{}, ErrUnsupportedProfile }
-	if worker != Simple || config["scraper_needs_browser"] != "0" {
+	if (worker != Simple || config["scraper_needs_browser"] != "0") && (worker != Browser || config["scraper_needs_browser"] != "1") {
 		return fail()
 	}
 	metadata, err := profileMetadataFields(config["metadata"], nil)
@@ -72,13 +82,22 @@ func InspectOrderedDetail(boardID string, config map[string]string, source strin
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	p := OrderedDetailProfile{BoardID: boardID, CompanyID: config["company_id"], EffectiveBoardSHA256: hex.EncodeToString(digest[:])}
+	p := OrderedDetailProfile{BoardID: boardID, CompanyID: config["company_id"], EffectiveBoardSHA256: hex.EncodeToString(digest[:]), worker: worker}
+	hasBrowser := false
 	for step := 0; step < 8; step++ {
 		if kind != "dom" && kind != "json-ld" || options["enrich"] != nil {
 			return fail()
 		}
 		next := options["fallback"]
 		delete(options, "fallback")
+		// The original DOM scraper returns an empty JobContent before any origin
+		// request when it has neither steps nor a preset. Validate the remaining
+		// stage controls with a temporary parser, then mark this as a no-fetch stage.
+		// The original whole-chain configuration remains the ownership fingerprint.
+		emptyDOM := kind == "dom" && (options["preset"] == nil || string(options["preset"]) == "null") && (options["steps"] == nil || string(options["steps"]) == "null" || string(options["steps"]) == "[]")
+		if emptyDOM {
+			options["steps"] = json.RawMessage(`[{"tag":"h1","field":"title"}]`)
+		}
 		stageMetadata := make(map[string]json.RawMessage, len(metadata))
 		for key, value := range metadata {
 			stageMetadata[key] = value
@@ -95,18 +114,47 @@ func InspectOrderedDetail(boardID string, config map[string]string, source strin
 		}
 		stageConfig["metadata"] = string(stageBody)
 		var stage WorkdayDetailProfile
-		if kind == "dom" {
-			stage, err = InspectDOMDetail(boardID, stageConfig, source, worker)
+		var rendered bool
+		if raw := options["render"]; worker == Browser && raw != nil && string(raw) != "null" {
+			if json.Unmarshal(raw, &rendered) != nil {
+				return fail()
+			}
+		}
+		// Later legacy attempts select their own lane. Retain chains whose
+		// follow-ups stay on the canonical browser lane; a return to HTTP
+		// needs a separate cross-lane handoff contract.
+		if worker == Browser && step > 0 && !rendered {
+			return fail()
+		}
+		if rendered {
+			if worker != Browser {
+				return fail()
+			}
+			stageConfig["scraper_needs_browser"] = "1"
+			stage, err = InspectRenderedDetail(boardID, stageConfig, source, Browser)
+			hasBrowser = true
 		} else {
-			stage, err = InspectJSONLDDetail(boardID, stageConfig, source, worker)
+			// This is the transport of one stage, not a change to the canonical lane.
+			// The complete original board, including the rendered fallback, is hashed above.
+			stageConfig["scraper_needs_browser"] = "0"
+			if kind == "dom" {
+				stage, err = InspectDOMDetail(boardID, stageConfig, source, Simple)
+			} else {
+				stage, err = InspectJSONLDDetail(boardID, stageConfig, source, Simple)
+			}
 		}
 		if err != nil {
 			return fail()
 		}
+		if emptyDOM {
+			stage.Profile = orderedEmptyDOMDetailProfile
+			stage.DOMConfig = nil
+			stage.SkipSSL = false // No origin read or TLS exception is used.
+		}
 		stage.EffectiveBoardSHA256 = p.EffectiveBoardSHA256
 		p.Stages = append(p.Stages, stage)
 		if next == nil || string(next) == "null" || string(next) == "{}" {
-			if len(p.Stages) < 2 {
+			if len(p.Stages) < 2 || (worker == Browser && !hasBrowser) {
 				return fail()
 			}
 			return p, nil

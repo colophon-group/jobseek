@@ -193,7 +193,10 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if qualifiedAuraHTTPDetail(profile) {
+	if profile.Profile == "dom.empty-ordered-detail/v1" {
+		// Preserve DOM no-steps short-circuit: no HTTP or rendered origin read.
+		content = map[string]any{}
+	} else if qualifiedAuraHTTPDetail(profile) {
 		content, reservation, err = fetchQualifiedAuraHTTP(ctx, http, profile)
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0
