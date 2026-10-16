@@ -6,40 +6,45 @@ remove production Python, Playwright and Chromium. Keep useful offline Python.
 
 ## Current checkpoint — 2026-10-16
 
-**0.13.1077** is independently serving source
-`25901ab3e61b5c9866aaff03eba5771b8e49d20a`, with latest stable Lightpanda **1.0.1**.
-The complete **7,838-monitor / 7,832-detail** floor is active at epoch **360**.
-Original supported retirement/reversal/staging/activation and complete deployments
-passed. Exact source/image/receipt/SQL/Redis/all-ten-actor/health readback passed
-at 13:57 UTC; bounded 14:02 worker readback has zero restarts, OOMs or classified
+**0.13.1078** independently serves source
+`8bfbf7d6ec425e311c10b8827d7e9b6682d3b6bb`, with latest stable Lightpanda **1.0.1**.
+The full **7,840-monitor / 7,833-detail** cohort is active at epoch **362**,
+preserving the previous 7,838/7,832 floor and admitting two DOM monitors plus one
+browser-API detail. Original retirement/reversal, both complete deployments and
+new source-bound staging/activation passed. All ten actors and health agree;
+the bounded 21:37 UTC worker observation has zero restarts, OOMs or classified
 fatal configuration failures.
 
-The scheduled-enrichment upload race is fixed in both publishers. Postactive
-compiled replay validates every owned route and all **1,729,024 scheduled URLs**
-with zero owned cache mismatches; all are queued in the non-atomic capture.
-All 195 outgoing-only queued IDs are currently 191 inactive/four unscheduled.
-The previously held posting is queued; historical cause and race-fix attribution
-remain unproved. This is current exact-ID accounting, not historical/global loss proof.
+The shared 4,000,000-byte document batch is delivered across DOM, JSON-LD,
+embedded-data and inline consumers. Complete postactive compiled replay validates
+all **1,746,877 owned scheduled URLs**, all queued, with **zero owned cache
+mismatches**. Two prior posting-cache defects were repaired by the original cold
+projection path. All 1,008 outgoing-only queued IDs are currently 893 inactive /
+115 unscheduled; none remains eligible and unqueued. These are exact-ID/current
+observations across non-atomic captures, not historical loss or causal proof.
 
-See the [latest portable checkpoint](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
-and [aggregate evidence](evidence/go-native1077-serving-checkpoint-2026-10-16.json).
-The [previous checkpoint](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
-retains qualification of the five delivered monitors.
+See the [latest portable checkpoint](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
+and [aggregate evidence](evidence/go-native1078-serving-checkpoint-2026-10-16.json).
+The [previous checkpoint](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
+retains the source1077 publisher-race fix and queue evidence.
 
-The next [shared-document batch, PR #10653](https://github.com/colophon-group/jobseek/pull/10653),
-is undeployed with remaining CI/admission checks pending. Both Linux architecture
-suites pass. It covers DOM, JSON-LD, embedded-data and inline document handling;
-fresh original/native and private canonical capture replays support a proposed
-**7,840-monitor / 7,833-detail** cohort: two DOM monitors and one browser-API detail.
-Preserve all current members and prove installed/current source-bound admission.
+Freshness remains unfinished: at 21:36 UTC, **1,632,388 owned postings** are more
+than 24 hours overdue. Matching worker snapshots show 56 successful monitor and
+280 successful detail cycles in about 257 seconds without claim errors or restarts.
+Actual configured discovery/monitor concurrency is 60/15. Bounded progress and
+isolated ARM density do not establish sustained freshness or matched fleet cost.
 
-Freshness remains unfinished: the earlier snapshot had about 1.61 million postings
-more than 24 hours overdue. Queue conservation and isolated ARM density do not
-establish sustained production freshness or matched production fleet cost.
+[PR #10660](https://github.com/colophon-group/jobseek/pull/10660) bounds browser
+claims before renderer waiters can exhaust discovery slots. Its deterministic
+regression and repeated race checks pass at default 20 and configured 60 capacity;
+the full Linux worker suite passes and remaining CI is pending. It is undeployed.
+Continue the following JSON-LD/DOM HTTP/API batch: a production-timezone-matched
+JSON-LD reference and private canonical writer agree, while Aura still needs its
+separate compensation paragraph preserved. No following ownership is admitted.
 
 ## Continue in substantial shared-contract batches
 
-The captured remaining frontier is **59 monitors / 65
+The captured remaining frontier is **57 monitors / 64
 details**, excluding the three B0 records. Counts require a fresh census if data
 changes. Preserve the admitted floor through every subsequent batch.
 
@@ -67,12 +72,14 @@ local DNS checks do not pin a remote proxy resolver. Repeated live evidence also
 includes HTTP403 and changing inventories, and the two compared detail outputs
 have no positive descriptions. Complete these proofs before deployment/admission.
 
-Prioritize the qualified multiple-profile document/API batch, then native HTTP/API
-alternatives for content that Lightpanda does not render completely. Qualify multiple
-profile families per iteration. Keep the serving release and its qualification intact while developing the next
-batch in an isolated worktree. Reuse the successful installed source for unchanged
-compiled profiles when possible; ownership expansion still needs the supported
-B0 incarnation rotation and fresh full-cohort admission.
+Prioritize proved native HTTP/API alternatives for content that Lightpanda does
+not render completely, alongside shared controls across multiple profile families.
+Keep the serving release and its qualification intact while developing the next
+batch in an isolated worktree. Reuse unchanged compiled profiles when possible;
+ownership expansion still needs supported incarnation rotation and fresh full-cohort
+admission. Audit actual production commands: reconciliation already invokes Go
+directly and current registry sync uses its native Go entrypoint. Preserve old
+rollback-image compatibility until that recovery window expires.
 Use actual original/native inventory, fields and canonical lifecycle evidence;
 original fetch errors do not establish an empty inventory. Resolve rendering,
 pagination and source-identity differences without dropping fields or members.
@@ -88,6 +95,6 @@ pagination and source-identity differences without dropping fields or members.
 - Supported cold reversal and the recovery window are proved before deleting
   production Python/Playwright/Chromium and their runtime-only assets.
 
-Use the [portable delivery checkpoint](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
+Use the [portable delivery checkpoint](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
 and its linked evidence for the detailed prior proofs. Earlier chronological
 notes are preserved in [Git history](https://github.com/colophon-group/jobseek/blob/cbd1f37f3803a29dcd6693aa0a120992513edda6/docs/27-go-lightpanda-continuation-plan.md).

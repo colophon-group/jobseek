@@ -1,0 +1,202 @@
+{
+  "schema": "jobseek.go-lightpanda.native1078-checkpoint/v1",
+  "status": "independently_serving_full_cohort_with_current_queue_accounting",
+  "full_goal": "active; incomplete",
+  "source_revision": "8bfbf7d6ec425e311c10b8827d7e9b6682d3b6bb",
+  "version": "0.13.1078",
+  "lightpanda": "1.0.1",
+  "lightpanda_latest_verified_date": "2026-10-16",
+  "routing_epoch": 362,
+  "last_verified_outgoing_cold_epoch": 361,
+  "active_cohort": {
+    "monitors": 7840,
+    "details": 7833
+  },
+  "preserved_floor": {
+    "monitors": 7838,
+    "details": 7832
+  },
+  "new_ownership": {
+    "dom.rendered-urls/v1": 2,
+    "api_sniffer.browser-detail/v1": 1
+  },
+  "plan_sha256": "671615afb878ffb0c0651c6f46193c00448388af9798989e2e3025b4eea490a7",
+  "projection_sha1": "cfc87ee93a0ba51b7ff55593cdea0bae8676d104",
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:eb71a431ef37421fd7416ae9cd7b2d5baaf8919864f712c722785e9c26ef7eaa",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:96939a84170896e9e4eccbd405d13f2dbf9c11d457781e26181c3c008b499218",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a0a638fa41ac6ecb4f4117aeb072e6a64e164cd78ccec26789b4e19c7962153e"
+  },
+  "qualification": {
+    "pr": 10653,
+    "qualified_head": "65b8483810734399adc3585c678c43b934998f63",
+    "shared_families": [
+      "DOM",
+      "JSON-LD",
+      "embedded data",
+      "inline"
+    ],
+    "complete_html_limit_bytes": 4000000,
+    "b0_stdio_limits_unchanged": true,
+    "positive_monitor_urls_equal": 10,
+    "verified_empty_monitors_equal": 1,
+    "positive_browser_api_description_chars_equal": 10326,
+    "private_canonical_capture_replays_passed": true,
+    "linux_amd64_arm64_physical_suites": "SUCCESS",
+    "isolated_arm_whole_lane_arms_passed": 16,
+    "runtime_tree_binding": "qualified crawler/runtime/data/deploy bytes equal installed merge; four separately reviewed documentation files differ outside that scope"
+  },
+  "ci": {
+    "required": 38909235022,
+    "physical_pilot": 38909234916,
+    "runtime_contracts": 38909234990,
+    "b0_whole_lane": 38909234953,
+    "renderer_smoke": 38909235130,
+    "crawler_deploy_gate": 38909235285,
+    "crawler_original_deploy": 38961566754,
+    "crawler_deploy_attempt": 1,
+    "renderer_original_deploy": 38961659247,
+    "renderer_deploy_attempt": 1
+  },
+  "supported_rollout": {
+    "outgoing_ordinary_retirement": true,
+    "outgoing_b0_cold_reversal": true,
+    "retained_outgoing_selectors_cleared_by_original_reviewed_helper": true,
+    "incoming_b0_activation": true,
+    "incoming_ordinary_stage": true,
+    "incoming_ordinary_activation": true,
+    "natural_lease_expiry": true,
+    "known_preexisting_posting_cache_repairs_via_original_cold_projection": 2,
+    "manual_production_queue_receipt_lease_edits": false,
+    "both_complete_original_deployment_workflows": "SUCCESS first attempt"
+  },
+  "activation_completed_at_utc": "2026-10-16T21:27:27.554199+00:00",
+  "independent_serving_observed_at_utc": "2026-10-16T21:27:40.950845+00:00",
+  "all_ten_actors_running": true,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "claimant": 204,
+    "ordinary-go": 204
+  },
+  "preactivation": {
+    "census_observed_at": "2026-10-16T20:45:23.134147+00:00",
+    "scheduled_owned_postings": 1744874,
+    "queued_owned_postings": 1740377,
+    "owned_cache_mismatches": 2,
+    "preactivation_posting_projection_repairs_required": 2,
+    "canonical_and_cached_board_configs_match": true,
+    "all_actual_owned_routes_checked": true
+  },
+  "postactivation": {
+    "census_observed_at": "2026-10-16T21:28:22.178231+00:00",
+    "census_sha256": "1f381b51ba4258deff20496ede3653a6325448c689218ad1d0476a3ed3350ff3",
+    "scheduled_owned_postings": 1746877,
+    "queued_owned_postings": 1746877,
+    "captured_owned_scheduled_minus_queued": 0,
+    "owned_cache_mismatches": 0,
+    "all_actual_owned_routes_checked": true
+  },
+  "queue_comparison": {
+    "before_queued": 1740377,
+    "after_queued": 1746877,
+    "retained": 1739369,
+    "before_only": 1008,
+    "after_only": 7508,
+    "before_sha256": "a3375fd980540bc5bdff4c7da30a1d6b6ca17f554c7289dc4fe083bdfbfb8c17",
+    "after_sha256": "a8daddb9f324ce0873cd74added4b379eae9c29a423637061e0026d5fd72345f"
+  },
+  "outgoing_only_current_canonical": {
+    "total": 1008,
+    "missing": 0,
+    "inactive": 893,
+    "unscheduled": 115,
+    "board_disabled": 0,
+    "outside_owned_details": 0,
+    "eligible_queued": 0,
+    "eligible_unqueued": 0,
+    "current_epoch_native_completed": 1
+  },
+  "postcapture_unqueued_current_canonical": {
+    "total": 0,
+    "missing": 0,
+    "inactive": 0,
+    "unscheduled": 0,
+    "board_disabled": 0,
+    "outside_owned_details": 0,
+    "eligible_queued": 0,
+    "eligible_unqueued": 0,
+    "current_epoch_native_completed": 0
+  },
+  "previous_held_case": {
+    "currently_active_scheduled_and_queued": true,
+    "current_epoch_native_completion_observed": false,
+    "historical_cause_or_specific_race_fix_attribution_proven": false
+  },
+  "runtime": {
+    "observed_at_utc": "2026-10-16T21:37:22.916518+00:00",
+    "running": true,
+    "oom_killed": false,
+    "restart_count": 0,
+    "fatal_configuration_classes": []
+  },
+  "bounded_runtime_metric_progress": {
+    "observed_seconds": 256.996095,
+    "configured_discovery_concurrency": 60,
+    "configured_monitor_concurrency": 15,
+    "successful_monitors_delta": 56,
+    "successful_details_delta": 280,
+    "claim_errors_delta": 0,
+    "restart_count": 0,
+    "scope": "two bounded matching worker metric snapshots; actual native task progress observed, no attribution of throughput limits, sustained freshness or matched whole-fleet cost"
+  },
+  "current_owned_freshness": {
+    "observed_at": "2026-10-16T21:36:43.10544+00:00",
+    "epoch": 362,
+    "owned_scheduled": 1746869,
+    "owned_due_now": 1699035,
+    "owned_overdue24h": 1632388,
+    "owned_overdue48h": 1573334,
+    "source_revision": "8bfbf7d6ec425e311c10b8827d7e9b6682d3b6bb",
+    "scope": "read-only current owned scheduled/due-age counts; no sustained freshness or backlog causality claim"
+  },
+  "remaining_frontier_snapshot": {
+    "monitors": 57,
+    "details": 64,
+    "excluded_b0_records": 3
+  },
+  "next_capacity_pr": {
+    "pr": 10660,
+    "head": "cf9554b7e58117a20154f18a0f89ba684b788d99",
+    "version": "0.13.1079",
+    "state": "open; undeployed; remaining CI pending",
+    "real_worker_loop_starvation_regression": "fails with unbounded original; passes with four preclaim browser reservations",
+    "race_count10_default20_and_configured60": "PASS",
+    "full_linux_native_worker_suite": "SUCCESS38967711768",
+    "production_backlog_causality_proven": false
+  },
+  "unfinished": [
+    "remaining route/config/transport coverage",
+    "browser proxy upstream destination enforcement",
+    "final audit and retirement of production Python consumers",
+    "production freshness",
+    "matched whole-lane attributable cost",
+    "final supported reversal and recovery window",
+    "production Python/Playwright/Chromium retirement"
+  ],
+  "scope": "Exact source/image/receipt/SQL/Redis/health readback and complete postactive actual route replay. Exact-ID/current-eligibility accounting across non-atomic captures; no historical/global zero-loss, causal race attribution, sustained freshness or matched production cost claim.",
+  "protected_evidence_sha256": {
+    "independent-serving1078-1.json": "7a69f7ea5120d56417acffdaa1aff77b8f0c5a66e1183dbc3dea363bafc7cabc",
+    "new-stage-binding1.json": "245d27163c7f2ef5e9c98414dfc234f6d4c34c77595ca375c2c3e483619478ab",
+    "admission/canonical-preactivation-readiness1.json": "cf74a4091b1be6434ddd9bf274574e433e171449c800861fe12f087147406e8c",
+    "admission/postactive-current-floor-routes1.json": "969cdd79b533bc4c2d4d96b1e5a1a15d109ebc440e5d2c50b0fea629cffbc3ef",
+    "exact-queue-comparison1.json": "9b8be8384a77bf4a52cd40eb0617d38c52de7b247523941022ee2d5d916dbe3f",
+    "current-eligibility1.json": "135642edef146f5406e184d17790bd8f2d22e4cc4039a903659fbf72776ac1a2",
+    "runtime-metrics-delta1.json": "cbaca59824506ba730223b57a81fdfceff7cb24c5ba30d02cb5378d791079bc3",
+    "current-owned-freshness2.json": "e7df6464941ddcb68d6f93fffdb44d0248e1e7a05feeaf9899eed1d273bb5aa8"
+  }
+}
