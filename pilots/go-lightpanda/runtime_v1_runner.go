@@ -19,6 +19,7 @@ type runtimeV1Runner struct {
 	documentActions  []actions.Action
 	inlineCards      *actions.InlineCards
 	inlineIdentities *[]string
+	largeDocument    bool
 }
 
 var _ lightpandaadapter.Runner = runtimeV1Runner{}
@@ -36,7 +37,7 @@ func (runner runtimeV1Runner) Run(
 		return internalRunnerFailure(bound)
 	}
 
-	task := Task{URL: input.Plan.TargetUrl, InlineCards: runner.inlineCards}
+	task := Task{URL: input.Plan.TargetUrl, InlineCards: runner.inlineCards, LargeDocument: runner.largeDocument}
 	if len(runner.documentActions) > 0 {
 		task.Actions = append([]actions.Action(nil), runner.documentActions...)
 	}

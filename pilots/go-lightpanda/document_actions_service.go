@@ -31,16 +31,24 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	// Reuse the same strict navigation adapter and cleanup sanitizer. Actions are
 	// attached only after navigation input validation, and never to B1 evaluation.
 	var identities []string
-	adapter, err := lightpandaadapter.NewDocumentSessionRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities}, request.Actions, request.InlineCards)
+	constructor := lightpandaadapter.NewDocumentSessionRenderOnly
+	if request.LargeDocument {
+		constructor = lightpandaadapter.NewLargeDocumentSessionRenderOnly
+	}
+	adapter, err := constructor(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities, largeDocument: request.LargeDocument}, request.Actions, request.InlineCards)
 	if err != nil {
 		return response, err
 	}
-	result := sanitizeRuntimeV1Result(adapter.Execute(ctx, input))
+	htmlLimit := lightpandaadapter.HTMLPayloadLimit
+	if request.LargeDocument {
+		htmlLimit = actions.LargeDocumentHTMLLimit
+	}
+	result := sanitizeRuntimeV1ResultWithHTMLLimit(adapter.Execute(ctx, input), htmlLimit)
 	if result.GetSuccess() != nil {
 		response.InlineIdentities = identities
 	}
 	response.Result, err = proto.MarshalOptions{Deterministic: true}.Marshal(result)
-	if err != nil || !response.Valid() {
+	if err != nil || !response.Valid() || len(response.Result) > request.ResultLimit() {
 		return actions.Response{}, actions.ErrActions
 	}
 	return response, nil
@@ -59,14 +67,14 @@ func (service *runtimeV1Service) handleDocumentActions(parent context.Context, c
 	_ = conn.SetReadDeadline(time.Now())
 	post := <-done
 	cancel()
-	if post.peerGone || post.trailing || err != nil || !response.Valid() {
+	if post.peerGone || post.trailing || err != nil || !response.Valid() || len(response.Result) > request.ResultLimit() {
 		return
 	}
 	body, err := json.Marshal(response)
 	if err != nil {
 		return
 	}
-	record, err := framing.EncodeRecord(body, actions.ResponseLimit)
+	record, err := framing.EncodeRecord(body, request.ResponseLimit())
 	if err != nil {
 		return
 	}

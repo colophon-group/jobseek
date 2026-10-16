@@ -15,9 +15,13 @@ import (
 const Protocol = "jobseek.lightpanda.document-actions/v1"
 const RequestLimit = 128 << 10
 
-// The JSON envelope base64-encodes the typed, chunked two-million-byte HTML.
-const ResponseLimit = 3 << 20
-const ResultLimit = 2 << 20
+// Large documents have an explicit, fixed budget; ordinary action sessions
+// retain their existing wire and result ceilings.
+const LegacyResponseLimit = 3 << 20
+const LegacyResultLimit = 2 << 20
+const ResponseLimit = 8 << 20
+const ResultLimit = 4 << 20
+const LargeDocumentHTMLLimit = 4_000_000
 const MaxActions = 64
 const MaxBudget = 600 * time.Second
 
@@ -208,12 +212,27 @@ type Request struct {
 	Input             []byte       `json:"input"`
 	Actions           []Action     `json:"actions"`
 	InlineCards       *InlineCards `json:"inline_cards,omitempty"`
+	LargeDocument     bool         `json:"large_document,omitempty"`
 }
 
 func (Request) String() string   { return "document action request" }
 func (Request) GoString() string { return "document action request" }
 func (r Request) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && (Valid(r.Actions) || len(r.Actions) == 0 && r.InlineCards != nil) && (r.InlineCards == nil || r.InlineCards.Valid())
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && (Valid(r.Actions) || len(r.Actions) == 0 && (r.InlineCards != nil || r.LargeDocument)) && (r.InlineCards == nil || r.InlineCards.Valid())
+}
+
+func (r Request) ResultLimit() int {
+	if r.LargeDocument {
+		return ResultLimit
+	}
+	return LegacyResultLimit
+}
+
+func (r Request) ResponseLimit() uint64 {
+	if r.LargeDocument {
+		return ResponseLimit
+	}
+	return LegacyResponseLimit
 }
 
 type Response struct {

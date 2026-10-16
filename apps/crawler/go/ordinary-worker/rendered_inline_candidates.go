@@ -48,7 +48,7 @@ func collectRenderedInlineCandidates(ctx context.Context, p queue.GreenhouseMoni
 				break
 			}
 			if o.Contains != "" {
-				source, e := executor.RenderedHTML(value, candidate.URL)
+				source, e := executor.RenderedDocumentHTML(value, candidate.URL)
 				if e == nil && !strings.Contains(source, o.Contains) {
 					break
 				}

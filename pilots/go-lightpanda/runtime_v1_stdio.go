@@ -287,6 +287,10 @@ func marshalRuntimeV1Record(result *runtimev1.BrowserResult) ([]byte, error) {
 }
 
 func sanitizeRuntimeV1Result(result *runtimev1.BrowserResult) *runtimev1.BrowserResult {
+	return sanitizeRuntimeV1ResultWithHTMLLimit(result, lightpandaadapter.HTMLPayloadLimit)
+}
+
+func sanitizeRuntimeV1ResultWithHTMLLimit(result *runtimev1.BrowserResult, htmlLimit uint64) *runtimev1.BrowserResult {
 	invalid := func() *runtimev1.BrowserResult {
 		return runtimeV1Failure(
 			runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
@@ -301,7 +305,7 @@ func sanitizeRuntimeV1Result(result *runtimev1.BrowserResult) *runtimev1.Browser
 
 	switch outcome := result.Outcome.(type) {
 	case *runtimev1.BrowserResult_Success:
-		if outcome == nil || !validRuntimeV1RenderSuccess(outcome.Success) {
+		if outcome == nil || !validRuntimeV1RenderSuccessWithHTMLLimit(outcome.Success, htmlLimit) {
 			return invalid()
 		}
 		return &runtimev1.BrowserResult{
@@ -333,6 +337,10 @@ func sanitizeRuntimeV1Result(result *runtimev1.BrowserResult) *runtimev1.Browser
 }
 
 func validRuntimeV1RenderSuccess(success *runtimev1.BrowserSuccess) bool {
+	return validRuntimeV1RenderSuccessWithHTMLLimit(success, lightpandaadapter.HTMLPayloadLimit)
+}
+
+func validRuntimeV1RenderSuccessWithHTMLLimit(success *runtimev1.BrowserSuccess, htmlLimit uint64) bool {
 	if success == nil || !resourcepolicy.Valid(success.ResourcePolicy) || len(success.ProtoReflect().GetUnknown()) != 0 ||
 		!validRuntimeV1URL(success.FinalUrl) || success.Status == nil ||
 		*success.Status < 100 || *success.Status > 599 || success.Html == nil ||
@@ -349,7 +357,7 @@ func validRuntimeV1RenderSuccess(success *runtimev1.BrowserSuccess) bool {
 			return false
 		}
 	}
-	return validRuntimeV1HTML(success.Html)
+	return validRuntimeV1Manifest(success.Html, htmlLimit)
 }
 
 func validRuntimeV1HTML(manifest *runtimev1.ChunkManifest) bool {

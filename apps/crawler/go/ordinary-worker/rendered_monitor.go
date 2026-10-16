@@ -187,24 +187,18 @@ func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, pr
 		held.Close()
 		return nil, err
 	}
-	var body []byte
-	if len(pipeline) > 0 {
-		payload, marshalErr := proto.Marshal(input)
-		if marshalErr != nil {
-			held.Close()
-			return nil, marshalErr
-		}
-		requestDigest := sha256.Sum256([]byte(requestID))
-		response, actionErr := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, Input: payload, Actions: pipeline})
-		body, err = response.Result, actionErr
-	} else {
-		body, err = held.Execute(ctx, input)
+	payload, marshalErr := proto.Marshal(input)
+	if marshalErr != nil {
+		held.Close()
+		return nil, marshalErr
 	}
+	requestDigest := sha256.Sum256([]byte(requestID))
+	response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, Input: payload, Actions: pipeline, LargeDocument: true})
 	held.Close()
 	if err != nil {
 		return nil, err
 	}
-	value, err := executor.DecodeResult(body)
+	value, err := executor.DecodeDocumentResult(response.Result)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +246,7 @@ func parseHeldNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorP
 		result.err = policy.ErrSignals
 		return result
 	}
-	source, err := executor.RenderedHTML(value, profile.Endpoint)
+	source, err := executor.RenderedDocumentHTML(value, profile.Endpoint)
 	if errors.Is(err, executor.ErrRenderedResult) || errors.Is(err, policy.ErrSignals) {
 		result.err = err
 		return result
@@ -318,7 +312,7 @@ func parseHeldRenderedMonitorWithInlineIdentities(ctx context.Context, profile q
 	if value == nil || value.GetSuccess() == nil || value.GetSuccess().ResourcePolicy == nil {
 		return result, policy.ErrSignals
 	}
-	source, err := executor.RenderedHTML(value, profile.Endpoint)
+	source, err := executor.RenderedDocumentHTML(value, profile.Endpoint)
 	if errors.Is(err, executor.ErrRenderedResult) || errors.Is(err, policy.ErrSignals) {
 		return result, err
 	}

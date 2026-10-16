@@ -222,6 +222,17 @@ wire, after child/port cleanup; script exceptions never enter public diagnostics
 The sole bound response requires matching request/configuration fingerprints
 and connection EOF. A disconnect or trailing request byte cancels execution.
 
+Ordinary rendered DOM, JSON-LD, embedded-data and inline workers explicitly set
+`large_document: true` on this request, including navigation with no actions.
+That mode permits up to 4,000,000 bytes of complete HTML, a 4-MiB typed result
+and an 8-MiB JSON response frame. The client and server both enforce the selected
+limits, matching fingerprints and final EOF. Manifest completeness, chunk and
+total hashes, navigation status and publisher policy remain mandatory; an
+oversized or incomplete document rejects the entire result. The flag admits no
+API, feed, response-body capture or evaluation-plan capability. Requests without
+the flag retain their 2-MiB result / 3-MiB response ceilings, and B0/B1 one-shot
+and stdio limits remain unchanged.
+
 The resident connection ceiling is 750 seconds: initial read/handshake budget,
 the longest 600-second API conversation and cleanup/write time. Navigation and
 action budgets remain independently bounded; the worker retains its existing

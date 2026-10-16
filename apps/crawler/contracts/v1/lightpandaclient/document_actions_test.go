@@ -2,11 +2,44 @@ package lightpandaclient
 
 import (
 	"context"
+	"fmt"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestLargeDocumentReplyBoundsBindingEOFAndCancellation(t *testing.T) {
+	for _, large := range []bool{false, true} {
+		for _, mode := range []string{"document_large", "document_oversized", "document_binding", "document_trailing", "document_cancel"} {
+			t.Run(fmt.Sprintf("%s/large=%t", mode, large), func(t *testing.T) {
+				client, done := fixture(t, mode)
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				held, err := client.Reserve(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				request := actions.Request{Protocol: actions.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Input: []byte{1}, Actions: []actions.Action{{Kind: "wait", TimeoutMS: 1000}}, LargeDocument: large}
+				if mode == "document_cancel" {
+					time.AfterFunc(20*time.Millisecond, cancel)
+				}
+				response, err := held.DocumentActions(ctx, request)
+				if mode == "document_large" && large {
+					if err != nil || len(response.Result) != actions.LegacyResultLimit+1 {
+						t.Fatal("explicit larger response rejected", err)
+					}
+				} else if err == nil || len(response.Result) != 0 {
+					t.Fatal("unauthorized, oversized or unbound response published")
+				}
+				<-done
+				if _, err := held.DocumentActions(ctx, request); err == nil {
+					t.Fatal("document reservation reused")
+				}
+			})
+		}
+	}
+}
 
 func TestDocumentActionsPinnedReservationBindingEOFAndCancellation(t *testing.T) {
 	for _, mode := range []string{"document_ok", "document_binding", "document_trailing", "document_cancel"} {

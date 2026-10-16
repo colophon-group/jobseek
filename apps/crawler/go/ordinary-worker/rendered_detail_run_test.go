@@ -85,6 +85,14 @@ func heldRenderedResult(html, final string, status uint32) *runtimev1.BrowserRes
 }
 
 func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testing.T) {
+	testRenderedDetailPersistence(t, false)
+}
+
+func TestRealLargeRenderedDetailPersistsCompleteDocumentAcrossFamilies(t *testing.T) {
+	testRenderedDetailPersistence(t, true)
+}
+
+func testRenderedDetailPersistence(t *testing.T, largeDocument bool) {
 	for _, variant := range []string{"dom", "dom-alternate", "json-ld", "nextdata"} {
 		scraper := strings.TrimSuffix(variant, "-alternate")
 		t.Run(variant, func(t *testing.T) {
@@ -97,6 +105,9 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 			if scraper == "nextdata" {
 				parser = `{"render":true,"wait":"domcontentloaded","path":"job","fields":{"title":"title","description":"description","locations":"locations","employment_type":"employment","responsibilities":"responsibilities"}}`
 				html = nativeEmbeddedHTML
+			}
+			if largeDocument {
+				html = strings.Repeat(" ", 2_800_000) + html
 			}
 			if variant == "dom-alternate" {
 				var cfg map[string]any

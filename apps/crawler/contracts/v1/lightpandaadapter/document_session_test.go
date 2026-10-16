@@ -1,11 +1,52 @@
 package lightpandaadapter
 
 import (
+	"bytes"
 	"context"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"testing"
 	"time"
 )
+
+func TestLargeDocumentSessionKeepsDefaultAndExplicitHTMLBounds(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		large   bool
+		size    int
+		success bool
+	}{
+		{"legacy", false, 2_000_001, false},
+		{"large", true, 2_800_000, true},
+		{"boundary", true, actions.LargeDocumentHTMLLimit, true},
+		{"oversized", true, actions.LargeDocumentHTMLLimit + 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &fakeRunner{run: func(_ context.Context, bound BoundInput) RunnerOutcome {
+				raw := successfulRaw()
+				raw.Evaluations = nil
+				raw.HTML = bytes.Repeat([]byte("x"), tc.size)
+				return NewRunnerSuccess(bound, raw)
+			}}
+			var adapter *Adapter
+			var err error
+			if tc.large {
+				adapter, err = NewLargeDocumentSessionRenderOnly(runner, nil, nil)
+			} else {
+				adapter, err = NewDocumentSessionRenderOnly(runner, []actions.Action{{Kind: "wait", TimeoutMS: 1}}, nil)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := adapter.Execute(context.Background(), retryInput())
+			if (result.GetSuccess() != nil) != tc.success || runner.calls != 1 {
+				t.Fatal("document budget or runner ownership changed")
+			}
+			if tc.success && result.GetSuccess().Html.TotalSizeBytes != uint64(tc.size) {
+				t.Fatal("large document was truncated")
+			}
+		})
+	}
+}
 
 func TestDocumentSessionBudgetSurvivesNavigationAndHonorsParent(t *testing.T) {
 	pipeline := []actions.Action{{Kind: "wait", Milliseconds: 10000, TimeoutMS: 10000}}

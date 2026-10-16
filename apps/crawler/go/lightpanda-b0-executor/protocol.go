@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"google.golang.org/protobuf/proto"
@@ -157,7 +158,15 @@ func DecodeRequest(payload []byte) (Request, error) {
 // DecodeResult rejects unknown fields recursively and noncanonical protobuf,
 // matching the existing Python executor's discard-and-reserialize proof.
 func DecodeResult(payload []byte) (*runtimev1.BrowserResult, error) {
-	if len(payload) == 0 || len(payload) > ResultLimit {
+	return decodeResult(payload, ResultLimit)
+}
+
+func DecodeDocumentResult(payload []byte) (*runtimev1.BrowserResult, error) {
+	return decodeResult(payload, actions.ResultLimit)
+}
+
+func decodeResult(payload []byte, limit int) (*runtimev1.BrowserResult, error) {
+	if len(payload) == 0 || len(payload) > limit {
 		return nil, ErrProtocol
 	}
 	result := &runtimev1.BrowserResult{}

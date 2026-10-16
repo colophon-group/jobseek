@@ -76,6 +76,7 @@ var (
 // expression, or a provider conversation. These execution modes are exclusive.
 type Task struct {
 	URL               string
+	LargeDocument     bool
 	Actions           []actions.Action
 	InlineCards       *actions.InlineCards
 	Evaluation        *TaskEvaluation
@@ -271,6 +272,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.LargeDocument && (task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
+		return actions.ErrActions
+	}
 	if task.InlineCards != nil && (!task.InlineCards.Valid() || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
 		return actions.ErrActions
 	}
@@ -381,6 +385,9 @@ func validateResult(task Task, result Result) error {
 	}
 	if task.Dayforce != nil || task.APIReplay != nil {
 		htmlLimit = 1_000_000 - 1
+	}
+	if task.LargeDocument {
+		htmlLimit = actions.LargeDocumentHTMLLimit
 	}
 	if len(result.HTML) > htmlLimit {
 		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, htmlLimit)
