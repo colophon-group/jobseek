@@ -24,6 +24,7 @@ var greenhouseToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 // database authority. A supported cutover must bind it to a durable active plan
 // and verify enabled/canonical board state before it can affect a queue pop.
 type GreenhouseMonitorProfile struct {
+	BrowserProxy                                bool
 	RSSPagination                               *RSSPagination
 	RSSDetailEnrichment                         bool
 	RSSResolveJobInviteIdentity                 bool

@@ -126,7 +126,7 @@ func TestRenderedDetailActionPipelinesBindAllParserFamilies(t *testing.T) {
 }
 
 func TestRenderedDetailRetainsUnsupportedNavigationAndPipeline(t *testing.T) {
-	for name, value := range map[string]any{"proxy": true, "skip_ssl": true, "same_origin_redirects": true, "actions": []any{map[string]any{"type": "click"}}, "enrich": []any{"unexpected"}, "request_headers": map[string]any{"X-User": "private"}, "timeout": 0, "wait": "unexpected", "wait_fallback": false, "routing_revision": "bad/path", "browser_backend": "chromium", "user_agent": "custom", "fetch_url_transform": map[string]any{}, "unknown": true} {
+	for name, value := range map[string]any{"proxy": "true", "skip_ssl": true, "same_origin_redirects": true, "actions": []any{map[string]any{"type": "click"}}, "enrich": []any{"unexpected"}, "request_headers": map[string]any{"X-User": "private"}, "timeout": 0, "wait": "unexpected", "wait_fallback": false, "routing_revision": "bad/path", "browser_backend": "chromium", "user_agent": "custom", "fetch_url_transform": map[string]any{}, "unknown": true} {
 		t.Run(name, func(t *testing.T) {
 			c := renderedDetailConfig("dom")
 			var metadata map[string]any

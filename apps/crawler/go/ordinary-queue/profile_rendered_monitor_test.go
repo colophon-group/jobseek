@@ -32,7 +32,7 @@ func TestRenderedDOMMonitorBindsBrowserInventory(t *testing.T) {
 	if e != nil || q.EffectiveConfigSHA256 != p.EffectiveConfigSHA256 {
 		t.Fatal("canonical order changed", e)
 	}
-	for key, value := range map[string]any{"actions": []any{map[string]any{"action": "click"}}, "pagination": map[string]any{"selector": "a.next"}, "browser_backend": "chromium", "proxy": true, "request_headers": map[string]any{"Accept": "text/html"}, "wait": "bad", "timeout": true, "render": false, "encoding": "utf-8", "transport_attempts": 3, "unknown": true} {
+	for key, value := range map[string]any{"actions": []any{map[string]any{"action": "click"}}, "pagination": map[string]any{"selector": "a.next"}, "browser_backend": "chromium", "proxy": "true", "request_headers": map[string]any{"Accept": "text/html"}, "wait": "bad", "timeout": true, "render": false, "encoding": "utf-8", "transport_attempts": 3, "unknown": true} {
 		var md map[string]any
 		json.Unmarshal([]byte(c["metadata"]), &md)
 		md[key] = value

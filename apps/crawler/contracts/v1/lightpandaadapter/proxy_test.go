@@ -81,3 +81,39 @@ func TestConfiguredProxyRejectsSessionExpansionBeforeRunner(t *testing.T) {
 		}
 	}
 }
+
+func TestConfiguredProxyFailureHTTPStatusIsCopiedAndScoped(t *testing.T) {
+	for _, test := range []struct {
+		configured bool
+		code       runtimev1.ErrorCode
+		status     uint32
+		accepted   bool
+	}{
+		{true, runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, 407, true},
+		{false, runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, 407, false},
+		{true, runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, 403, false},
+		{true, runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, 407, false},
+	} {
+		status := test.status
+		runner := &fakeRunner{run: func(_ context.Context, bound BoundInput) RunnerOutcome {
+			outcome := NewRunnerFailure(bound, ProviderFailure{Code: test.code, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY, HTTPStatus: &status})
+			status = 500
+			return outcome
+		}}
+		input := navigationInput()
+		adapter, _ := NewNavigationRenderOnly(runner)
+		if test.configured {
+			input = configuredProxyInput(t)
+			adapter, _ = NewConfiguredProxyNavigationRenderOnly(runner)
+		}
+		result := adapter.Execute(context.Background(), input)
+		failure := result.GetError().GetError()
+		if test.accepted {
+			if failure.GetCode() != runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS || failure.GetHttpStatus() != 407 || failure.Message != "lightpanda execution failed" {
+				t.Fatal("typed proxy auth status was mutated or disclosed text")
+			}
+		} else if failure.GetCode() != runtimev1.ErrorCode_ERROR_CODE_INTERNAL || failure.HttpStatus != nil {
+			t.Fatal("unscoped provider status crossed failure boundary")
+		}
+	}
+}

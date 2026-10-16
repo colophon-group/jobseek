@@ -5,9 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
+	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
 )
 
@@ -19,7 +21,7 @@ func browserProxyFixture(t *testing.T, size int) (*VerifiedHTTP, *proxyPool) {
 	}
 	endpoints := make([]*url.URL, size)
 	for i := range endpoints {
-		endpoint, err := url.Parse("http://fixture:secret@proxy.example:" + []string{"8001", "8002"}[i])
+		endpoint, err := url.Parse("http://fixture:secret@proxy.example:" + strconv.Itoa(8001+i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,5 +103,96 @@ func TestBrowserProxyRequiresSealedStartupChoice(t *testing.T) {
 	}
 	if lease, err := bindBrowserProxy(input, map[string]any{"proxy": false}, nil); err != nil || lease != nil || input.Plan.Session != nil {
 		t.Fatal("direct operation acquired proxy state")
+	}
+}
+
+func TestBrowserProxyRetriesOnlyProvenOriginBlocksWithoutDirectFallback(t *testing.T) {
+	for _, mode := range []string{"recover", "exhausted", "bounded", "transport", "invalid_manifest", "publisher_reserved"} {
+		t.Run(mode, func(t *testing.T) {
+			verified, _ := browserProxyFixture(t, 6)
+			input, _ := lp.NavigationInput(lp.Navigation{URL: "https://example.com/job", RoutingRevision: "fixture", OriginRequestID: "fixture-job", Wait: "load", TimeoutMS: 1000, TransportRetries: 1})
+			calls := 0
+			options := map[string]any{"proxy": true, "transport_attempts": float64(5)}
+			result, err := retryBrowserProxyOriginBlocks(context.Background(), input, options, func(attempt *runtimev1.BrowserExecutionInput) (*runtimev1.BrowserResult, error) {
+				calls++
+				if attempt.Plan.Session != nil {
+					t.Fatal("proxy selection leaked between attempts")
+				}
+				if attempt.Plan.OriginOperations[0].OriginRequestId != attempt.Plan.Navigation.OriginRequestId || *attempt.Plan.OriginOperations[1].ParentOriginRequestId != attempt.Plan.Navigation.OriginRequestId {
+					t.Fatal("retry lost origin attribution")
+				}
+				if mode == "exhausted" && calls > 1 {
+					return nil, errProxyPoolExhausted
+				}
+				if mode == "transport" {
+					return nil, errors.New("fixed transport failure")
+				}
+				lease, err := bindBrowserProxy(attempt, options, verified)
+				if err != nil {
+					return nil, err
+				}
+				status := uint32(403)
+				if mode == "recover" && calls == 3 {
+					status = 200
+				}
+				response := heldRenderedResult("<html>complete</html>", attempt.Plan.TargetUrl, status)
+				if mode == "invalid_manifest" {
+					response.GetSuccess().Html.Complete = false
+				}
+				if mode == "publisher_reserved" {
+					one := "1"
+					response.GetSuccess().ResourcePolicy.TdmReservationHeader = &one
+				}
+				lease.observe(context.Background(), response, nil)
+				return response, nil
+			})
+			if input.Plan.Session != nil || input.Plan.Navigation.OriginRequestId != "fixture-job" {
+				t.Fatal("proxy retries mutated caller input")
+			}
+			switch mode {
+			case "recover":
+				if err != nil || calls != 3 || result.GetSuccess().GetStatus() != 200 {
+					t.Fatal("origin recovery differs")
+				}
+			case "exhausted":
+				if err != nil || calls != 2 || result.GetSuccess().GetStatus() != 403 {
+					t.Fatal("pool exhaustion discarded last proven origin block")
+				}
+			case "bounded":
+				if err != nil || calls != 5 || result.GetSuccess().GetStatus() != 403 {
+					t.Fatal("retry exceeded original five-operation bound")
+				}
+			case "transport":
+				if err == nil || calls != 1 {
+					t.Fatal("transport failure acquired an origin-block retry")
+				}
+			default:
+				if err != nil || calls != 1 {
+					t.Fatal("unproved or reserved output acquired another origin operation")
+				}
+			}
+		})
+	}
+}
+
+func TestBrowserProxyTypedFailureKeepsHopAndOriginHealthSeparate(t *testing.T) {
+	for _, code := range []runtimev1.ErrorCode{runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, runtimev1.ErrorCode_ERROR_CODE_NAVIGATION, runtimev1.ErrorCode_ERROR_CODE_TIMEOUT, runtimev1.ErrorCode_ERROR_CODE_INTERNAL} {
+		verified, pool := browserProxyFixture(t, 1)
+		input, _ := lp.NavigationInput(lp.Navigation{URL: "https://example.com/job", RoutingRevision: "fixture", OriginRequestID: "fixture-job", Wait: "load", TimeoutMS: 1000})
+		lease, _ := bindBrowserProxy(input, map[string]any{"proxy": true}, verified)
+		failure := &runtimev1.RuntimeError{Code: code}
+		if code == runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS {
+			status := uint32(407)
+			failure.HttpStatus = &status
+		}
+		result := &runtimev1.BrowserResult{Outcome: &runtimev1.BrowserResult_Error{Error: &runtimev1.BrowserFailure{Error: failure}}}
+		lease.observe(context.Background(), result, nil)
+		if (pool.global[0].failures == 1) != (code == runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS || code == runtimev1.ErrorCode_ERROR_CODE_TRANSPORT) {
+			t.Fatal("proxy hop failure changed origin scope")
+		}
+		origin := pool.origin(0, "example.com", false)
+		if (origin != nil && origin.failures == 1) != (code == runtimev1.ErrorCode_ERROR_CODE_NAVIGATION) {
+			t.Fatal("timeout or unclassified failure changed origin health")
+		}
 	}
 }

@@ -77,7 +77,11 @@ func (lease *browserProxyLease) observe(ctx context.Context, result *runtimev1.B
 			return
 		}
 		if failure := result.GetError().GetError(); failure != nil {
-			if failure.Code == runtimev1.ErrorCode_ERROR_CODE_TRANSPORT || failure.Code == runtimev1.ErrorCode_ERROR_CODE_TIMEOUT {
+			if failure.Code == runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS && failure.GetHttpStatus() == 407 {
+				pool.failure(selection, selection.origin, "proxy_auth")
+			} else if failure.Code == runtimev1.ErrorCode_ERROR_CODE_TRANSPORT {
+				pool.failure(selection, selection.origin, "proxy_transport")
+			} else if failure.Code == runtimev1.ErrorCode_ERROR_CODE_NAVIGATION {
 				pool.failure(selection, selection.origin, "origin_transport")
 			} else {
 				pool.abandon(selection)

@@ -151,6 +151,9 @@ func collectRenderedDOMPages(ctx context.Context, profile queue.GreenhouseMonito
 // Navigation is shared by DOM and embedded document monitors. Parsing remains
 // provider-specific and never grants queue/database authority.
 func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, profile queue.GreenhouseMonitorProfile, options map[string]any, attempt int) (*runtimev1.BrowserResult, error) {
+	if profile.BrowserProxy != (options["proxy"] == true) {
+		return nil, queue.ErrConfiguration
+	}
 	wait, fallback, timeout := "networkidle", "domcontentloaded", uint64(30000)
 	if v, ok := options["wait"].(string); ok {
 		wait = v

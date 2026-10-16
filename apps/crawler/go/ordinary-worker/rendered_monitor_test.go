@@ -56,16 +56,21 @@ func TestRenderedListingExcludesTemplateContentsAndForeignBase(t *testing.T) {
 }
 
 func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
-	for _, mode := range []string{"success", "actions", "browser-details", "503", "empty", "gone404", "gone410", "header", "meta", "challenge", "malformed", "cancelled"} {
+	for _, mode := range []string{"success", "actions", "browser-details", "503", "empty", "gone404", "gone410", "header", "meta", "challenge", "malformed", "cancelled", "proxy-success", "proxy-malformed", "proxy-header", "proxy-503", "proxy-gone404", "proxy-cancelled"} {
 		t.Run(mode, func(t *testing.T) {
+			useProxy := strings.HasPrefix(mode, "proxy-")
+			outcomeMode := strings.TrimPrefix(mode, "proxy-")
 			metadata := `{"render":true,"url_filter":{"include":"/jobs/","exclude":"intern"},"scraper_type":"json-ld"}`
-			if mode == "actions" {
+			if outcomeMode == "actions" {
 				metadata = strings.Replace(metadata, `{"render":true,`, `{"render":true,"actions":[{"action":"wait","ms":0},{"action":"evaluate","script":"() => window.ready = true","required":true}],`, 1)
 			}
 			detailWorker := queue.Simple
-			if mode == "browser-details" {
+			if outcomeMode == "browser-details" {
 				detailWorker = queue.Browser
 				metadata = `{"render":true,"url_filter":{"include":"/jobs/","exclude":"intern"},"scraper_type":"json-ld","scraper_config":{"render":true}}`
+			}
+			if useProxy {
+				metadata = strings.Replace(metadata, `"render":true`, `"render":true,"proxy":true,"transport_attempts":3`, 1)
 			}
 			f := privateRichPipelineFixture(t, "dom", metadata, queue.Browser, detailWorker)
 			ctx := context.Background()
@@ -87,9 +92,12 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 			calls := 0
 			renderer := heldMonitor(func(ctx context.Context, p queue.GreenhouseMonitorProfile, c map[string]string) (RichDiscovery, error) {
 				calls++
+				if p.BrowserProxy != useProxy {
+					t.Fatal("monitor lost compiled proxy policy")
+				}
 				status := uint32(200)
 				html := `<base href="/jobs/"><a href="工程師">Engineer</a><a href="intern">Intern</a><a href="/careers#jobs">Self</a>`
-				switch mode {
+				switch outcomeMode {
 				case "503":
 					status = 503
 				case "empty":
@@ -104,21 +112,25 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 					html = `<title>Just a moment...</title><div id="cf-chl-widget">Checking your browser</div>`
 				}
 				value := heldRenderedResult(html, "https://example.com/careers", status)
-				if mode == "header" {
+				if outcomeMode == "header" {
 					v := "1"
 					value.GetSuccess().ResourcePolicy = &runtimev1.ResourcePolicySignals{TdmReservationHeader: &v}
 					status = 404
 					value.GetSuccess().Status = &status
 				}
-				if mode == "malformed" {
+				if outcomeMode == "malformed" {
 					value.GetSuccess().Html.Complete = false
 				}
-				if mode == "cancelled" {
+				if outcomeMode == "cancelled" {
 					return RichDiscovery{}, context.Canceled
 				}
 				return parseHeldRenderedMonitor(ctx, p, c, value)
 			})
 			client := richPipelineHTTP(t, func(http.ResponseWriter, *http.Request) { t.Error("browser issued direct HTTP") })
+			client.proxyRequired = useProxy
+			if required, err := runtimeClaimUsesProxy(ctx, f.a, claim); err != nil || required != useProxy || f.a.RequiresProxyHTTP() != useProxy {
+				t.Fatal("canonical monitor selected wrong proxy transport", err)
+			}
 			r, e := RunGreenhouseClaim(ctx, f.a, claim, client, &pipelinePreparer{}, circuits, renderer)
 			if e != nil || !r.Settled || calls != 1 {
 				t.Fatal(r, e)
@@ -127,7 +139,7 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 			var missing, count, failures int
 			f.pg.QueryRow(ctx, "SELECT is_active,missing_count FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active, &missing)
 			f.pg.QueryRow(ctx, "SELECT tdm_reserved,consecutive_failures,(SELECT count(*) FROM job_posting WHERE board_id=$1::uuid) FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &failures, &count)
-			if mode == "success" || mode == "actions" || mode == "browser-details" {
+			if outcomeMode == "success" || outcomeMode == "actions" || outcomeMode == "browser-details" {
 				if r.Batches.Inserted != 1 || active || missing != 4 || count != 2 || failures != 0 {
 					t.Fatal("inventory lost", r)
 				}
@@ -139,7 +151,7 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 				if f.r.ZCard(ctx, "ft_scrapes_"+string(detailWorker)+":example.com").Val() != 1 {
 					t.Fatal("urgent detail routed to wrong namespace")
 				}
-			} else if mode == "empty" {
+			} else if outcomeMode == "empty" {
 				if count != 1 || r.Cycle.Status != "succeeded" {
 					t.Fatal(r)
 				}
@@ -147,11 +159,11 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 				if !active || missing != 3 || count != 1 {
 					t.Fatal("failed inventory changed canonical postings", mode)
 				}
-				if mode == "meta" || mode == "header" {
+				if outcomeMode == "meta" || outcomeMode == "header" {
 					if !reserved || failures != 0 || r.Cycle.Status != "publisher_reserved" {
 						t.Fatal(r)
 					}
-				} else if strings.HasPrefix(mode, "gone") {
+				} else if strings.HasPrefix(outcomeMode, "gone") {
 					if r.Cycle.Status != "gone_pending" {
 						t.Fatal(r)
 					}
@@ -159,10 +171,10 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 					t.Fatal("failed fetch not recorded", fmt.Sprint(r))
 				}
 			}
-			if mode == "503" && f.r.Exists(ctx, "host_fail:example.com").Val() != 1 {
+			if outcomeMode == "503" && f.r.Exists(ctx, "host_fail:example.com").Val() != 1 {
 				t.Fatal("origin503 not attributed")
 			}
-			if (mode == "malformed" || mode == "cancelled" || mode == "challenge") && f.r.Exists(ctx, "host_fail:example.com").Val() != 0 {
+			if (outcomeMode == "malformed" || outcomeMode == "cancelled" || outcomeMode == "challenge") && f.r.Exists(ctx, "host_fail:example.com").Val() != 0 {
 				t.Fatal("renderer/parser failure blamed origin")
 			}
 			if f.r.ZCard(ctx, "inflight:browser").Val() != 0 || f.r.ZCard(ctx, "monitors_simple:dom").Val() != 0 {
