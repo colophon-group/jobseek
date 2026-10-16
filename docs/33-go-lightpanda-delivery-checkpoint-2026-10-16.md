@@ -1,115 +1,100 @@
 # Go and Lightpanda delivery checkpoint — 2026-10-16
 
-## Installed and serving
+The full migration goal is **active and incomplete**. Current production is
+**0.13.1075**, source `cbd1f37f3803a29dcd6693aa0a120992513edda6`, merged in
+[PR #10637](https://github.com/colophon-group/jobseek/pull/10637). Its merge tree
+matches qualified head `af5c4620a9b613828b007a2c5faa098f3c25ace3` exactly.
 
-Release **0.13.1074**, source `52f6c637a4bb11da0009fde1cd185560cffa75e8`,
-merged through [PR #10610](https://github.com/colophon-group/jobseek/pull/10610).
-Required CI, the actual Crawler Deploy Gate, runtime contracts, physical browser
-qualification and all sixteen ARM workload arms passed on the frozen candidate.
-The original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38846041386)
-and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38846179020)
-succeeded on their first attempts. Independent cold checks match installed source,
-immutable images, data, native executable and six healthy base writers. A bounded exporter snapshot before native activation records 3,212 successful
-documents, zero errors and zero unknown writers.
+## Serving authority and delivery
 
-B0 and ordinary Go are independently active at epoch **354**. The serving cohort is:
-**7,833 monitors / 7,825 details**, preserving the entire previous 7,833/7,820 floor
-and adding five unchanged Phenom/Workday detail configurations through Go HTTP.
-Eight positive original/native references match every raw field; archived and
-current same-body parser checks, real PostgreSQL/Redis canonical writers and
-all 878 captured source-route bindings pass. Original Browser queue ownership
-and configuration fingerprints remain authoritative. Changed configurations,
-origins or paths retain their rendered route. See the
-[candidate evidence](evidence/go-native1074-http-batch-candidate-2026-10-16.json).
+B0 and ordinary Go are independently active at epoch **356**, with the complete
+**7,833-monitor / 7,832-detail** cohort. Every previous 7,833 monitor and 7,825
+detail member is preserved. Exact source/images/receipts, canonical SQL, Redis
+projection, all ten actors and eight health endpoints agree.
 
-The original cold activation completed successfully. Independent source/image/data,
-active receipt, SQL and Redis checks establish exactly one active 7,833/7,825 plan;
-all ten actors run the expected images and all eight health endpoints pass.
-Full postactive replay derives the identical cohort, accepts every actual source
-route and finds **zero owned cache mismatches**, after a preflight observation of
-137 owned mismatches. Legacy leases expired naturally during the cold window.
+The original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38857520545)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38857548555)
+succeeded. Lightpanda **1.0.1** remains latest stable as rechecked on October 16;
+the installed renderer executable matches the official ARM release checksum.
 
-Installed [Lightpanda 1.0.1](https://github.com/lightpanda-io/browser/releases/tag/1.0.1)
-is still the official latest stable release, rechecked October 16. The installed
-renderer matches its published immutable image; the pinned executable and real
-ARM/AMD64 browser qualification use the official release checksums.
+Required CI, actual Crawler Deploy Gate, runtime contracts and exact-head Linux
+amd64/arm64 physical qualification passed. The original
+[ARM whole-lane run](https://github.com/colophon-group/jobseek/actions/runs/38853696713)
+and independent controller replay accept all 16 arms and all eight complete-output
+pairs, with exact cleanup and zero unexpected network requests. This isolated
+workload does not establish matched production fleet CPU/RAM/cost or freshness.
 
-## Queue accounting and operational limits
+The unchanged supported workflows retired the previous ordinary owner, rolled
+back B0, cleared selectors, and proved cold epoch 355 before merge. Incoming
+source/image/data/schema/native-executable/renderer/export checks passed before
+original B0 activation and full ordinary admission. Natural SQL leases expired
+without manual edits; the original cold activation owned projection/queue repair.
 
-Protected exact-ID captures compare **1,715,712** outgoing queued IDs against
-**1,716,986** owned scheduled postings, with **1,715,486** incoming queued IDs
-against **1,715,488** owned scheduled postings. There are **1,710,263** retained
-IDs, **5,223** incoming-only IDs and **5,449** outgoing-only IDs. Independent
-canonical accounting classifies every outgoing-only ID: **5,398 inactive,
-51 unscheduled, zero still eligible**. The two incoming capture gaps map uniquely
-through their captured source routes to one inactive and one unscheduled posting;
-neither is currently eligible. This resolves current eligibility for every
-observed absence. The raw incoming capture gap is **two**, and the outgoing gap
-was **1,274**; these non-atomic live observations do not prove atomic historical,
-global or causal conservation.
+## Batch and operational verification
 
-Ordinary Go has restarted **three times** by 04:49 UTC. The new diagnostic identifies
-`detail_render_actions` in `dom.rendered-detail/v1`. A currently owned unchanged
-configuration reproduces the exact failure before any renderer/origin request:
-admission decodes action numbers as `float64`, while the opaque profile copy
-retains `json.Number`; action parsing rejects that numeric representation.
-The 0.13.1075 candidate accepts retained JSON numbers with the same validation
-limits. Action-decoding and actual opaque-profile regression tests fail before
-the fix and pass afterward; all twelve current owned configurations with numeric
-actions retain identical executable semantics after the fix. **The fix is not deployed and production stability
-is not proved.** Earlier 1073 fatal logs lack this inner-stage evidence.
+The release combines the retained `json.Number` action fix with seven details
+across DOM direct/rendered, API-browser and Onlyfy profiles. All 12 actual current
+owned action configurations fail before the fix and execute equivalently after it.
+The same source remains at zero observed restarts, OOMs and fatal configuration
+failures at 07:53 UTC, over one hour after serving verification. This is a bounded
+observation, not an indefinite stability claim.
 
-A 40-second natural sample records six successful and one failed Go monitor
-cycles, 21 successful detail cycles, three skipped details and no failed details.
-Ten crawler cgroups average 3.6018 CPU cores / 3.722 GB memory with zero OOM-kill
-increment. Redis and the renderer are excluded, and the workload is unpaired:
-this is **not comparable whole-lane cost evidence**. The initial exporter records
-272 successful documents, zero errors and zero unknown writers. Initial SQL
-observation finds 24 completed monitor receipts and 83 detail receipts, but still
-**1,607,002** global scheduled postings overdue by more than 24 hours. Receipt
-completion alone does not prove successful content or adequate freshness.
+Six details have independently matched complete empty original/native inventories
+and no scheduled detail work. ADP has a matching 20-URL monitor inventory and two
+field-exact references with real private PostgreSQL/Redis original transient
+lifecycle parity. Their original missing titles cause transient failure; do not
+count these as successful content writes. The full original configurations,
+browser queue and canonical fields remain bound.
 
-## Combined 1075 candidate
+Postactive compiled replay validates every captured route and the identical full
+cohort, with **zero owned cache mismatches**. Its non-atomic live capture has
+**1,717,574 scheduled and queued IDs**, with zero captured gap. Of the outgoing
+baseline's IDs, 1,713,075 remain in the incoming capture; all 2,354 outgoing-only
+IDs are currently inactive (2,290) or unscheduled (64). None is missing from
+canonical storage or remains eligible. There are 4,499 incoming-only IDs. Retain
+the live/current scope; do not claim historical, atomic or global conservation.
 
-The combined **0.13.1075** candidate adds seven detail configurations across four
-profile families while fixing numeric action decoding. Six configurations have
-matching complete empty original/native monitor inventories and independently
-verified zero scheduled detail work. The ADP case has an identical 20-URL monitor
-inventory and two field-exact HTTP references. Both original ADP samples lack a
-title, so their primary lifecycle is the original transient-failure path; actual
-PostgreSQL/Redis replay matches the frozen original SQL, including fields, lease
-and Browser deadline. No successful ADP content write is claimed. Its 20 current
-active unscheduled postings stay preserved.
+The bounded 06:49 UTC postactive snapshot records 59 monitor and 205 detail completion
+receipts, plus 424 successful exports, zero export errors and zero unknown
+writers. Receipts alone do not prove successful content. The mixed native/legacy
+fleet still has about **1.61 million scheduled postings over 24 hours overdue**.
 
-The proposed complete floor is **7,833 monitors / 7,832 details**. Fourteen other
-screened configurations remain held; original fetch errors are not empty proof.
-Exact-head CI, physical/ARM qualification, supported deployment and fresh serving
-admission remain required. See [candidate evidence](evidence/go-native1075-actions-multitype-candidate-2026-10-16.json).
+The [public delivery evidence](evidence/go-native1075-delivery-2026-10-16.json)
+contains exact image/workflow identities and aggregate proof hashes. Raw configs,
+posting IDs, bodies, receipts and host evidence remain protected operator artifacts.
 
-## Continue to full migration
+## Continue delivery
 
-1. Deliver the proven retained-action-number fix through exact-head CI, the
-   actual Deploy Gate, physical/ARM qualification and supported full deployment.
-   Preserve the entire 7,833/7,825 floor and verify the actual opaque-profile path.
-2. Observe sustained runtime/content/export progress after that fix. Keep source,
-   images, receipts, SQL, Redis, routes/cache and exact-ID accounting current.
-3. Continue substantial batches across multiple types. The fresh frontier is
-   **64 monitor / 72 detail configurations**: 19/37 already have compiled profiles,
-   and 45/35 need supported profiles or other contract work. API sniffer, Onlyfy,
-   DOM and JSON-LD remain in the grouped qualification inventory. Require positive
-   original/native content or independently justified empty/lifecycle evidence,
-   actual source routes and canonical writer verification.
-4. Complete native-to-native deployment, CSV and rollback handoff through the
-   original workflows. Prove active owner handoff and the recovery-window drill;
-   retain receipt guards, mutation locks, full writer quiescence and immutable images.
-5. Establish sustained freshness, exact queue/canonical accounting and matched
-   whole-lane CPU/RAM/density/attributable cost, including Redis and the renderer.
-   Exercise supported cold reversal and the recovery window.
-6. Retire production Python execution, Playwright, Chromium and runtime-only
-   legacy assets after all replacements and recovery evidence are complete.
-   Preserve useful isolated offline Python and every enabled board.
+1. Keep this cohort serving while preparing substantial multi-profile batches.
+   The captured frontier is 64 monitors / 65 details, including 19/30 compiled
+   candidates and 45/35 configurations outside current compiled support.
+2. Reuse the installed successful source for unchanged compiled profiles when
+   possible. Fresh original/native fields and canonical lifecycle proof are still
+   required. First ownership refuses a retired plan at the same epoch: expand
+   only through supported B0 reversal/restaging/incarnation rotation and full-floor
+   admission; never edit epochs, leases, queues or receipts manually.
+3. The following monitor screen has five equal inventories: three complete empty
+   DOM inventories and two Brassring inventories totaling 664 jobs. Every checked
+   raw field matches. All 664 canonical preparations and positive descriptions
+   match the frozen original writer; real private PostgreSQL/Redis insert/upsert
+   replay also matches. Lookup/location fixtures are identical and controlled;
+   production geography and original full board finalization are not established.
+   These configurations have **not** been admitted.
+4. A following detail screen attempted 18 references across ten configurations;
+   five other configurations had no current routes. Eight originals succeeded,
+   with five positive descriptions; ten originals failed. Native execution has
+   three equal empty/partial outputs and no equal positive-description reference.
+   Preserve the missing/different content and failure limits; no new admission.
+5. Prioritize shared browser transport/configuration support across profile types.
+   An offline diagnostic exposes existing parsers for 18 more monitors and 29
+   details after hypothetically removing transport controls. Those altered
+   configurations are unqualified. Preserve original semantics, publisher policy,
+   bounded attempts, egress isolation and scoped credentials in any replacement.
+6. Finish native deployment/CSV/rollback handoff, maintenance, freshness, matched
+   whole-lane resource/cost evidence and the recovery window. Retire production
+   Python/Playwright/Chromium only after replacements and reversal are proved.
+   Keep useful offline Python and every enabled board.
 
-The full migration goal remains **active and incomplete**. This checkpoint
-supersedes the 1073 serving state. Portable identities and aggregate evidence are
-in [the delivery evidence](evidence/go-native1074-delivery-2026-10-16.json).
-Private IDs, raw logs, credentials and operational inputs stay outside the repository.
+Use the [concise continuation plan](27-go-lightpanda-continuation-plan.md).
+Earlier chronological notes remain available through immutable Git history linked
+there; avoid accumulating another chronological backlog in the current plan.
