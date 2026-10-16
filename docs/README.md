@@ -71,6 +71,7 @@ Status tags:
   profile inventory and remaining full-migration delivery order.
 
 - [32 - Go and Lightpanda Delivery Checkpoint (2026-10-15)](32-go-lightpanda-delivery-checkpoint-2026-10-15.md)
+- [33 - Go and Lightpanda Delivery Checkpoint (2026-10-16)](33-go-lightpanda-delivery-checkpoint-2026-10-16.md)
   `[runbook]` - current recovery, grouped cutover and full production Python retirement plan.
 
 ## Search, SEO, And Web Read Paths
