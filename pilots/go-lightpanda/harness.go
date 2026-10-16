@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	"io"
 	"net"
 	"net/http"
@@ -75,6 +76,7 @@ var (
 // Task navigates one fresh target, then runs a bounded action pipeline, one
 // expression, or a provider conversation. These execution modes are exclusive.
 type Task struct {
+	proxy             *browserproxy.Endpoint
 	URL               string
 	Actions           []actions.Action
 	InlineCards       *actions.InlineCards
@@ -136,6 +138,8 @@ type dependencies struct {
 }
 
 type Config struct {
+	proxyEndpoints map[string]browserproxy.Endpoint
+	proxy          *browserproxy.Endpoint
 	Binary         string
 	EgressPolicy   EgressPolicy
 	TaskTimeout    time.Duration
@@ -164,6 +168,7 @@ func normalizeConfig(config Config) (Config, error) {
 }
 
 func runTask(ctx context.Context, config Config, task Task) (Result, error) {
+	task.proxy = config.proxy
 	var err error
 	config, err = normalizeConfig(config)
 	if err != nil {
@@ -172,7 +177,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 	return runTaskWithDependencies(ctx, config, dependencies{
 		process: commandStarter{
 			binary: config.Binary, egressPolicy: config.EgressPolicy,
-			isolateChild: config.isolateChild,
+			isolateChild: config.isolateChild, proxy: config.proxy,
 		},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
 		executor:     chromedpExecutor{egressPolicy: config.EgressPolicy},
@@ -183,6 +188,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 }
 
 func runTaskWithDependencies(ctx context.Context, config Config, deps dependencies, task Task) (Result, error) {
+	task.proxy = config.proxy
 	var err error
 	config, err = normalizeConfig(config)
 	if err != nil {
@@ -569,6 +575,7 @@ func waitUntil(done <-chan struct{}, timeout time.Duration) bool {
 }
 
 type commandStarter struct {
+	proxy        *browserproxy.Endpoint
 	binary       string
 	egressPolicy EgressPolicy
 	isolateChild bool
@@ -591,6 +598,9 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error
 		return nil, err
 	}
 	args := fixedLightpandaServeArgs(port, s.egressPolicy.blockCIDRs)
+	if s.proxy != nil {
+		args = append(args, "--http-proxy", s.proxy.Address())
+	}
 	command := exec.Command(s.binary, args...)
 	if s.isolateChild {
 		if s.binary != lightpandaServiceBinary {
@@ -915,14 +925,28 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)
 	defer cancelAllocator()
 	var targetOptions []chromedp.ContextOption
-	if task.Dayforce != nil {
+	if task.Dayforce != nil || task.proxy != nil {
 		// CDP decode/exception diagnostics can contain private request headers
 		// or the compiled expression. Session failures use fixed owned errors.
 		discardDiagnostic := func(string, ...any) {}
 		targetOptions = []chromedp.ContextOption{chromedp.WithLogf(discardDiagnostic), chromedp.WithErrorf(discardDiagnostic)}
 	}
+	if task.proxy != nil {
+		targetOptions = append(targetOptions, configuredProxyContext(*task.proxy))
+	}
 	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
+
+	if task.proxy != nil {
+		if err := chromedp.Run(targetCtx); err != nil {
+			return Result{}, errBrowserProxy
+		}
+		stop, err := installBrowserProxyAuthentication(targetCtx, executor.egressPolicy, cancelTarget)
+		if err != nil {
+			return Result{}, errBrowserProxy
+		}
+		defer stop()
+	}
 
 	if task.Feed != nil {
 		// chromedp binds its first CDP connection to the context of its first

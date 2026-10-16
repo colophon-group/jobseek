@@ -31,7 +31,7 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	// Reuse the same strict navigation adapter and cleanup sanitizer. Actions are
 	// attached only after navigation input validation, and never to B1 evaluation.
 	var identities []string
-	adapter, err := lightpandaadapter.NewDocumentSessionRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities}, request.Actions, request.InlineCards)
+	adapter, err := lightpandaadapter.NewDocumentSessionRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities}, request.Actions, request.InlineCards, len(execution.dayforceConfig.proxyEndpoints) > 0)
 	if err != nil {
 		return response, err
 	}
