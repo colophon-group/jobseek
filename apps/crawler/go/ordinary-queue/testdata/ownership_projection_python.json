@@ -63,6 +63,20 @@
       "plan_sha256": "3f7c561dc2eca4e29a242d206c7a40989635ecdc0155178228b321cbff819f08",
       "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"3f7c561dc2eca4e29a242d206c7a40989635ecdc0155178228b321cbff819f08\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"greenhouse\"},\"details\":{\"00000000-0000-4000-8000-000000000098\":\"*\"}}",
       "projection_sha1": "5c7727e3604752497eee6f3d3ae22b5483cc39a2"
+    },
+    {
+      "name": "brassring_browser_monitor",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"jobs.example.net\",\"kind\":\"monitor\",\"worker\":\"browser\",\"profile\":\"brassring.session-items/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\"}",
+      "plan_sha256": "f79878e21fa893d979fdf18045a88e764754cf3b1b99636dc32a47ba4bf6cd50",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"f79878e21fa893d979fdf18045a88e764754cf3b1b99636dc32a47ba4bf6cd50\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"jobs.example.net\"}}",
+      "projection_sha1": "4a3bf6f5bd818782d0a213164077eb57f3e5ce19"
+    },
+    {
+      "name": "njoyn_browser_monitor",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"jobs.example.net\",\"kind\":\"monitor\",\"worker\":\"browser\",\"profile\":\"njoyn.session-urls/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\"}",
+      "plan_sha256": "8715a57525a914a69bb6fb262c94fcce15157228c682fcc964a7bedca71b95f8",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"8715a57525a914a69bb6fb262c94fcce15157228c682fcc964a7bedca71b95f8\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"jobs.example.net\"}}",
+      "projection_sha1": "4373b3aab01e2c61082275500d75dca4e9845191"
     }
   ]
 }

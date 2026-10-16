@@ -1,6 +1,17 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery checkpoint — recovery deployed, batch admission pending
+Current checkpoint (2026-10-15): source1072 is deployed with Lightpanda 1.0.1.
+Its complete 7,833-monitor / 7,814-detail admission passed, but activation failed
+legacy startup because the projection validator omitted BrassRing's browser
+profile. Supported pending recovery restored the legacy/B0 lane at epoch **350**;
+ordinary Go ownership is inactive. Release **0.13.1073** corrects that exact boundary
+for compiled BrassRing and Njoyn profiles. Qualify/deploy it, then repeat fresh
+source-bound full-floor admission and batch activation. See the
+[delivery checkpoint](32-go-lightpanda-delivery-checkpoint-2026-10-15.md).
+Do not count the proposed cohort as serving until readiness and independent
+receipt/SQL/Redis/health, cache and exact-ID checks pass.
+
+## Earlier checkpoint — source1071 recovery and source1072 candidate
 
 Source `fa0fc8e99f7e0fa6b23eb95d91f2eb4704f8241f` (0.13.1071), merged in
 [PR #10602](https://github.com/colophon-group/jobseek/pull/10602), successfully

@@ -1,6 +1,48 @@
 # Go and Lightpanda delivery checkpoint — 2026-10-15
 
-## Current delivery checkpoint — recovery deployed, batch admission pending
+## Current delivery checkpoint — startup refusal recovered; compatibility fix pending
+
+Release **0.13.1072**, source `1977377c6a7920afe0630a76c60202c988eac95c`,
+merged in [PR #10604](https://github.com/colophon-group/jobseek/pull/10604).
+Original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38817100072)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38817149723)
+succeeded. Independent installed identity, health and export checks passed.
+The official latest Lightpanda release was rechecked: **1.0.1**.
+
+Fresh full-source admission preserves all 7,830 monitors / 7,802 details and
+accepts the complete three-monitor / twelve-detail batch: **7,833 / 7,814**.
+The original ordinary activation completed its SQL/Redis transition at B0 epoch
+**350**, plan `49a85dbdf46d1979551039758ab85d5e43f161cb8b71f13e7655e62791158f4e`,
+but its full-stack readiness check refused the legacy workers. Their frozen
+projection validator omitted the two admitted `brassring.session-items/v1`
+browser monitors. The wrapper contained every writer and retained the pending
+receipt. Supported `recover-pending` subsequently completed successfully and
+restored the legacy/B0 lane at the unchanged B0 epoch. **The proposed ordinary
+cohort is not current serving authority.**
+
+Release **0.13.1073** adds the existing compiled BrassRing and Njoyn browser
+profiles to that exact worker-boundary validation. Positive and wrong-worker
+regressions cover both. Replaying the complete actual SQL payload now derives
+the exact installed Go projection, including all 7,833 monitors / 7,814 details.
+No production receipt, queue or SQL identity is manually changed.
+The Go worker's location-stage failure occurred during the subsequent containment;
+no independent location-loader defect is established. Verify its normal startup
+in the next supported full-stack activation.
+
+The preactivation live baseline contains **1,719,772** owned scheduled postings,
+**1,570,772 exact queued IDs** and a **149,000** pre-existing unrepresented gap.
+It is not an atomic cold snapshot. Retain the private exact-ID evidence and compare
+a new source-bound baseline/postactive census; do not claim conservation, cache
+recovery totals or ordinary batch delivery from the failed readiness attempt.
+
+Next: qualify and deploy the startup compatibility fix, repeat original B0 and
+full-floor admission, activate the complete batch, then independently verify
+receipt/SQL/Redis/health, exact IDs, zero owned cache mismatches and fresh writes.
+Continue remaining coverage in substantial batches, native lifecycle handoff and
+recovery-window drills, freshness and comparable resource/cost evidence before
+retiring production Python, Playwright and Chromium. The full goal remains active.
+
+## Earlier checkpoint — source1071 recovery and source1072 candidate
 
 Source `fa0fc8e99f7e0fa6b23eb95d91f2eb4704f8241f` (0.13.1071), merged in
 [PR #10602](https://github.com/colophon-group/jobseek/pull/10602), successfully
