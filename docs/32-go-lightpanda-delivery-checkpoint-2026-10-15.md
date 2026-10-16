@@ -1,5 +1,11 @@
 # Go and Lightpanda delivery checkpoint — 2026-10-15
 
+Superseded by the [October 16 delivery checkpoint](33-go-lightpanda-delivery-checkpoint-2026-10-16.md):
+0.13.1073 is serving the complete 7,833-monitor / 7,820-detail cohort at epoch352,
+including three monitor and eighteen detail additions. Zero owned cache mismatches
+and complete baseline-only ID accounting pass; worker restarts, freshness and the
+remaining migration work are explicitly open. Entries below are historical.
+
 ## Current delivery checkpoint — startup refusal recovered; compatibility fix pending
 
 Release **0.13.1072**, source `1977377c6a7920afe0630a76c60202c988eac95c`,

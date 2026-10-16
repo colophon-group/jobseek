@@ -1,0 +1,96 @@
+{
+  "schema": "jobseek.go-lightpanda.delivery-checkpoint/v1",
+  "observed_at_utc": "2026-10-16T01:52:09.420969+00:00",
+  "version": "0.13.1073",
+  "source_revision": "262451ec122fe4cdc9d217da5274f41317f6a2a5",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10605",
+  "crawler_deployment": 38830125970,
+  "renderer_deployment": 38830266478,
+  "lightpanda": {
+    "version": "1.0.1",
+    "latest_stable_rechecked": "2026-10-16T01:52:36.504569+00:00",
+    "official_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1"
+  },
+  "ordinary": {
+    "state": "active",
+    "routing_epoch": 352,
+    "monitors": 7833,
+    "details": 7820,
+    "added_monitors": 3,
+    "added_details": 18,
+    "preserved_prior_monitors": 7830,
+    "preserved_prior_details": 7802,
+    "plan_sha256": "e06d965a8665ec74fccf880b0bab894f10bfeb51b1c134250acf5fb97369879b",
+    "projection_sha1": "1365de5add843424679fd2c0fe511db3fc111369",
+    "b0_receipt_sha256": "126cd0621de3bff7262921f1700843b0d910991cb0cdfb9c97fd051fa6b98307",
+    "owned_cache_mismatches": 0,
+    "repaired_projections": 805,
+    "identical_full_postactive_cohort": true,
+    "all_actual_routes_qualified": true,
+    "restart_count": 2,
+    "all_eight_health_endpoints_pass": true
+  },
+  "queue_observation": {
+    "before_ids": 1714013,
+    "after_ids": 1714731,
+    "retained": 1713474,
+    "before_only": 539,
+    "after_only": 1257,
+    "before_only_inactive": 514,
+    "before_only_unscheduled": 25,
+    "before_only_still_eligible": 0,
+    "before_scheduled_minus_queued_gap": 774,
+    "after_scheduled_minus_queued_gap": 0,
+    "scope": "non-atomic live before/after capture; no historical/global or causal conservation claim"
+  },
+  "runtime_issue": {
+    "fatal_detail_configuration_error_at": "2026-10-16T01:37:51Z",
+    "root_cause": "unlocalized",
+    "static_all_detail_configurations_checked": 7820,
+    "retained_detail_inputs_checked": 27,
+    "static_validation_failures": 0,
+    "stability_proven": false
+  },
+  "resources": {
+    "duration_seconds": 40,
+    "crawler_cgroups": 10,
+    "mean_cpu_cores": 2.1938,
+    "mean_memory_gb": 2.968,
+    "oom_kill_delta_during_sample": 0,
+    "scope": "40s unpaired sample excludes Redis and renderer; no comparable whole-lane cost claim"
+  },
+  "freshness": {
+    "global_scheduled_active_enabled": 1723384,
+    "global_overdue_24h": 1605783,
+    "completed_native_monitor_receipts": 47,
+    "completed_native_detail_receipts": 141,
+    "scope": "large overdue backlog remains; completed receipts alone do not prove content success"
+  },
+  "exporter": {
+    "successful_documents": 184,
+    "errors": 0,
+    "unknown_writers": 0
+  },
+  "remaining": {
+    "monitor_configs": 64,
+    "detail_configs": 77,
+    "compiled_unqualified_monitors": 19,
+    "compiled_unqualified_details": 42,
+    "unsupported_monitors": 45,
+    "unsupported_details": 35
+  },
+  "full_migration_complete": false,
+  "goal_status": "active",
+  "private_evidence_sha256": {
+    "native-source1073-serving-independent2-2026-10-16.json": "5a781b24fdd265e4f58dffde93b3c723d70b5a35b4e389d1a99ede5b1af5f3c0",
+    "native1073-delivery-conservation-cache-accounting1.json": "b203f3c03a08440c5029e082f1686a7315cff0920aefebb4576652c625c33d9d",
+    "native1073-exact-queued-id-conservation2.json": "876a4519a0f0b6deb7361accecc069debceea2c5092e0ec72c91f4b1f7795e22",
+    "native1073-config-diagnostic1.json": "fed8b3efaaa76b6b641f2d9429fdc882764e6f9db4ef7e82978a8fc3e8692bc3",
+    "native1073-ordinary-runtime-error-classes1.json": "72514e3e4175eba1c92a37712f0ed40853a0b435ba05d6b26ca8f036c5687336",
+    "native1073-restart-fences-private3.json": "07fdded585460dd163b2338878109e7c34db2b53606afc4b8f852067258b4076",
+    "native-source1073-active-resources-initial1.json": "0cffce5cc680fb1eb6fb8982ca3aae69da978677dbace4cc64320f3af7501cbf",
+    "native-source1073-active-freshness-initial1.json": "3a1c63e8fbc09d6e143cfd16739c291a5de29201a809813d223f974cc51fbe35",
+    "native-source1073-exporter-progress-active-verified1-2026-10-16.json": "ea74e598d3513ae969b090a24de7bdc6300976ea741caed51d2a9bf423d61c97",
+    "native-source1073-serving-independent3-2026-10-16.json": "fb1f2697b347f6bb20f01ec7b9f12ba15bbedaf44c5c6084bf0ba30804570809"
+  }
+}
