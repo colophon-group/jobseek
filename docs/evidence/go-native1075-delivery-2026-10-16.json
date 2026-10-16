@@ -1,0 +1,107 @@
+{
+  "schema": "jobseek.native1075-delivery/v1",
+  "observed_at_utc": "2026-10-16T07:55:08.468692+00:00",
+  "version": "0.13.1075",
+  "source_revision": "cbd1f37f3803a29dcd6693aa0a120992513edda6",
+  "qualified_head": "af5c4620a9b613828b007a2c5faa098f3c25ace3",
+  "merged_tree_equals_qualified_tree": true,
+  "pr": "https://github.com/colophon-group/jobseek/pull/10637",
+  "original_workflows": {
+    "crawler_deployment": 38857520545,
+    "renderer_deployment": 38857548555,
+    "required_ci": 38853671149,
+    "actual_deploy_gate": 38853671126,
+    "runtime_contracts": 38853671074,
+    "physical_exact_head": 38853699410,
+    "arm_whole_lane_exact_head": 38853696713
+  },
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:46bf90b603610d34c687df6a6b449dbee99f6d8883c8590d22efc9f44786570d",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:cf5136ccee121526849e35414c06030a5bd7955f75940a0c9220de44027e23ae",
+    "jobseek-lightpanda-renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:42eb1af58489e534a2a4fccbb0904ef4b7d5162e45b3b89447535b024e05e857"
+  },
+  "lightpanda": {
+    "lightpanda_version": "1.0.1",
+    "official_arm_binary_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+    "installed_binary_matches_official_release": true
+  },
+  "serving": {
+    "epoch": 356,
+    "monitors": 7833,
+    "details": 7832,
+    "previous_monitors_preserved": 7833,
+    "previous_details_preserved": 7825,
+    "detail_additions": 7,
+    "detail_profile_families": 4,
+    "actors_verified": 10,
+    "health_endpoints_verified": 8,
+    "plan_sha256": "7f778d5cbaa5907a69c4bcdb0e04d5ee7fb1e2755d886d26f24889e4946b4793",
+    "projection_sha1": "17e56fe97a62989f45e80cae0fd090bc981274b0"
+  },
+  "postactive": {
+    "same_complete_cohort": true,
+    "owned_cache_mismatches": 0,
+    "scheduled_owned_postings": 1717574,
+    "queued_owned_ids": 1717574,
+    "captured_scheduled_minus_queued_gap": 0,
+    "outgoing_only_ids": 2354,
+    "outgoing_only_canonical_states": {
+      "inactive": 2290,
+      "unscheduled": 64,
+      "board_disabled": 0,
+      "missing_canonical": 0,
+      "still_eligible": 0
+    },
+    "unresolved_eligible_or_missing_ids": 0,
+    "scope": "non-atomic outgoing1074/incoming1075 captures; all2354 outgoing-only IDs currently inactive or unscheduled; captured owned schedule/queue gap0 and cache mismatches0; no atomic historical/global or causal conservation claim"
+  },
+  "retained_numeric_action_fix": {
+    "current_owned_configs_rejected_before": 12,
+    "current_owned_configs_executable_after": 12,
+    "previous_release_observed_restarts": 3,
+    "current_observed_restarts": 0,
+    "current_oom_killed": false,
+    "current_fatal_configuration_classes": [],
+    "current_runtime_observed_at_utc": "2026-10-16T07:53:23.678988+00:00",
+    "scope": "source/receipt/image-bound bounded state and retained logs; over one hour after initial serving readback; no indefinite stability claim"
+  },
+  "progress": {
+    "native_completed_receipts": {
+      "monitor": 59,
+      "scrape": 205
+    },
+    "completion_receipts_are_not_content_proof": true,
+    "successful_exports": 424.0,
+    "export_errors": 0.0,
+    "unknown_writers": 0.0,
+    "scheduled_active_enabled": 1725365,
+    "overdue_24h": 1613799,
+    "scope": "bounded mixed native/legacy production observation; freshness backlog remains"
+  },
+  "qualification": {
+    "all16_arm_arms_audited": true,
+    "all8_complete_output_pairs_equal": true,
+    "physical_linux_amd64_arm64": true,
+    "scope": "exact frozen-head isolated physical/whole-lane qualification; no matched production fleet cost claim"
+  },
+  "remaining": {
+    "monitors": 64,
+    "details": 65,
+    "compiled_monitor_candidates": 19,
+    "compiled_detail_candidates": 30,
+    "unsupported_monitors": 45,
+    "unsupported_details": 35,
+    "full_goal": "active and incomplete",
+    "production_python_retired": false,
+    "matched_production_whole_lane_cost_proved": false,
+    "native_lifecycle_and_recovery_window_complete": false
+  },
+  "proof_sha256": {
+    "native1075-final-qualification-binding1.json": "43ab0c690c56f4c515ca42a12c3e63e3f5d8c1ff51a90999bb37dc25815d4e06",
+    "native1075-merged-qualified-tree1.json": "62db3dbe8a7b898885185f29244fbf1bb2250d1169684a1eacee8469ec0ce5bb",
+    "native-source1075-serving-independent1-2026-10-16.json": "f32be57f16f9e5c29e06ec0e3b509db9988b4e3366101142a279287458f84b8f",
+    "native1075-delivery-conservation-cache-accounting1.json": "0345799a4cf13f711819ee5a9fdaef3a906499901172ed2b6bb30dfe49e8c290",
+    "native1075-runtime-observation-active3.json": "cef707883adf1a83339e8c69b9d92562cdf0f2194ceccf55af85a8e5e901b676",
+    "native-source1075-installed-lightpanda101-independent1.json": "c195dee3395b2b73c5b51536c204026b8f3d2865c52589df2b7484aa648febad"
+  }
+}
