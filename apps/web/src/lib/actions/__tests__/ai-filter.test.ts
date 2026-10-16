@@ -12,11 +12,9 @@ const mocks = vi.hoisted(() => ({
   assertAiFilterCandidateScope: vi.fn(),
   logExternalError: vi.fn(),
   enqueue: vi.fn(),
-  wake: vi.fn(),
 }));
 
 vi.mock("@/lib/ai-filter/work-queue", () => ({ enqueueAiFilterWork: mocks.enqueue }));
-vi.mock("@/lib/ai-filter/wake-worker", () => ({ wakeAiFilterWorker: mocks.wake }));
 vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: () => mocks.getSessionUserId(),
 }));

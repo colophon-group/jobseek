@@ -26,17 +26,12 @@ describe("background narrowing cron boundary", () => {
     expect(mocks.run).not.toHaveBeenCalled();
     vi.unstubAllEnvs();
   });
-  it("returns uncached aggregate dispatch evidence", async () => {
+  it("retires scheduled dispatch without executing work", async () => {
     const response = await GET(request("Bearer test-cron"));
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(410);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
-    expect(await response.json()).toMatchObject({ started: 1 });
-  });
-  it("reports retryable dispatch failures", async () => {
-    mocks.run.mockRejectedValue(new Error("private upstream body"));
-    const response = await GET(request("Bearer test-cron"));
-    expect(response.status).toBe(503);
-    expect(JSON.stringify(await response.json())).not.toContain("private upstream body");
+    expect(await response.json()).toEqual({ error: "execution_moved_to_hetzner" });
+    expect(mocks.run).not.toHaveBeenCalled();
   });
   it("protects read-only recovery inspection and never dispatches work",async ()=> {
     mocks.inspect.mockResolvedValue({reviewed:0,legacyWorkersFenced:true});

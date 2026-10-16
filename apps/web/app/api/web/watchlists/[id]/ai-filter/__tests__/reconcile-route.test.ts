@@ -7,10 +7,8 @@ const mocks = vi.hoisted(() => ({
   startAiFilterCatchup: vi.fn(),
   assertAiFilterCandidateScope: vi.fn(),
   limit: vi.fn(),
-  wake: vi.fn(),
 }));
 
-vi.mock("@/lib/ai-filter/wake-worker", () => ({ wakeAiFilterWorker: mocks.wake }));
 vi.mock("@/lib/sessionCache", () => ({
   getSessionUserIdFromHeaders: mocks.getSessionUserIdFromHeaders,
 }));

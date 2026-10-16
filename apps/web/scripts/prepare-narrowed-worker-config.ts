@@ -1,0 +1,40 @@
+import { writeFile } from "node:fs/promises";
+import postgres from "postgres";
+import dotenv from "dotenv";
+dotenv.config({path: process.env.NARROWED_PRODUCTION_ENV_FILE ?? ".vercel/.env.production.local", quiet:true});
+import { provisionNarrowedWorkerRole, NARROWED_WORKER_ROLE } from "./narrowed-worker-role";
+import { parseStableCandidateOrderReadinessReceipt } from "../src/lib/search/stable-candidate-order-readiness";
+
+async function main() {
+  const output = process.argv[2];
+  const ownerUrl = process.env.DATABASE_URL_UNPOOLED;
+  const password = process.env.NARROWED_WORKER_DATABASE_PASSWORD;
+  if (!ownerUrl || !password || !output) throw new Error("Missing protected worker provisioning inputs");
+  const url = new URL(ownerUrl);
+  if (url.port === "6543") throw new Error("The notification worker needs a direct/session connection");
+  const config: Record<string,string> = {};
+  for (const key of ["TYPESENSE_HOST", "TYPESENSE_PORT", "TYPESENSE_PROTOCOL", "TYPESENSE_SEARCH_KEY",
+    "AI_FILTER_ENABLED", "AI_FILTER_JEV_1_13_0_ENABLED", "R2_DOMAIN_URL", "TYPESAFE_AI_TOKEN", "AI_FILTER_CACHE_HMAC_SECRET", "TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT"]) {
+    const value = process.env[key];
+    if (!value?.trim()) throw new Error("A protected worker setting is missing");
+    config[key] = value;
+  }
+  if (Buffer.byteLength(config.AI_FILTER_CACHE_HMAC_SECRET!, "utf8") < 32 ||
+    !parseStableCandidateOrderReadinessReceipt(config.TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT)) throw new Error("Invalid worker configuration");
+  for (const key of ["AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS", "AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS",
+    "AI_FILTER_MAX_SEGMENTS_PER_USER", "AI_FILTER_MAX_SEGMENTS_PROJECT", "STRIPE_ENVIRONMENT", "PADDLE_ENVIRONMENT"]) {
+    if (process.env[key]) config[key] = process.env[key]!;
+  }
+  const admin = postgres(ownerUrl, { max: 1, prepare: false, onnotice: () => {} });
+  try { await provisionNarrowedWorkerRole(admin, password); }
+  finally { await admin.end({ timeout: 5 }); }
+  const sessionTenant = url.hostname.endsWith(".pooler.supabase.com") && url.username.includes(".")
+    ? url.username.slice(url.username.indexOf(".")) : "";
+  url.username = NARROWED_WORKER_ROLE + sessionTenant;
+  url.password = password;
+  config.DATABASE_URL = url.toString();
+  // Compact JSON remains one env-file line; embedded newlines are JSON-escaped.
+  await writeFile(output, `JOBSEEK_NARROWED_CONFIG_JSON=${JSON.stringify(config)}\n`, { mode: 0o600, flag: "wx" });
+  console.info(JSON.stringify({ event: "narrowed_worker_configuration_prepared" }));
+}
+void main().catch(() => { console.error("Narrowed worker configuration failed"); process.exitCode = 1; });

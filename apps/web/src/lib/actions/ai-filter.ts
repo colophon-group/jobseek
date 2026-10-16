@@ -16,11 +16,9 @@ import { isWatchlistId } from "@/lib/watchlist-id";
 import { logExternalError } from "@/lib/safe-external-error";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 import { enqueueAiFilterWork } from "@/lib/ai-filter/work-queue";
-import { wakeAiFilterWorker } from "@/lib/ai-filter/wake-worker";
 
 async function requestFirstPage(ownerId: string, watchlistId: string) {
   await enqueueAiFilterWork({ ownerId, watchlistId, demandTargetOffset: 500, acceptedTarget: 20 });
-  wakeAiFilterWorker();
 }
 
 type AiFilterMutationError =

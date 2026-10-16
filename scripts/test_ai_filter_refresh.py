@@ -1,122 +1,59 @@
 from __future__ import annotations
-
+import hashlib
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stdout
 
 ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
+spec = importlib.util.spec_from_file_location("worker_bundle", REPO / "deploy/ai-filter-refresh/verify-bundle.py")
+bundle = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bundle)
 
+class RefreshWorkerTests(unittest.TestCase):
+    def test_bundle_rejects_changed_code_dirty_source_wrong_revision_and_unpinned_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "worker.mjs").write_text("fixture")
+            manifest = {"version":1,"sourceRevision":"a"*40,"sourceClean":True,
+                "runtimeImage":"node:24-alpine@sha256:"+"b"*64,
+                "workerSha256":hashlib.sha256(b"fixture").hexdigest()}
+            def verify(changes):
+                (root / "manifest.json").write_text(json.dumps({**manifest,**changes}))
+                digest=hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
+                return bundle.verify(root,"a"*40,digest)
+            self.assertEqual(verify({})["sourceRevision"],"a"*40)
+            for change in ({"sourceClean":False},{"sourceRevision":"c"*40},{"runtimeImage":"node:24-alpine"},{"workerSha256":"0"*64}):
+                with self.subTest(change=change),self.assertRaises(ValueError): verify(change)
+            verify({})
+            with self.assertRaises(ValueError): bundle.verify(root,"a"*40,"0"*64)
 
-def load(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / name)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-runner = load("ai-filter-refresh.py")
-
-
-class Response(io.BytesIO):
-    status = 200
-
-
-class FakeOpener:
-    def __init__(self, responses):
-        self.responses = iter(responses)
-        self.requests = []
-
-    def open(self, request, timeout):
-        self.requests.append(request)
-        return Response(json.dumps(next(self.responses)).encode())
-
-
-class RefreshTimerTests(unittest.TestCase):
-    def test_shared_driver_continues_active_work_backs_off_idle_and_stops(self):
-        class Stop:
-            waits = []
-            def is_set(self):
-                return len(self.waits) == 3
-            def wait(self, seconds):
-                self.waits.append(seconds)
-
-        stop = Stop()
-        outcomes = iter([
-            {"status": "completed", "started": 1, "claimed": 1},
-            {"status": "completed", "started": 0, "claimed": 0},
-            {"status": "completed", "started": 0, "claimed": 0},
-        ])
-        output = io.StringIO()
-        with redirect_stdout(output):
-            runner.serve(lambda: next(outcomes), stop)
-        self.assertEqual(stop.waits, [2, 30, 30])
-        self.assertEqual(len(output.getvalue().splitlines()), 2)
-
-    def test_shared_driver_backs_off_failures_without_logging_exception_data(self):
-        class Stop:
-            waits = []
-            def is_set(self):
-                return len(self.waits) == 3
-            def wait(self, seconds):
-                self.waits.append(seconds)
-
-        def fail():
-            raise ValueError("sensitive upstream text")
-
-        stop = Stop()
-        output = io.StringIO()
-        with redirect_stdout(output):
-            runner.serve(fail, stop)
-        self.assertEqual(stop.waits, [60, 120, 240])
-        self.assertNotIn("sensitive", output.getvalue())
-
-    def test_dispatches_to_only_the_fixed_endpoint_and_omits_private_response_fields(self):
-        opener = FakeOpener([{"contractVersion": "narrowed-worker-v2", "status": "completed", "claimed": 1, "started": 1, "deferred": 0, "failed": 0, "private": "do not log"}])
-        with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "refresh-bearer").write_text("fixture" * 8)
-            result = runner.run(opener, folder)
-        self.assertEqual(opener.requests[0].full_url, runner.ENDPOINT)
-        self.assertNotIn("private", result)
-        self.assertEqual(result["started"], 1)
-
-    def test_rejects_an_old_web_contract(self):
-        opener = FakeOpener([{"status": "completed"}])
-        with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "refresh-bearer").write_text("fixture" * 8)
-            with self.assertRaisesRegex(ValueError, "contract_unavailable"):
-                runner.run(opener, folder)
-
-    def test_does_not_follow_a_redirect_with_the_bearer(self):
-        self.assertIsNone(runner.NoRedirect().redirect_request(None, None, 302, "", {}, "https://other.example"))
-
-    def test_rejects_malformed_counters(self):
-        opener = FakeOpener([{"contractVersion": "narrowed-worker-v2", "status": "completed", "claimed": True}])
-        with tempfile.TemporaryDirectory() as folder:
-            (Path(folder) / "refresh-bearer").write_text("fixture" * 8)
-            with self.assertRaisesRegex(ValueError, "response_invalid"):
-                runner.run(opener, folder)
-
-    def test_pause_operation_is_bounded_and_activation_refuses_source_maintenance(self):
-        pause = (ROOT.parent / "deploy/ai-filter-refresh/pause-remote.sh").read_text()
-        self.assertIn("StrictHostKeyChecking=yes", pause)
-        host = (ROOT.parent / "deploy/ai-filter-refresh/pause-host.sh").read_text()
-        self.assertIn("systemctl disable --now jobseek-ai-filter-refresh.timer", host)
-        self.assertIn("systemctl stop jobseek-ai-filter-refresh.service", host)
-        self.assertIn("systemctl reset-failed jobseek-ai-filter-refresh.service", host)
-        self.assertNotIn("AI_FILTER_REFRESH_SECRET", pause)
-        self.assertNotIn("docker", pause)
-        activate = (ROOT.parent / "deploy/ai-filter-refresh/deploy-remote.sh").read_text()
-        self.assertIn('controls["narrowedWorkerPaused"] is False', activate)
-        workflow = (ROOT.parent / ".github/workflows/deploy-ai-filter-refresh.yml").read_text()
-        self.assertIn("default: pause", workflow)
-        self.assertIn("if: inputs.action == 'activate'", workflow)
-        self.assertIn("if: inputs.action == 'pause'", workflow)
+    def test_launcher_is_unprivileged_bounded_and_never_mounts_the_docker_socket(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root / "manifest.json").write_text(json.dumps({"runtimeImage":"node:24-alpine@sha256:"+"b"*64}))
+            (root / "worker.mjs").write_text("fixture")
+            (root / "worker-env").write_text("PRIVATE_FIXTURE_CREDENTIAL")
+            fake=root / "docker"
+            fake.write_text("#!/usr/bin/env python3\nimport json,os,sys\nopen(os.environ['WORKER_LAUNCH_ARGS'],'w').write(json.dumps(sys.argv[1:]))\n")
+            fake.chmod(0o700)
+            launcher=root / "run.sh"
+            launcher.write_text((REPO / "deploy/ai-filter-refresh/run-host.sh").read_text().replace("/usr/bin/docker",str(fake)))
+            environment={**os.environ,"JOBSEEK_NARROWED_BUNDLE":str(root),"CREDENTIALS_DIRECTORY":str(root),"WORKER_LAUNCH_ARGS":str(root / "args.json")}
+            for args in ([],["--inspect","a"*36]):
+                result=subprocess.run(["bash",str(launcher),*args],env=environment,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                command=json.loads((root / "args.json").read_text())
+                joined=" ".join(command)
+                for option in ("--read-only","--user","65532:65532","--cap-drop","--memory","--cpus","--pids-limit","--env-file"):
+                    self.assertIn(option,command)
+                self.assertNotIn("docker.sock",joined)
+                self.assertNotIn("PRIVATE_FIXTURE_CREDENTIAL",joined+result.stdout+result.stderr)
+                self.assertEqual("--name" in command,not bool(args))
 
     def test_host_pause_handles_active_failed_and_unloaded_service_without_starting_units(self):
         fake_systemctl = """#!/usr/bin/env python3
@@ -174,20 +111,5 @@ sys.exit(code)
                 self.assertEqual(len(resets), 1 if initial == 'failed' else 0)
                 self.assertFalse(any(call[0] in ('start', 'restart', 'enable') for call in state['calls']))
 
-    def test_timer_and_service_keep_credential_and_docker_boundaries(self):
-        service = (ROOT.parent / "deploy/systemd/jobseek-ai-filter-refresh.service").read_text()
-        timer = (ROOT.parent / "deploy/systemd/jobseek-ai-filter-refresh.timer").read_text()
-        self.assertIn("DynamicUser=true", service)
-        self.assertIn("LoadCredential=refresh-bearer:", service)
-        self.assertIn("InaccessiblePaths=-/var/run/docker.sock", service)
-        self.assertIn("Type=simple", service)
-        self.assertIn("runner.py --worker", service)
-        self.assertIn("TimeoutStopSec=65s", service)
-        self.assertIn("CPUQuota=10%", service)
-        self.assertIn("MemoryMax=64M", service)
-        self.assertIn("OnCalendar=*-*-* *:*:00", timer)
-        self.assertNotIn("EnvironmentFile", service)
 
-
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__": unittest.main()

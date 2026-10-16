@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { readFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { narrowedWorkerReadinessKey } from "./host-contract";
+import { createHash, randomUUID } from "node:crypto";
+import { execFileSync, spawn } from "node:child_process";
 import type { Sql } from "postgres";
 import {
   afterAll,
@@ -12,9 +14,11 @@ import {
   vi,
 } from "vitest";
 import { withTestEnv } from "@/test-utils/env";
+import { provisionNarrowedWorkerRole } from "../../../scripts/narrowed-worker-role";
 
 const mocks = vi.hoisted(() => ({
   client: null as Sql | null,
+  workerDb: null as object | null,
   postings: [] as Array<{ id: string; firstSeenAt: string }>,
   classify: vi.fn(),
   statements: [] as string[],
@@ -43,7 +47,12 @@ vi.mock("@/db", async () => {
       mocks.statements.push(query);
     },
   });
-  return { db: drizzle(mocks.client, { schema }) };
+  const base = drizzle(mocks.client, { schema });
+  return { db: new Proxy(base, {get(_target,property) {
+    const target=mocks.workerDb ?? base;
+    const value=Reflect.get(target,property,target);
+    return typeof value === "function" ? value.bind(target) : value;
+  }}) };
 });
 vi.mock("@/lib/services/search", () => ({
   getPostingDetail: async () => null,
@@ -133,6 +142,7 @@ import { AI_FILTER_PROMPT_VERSION, JEV_MODEL } from "./policy";
 
 withTestEnv({
   VERCEL_ENV: "production",
+  JOBSEEK_NARROWED_WORKER: "1",
   AI_FILTER_ENABLED: "true",
   AI_FILTER_JEV_1_13_0_ENABLED: "true",
   TYPESAFE_AI_TOKEN: "fixture",
@@ -223,6 +233,107 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
         latencyMs: 1,
       }));
     });
+    it("notifies the standalone worker only after demand is durable", async () => {
+      const input = await fixture();
+      let notified!: () => void;
+      const notification = new Promise<void>(resolve => { notified = resolve; });
+      const subscription = await sql().listen("jobseek_narrowed_work", payload => {
+        expect(payload).toBe("");
+        notified();
+      });
+      try {
+        await enqueueAiFilterWork({...input, kind:"historical", acceptedTarget:20});
+        await Promise.race([notification, new Promise((_,reject) => setTimeout(() => reject(new Error("Missing worker notification")),2000))]);
+        const [work] = await sql()`SELECT status FROM ai_filter_work WHERE query_version_id=${input.queryVersionId} AND kind='historical'`;
+        expect(work?.status).toBe("queued");
+      } finally { await subscription.unlisten(); }
+    });
+    it("runs the shared classifier with the restricted host role and cannot read authentication or mutate watchlists", async () => {
+      const input = await fixture();
+      mocks.postings = [posting()];
+      await enqueueAiFilterWork({...input,kind:"historical",demandTargetOffset:500,acceptedTarget:20});
+      await provisionNarrowedWorkerRole(sql(),"fixture".repeat(8));
+      const [permissions] = await sql()`SELECT
+        has_table_privilege('jobseek_narrowed_worker','watchlist','SELECT') AS can_read,
+        has_table_privilege('jobseek_narrowed_worker','watchlist','UPDATE') AS can_update,
+        has_table_privilege('jobseek_narrowed_worker','"user"','SELECT') AS can_read_auth`;
+      expect(permissions).toMatchObject({can_read:true,can_update:false,can_read_auth:false});
+      const [{ default: postgres },{ drizzle },schema] = await Promise.all([import("postgres"),import("drizzle-orm/postgres-js"),import("@/db/schema")]);
+      const uri = new URL(process.env.AI_FILTER_TEST_DATABASE_URL!);
+      uri.username="jobseek_narrowed_worker";uri.password="fixture".repeat(8);
+      const rawClient=postgres(uri.toString(),{max:2,prepare:false,onnotice:()=>{}});
+      const client=rawClient;
+      mocks.workerDb=drizzle(client,{schema});
+      try {
+        await expect(client`UPDATE watchlist SET title='forbidden'`).rejects.toThrow();
+        await expect(client`SELECT * FROM "user"`).rejects.toThrow();
+        const result=await tick();
+        expect(result).toMatchObject({failed:0});
+        expect(result.started).toBeGreaterThan(0);
+        expect(mocks.classify).toHaveBeenCalled();
+        const [decision]=await client`SELECT count(*)::int AS n FROM ai_filter_decision WHERE watchlist_id=${input.watchlistId}`;
+        expect(decision?.n).toBe(1);
+        // The actual secretless build boots with only the restricted host role.
+        const receipt=Buffer.from(JSON.stringify({schemaVersion:"typesense-stable-candidate-order-readiness-v1",
+          keyVersion:"uuid-int64-active-v1",partitions:256,unresolved:0,authoritativeCount:1,
+          reconciliationRunId:"ff96b7d8-db7e-43a2-aafd-e4007fa68fa9",benchmarkSha256:"a".repeat(64),
+          completedAt:"2026-10-16T00:00:00Z"})).toString("base64url");
+        const config={DATABASE_URL:uri.toString(),AI_FILTER_ENABLED:"true",AI_FILTER_JEV_1_13_0_ENABLED:"true",
+          TYPESENSE_HOST:"127.0.0.1",TYPESENSE_PORT:"1",TYPESENSE_PROTOCOL:"http",TYPESENSE_SEARCH_KEY:"fixture",
+          R2_DOMAIN_URL:"https://fixture.invalid",TYPESAFE_AI_TOKEN:"fixture",AI_FILTER_CACHE_HMAC_SECRET:"x".repeat(32),
+          TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT:receipt};
+        const output=execFileSync(process.execPath,["../../deploy/ai-filter-refresh/bundle/worker.mjs","--check"],{
+          env:{...process.env,NODE_ENV:"production",JOBSEEK_NARROWED_CONFIG_JSON:JSON.stringify(config)},encoding:"utf8"});
+        expect(output).toContain('"status":"ready"');
+        expect(output).not.toContain(uri.toString());
+        const verification = (extra: Partial<NodeJS.ProcessEnv> = {}) => execFileSync(process.execPath,["--import","tsx","scripts/verify-narrowed-worker-ready.ts"],{
+          env:{...process.env,DATABASE_URL_UNPOOLED:process.env.AI_FILTER_TEST_DATABASE_URL,
+            AI_FILTER_ENABLED:"true",AI_FILTER_JEV_1_13_0_ENABLED:"true",GITHUB_OUTPUT:undefined,...extra},encoding:"utf8",stdio:"pipe"});
+        expect(verification).toThrow();
+        const hash=createHash("sha256").update(await readFile("../../deploy/ai-filter-refresh/bundle/worker.mjs")).digest("hex");
+        const held=await client.reserve();
+        try {
+          await held`SELECT pg_advisory_lock(hashtextextended(${narrowedWorkerReadinessKey(hash)},0))`;
+          expect(verification()).toContain('"status":"ready"');
+          expect(()=>verification({AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS:"1"})).toThrow();
+        } finally { await held`SELECT pg_advisory_unlock_all()`; held.release(); }
+        expect(verification).toThrow();
+        await client`UPDATE ai_filter_work SET status='idle'`;
+        await client`UPDATE ai_filter_configuration SET refresh_requested_at=now()`;
+        const processUri = new URL(uri);
+        processUri.searchParams.set("application_name","narrowed-process-fixture");
+        const native=spawn(process.execPath,["../../deploy/ai-filter-refresh/bundle/worker.mjs"],{
+          env:{...process.env,NODE_ENV:"production",VERCEL:undefined,
+            JOBSEEK_NARROWED_CONFIG_JSON:JSON.stringify({...config,DATABASE_URL:processUri.toString()})},stdio:["ignore","pipe","pipe"]});
+        let nativeOutput="";
+        native.stdout.on("data",chunk=>{ nativeOutput+=String(chunk); });
+        native.stderr.on("data",chunk=>{ nativeOutput+=String(chunk); });
+        const exit = new Promise(resolve=>native.once("exit",resolve));
+        const waitFor = async (check:()=>Promise<boolean>) => {
+          const end=Date.now()+3000;
+          while(Date.now()<end) { if(await check()) return; await new Promise(resolve=>setTimeout(resolve,25)); }
+          throw new Error("Standalone worker did not reach the fixture checkpoint");
+        };
+        try {
+          await waitFor(async()=>nativeOutput.includes('"event":"narrowed_worker_ready"') && nativeOutput.includes('"status":"completed"'));
+          const [before] = await client`SELECT max(query_start)::text AS at FROM pg_stat_activity WHERE application_name='narrowed-process-fixture'`;
+          expect(before?.at).toBeTruthy();
+          await client`SELECT pg_notify('jobseek_narrowed_work','')`;
+          await waitFor(async()=>{
+            const [row]=await client`SELECT EXISTS(SELECT 1 FROM pg_stat_activity
+              WHERE application_name='narrowed-process-fixture' AND query_start>${before.at}::timestamptz) AS woke`;
+            return row?.woke===true;
+          });
+          expect(nativeOutput).not.toContain('"status":"failed"');
+          expect(verification()).toContain('"status":"ready"');
+        } finally {
+          native.kill("SIGTERM");
+          const kill=setTimeout(()=>native.kill("SIGKILL"),3000);
+          await exit;clearTimeout(kill);
+        }
+        expect(verification).toThrow();
+      } finally { mocks.workerDb=null; await client.end(); }
+    },20_000);
     it("coalesces tabs and extensions before dispatch and retains extensions arriving during processing", async () => {
       const input = await fixture();
       await Promise.all(

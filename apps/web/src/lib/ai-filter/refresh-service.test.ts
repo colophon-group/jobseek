@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 import { runAiFilterRefreshSweep } from "./refresh-service";
 withTestEnv({
   VERCEL_ENV: "production",
+  JOBSEEK_NARROWED_WORKER: "1",
   AI_FILTER_ENABLED: "true",
   AI_FILTER_JEV_1_13_0_ENABLED: "true",
   TYPESAFE_AI_TOKEN: "fixture",
@@ -113,6 +114,8 @@ describe("fixed shared worker", () => {
   });
   it.each([
     ["VERCEL_ENV", "preview"],
+    ["JOBSEEK_NARROWED_WORKER", ""],
+    ["VERCEL", "1"],
     ["AI_FILTER_ENABLED", "false"],
     ["AI_FILTER_JEV_1_13_0_ENABLED", "false"],
     ["TYPESAFE_AI_TOKEN", ""],
