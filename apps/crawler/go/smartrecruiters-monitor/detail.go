@@ -187,31 +187,33 @@ func ParseDetail(posting Object) (Job, error) {
 		if err != nil {
 			return job, err
 		}
+		// Some tenants publish salary fields directly under compensation.
+		salary := comp
 		if truth(comp["salary"]) {
-			salary, err := requireObject(comp["salary"], "salary")
+			salary, err = requireObject(comp["salary"], "salary")
 			if err != nil {
 				return job, err
 			}
-			if salary["min"] != nil || salary["max"] != nil {
-				period, err := optionalText(salary["period"])
-				if err != nil {
-					return job, err
-				}
-				period = strings.ToLower(trim(period))
-				unit := salaryUnits.Direct[period]
-				if unit == "" {
-					for _, pair := range salaryUnits.Substrings {
-						if strings.Contains(period, pair[0]) {
-							unit = pair[1]
-							break
-						}
+		}
+		if salary["min"] != nil || salary["max"] != nil {
+			period, err := optionalText(salary["period"])
+			if err != nil {
+				return job, err
+			}
+			period = strings.ToLower(trim(period))
+			unit := salaryUnits.Direct[period]
+			if unit == "" {
+				for _, pair := range salaryUnits.Substrings {
+					if strings.Contains(period, pair[0]) {
+						unit = pair[1]
+						break
 					}
 				}
-				if unit == "" {
-					unit = "year"
-				}
-				job.BaseSalary = Object{"currency": salary["currency"], "min": salary["min"], "max": salary["max"], "unit": unit}
 			}
+			if unit == "" {
+				unit = "year"
+			}
+			job.BaseSalary = Object{"currency": salary["currency"], "min": salary["min"], "max": salary["max"], "unit": unit}
 		}
 	}
 	return job, nil

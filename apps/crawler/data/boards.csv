@@ -6283,6 +6283,7 @@ semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""sem
 semrush,semrush-careers-workday,https://semrush.wd5.myworkdayjobs.com/semrushcareers,workday,"{""company"": ""semrush"", ""wd_instance"": ""wd5"", ""site"": ""semrushcareers""}",workday,
 sendbird,sendbird-greenhouse,https://job-boards.greenhouse.io/sendbird,greenhouse,"{""token"": ""sendbird""}",skip,
 senior-doc,senior-doc-greenhouse,https://job-boards.greenhouse.io/seniordoc,greenhouse,"{""token"": ""seniordoc""}",skip,
+senior-lifestyle,senior-lifestyle-careers,https://careers.smartrecruiters.com/SeniorLifestyle1,smartrecruiters,{},smartrecruiters,{}
 senra-systems,senra-systems-careers,https://job-boards.greenhouse.io/senrasystems,greenhouse,"{""token"": ""senrasystems""}",skip,
 sensirion,sensirion-careers,https://sensirion.com/career/,api_sniffer,"{""api_url"": ""https://sensirion.com/en/api/v2/jobs/"", ""method"": ""GET"", ""json_path"": ""results"", ""url_field"": ""links_direct_link"", ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""sza_title"", ""locations"": ""location.city""}}",json-ld,
 sensofusion,sensofusion-careers,https://careers.sensofusion.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sensofusion.com/jobs.rss""}",skip,
