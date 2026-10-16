@@ -39,10 +39,11 @@ export async function recoverNarrowedRuntime(env = process.env, { execute = exec
   const authPath = resolve(root, "request.private.curl");
   try {
     recoveryStage = "deploy";
-    candidate = JSON.parse(vc(["deploy", "--prebuilt", "--prod", "--skip-domain", "--yes", "--format=json", "--archive=tgz", "--scope", scope,
+    const deployed = JSON.parse(vc(["deploy", "--prebuilt", "--prod", "--skip-domain", "--yes", "--format=json", "--archive=tgz", "--scope", scope,
       "--meta", `narrowedTransfer=${transferId}`, "--meta", `githubCommitSha=${revision}`, "--meta", "githubCommitRef=main",
       "--meta", "githubOrg=colophon-group", "--meta", "githubRepo=jobseek"]));
-    if (!/^dpl_[A-Za-z0-9]+$/.test(candidate.id ?? "") || !/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app$/.test(candidate.url ?? "") || candidate.id === expectedLive) throw new Error("Invalid isolated deployment");
+    candidate = deployed.deployment;
+    if (deployed.status !== "ok" || !/^dpl_[A-Za-z0-9]+$/.test(candidate?.id ?? "") || !/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app$/.test(candidate?.url ?? "") || candidate.id === expectedLive) throw new Error("Invalid isolated deployment");
     requireLiveUnchanged();
     recoveryStage = "inspect";
     vc(["inspect", candidate.id, "--wait", "--timeout=2m", "--scope", scope]);

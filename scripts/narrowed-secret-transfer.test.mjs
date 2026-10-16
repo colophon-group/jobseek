@@ -78,6 +78,7 @@ test("the isolated artifact has no cron, no app routes and no operator secrets",
     assert.deepEqual(routes.crons, []);
     assert.deepEqual(routes.routes, [{ src: "/api/narrowed-secret-transfer", dest: "/transfer" }, { src: "/.*", status: 404 }]);
     assert.equal(JSON.parse(readFileSync(join(output, "builds.json"), "utf8")).target, "production");
+    assert.deepEqual(readdirSync(join(root, "apps/web")), []);
     assert.deepEqual(readdirSync(join(output, "functions")), ["transfer.func"]);
     const source = readFileSync(join(output, "functions/transfer.func/handler.mjs"), "utf8");
     assert.ok(!source.includes(privateKey));
@@ -90,7 +91,7 @@ test("recovery transport never promotes and preserves only sealed artifacts", ()
   const transport = readFileSync("scripts/recover-narrowed-runtime.mjs", "utf8");
   assert.match(transport, /"--prod", "--skip-domain"/);
   assert.doesNotMatch(transport, /vc\(\["promote"|"--public"/);
-  assert.ok(transport.indexOf('candidate = JSON.parse(vc(["deploy"') < transport.indexOf("writeFileSync(authPath"));
+  assert.ok(transport.indexOf('const deployed = JSON.parse(vc(["deploy"') < transport.indexOf("writeFileSync(authPath"));
   assert.match(transport, /requireLiveUnchanged/);
   assert.match(transport, /Refusing to delete an aliased deployment/);
   const workflow = readFileSync(".github/workflows/recover-narrowed-runtime.yml", "utf8");
@@ -123,7 +124,8 @@ test("transport captures the sealed payload, excludes auth from upload, deletes 
       if (action === "deploy") {
         assert.ok(args.includes("--skip-domain"));
         assert.equal(existsSync(join(stage, "request.private.curl")), false);
-        return JSON.stringify({ id: "dpl_transfer", url: "https://transfer.vercel.app" });
+        assert.deepEqual(readdirSync(join(stage, "apps/web")), []);
+        return JSON.stringify({ status: "ok", deployment: { id: "dpl_transfer", url: "https://transfer.vercel.app" } });
       }
       if (action === "inspect") return "";
       if (action === "curl") {
