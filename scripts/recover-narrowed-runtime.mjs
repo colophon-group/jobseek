@@ -55,8 +55,9 @@ export async function recoverNarrowedRuntime(env = process.env, { execute = exec
     const deployed = JSON.parse(vc(["deploy", "--prebuilt", "--prod", "--skip-domain", "--yes", "--format=json", "--archive=tgz", "--scope", scope,
       "--meta", `narrowedTransfer=${transferId}`, "--meta", `githubCommitSha=${revision}`, "--meta", "githubCommitRef=main",
       "--meta", "githubOrg=colophon-group", "--meta", "githubRepo=jobseek"]));
-    candidate = deployed.deployment;
-    if (deployed.status !== "ok" || !/^dpl_[A-Za-z0-9]+$/.test(candidate?.id ?? "") || !/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app$/.test(candidate?.url ?? "") || candidate.id === expectedLive) throw new Error("Invalid isolated deployment");
+    // Agent-aware CLI output is wrapped; ordinary CI emits the deployment itself.
+    candidate = deployed.status === "ok" ? deployed.deployment : deployed;
+    if ((deployed.status !== undefined && deployed.status !== "ok") || !/^dpl_[A-Za-z0-9]+$/.test(candidate?.id ?? "") || !/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app$/.test(candidate?.url ?? "") || candidate.id === expectedLive) throw new Error("Invalid isolated deployment");
     requireLiveUnchanged();
     recoveryStage = "inspect";
     vc(["inspect", candidate.id, "--wait", "--timeout=2m", "--scope", scope]);
