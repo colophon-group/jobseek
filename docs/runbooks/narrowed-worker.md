@@ -98,6 +98,13 @@ idle-transaction timeouts, and six connections (two query connections, listener,
 readiness session, and bounded deployment overlap). It does not change an
 existing role's password. Rotate it only through a separately reviewed procedure;
 changing the deployment secret alone fails the candidate preflight.
+Production enables row-level security. Provisioning adds only SELECT policies
+for the role's read tables and SELECT/INSERT/UPDATE policies for its AI tables;
+it leaves RLS enabled, retains `NOBYPASSRLS`, and grants no DELETE or auth-table
+access. Existing conflicting policies fail preparation rather than being
+overwritten. The real restricted login must see the same row counts as the
+owner at an exported read-only snapshot before credentials are installed.
+Worker startup also requires the singleton row to be visible.
 
 ## Coordinated cutover
 

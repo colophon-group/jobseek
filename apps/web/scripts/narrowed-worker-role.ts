@@ -35,7 +35,37 @@ export async function provisionNarrowedWorkerRole(admin: Sql, password: string) 
       }
       const permissions = writeTables.includes(table) ? "SELECT,INSERT,UPDATE" : "SELECT";
       await tx.unsafe(`GRANT ${permissions} ON public.${table} TO ${NARROWED_WORKER_ROLE}`);
+      for (const command of writeTables.includes(table) ? ["SELECT", "INSERT", "UPDATE"] : ["SELECT"]) {
+        const name = `jobseek_narrowed_worker_${command.toLowerCase()}`;
+        const qual = command === "INSERT" ? "" : "true";
+        const check = command === "SELECT" ? "" : "true";
+        const [existing] = await tx`SELECT roles=ARRAY[${NARROWED_WORKER_ROLE}]::name[] AND cmd=${command}
+          AND permissive='PERMISSIVE' AND coalesce(qual,'')=${qual} AND coalesce(with_check,'')=${check} AS compatible
+          FROM pg_policies WHERE schemaname='public' AND tablename=${table} AND policyname=${name}`;
+        if (existing && !existing.compatible) throw new Error("Worker row security policy differs from the reviewed contract");
+        if (!existing) await tx.unsafe(`CREATE POLICY ${name} ON public.${table} AS PERMISSIVE FOR ${command} TO ${NARROWED_WORKER_ROLE}${qual ? " USING (true)" : ""}${check ? " WITH CHECK (true)" : ""}`);
+      }
     }
     await tx.unsafe(`GRANT USAGE ON SEQUENCE public.ai_filter_event_sequence_seq TO ${NARROWED_WORKER_ROLE}`);
+  });
+}
+
+/** Compare the real login with its owner's view at one consistent snapshot. */
+export async function verifyNarrowedWorkerReadAccess(admin: Sql, worker: Sql) {
+  await admin.begin(async owner => {
+    await owner.unsafe("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
+    const [snapshot] = await owner`SELECT pg_export_snapshot() AS id`;
+    if (!snapshot || !/^[a-f0-9-]{1,128}$/i.test(snapshot.id)) throw new Error("Worker access snapshot unavailable");
+    await worker.begin(async limited => {
+      await limited.unsafe("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
+      await limited.unsafe(`SET TRANSACTION SNAPSHOT '${snapshot.id}'`);
+      for (const table of [...readTables, ...writeTables]) {
+        const [exists] = await owner`SELECT to_regclass(${`public.${table}`}) IS NOT NULL AS present`;
+        if (!exists?.present) continue;
+        const [expected] = await owner.unsafe(`SELECT count(*)::text AS n FROM public.${table}`);
+        const [actual] = await limited.unsafe(`SELECT count(*)::text AS n FROM public.${table}`);
+        if (expected?.n !== actual?.n) throw new Error("Worker row visibility differs from the owner");
+      }
+    });
   });
 }
