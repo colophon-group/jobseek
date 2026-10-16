@@ -336,6 +336,9 @@ for file in ca.pem server.pem server-key.pem client.pem; do
   sudo install -o deploy -g deploy -m 0600 "$work/$file" "$stage/pki/$file"
 done
 sudo install -o deploy -g deploy -m 0600 "$work/pins.env" "$stage/pins.env"
+printf '[]\n' >"$work/proxies.json"
+read -r BROWSER_PROXY_SETTINGS_SHA256 _ < <(sha256sum "$work/proxies.json")
+sudo install -o deploy -g deploy -m 0600 "$work/proxies.json" "$stage/pki/proxies.json"
 write_stage_release() {
   local release_id="$1" release_path="$2"
   local policy_sha256="${3:-$NETWORK_POLICY_SHA256}"
@@ -346,6 +349,7 @@ write_stage_release() {
     printf 'RELEASE_ID=%s\n' "$release_id"
     printf 'NETWORK_POLICY_SHA256=%s\n' "$policy_sha256"
     printf 'NETWORK_INVENTORY_SHA256=%s\n' "$NETWORK_INVENTORY_SHA256"
+    printf 'BROWSER_PROXY_SETTINGS_SHA256=%s\n' "$BROWSER_PROXY_SETTINGS_SHA256"
     cat "$work/pins.env"
   } >"$work/candidate-release.env"
   sudo install -o deploy -g deploy -m 0600 \

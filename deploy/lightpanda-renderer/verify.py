@@ -102,10 +102,11 @@ LEGACY_RELEASE_ENV_KEYS = {
     "CLIENT_LEAF_SHA256",
     "CLIENT_SPKI_SHA256",
 }
-RELEASE_ENV_KEYS = LEGACY_RELEASE_ENV_KEYS | {
+PRE_PROXY_RELEASE_ENV_KEYS = LEGACY_RELEASE_ENV_KEYS | {
     "NETWORK_POLICY_SHA256",
     "NETWORK_INVENTORY_SHA256",
 }
+RELEASE_ENV_KEYS = PRE_PROXY_RELEASE_ENV_KEYS | {"BROWSER_PROXY_SETTINGS_SHA256"}
 
 
 class VerificationError(RuntimeError):
@@ -960,13 +961,15 @@ def validate_compose_model(
         fail("Compose tmpfs options drifted")
 
     volumes = service.get("volumes") or []
-    if len(volumes) != 3:
+    if len(volumes) != (4 if "BROWSER_PROXY_SETTINGS_SHA256" in env else 3):
         fail("Compose credential mounts are not exact")
     expected_targets = {
         "/run/credentials/ca.pem",
         "/run/credentials/server.pem",
         "/run/credentials/server-key.pem",
     }
+    if "BROWSER_PROXY_SETTINGS_SHA256" in env:
+        expected_targets.add("/run/lightpanda/proxies.json")
     if {volume.get("target") for volume in volumes} != expected_targets:
         fail("Compose credential mount targets drifted")
     if any(
@@ -984,6 +987,8 @@ def validate_compose_model(
         f"{release_dir}/pki/server.pem",
         f"{release_dir}/pki/server-key.pem",
     }
+    if "BROWSER_PROXY_SETTINGS_SHA256" in env:
+        expected_sources.add(f"{release_dir}/pki/proxies.json")
     if {str(volume.get("source", "")) for volume in volumes} != expected_sources:
         fail("Compose mount escaped its exact release generation")
     expected_volume_keys = {"type", "source", "target", "read_only", "bind"}
@@ -1047,9 +1052,14 @@ def read_env(path: Path, *, allow_legacy: bool = True) -> dict[str, str]:
     accepted = {frozenset(RELEASE_ENV_KEYS)}
     if allow_legacy:
         accepted.add(frozenset(LEGACY_RELEASE_ENV_KEYS))
+        accepted.add(frozenset(PRE_PROXY_RELEASE_ENV_KEYS))
     if frozenset(result) not in accepted:
         fail("release environment keys are not exact")
-    for key in ("NETWORK_POLICY_SHA256", "NETWORK_INVENTORY_SHA256"):
+    for key in (
+        "NETWORK_POLICY_SHA256",
+        "NETWORK_INVENTORY_SHA256",
+        "BROWSER_PROXY_SETTINGS_SHA256",
+    ):
         if key in result and not re.fullmatch(r"[0-9a-f]{64}", result[key]):
             fail("release policy digest is invalid")
     return result
@@ -1105,6 +1115,63 @@ def verify_compose(
 def release_policy_digests(environment: Path) -> tuple[str, str]:
     env = read_env(environment, allow_legacy=False)
     return env["NETWORK_POLICY_SHA256"], env["NETWORK_INVENTORY_SHA256"]
+
+
+def verify_browser_proxy_settings(environment: Path) -> None:
+    env = read_env(environment)
+    expected = env.get("BROWSER_PROXY_SETTINGS_SHA256")
+    if expected is None:
+        return  # Authenticated predecessor generations retain their own shape.
+    release = env["RENDERER_RELEASE_DIR"]
+    if not re.fullmatch(
+        r"/home/deploy/\.local/share/jobseek-lightpanda/releases/[a-z0-9.-]+", release
+    ):
+        fail("proxy registry escaped its release generation")
+    path = Path(release) / "pki/proxies.json"
+    metadata = path.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) != 0o400
+        or metadata.st_uid != 10001
+        or metadata.st_gid != 10001
+        or metadata.st_nlink != 1
+        or not 1 <= metadata.st_size <= 1 << 20
+    ):
+        fail("proxy registry ownership drifted")
+    # Deploy cannot read the controller-owned file. The already-pulled pinned
+    # image validates its exact bytes and endpoint policy without a network,
+    # capabilities, inherited secrets, or access to any other credential file.
+    output = run_text(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--pull",
+            "never",
+            "--network",
+            "none",
+            "--read-only",
+            "--cap-drop",
+            "ALL",
+            "--security-opt",
+            "no-new-privileges:true",
+            "--user",
+            "10001:10001",
+            "--memory",
+            "64m",
+            "--pids-limit",
+            "16",
+            "--entrypoint",
+            "/usr/local/bin/go-lightpanda",
+            "--mount",
+            f"type=bind,source={path},target=/run/lightpanda/proxies.json,readonly",
+            env["RENDERER_IMAGE_REF"],
+            "--runtime-v1-proxy-settings-check",
+            expected,
+        ]
+    )
+    if output != "browser proxy settings valid\n":
+        fail("proxy registry validation was not exact")
 
 
 def verify_image(
@@ -1359,15 +1426,17 @@ def validate_running_inspect(
         fail("renderer tmpfs drifted")
 
     mounts = inspect.get("Mounts") or []
-    if len(mounts) != 3 or any(
+    if len(mounts) != (4 if "BROWSER_PROXY_SETTINGS_SHA256" in environment else 3) or any(
         mount.get("Type") != "bind" or mount.get("RW") is not False for mount in mounts
     ):
-        fail("renderer mounts are not the three read-only credentials")
+        fail("renderer read-only credential mounts are not exact")
     targets = {
         "/run/credentials/ca.pem": "ca.pem",
         "/run/credentials/server.pem": "server.pem",
         "/run/credentials/server-key.pem": "server-key.pem",
     }
+    if "BROWSER_PROXY_SETTINGS_SHA256" in environment:
+        targets["/run/lightpanda/proxies.json"] = "proxies.json"
     if {mount.get("Destination") for mount in mounts} != set(targets):
         fail("renderer credential mount targets are not exact")
     for mount in mounts:
@@ -1430,6 +1499,7 @@ def verify_idle_process_boundary(command: list[str]) -> None:
 
 def verify_running_with_image(environment: Path, *, image_id: str, expected_id: str | None) -> str:
     env = read_env(environment)
+    verify_browser_proxy_settings(environment)
     inventory = load_inventory(environment.parent / "inventory.json")
     reconcile_renderer_networks(inventory, renderer_exists=True)
     inspects = run_json(["docker", "inspect", CONTAINER])
@@ -1571,6 +1641,7 @@ def verify_running(environment: Path, *, expected_id: str | None) -> str:
 
 def verify_owned(environment: Path, *, expected_id: str, allow_stopped_oom: bool = False) -> str:
     env = read_env(environment)
+    verify_browser_proxy_settings(environment)
     ci_release_id = (
         env["RELEASE_ID"]
         if re.fullmatch(r"sha-[0-9a-f]{40}-ci-r[0-9]+a[0-9]+", env["RELEASE_ID"])
@@ -1605,6 +1676,7 @@ def verify_owned(environment: Path, *, expected_id: str, allow_stopped_oom: bool
 
 def verify_owned_created(environment: Path, *, expected_id: str) -> str:
     env = read_env(environment)
+    verify_browser_proxy_settings(environment)
     ci_release_id = (
         env["RELEASE_ID"]
         if re.fullmatch(r"sha-[0-9a-f]{40}-ci-r[0-9]+a[0-9]+", env["RELEASE_ID"])
@@ -1815,6 +1887,8 @@ def parser() -> argparse.ArgumentParser:
     cleanup_network.add_argument("inventory", type=Path)
     policy_digests = sub.add_parser("policy-digests")
     policy_digests.add_argument("environment", type=Path)
+    proxy_settings = sub.add_parser("proxy-settings")
+    proxy_settings.add_argument("environment", type=Path)
     running = sub.add_parser("running")
     running.add_argument("environment", type=Path)
     running.add_argument("--expected-id")
@@ -1876,6 +1950,8 @@ def main() -> int:
             verify_cleanup_network(args.network_id, args.inventory)
         elif args.command == "policy-digests":
             print(" ".join(release_policy_digests(args.environment)))
+        elif args.command == "proxy-settings":
+            verify_browser_proxy_settings(args.environment)
         elif args.command == "running":
             print(verify_running(args.environment, expected_id=args.expected_id))
         elif args.command == "owned":

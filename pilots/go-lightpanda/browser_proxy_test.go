@@ -38,7 +38,10 @@ func TestConfiguredBrowserProxyNeverPassesCredentialsInProcessArguments(t *testi
 	if !strings.Contains(args, "--http-proxy http://proxy.example:8000") || strings.Contains(args, "fixture-user") || strings.Contains(args, "fixture-secret") {
 		t.Fatal("proxy process arguments disclose authentication or omit configured endpoint")
 	}
-	for _, raw := range []string{"[]", "null", "[true]", "[\"socks5://proxy.example\"]", "[\"http://proxy.example\",\"http://proxy.example/\"]"} {
+	if proxies, err := parseBrowserProxies([]byte("[]")); err != nil || len(proxies) != 0 {
+		t.Fatal("explicit disabled registry was rejected")
+	}
+	for _, raw := range []string{"null", "[true]", "[\"socks5://proxy.example\"]", "[\"http://proxy.example\",\"http://proxy.example/\"]"} {
 		if _, err := parseBrowserProxies([]byte(raw)); err == nil {
 			t.Fatal("invalid or duplicate startup proxy settings accepted")
 		}
@@ -107,7 +110,7 @@ func TestConfiguredBrowserProxyServiceRejectsUnknownReferencesBeforeChild(t *tes
 
 func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *testing.T) {
 	binary := interactionIntegrationBinary(t)
-	for _, mode := range []string{"success", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {
+	for _, mode := range []string{"success", "public-subresource", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {
 		t.Run(mode, func(t *testing.T) {
 			var requests, authenticated, originCredentials, privateRequests atomic.Int64
 			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +127,11 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 					return
 				}
 				authenticated.Add(1)
+				if mode == "public-subresource" && r.URL.Path == "/asset.js" {
+					w.Header().Set("Content-Type", "application/javascript")
+					_, _ = io.WriteString(w, `document.body.setAttribute("data-ready", "yes")`)
+					return
+				}
 				if mode == "private-redirect" {
 					w.Header().Set("Location", "http://10.0.0.1/private")
 					w.WriteHeader(302)
@@ -135,6 +143,10 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 					return
 				}
 				w.Header().Set("Content-Type", "text/html")
+				if mode == "public-subresource" {
+					_, _ = io.WriteString(w, `<html><body><script src="/asset.js"></script><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="></body></html>`)
+					return
+				}
 				if mode == "private-subresource" {
 					_, _ = io.WriteString(w, `<html><script src="http://10.0.0.1/private"></script></html>`)
 					return
@@ -175,6 +187,9 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 			}
 			if mode == "success" && (err != nil || result.Status != 200 || !strings.Contains(result.HTML, "Proxy engineer")) {
 				t.Fatal("physical authenticated proxy did not render complete content")
+			}
+			if mode == "public-subresource" && (err != nil || result.Status != 200 || !strings.Contains(result.HTML, `data-ready="yes"`)) {
+				t.Fatal("proxy request guard prevented a public script or data resource")
 			}
 			if requests.Load() > 6 {
 				t.Fatal("proxy challenge loop exceeded bounded fixture requests")

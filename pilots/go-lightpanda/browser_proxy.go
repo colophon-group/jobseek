@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -21,6 +23,7 @@ import (
 )
 
 const configuredBrowserProxyFile = "/run/lightpanda/proxies.json"
+const configuredBrowserProxyCheckFlag = "--runtime-v1-proxy-settings-check"
 
 var errBrowserProxy = errors.New("configured browser proxy unavailable")
 
@@ -29,7 +32,7 @@ func parseBrowserProxies(raw []byte) (map[string]browserproxy.Endpoint, error) {
 		return nil, errBrowserProxy
 	}
 	var entries []string
-	if json.Unmarshal(raw, &entries) != nil || len(entries) < 1 || len(entries) > 64 {
+	if json.Unmarshal(raw, &entries) != nil || entries == nil || len(entries) > 64 {
 		return nil, errBrowserProxy
 	}
 	result := make(map[string]browserproxy.Endpoint, len(entries))
@@ -49,6 +52,14 @@ func parseBrowserProxies(raw []byte) (map[string]browserproxy.Endpoint, error) {
 // The controller alone reads this optional protected deployment file. Nothing
 // from a request can select a file, endpoint, credential or child environment.
 func readBrowserProxies(path string) (map[string]browserproxy.Endpoint, error) {
+	raw, err := readBrowserProxySettings(path)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	return parseBrowserProxies(raw)
+}
+
+func readBrowserProxySettings(path string) ([]byte, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -62,14 +73,34 @@ func readBrowserProxies(path string) (map[string]browserproxy.Endpoint, error) {
 		return nil, errBrowserProxy
 	}
 	metadata, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || metadata.Uid != 10001 || metadata.Nlink != 1 {
+	if !ok || metadata.Uid != 10001 || metadata.Gid != 10001 || metadata.Nlink != 1 {
 		return nil, errBrowserProxy
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
 	if err != nil {
 		return nil, errBrowserProxy
 	}
-	return parseBrowserProxies(raw)
+	return raw, nil
+}
+
+func checkBrowserProxySettings(path, expected string) error {
+	if len(expected) != 64 {
+		return errBrowserProxy
+	}
+	decoded, err := hex.DecodeString(expected)
+	if err != nil || len(decoded) != sha256.Size {
+		return errBrowserProxy
+	}
+	raw, err := readBrowserProxySettings(path)
+	if err != nil || raw == nil {
+		return errBrowserProxy
+	}
+	digest := sha256.Sum256(raw)
+	if hex.EncodeToString(digest[:]) != expected {
+		return errBrowserProxy
+	}
+	_, err = parseBrowserProxies(raw)
+	return err
 }
 
 // Proxy credentials configure the private child context through local CDP.

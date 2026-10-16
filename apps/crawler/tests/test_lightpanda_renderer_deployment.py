@@ -7,10 +7,11 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -46,12 +47,70 @@ def release_env() -> dict[str, str]:
         "RELEASE_ID": "sha-" + "b" * 40 + "-r1a1",
         "NETWORK_POLICY_SHA256": "2" * 64,
         "NETWORK_INVENTORY_SHA256": "3" * 64,
+        "BROWSER_PROXY_SETTINGS_SHA256": "4" * 64,
         "CA_DER_SHA256": "c" * 64,
         "SERVER_LEAF_SHA256": "d" * 64,
         "SERVER_SPKI_SHA256": "e" * 64,
         "CLIENT_LEAF_SHA256": "f" * 64,
         "CLIENT_SPKI_SHA256": "1" * 64,
     }
+
+
+def test_proxy_registry_uses_isolated_pinned_validator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = release_env()
+    environment = tmp_path / "release.env"
+    environment.write_text("".join(f"{key}={value}\n" for key, value in env.items()))
+    registry = Path(env["RENDERER_RELEASE_DIR"]) / "pki/proxies.json"
+    original_lstat = Path.lstat
+    metadata = SimpleNamespace(
+        st_mode=stat.S_IFREG | 0o400, st_uid=10001, st_gid=10001, st_nlink=1, st_size=3
+    )
+    monkeypatch.setattr(
+        Path, "lstat", lambda path: metadata if path == registry else original_lstat(path)
+    )
+    commands: list[list[str]] = []
+
+    def run(command: list[str]) -> str:
+        commands.append(command)
+        return "browser proxy settings valid\n"
+
+    monkeypatch.setattr(verify, "run_text", run)
+    verify.verify_browser_proxy_settings(environment)
+    assert len(commands) == 1
+    command = commands[0]
+    assert command[:6] == ["docker", "run", "--rm", "--pull", "never", "--network"]
+    assert command[command.index("--network") + 1] == "none"
+    assert command[command.index("--user") + 1] == "10001:10001"
+    assert command[-3:] == [
+        env["RENDERER_IMAGE_REF"],
+        "--runtime-v1-proxy-settings-check",
+        env["BROWSER_PROXY_SETTINGS_SHA256"],
+    ]
+    assert not any(
+        "server-key.pem" in arg or arg in {"-e", "--env", "--privileged"} for arg in command
+    )
+    metadata.st_mode = stat.S_IFREG | 0o600
+    with pytest.raises(verify.VerificationError, match="ownership drifted"):
+        verify.verify_browser_proxy_settings(environment)
+    assert len(commands) == 1
+
+
+def test_pre_proxy_generation_keeps_its_exact_prior_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = release_env()
+    del env["BROWSER_PROXY_SETTINGS_SHA256"]
+    environment = tmp_path / "release.env"
+    environment.write_text("".join(f"{key}={value}\n" for key, value in env.items()))
+    monkeypatch.setattr(
+        verify, "run_text", lambda _: pytest.fail("predecessor acquired a new registry")
+    )
+    verify.verify_browser_proxy_settings(environment)
+    assert verify.read_env(environment) == env
+    with pytest.raises(verify.VerificationError, match="keys are not exact"):
+        verify.read_env(environment, allow_legacy=False)
 
 
 @pytest.fixture
@@ -813,7 +872,7 @@ def test_deploy_is_renderer_scoped_and_host_policy_is_read_only() -> None:
     assert 'docker restart --time 30 "$candidate_container_id"' in scripts
     assert "docker network rm" not in scripts
     assert 'install -m 0400 "$STAGE/pki/server-key.pem"' in scripts
-    assert "-ceu 'chown 10001:10001 /server-key.pem'" in scripts
+    assert "-ceu 'chown 10001:10001 /server-key.pem /proxies.json'" in scripts
     assert "--cap-add FOWNER" not in scripts
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert 'sudo -n "$POLICY" verify-ready' in scripts
@@ -940,15 +999,20 @@ def test_installed_policy_and_release_artifacts_are_fsynced_before_commit() -> N
     assert "fsync_files \\\n" in deploy
     assert 'exec 10<"$GENERATION/pki/server-key.pem"' in deploy
     assert deploy.count("stat -Lc '%d:%i' /proc/$$/fd/10") == 2
+    assert 'exec 11<"$GENERATION/pki/proxies.json"' in deploy
+    assert deploy.count("stat -Lc '%d:%i' /proc/$$/fd/11") == 2
     assert (
         deploy.index('exec 10<"$GENERATION/pki/server-key.pem"')
-        < deploy.index("-ceu 'chown 10001:10001 /server-key.pem'")
-        < deploy.index("os.fsync(int(sys.argv[1]))")
+        < deploy.index("-ceu 'chown 10001:10001 /server-key.pem /proxies.json'")
+        < deploy.index("os.fsync(int(descriptor))")
         < deploy.index("exec 10<&-")
     )
     fsync_block = deploy[deploy.index("fsync_files \\\n") : deploy.index("fsync_directories")]
     assert '"$GENERATION/pki/server-key.pem"' not in fsync_block
     assert 'fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"' in deploy
+    assert deploy.index('"$GENERATION/verify.py" proxy-settings') < deploy.index(
+        '"$GENERATION/verify.py" compose'
+    )
 
 
 def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
@@ -1100,7 +1164,7 @@ def test_compose_source_has_exact_private_publication_and_external_networks() ->
     assert "uid=10002,gid=10002,mode=0700" in compose
     assert 'restart: "on-failure:3"' in compose
     assert "max-size: 10m" in compose
-    assert compose.count("create_host_path: false") == 3
+    assert compose.count("create_host_path: false") == 4
 
 
 def test_policy_rules_have_exact_dns_https_denies_and_terminal_drops() -> None:

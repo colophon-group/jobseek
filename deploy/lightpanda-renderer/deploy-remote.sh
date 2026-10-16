@@ -65,6 +65,9 @@ printf '%s' "$LIGHTPANDA_B0_SERVER_CERT_PEM" >"$payload_root/pki/server.pem"
 printf '%s' "$LIGHTPANDA_B0_SERVER_KEY_PEM" >"$payload_root/pki/server-key.pem"
 printf '%s' "$LIGHTPANDA_B0_CLIENT_CERT_PEM" >"$payload_root/pki/client.pem"
 chmod 0600 "$payload_root/pki"/*
+python3 deploy/lightpanda-renderer/proxy-settings.py --output "$payload_root/pki/proxies.json"
+read -r browser_proxy_settings_sha256 _ < <(sha256sum "$payload_root/pki/proxies.json")
+[[ "$browser_proxy_settings_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 1
 
 artifact_root=deploy/lightpanda-renderer
 for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh install-host.sh jobseek-lightpanda-network.service; do
@@ -88,6 +91,7 @@ SOURCE_COMMIT=$SOURCE_COMMIT
 RELEASE_ID=$release_id
 NETWORK_POLICY_SHA256=$network_policy_sha256
 NETWORK_INVENTORY_SHA256=$network_inventory_sha256
+BROWSER_PROXY_SETTINGS_SHA256=$browser_proxy_settings_sha256
 EOF
 cat "$payload_root/pins.env" >>"$payload_root/release.env"
 chmod 0600 "$payload_root/pins.env" "$payload_root/release.env"
