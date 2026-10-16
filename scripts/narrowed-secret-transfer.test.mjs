@@ -103,7 +103,8 @@ test("recovery transport never promotes and preserves only sealed artifacts", ()
 });
 
 test("transport captures the sealed payload, excludes auth from upload, deletes its deployment and refuses aliases", async () => {
-  for (const acquireAlias of [false, true]) {
+  for (const aliasState of ["none", "stale", "assigned"]) {
+    const acquireAlias = aliasState === "assigned";
     const root = mkdtempSync(join(tmpdir(), "narrowed-transport-test-"));
     const stage = join(root, `narrowed-transfer-${transferId}`);
     const project = "prj_NqkWn9aYWWGsrxGjQf69vkR1POAi";
@@ -117,9 +118,10 @@ test("transport captures the sealed payload, excludes auth from upload, deletes 
       const action = args[2];
       if (action === "api") {
         const path = args[3];
+        if (path.includes("/v4/aliases/")) return JSON.stringify({ deploymentId: path.includes("jobseek-web-") || !acquireAlias ? "dpl_existing" : "dpl_transfer" });
         if (path.includes("/v9/projects/")) return JSON.stringify({ id: project, accountId: org });
         if (path.includes("/deployments/jseek.co")) return JSON.stringify({ id: "dpl_existing" });
-        return JSON.stringify({ projectId: project, target: "production", meta: { narrowedTransfer: transferId }, alias: acquireAlias ? ["jseek.co"] : [] });
+        return JSON.stringify({ projectId: project, target: "production", meta: { narrowedTransfer: transferId }, alias: aliasState === "none" ? [] : ["jseek.co"] });
       }
       if (action === "deploy") {
         assert.ok(args.includes("--skip-domain"));

@@ -27,7 +27,20 @@ export async function recoverNarrowedRuntime(env = process.env, { execute = exec
   }).trim();
   const api = path => JSON.parse(vc(["api", `${path}${path.includes("?") ? "&" : "?"}teamId=${orgId}`, "--raw"]));
   const canonical = () => api("/v13/deployments/jseek.co");
-  const requireLiveUnchanged = () => { if (canonical().id !== expectedLive) throw new Error("Production identity changed during recovery"); };
+  const projectAlias = "jobseek-web-viktor-shcherbakovs-projects.vercel.app";
+  const previousProjectAlias = api(`/v4/aliases/${projectAlias}`).deploymentId;
+  if (!/^dpl_[A-Za-z0-9]+$/.test(previousProjectAlias ?? "")) throw new Error("Project alias identity unavailable");
+  const requireLiveUnchanged = () => {
+    if (canonical().id !== expectedLive || api(`/v4/aliases/${projectAlias}`).deploymentId !== previousProjectAlias) throw new Error("Production identity changed during recovery");
+  };
+  const requireNoAssignedAliases = (detail, id) => {
+    // Deployment metadata retains historical/intended aliases after skip-domain.
+    // Resolve the actual alias record before deciding whether it is assigned.
+    if (!Array.isArray(detail.alias) || detail.alias.length > 100) throw new Error("Deployment aliases unavailable");
+    for (const alias of detail.alias) {
+      if (typeof alias !== "string" || !/^[A-Za-z0-9.-]+$/.test(alias) || api(`/v4/aliases/${alias}`).deploymentId === id) throw new Error("Refusing to delete an aliased deployment");
+    }
+  };
   const metadata = api(`/v9/projects/${projectId}`);
   if (metadata.id !== projectId || metadata.accountId !== orgId) throw new Error("Recovery project mismatch");
   requireLiveUnchanged();
@@ -48,7 +61,8 @@ export async function recoverNarrowedRuntime(env = process.env, { execute = exec
     recoveryStage = "inspect";
     vc(["inspect", candidate.id, "--wait", "--timeout=2m", "--scope", scope]);
     const detail = api(`/v13/deployments/${candidate.id}`);
-    if (detail.projectId !== projectId || detail.target !== "production" || detail.meta?.narrowedTransfer !== transferId || (detail.alias?.length ?? 0) !== 0) throw new Error("Recovery deployment acquired aliases or wrong identity");
+    if (detail.projectId !== projectId || detail.target !== "production" || detail.meta?.narrowedTransfer !== transferId) throw new Error("Recovery deployment has wrong identity");
+    requireNoAssignedAliases(detail, candidate.id);
     writeFileSync(resolve(root, "transfer-manifest.json"), JSON.stringify({ ...manifest, deploymentId: candidate.id, deploymentUrl: candidate.url }, null, 2) + "\n");
     const bearer = env.AI_FILTER_REFRESH_SECRET;
     if (!bearer || bearer.length < 32 || bearer.length > 1024 || /[\r\n\0]/.test(bearer)) throw new Error("Protected recovery authorization unavailable");
@@ -71,7 +85,7 @@ export async function recoverNarrowedRuntime(env = process.env, { execute = exec
       recoveryStage = "cleanup";
       requireLiveUnchanged();
       const detail = api(`/v13/deployments/${candidate.id}`);
-      if ((detail.alias?.length ?? 0) !== 0) throw new Error("Refusing to delete an aliased deployment");
+      requireNoAssignedAliases(detail, candidate.id);
       vc(["remove", candidate.id, "--safe", "--yes", "--scope", scope]);
       const removed = await request(`https://api.vercel.com/v13/deployments/${candidate.id}?teamId=${orgId}`, {
         headers: { Authorization: `Bearer ${env.VERCEL_TOKEN}` }, signal: AbortSignal.timeout(15_000),
