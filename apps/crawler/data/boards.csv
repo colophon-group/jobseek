@@ -4138,6 +4138,7 @@ labcorp,labcorp-cannamm,https://jobs.jobvite.com/cannamm,jobvite,"{""tenant"": "
 labcorp,labcorp-careers,https://labcorp.wd1.myworkdayjobs.com/external,workday,,workday,
 labcorp,labcorp-dynacare,https://jobs.jobvite.com/dynacare/jobs,jobvite,"{""tenant"": ""dynacare"", ""listing_url"": ""https://jobs.jobvite.com/dynacare/jobs""}",json-ld,
 labelbox,labelbox-greenhouse,https://job-boards.greenhouse.io/labelbox,greenhouse,"{""token"": ""labelbox""}",skip,
+ladgov,ladgov-careers,https://httpsladgovcomjobopenings.applytojob.com/,jazzhr,,jazzhr,
 lakera,lakera-careers,https://jobs.ashbyhq.com/lakera.ai,ashby,"{""token"": ""lakera.ai""}",skip,
 lam-research,lam-research-eightfold,https://lamresearch.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 lambda,lambda-ashby,https://jobs.ashbyhq.com/lambda,ashby,"{""token"": ""lambda""}",skip,
