@@ -37,7 +37,7 @@ isolated ARM density do not establish sustained freshness or matched fleet cost.
 [PR #10660](https://github.com/colophon-group/jobseek/pull/10660) bounds browser
 claims before renderer waiters can exhaust discovery slots. Its deterministic
 regression and repeated race checks pass at default 20 and configured 60 capacity;
-the full Linux worker suite passes and remaining CI is pending. It is undeployed.
+full Linux queue/worker suites, Required CI and Crawler Deploy Gate pass. It is undeployed.
 Continue the following JSON-LD/DOM HTTP/API batch: a production-timezone-matched
 JSON-LD reference and private canonical writer agree, while Aura still needs its
 separate compensation paragraph preserved. No following ownership is admitted.

@@ -173,11 +173,14 @@
     "pr": 10660,
     "head": "cf9554b7e58117a20154f18a0f89ba684b788d99",
     "version": "0.13.1079",
-    "state": "open; undeployed; remaining CI pending",
+    "state": "open; Required CI and actual Crawler Deploy Gate SUCCESS; unmerged and undeployed",
     "real_worker_loop_starvation_regression": "fails with unbounded original; passes with four preclaim browser reservations",
     "race_count10_default20_and_configured60": "PASS",
     "full_linux_native_worker_suite": "SUCCESS38967711768",
-    "production_backlog_causality_proven": false
+    "production_backlog_causality_proven": false,
+    "full_linux_native_queue_suite": "SUCCESS38967711768",
+    "required_ci": "SUCCESS38967711768",
+    "crawler_deploy_gate": "SUCCESS38967711781"
   },
   "unfinished": [
     "remaining route/config/transport coverage",

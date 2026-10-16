@@ -72,8 +72,8 @@ often need transport or control qualification rather than another provider port.
 [PR #10660](https://github.com/colophon-group/jobseek/pull/10660) reserves browser
 capacity before opaque claims so renderer waiters cannot exhaust discovery slots.
 The regression fails with the original unbounded selection and passes with the
-limit, including repeated race checks at default20 and configured60 concurrency.
-The complete Linux worker suite passes; remaining CI is pending. It is undeployed
+limit, including repeated race checks at default 20 and configured 60 concurrency.
+Complete Linux queue/worker suites, Required CI and Crawler Deploy Gate pass. It is undeployed
 and does not yet establish a production freshness improvement.
 
 Following HTTP/API research spans JSON-LD and DOM. A fresh original browser
