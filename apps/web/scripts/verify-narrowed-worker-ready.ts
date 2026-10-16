@@ -4,13 +4,12 @@ import { createHash } from "node:crypto";
 import dotenv from "dotenv";
 import postgres from "postgres";
 import availability from "../src/config/service-availability.json";
-import { narrowedWorkerReadinessKey } from "../src/lib/ai-filter/host-contract";
+import { narrowedHostExecutionState, narrowedWorkerReadinessKey } from "../src/lib/ai-filter/host-contract";
 import { appendFileSync } from "node:fs";
 
 dotenv.config({ path: resolve(process.cwd(), "../../.vercel/.env.production.local"), quiet: true });
 async function main() {
-  if (availability.narrowedWorkerPaused || process.env.AI_FILTER_ENABLED !== "true" ||
-    process.env.AI_FILTER_JEV_1_13_0_ENABLED !== "true") {
+  if (narrowedHostExecutionState(availability.narrowedWorkerPaused) === "disabled") {
     console.info(JSON.stringify({ event: "narrowed_worker_gate", status: "disabled" }));
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, "status=disabled\n");
     return;

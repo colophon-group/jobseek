@@ -100,6 +100,12 @@ it does not automatically activate a worker or weaken maintenance controls.
 When the source worker pause or either production execution switch is off, the
 readiness gate reports disabled and the web workflow stops/disables the host
 service through the existing protected pause operation before promotion.
+Both runtime execution flags must be readable literal `true`/`false` values.
+Missing, empty (including sensitive Vercel variables omitted by `pull`), or
+malformed values fail deployment before building and never authorize a pause.
+The reviewed source pause remains independently authoritative. Preserve
+explicit, readable runtime policy inputs in protected deployment configuration;
+do not infer disabled matching from unreadable secrets.
 Changes to spending limits or provider entitlement environments require a host
 activation with the matching policy before enabled web code can promote.
 Changing a Vercel environment variable without deploying still cannot stop an
