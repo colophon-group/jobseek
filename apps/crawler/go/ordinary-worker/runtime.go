@@ -20,6 +20,7 @@ type runtimeServices struct {
 	monitorSlots chan struct{}
 	claim        func(context.Context) (*queue.Claim, error)
 	claimDetail  func(context.Context) (*queue.Claim, error)
+	releaseClaim func(*queue.Claim)
 	heartbeat    func(context.Context, *queue.Claim) error
 	execute      func(context.Context, *queue.Claim) (*GreenhouseClaimResult, error)
 }
@@ -184,6 +185,9 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 					executionServices.monitorSlots = nil
 				}
 				result, err := runLeasedClaim(tasks, c, executionServices, claim, m)
+				if s.releaseClaim != nil && !errors.Is(err, ErrDrainTimeout) {
+					s.releaseClaim(claim)
+				}
 				if reservedMonitor {
 					<-s.monitorSlots
 				}
@@ -440,28 +444,18 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		case <-process.Done():
 		}
 	}()
-	var claimTurn atomic.Uint64
+	var browserCapacity *browserClaimCapacity
+	if renderer != nil {
+		browserCapacity = &browserClaimCapacity{slots: make(chan struct{}, renderedConcurrency)}
+	}
 	claimOwned := func(ctx context.Context, detailsOnly bool) (*queue.Claim, error) {
 		pop := authority.Claim
 		if detailsOnly {
 			pop = authority.ClaimDetails
 		}
-		worker := queue.Simple
-		if renderer != nil && claimTurn.Add(1)%2 == 0 {
-			worker = queue.Browser
-		}
-		claim, err := pop(ctx, worker)
-		if err != nil || claim != nil || renderer == nil {
-			return claim, err
-		}
-		if worker == queue.Simple {
-			worker = queue.Browser
-		} else {
-			worker = queue.Simple
-		}
-		return pop(ctx, worker)
+		return browserCapacity.claim(ctx, pop)
 	}
-	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, false) }, claimDetail: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, true) }, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, false) }, claimDetail: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, true) }, releaseClaim: browserCapacity.release, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
 		useProxy, err := runtimeClaimUsesProxy(ctx, authority, claim)
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)

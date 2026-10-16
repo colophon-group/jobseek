@@ -8,12 +8,15 @@ import (
 
 type jsonldHTTPDetailRoute struct{ host, pathPrefix string }
 
-// These unchanged browser configurations expose the same complete JSON-LD over
-// HTTP. Eight positive original/live references and all 878 captured source routes
-// bind this substitution. Keep the existing canonical browser queue, ownership
+// These unchanged browser configurations expose complete JSON-LD over HTTP.
+// The original five retain eight positive references and 878 captured routes.
+// Ecodrop adds a fresh UTC original/HTTP match and private canonical replay.
+// Keep the existing canonical browser queue, ownership
 // fingerprint and parser; changed configurations or other origins/paths retain
 // their rendered route. No runtime probe, extra origin request or fallback is added.
 var qualifiedJSONLDHTTPDetails = map[string]jsonldHTTPDetailRoute{
+	// ecodrop-wttj
+	"072db00d8c764fd8d8efc35da4021ce9c87cf2a0a9777080af4aafea9155c3d6": {host: "www.welcometothejungle.com", pathPrefix: "/fr/companies/ecodrop/jobs/"},
 	// oliver-wyman-marsh-global-early-careers
 	"56a2827c5d9a09d4a97e681592754331a97c7a74b97570543f1a66bea46a1c44": {host: "careers.marsh.com", pathPrefix: "/global/en/job/"},
 	// oliver-wyman-marsh-eu

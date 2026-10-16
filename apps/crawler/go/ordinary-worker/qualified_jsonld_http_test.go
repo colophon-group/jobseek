@@ -13,8 +13,8 @@ import (
 )
 
 func TestQualifiedJSONLDHTTPRequiresFrozenConfigAndExactOriginPath(t *testing.T) {
-	if len(qualifiedJSONLDHTTPDetails) != 5 {
-		t.Fatal("five qualified configurations required")
+	if len(qualifiedJSONLDHTTPDetails) != 6 {
+		t.Fatal("six qualified configurations required")
 	}
 	for fingerprint, route := range qualifiedJSONLDHTTPDetails {
 		original := queue.WorkdayDetailProfile{Profile: "jsonld.rendered-detail/v1", EffectiveBoardSHA256: fingerprint, SourceURL: "https://" + route.host + route.pathPrefix + "example", JSONLDConfig: map[string]any{"render": true, "timeout": float64(60000), "defaults": map[string]any{"language": "en"}}}

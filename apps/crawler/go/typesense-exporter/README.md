@@ -72,14 +72,11 @@ cycle, and `--repair --full --fresh-cycle` establishes a new complete proof.
   time, resource, credential, and host-lock limits.
 
 The full-backfill maintenance chain invokes Go reconciliation directly.
-`crawler reconcile` execs Go before opening any Python pools. The existing
-systemd wrapper uses that compatibility command in this first deployment.
-Its separately attested host wrapper must switch to direct Go invocation in a
-follow-up after this binary is deployed; do not install a wrapper that invokes
-an unavailable command in the previous image. The previous released image
-retains Python reconciliation for cold reversal. The Python library remains
-available for offline parity checks until production proof and the rollback
-window are complete.
+The protected systemd wrapper in `deploy/reconciliation/run.sh` also invokes
+`go-typesense-exporter --reconcile` directly in the exact deployed image, under
+the existing host mutation lock. `crawler reconcile` remains a compatibility
+entrypoint that execs Go before opening any Python pools. The retained Python
+library supports offline parity checks and older cold rollback images.
 
 Integration tests execute the repository's actual reconciliation state
 migrations against isolated PostgreSQL schemas. They cover a lost import

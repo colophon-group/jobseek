@@ -29,6 +29,8 @@ type renderedDetailClient interface {
 	Fetch(context.Context, queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error)
 }
 
+const renderedConcurrency = 4
+
 type NativeRenderedDetails struct {
 	client *lp.Client
 	slots  chan struct{}
@@ -65,7 +67,7 @@ func NewNativeRenderedDetails(c lp.Config) (*NativeRenderedDetails, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NativeRenderedDetails{client: client, slots: make(chan struct{}, 4)}, nil
+	return &NativeRenderedDetails{client: client, slots: make(chan struct{}, renderedConcurrency)}, nil
 }
 
 func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
