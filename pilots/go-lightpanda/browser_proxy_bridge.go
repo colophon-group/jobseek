@@ -32,6 +32,7 @@ type pinnedBrowserProxyBridge struct {
 	listener  net.Listener
 	gate      chan struct{}
 	once      sync.Once
+	release   sync.Once
 	mu        sync.Mutex
 	failure   error
 	conns     map[net.Conn]struct{}
@@ -66,7 +67,7 @@ func newPinnedBrowserProxyBridge(parent context.Context, transport *http.Transpo
 			}
 		},
 	}
-	context.AfterFunc(ctx, bridge.Close)
+	context.AfterFunc(ctx, bridge.Stop)
 	go func() {
 		if err := bridge.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) && ctx.Err() == nil {
 			bridge.reject()
@@ -109,10 +110,11 @@ func (bridge *pinnedBrowserProxyBridge) rejectRequestCause(w http.ResponseWriter
 	bridge.rejectCause(cause)
 }
 
-func (bridge *pinnedBrowserProxyBridge) Close() {
+// Stop denies further forwarding and closes active sockets, retaining the
+// listener's port reservation until the browser process group is proved dead.
+func (bridge *pinnedBrowserProxyBridge) Stop() {
 	bridge.once.Do(func() {
 		bridge.cancel()
-		bridge.server.Close()
 		bridge.mu.Lock()
 		connections := make([]net.Conn, 0, len(bridge.conns))
 		for conn := range bridge.conns {
@@ -126,11 +128,23 @@ func (bridge *pinnedBrowserProxyBridge) Close() {
 	})
 }
 
+func (bridge *pinnedBrowserProxyBridge) Close() {
+	bridge.Stop()
+	bridge.release.Do(func() { bridge.server.Close() })
+}
+
 func (bridge *pinnedBrowserProxyBridge) ServeHTTP(w http.ResponseWriter, request *http.Request) {
+	if bridge.ctx.Err() != nil {
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	select {
 	case bridge.gate <- struct{}{}:
 		defer func() { <-bridge.gate }()
 	case <-bridge.ctx.Done():
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	default:
 		bridge.rejectRequest(w)

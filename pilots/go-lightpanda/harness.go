@@ -206,6 +206,7 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 
 	taskCtx, cancel := context.WithTimeout(ctx, config.TaskTimeout)
 	defer cancel()
+	bridgeRelease := true // No child exists until Start succeeds.
 	if task.proxy != nil {
 		starter, ok := deps.process.(commandStarter)
 		if !ok {
@@ -224,7 +225,15 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 			transport.CloseIdleConnections()
 			return Result{}, err
 		}
-		defer bridge.Close()
+		defer func() {
+			if bridgeRelease {
+				bridge.Close()
+			} else {
+				// Cleanup failure is fatal to the resident service. Quarantine
+				// the port until process exit rather than serving another task.
+				bridge.Stop()
+			}
+		}()
 		task.proxyBridge = bridge
 		starter.proxy = task.proxy
 		starter.proxyBridgePort = bridge.port
@@ -242,12 +251,14 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 		}
 		return Result{}, fmt.Errorf("start lightpanda: %w", err)
 	}
+	bridgeRelease = false
 	state := watchProcess(process)
 
 	result, runErr := executeTaskSafely(taskCtx, deps, process, state, port, task)
 	cancel()
 
 	cleanupErr := cleanupProcess(config, deps, process, state, port)
+	bridgeRelease = cleanupErr == nil
 	if cleanupErr != nil {
 		runErr = errors.Join(
 			runErr,

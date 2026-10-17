@@ -21,6 +21,43 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 )
 
+func TestPinnedProxyBridgeStopsForwardingButRetainsPortUntilCleanup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var calls atomic.Int64
+	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+		calls.Add(1)
+		return nil, context.Canceled
+	}}
+	bridge, err := newPinnedBrowserProxyBridge(ctx, transport, cancel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bridge.Close()
+	bridge.Stop()
+	address, _ := url.Parse(bridge.address)
+	if listener, err := net.Listen("tcp4", address.Host); err == nil {
+		listener.Close()
+		t.Fatal("cancelled task released its child-permitted port before cleanup")
+	}
+	client := &http.Client{Timeout: time.Second}
+	defer client.CloseIdleConnections()
+	response, err := client.Get(bridge.address)
+	if err != nil {
+		t.Fatal("quarantined listener unavailable", err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusServiceUnavailable || calls.Load() != 0 {
+		t.Fatal("cancelled task still forwarded or returned a success")
+	}
+	bridge.Close()
+	listener, err := net.Listen("tcp4", address.Host)
+	if err != nil {
+		t.Fatal("proved cleanup did not release its reserved port", err)
+	}
+	listener.Close()
+}
+
 func TestPinnedProxyBridgePreservesCookiesRedirectsBodiesAndPolicy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
