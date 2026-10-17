@@ -1,0 +1,190 @@
+{
+  "date": "2026-10-17",
+  "status": "qualified candidate; not admitted or serving",
+  "intended_version": "0.13.1083",
+  "original_oracle_source": "40a1f6cbc5ad0c133a55703b3d67f5109a5faf41",
+  "relevant_python_core_equals_installed_source1081": true,
+  "original_full_config_bindings": 6,
+  "original_browser_queue_lane_retained": true,
+  "total_complete_inventory_urls": 891,
+  "actual_http_consumer_modes_passed": 12,
+  "original_result_failures_not_interpreted_as_empty": 1,
+  "rich_source_comparison": {
+    "jobs": 331,
+    "matching_fields": "all observed titles, descriptions, locations and optional content fields",
+    "raw_metadata_difference": "Original null versus native empty object; retained as a representation difference. NativeRichPreparer does not consume source Metadata. Actual native canonical preparer/writer retained all331titles and331pending description rows; no R2 upload claim."
+  },
+  "canonical_required_postgres_redis_test_nodes": {
+    "pass": 7,
+    "fail": 0,
+    "skip": 0
+  },
+  "policy_and_failure_required_postgres_redis_test_nodes": {
+    "pass": 37,
+    "fail": 0,
+    "skip": 0
+  },
+  "failure_modes": [
+    "publisher_header",
+    "publisher_meta",
+    "HTTP403",
+    "HTTP404",
+    "challenge",
+    "later_page_failure"
+  ],
+  "policy_results": "All original existing jobs and absence counters preserved on failed/reserved inventories; publisher reservation and browser-claim settlement retained.",
+  "focused_public_queue_race_nodes_passed": 3,
+  "go_vet_and_module_tidy_diff_passed": [
+    "ordinary-queue",
+    "ordinary-worker"
+  ],
+  "cases": [
+    {
+      "reference": "pagination01",
+      "profile": "dom.rendered-rows/v1",
+      "original_effective_config_sha256": "a7c142a9e178eccd67c6032e42761be7ee6d7cbb83c1f754290f60d3296f44b2",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 331
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 331
+        }
+      ],
+      "canonical_new_jobs": 331,
+      "canonical_rich_titles_checked": 331,
+      "canonical_pending_description_rows": 331
+    },
+    {
+      "reference": "pagination04",
+      "profile": "dom.rendered-urls/v1",
+      "original_effective_config_sha256": "a94e07152438cc233ebc780652fa18f182c962cd27ea25da50b79f4b876e290e",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 196
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 196
+        }
+      ],
+      "canonical_new_jobs": 196,
+      "canonical_rich_titles_checked": 0,
+      "canonical_pending_description_rows": 0
+    },
+    {
+      "reference": "pagination05",
+      "profile": "dom.rendered-urls/v1",
+      "original_effective_config_sha256": "0499af732d263f37d53544af2463f5f0ce1ba7473c4bd5636396af6a37724019",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 46
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 46
+        }
+      ],
+      "canonical_new_jobs": 46,
+      "canonical_rich_titles_checked": 0,
+      "canonical_pending_description_rows": 0
+    },
+    {
+      "reference": "pagination08",
+      "profile": "dom.rendered-urls/v1",
+      "original_effective_config_sha256": "691f43109e80ca6644107de82663a2ec2417332a14224ba568952dc7c4f2862e",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 192
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 192
+        }
+      ],
+      "canonical_new_jobs": 192,
+      "canonical_rich_titles_checked": 0,
+      "canonical_pending_description_rows": 0
+    },
+    {
+      "reference": "pagination09",
+      "profile": "dom.rendered-urls/v1",
+      "original_effective_config_sha256": "c13e5d19bfb4cff7dcd40261d677e80581951cc993bb25e954aa93bbbe2ca186",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 28
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 28
+        }
+      ],
+      "canonical_new_jobs": 28,
+      "canonical_rich_titles_checked": 0,
+      "canonical_pending_description_rows": 0
+    },
+    {
+      "reference": "pagination10",
+      "profile": "dom.rendered-urls/v1",
+      "original_effective_config_sha256": "4e2669fd87b837f144a5be2eff4d69041eb7e26302088e2a57e411b580822d35",
+      "http_modes": [
+        {
+          "http2_enabled": false,
+          "complete_inventory_matches": true,
+          "count": 98
+        },
+        {
+          "http2_enabled": true,
+          "complete_inventory_matches": true,
+          "count": 98
+        }
+      ],
+      "canonical_new_jobs": 98,
+      "canonical_rich_titles_checked": 0,
+      "canonical_pending_description_rows": 0
+    }
+  ],
+  "private_evidence_sha256": {
+    "original-results-fresh2.json": "f2891a9ddd3972ba7c2f484e4b756aebccd781c46c3638c2051693ee1c424db4",
+    "six-original-bindings1.private.json": "287255a71a89497034cf94ea5b6676cdb559e6b6ddb2538061fdef77323da4b0",
+    "six-original-canonical4.json": "fb31875152977776a76572b21f9046274a547157b7072d6ad68318d6c795c447",
+    "six-original-canonical4.jsonl": "51e0f5d265ef435fcea7ea34ffba58bddd0c947a925e8030dc90aa659e0248d8",
+    "six-original-policy1.jsonl": "d17b2485785cb1dd445b4d80954da4a6382f10dc058965a8bdafe6e941311b95",
+    "pagination01-compiled-http2-false-1.json": "048c75d90c6e524536c6b141e264131fc28f86389d63e5c9a4fba669402d2925",
+    "pagination01-compiled-http2-true-1.json": "90e0958da27e0ab27f3ddb469d4fc4dd713fe129d394b55fd1806963c4eaf93a",
+    "pagination04-compiled-http2-false-1.json": "e76fbf5bab68a9b4a025bd10e2dd7c52ce9f227d9623e4274c1d67b2a2e1bf93",
+    "pagination04-compiled-http2-true-1.json": "055a0290be719ff2e830b96ffcb4a278d24ebf9c9f18c034af6f25435bb46a50",
+    "pagination05-compiled-http2-false-1.json": "454f1317372a17b535d657c6f90d3f4e5015e73c5ec6bcf54dcdd9806728ed2f",
+    "pagination05-compiled-http2-true-1.json": "66425a92b73cdbb8cae27472c0dca2b21b242bcab1f77a6b40164da9aeaf6b59",
+    "pagination08-compiled-http2-false-1.json": "bb88d78e8b69a6384f66660905875b02b0394724360d263ca00f7146af6d906b",
+    "pagination08-compiled-http2-true-1.json": "3982a4bb5a7de5fab47af33063bb0bd1c3bbaa35a82cddbe0297a1a98e194172",
+    "pagination09-compiled-http2-false-1.json": "ef97e6a4ff1064def6236b605a9fc1055a5d08e4528f91e09009f87780895912",
+    "pagination09-compiled-http2-true-1.json": "d5f5abbbb88391d6dd0ad417dd655e7bbb8cf6bdd7bed58b918d30c4c8ceb598",
+    "pagination10-compiled-http2-false-1.json": "06c6a82d12ffcd736e7b5ab44dd319b8b72d3207ccc06c72fd6486ba2345f003",
+    "pagination10-compiled-http2-true-1.json": "6d49fac9dd7b7d9e2d9bb184f83e6cbf877fc52422d5042650fd110af53848bf"
+  },
+  "production_ownership_changes": 0,
+  "remaining": [
+    "exact final-head CI and deploy gate",
+    "fresh full prior-cohort and every actual scheduled URL preservation",
+    "supported original deployment/staging/activation and immutable member checks",
+    "postactivation queues, natural cycles and sustained freshness"
+  ],
+  "limits": "Current source-bound observations do not prove historical/global zero loss, fleet matched-work resource efficiency, completed migration or production Python retirement."
+}

@@ -49,6 +49,13 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if slaughterWebFormsConfigured(profile, config) {
 		return discoverSlaughterWebForms(ctx, verified)
 	}
+	if queue.DOMMonitorHasQualifiedHTTPPagination(profile.BoardID, config) {
+		current, err := queue.InspectRichMonitor(profile.BoardID, config)
+		if err != nil || current.Profile != profile.Profile || current.EffectiveConfigSHA256 != profile.EffectiveConfigSHA256 || queue.MonitorWorker(current) != queue.Browser {
+			return RichDiscovery{}, queue.ErrConfiguration
+		}
+		return discoverDOMInventory(ctx, verified, profile, config)
+	}
 	if qualifiedWixDOMHTTPMonitor(profile, config) {
 		return discoverQualifiedWixDOMHTTPMonitor(ctx, verified, profile, config)
 	}

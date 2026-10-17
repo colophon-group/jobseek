@@ -51,6 +51,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			options[key] = v
 		}
 	}
+	_, qualifiedHTTPPagination := qualifiedDOMHTTPPaginationSources[domHTTPPaginationConfigFingerprint(config)]
 	selfIdentifying := selfIdentifyingDOMMonitorSource(config, md)
 	if selfIdentifying {
 		// These sources have direct verified-TLS replacement evidence. Original
@@ -110,13 +111,14 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		}
 		if flag, exists := pagination["browser"]; exists {
 			var browser bool
-			if json.Unmarshal(flag, &browser) != nil || browser {
+			if json.Unmarshal(flag, &browser) != nil || browser && !qualifiedHTTPPagination {
 				return fail()
 			}
 			delete(pagination, "browser")
 		}
-		// Browser-fetch tails still require a held-session contract. The admitted
-		// mixed route renders only the root and uses verified HTTP for its tails.
+		// Unqualified browser-fetch tails require a held-session contract. The
+		// six qualified HTTP replacements retain browser=true in their binding;
+		// this parser clone uses their independently matched public HTTP pages.
 		// Browser authority remains bound to the original profile and options;
 		// only the pure URL/pagination parser receives this static clone.
 		parsed, err := json.Marshal(pagination)

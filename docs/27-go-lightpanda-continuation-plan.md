@@ -7,7 +7,7 @@ routes. Remove production Python, Playwright and Chromium after replacement
 coverage and supported recovery are established; retain useful isolated offline
 Python. The goal remains **active and incomplete**.
 
-## Current serving checkpoint — October 17, 2026
+## Last independently verified native checkpoint — October 17, 2026
 
 Release **0.13.1081**, source `2ba9c62a977307d1e8d5299ca5defbf24ee902ce`, serves
 **7,842 monitors / 7,862 details** at epoch **368**, preserving the previous
@@ -29,6 +29,28 @@ The [serving checkpoint](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md)
 and [aggregate evidence](evidence/go-native1081-serving-checkpoint-2026-10-17.json)
 retain source/image/workflow bindings, failure/recovery evidence, full-config
 qualifications and observation limits. No production operation is pending.
+
+## Qualified delivery transition
+
+[PR #10697](https://github.com/colophon-group/jobseek/pull/10697) merged as
+`80996b8edaf9a179031d11fb94a0f3282db36fa4` with the exact qualified tree.
+All five final-head workflows passed. Supported ordinary retirement, B0 rollback
+and reviewed selector clearing completed; native ownership is cold while the
+original source1082 deployment runs. The checkpoint above remains the last
+fully verified native serving state, not a claim of current ownership.
+
+The following six-source batch preserves original browser-pagination configs
+and board identities while using independently matched public HTTP inventories.
+Actual consumers match all **891 job URLs** in both HTTP modes. The rich source
+matches all 331 titles/descriptions/locations and retains 331 canonical titles
+and pending description rows through the real native content preparer.
+Required private PostgreSQL/Redis suites pass **44 test nodes** with zero skips,
+including publisher header/meta reservations, root failures/challenges and
+later-page failures. See the [qualification aggregate](evidence/go-native-browser-pagination-http-qualification-2026-10-17.json).
+These are candidates; preserve the entire previous floor and the two source1082
+monitor additions in fresh admission. Complete exact-head CI and the supported
+rollout before assigning new ownership. Keep unqualified proxy routes on their
+existing owners while provider access remains unavailable.
 
 ## Continue in substantial shared-contract batches
 
