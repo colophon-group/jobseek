@@ -48,8 +48,9 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         local worker = member.worker
         if worker ~= "simple" and worker ~= "browser" then return nil end
         if row.next_step ~= nil or row.next_at ~= nil or row.next_hash ~= nil or row.next_interval ~= nil then
-            if kind ~= "scrape" or worker ~= "simple" or
-                (member.profile ~= "detail.ordered-http/v1" and member.profile ~= "detail.ordered-proxy-http/v1") or
+            local ordered_worker = (worker == "simple" and (member.profile == "detail.ordered-http/v1" or member.profile == "detail.ordered-proxy-http/v1"))
+                or (worker == "browser" and member.profile == "detail.ordered-browser/v1")
+            if kind ~= "scrape" or not ordered_worker or
                 type(row.next_step) ~= "string" or not string.match(row.next_step,"^[1-7]$") or
                 type(row.next_at) ~= "string" or not retirement_finite(tonumber(row.next_at)) or tonumber(row.next_at) < 0 or
                 type(row.next_hash) ~= "string" or (#row.next_hash > 20) or (row.next_hash ~= "" and not string.match(row.next_hash,"^%-?%d+$")) or

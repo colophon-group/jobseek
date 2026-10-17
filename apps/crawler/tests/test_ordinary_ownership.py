@@ -625,7 +625,10 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
 
 def _compiled_native_detail_profiles():
     source = (Path(__file__).parents[1] / "go/ordinary-worker/environment.go").read_text()
-    profiles = sorted(set(re.findall(r'"([a-z0-9_.-]+detail/v1)"', source)))
+    profiles = sorted(
+        set(re.findall(r'"([a-z0-9_.-]+detail/v1)"', source))
+        | {"detail.ordered-http/v1", "detail.ordered-proxy-http/v1", "detail.ordered-browser/v1"}
+    )
     assert len(profiles) >= 23, "compiled detail capability evidence is incomplete"
     # Workday's retained monitor-membership requirement has dedicated tests.
     return [
@@ -640,6 +643,7 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
     browser = ".rendered-" in profile or profile in (
         "skip.browser-unscheduled-detail/v1",
         "api_sniffer.browser-detail/v1",
+        "detail.ordered-browser/v1",
     )
     _, payload = expectation()
     doc = json.loads(payload)

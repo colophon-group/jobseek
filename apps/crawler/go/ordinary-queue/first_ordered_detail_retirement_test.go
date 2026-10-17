@@ -133,6 +133,7 @@ func TestRealOrderedDetailFirstAdoptionPreservesInterruptedLegacyStage(t *testin
 func testFirstAdoptionLegacyOrderedStage(t *testing.T, p firstOwnerFixture) {
 	t.Helper()
 	ctx := context.Background()
+	worker := string(p.f.task.Worker)
 	key := "scrape:" + p.f.task.ID
 	if _, err := p.f.observer.Exec(ctx, "UPDATE job_posting SET next_scrape_at=now()+interval '24 hours' WHERE id=$1::uuid", p.f.task.ID); err != nil {
 		t.Fatal(err)
@@ -140,10 +141,10 @@ func testFirstAdoptionLegacyOrderedStage(t *testing.T, p firstOwnerFixture) {
 	if err := p.f.client.redis.HSet(ctx, key, "scrape_step", "1", "description_r2_hash", "123", "scrape_interval_hours", "24").Err(); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.f.client.redis.ZAdd(ctx, "inflight:simple", redis.Z{Score: 1, Member: inflight(p.f.task)}).Err(); err != nil {
+	if err := p.f.client.redis.ZAdd(ctx, "inflight:"+worker, redis.Z{Score: 1, Member: inflight(p.f.task)}).Err(); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.f.client.redis.HSet(ctx, "inflight_strikes:simple", inflight(p.f.task), "2").Err(); err != nil {
+	if err := p.f.client.redis.HSet(ctx, "inflight_strikes:"+worker, inflight(p.f.task), "2").Err(); err != nil {
 		t.Fatal(err)
 	}
 	before := coldCanonicalSnapshot(t, p.f)
@@ -158,17 +159,17 @@ func testFirstAdoptionLegacyOrderedStage(t *testing.T, p firstOwnerFixture) {
 	if before != coldCanonicalSnapshot(t, p.f) {
 		t.Fatal("adoption changed canonical content, leases or receipts")
 	}
-	score, err := p.f.client.redis.ZScore(ctx, "ft_scrapes_simple:"+p.f.task.Domain, p.f.task.ID).Result()
+	score, err := p.f.client.redis.ZScore(ctx, "ft_scrapes_"+worker+":"+p.f.task.Domain, p.f.task.ID).Result()
 	if err != nil || score < start || score > seconds(time.Now()) {
 		t.Fatal("interrupted stage lost immediate first queue", err)
 	}
-	if p.f.client.redis.HGet(ctx, key, "scrape_step").Val() != "1" || p.f.client.redis.HGet(ctx, key, "description_r2_hash").Val() != "123" || p.f.client.redis.HGet(ctx, key, "scrape_interval_hours").Val() != "24" || p.f.client.redis.HGet(ctx, "inflight_strikes:simple", inflight(p.f.task)).Val() != "2" {
+	if p.f.client.redis.HGet(ctx, key, "scrape_step").Val() != "1" || p.f.client.redis.HGet(ctx, key, "description_r2_hash").Val() != "123" || p.f.client.redis.HGet(ctx, key, "scrape_interval_hours").Val() != "24" || p.f.client.redis.HGet(ctx, "inflight_strikes:"+worker, inflight(p.f.task)).Val() != "2" {
 		t.Fatal("handoff state or failure history changed")
 	}
-	if p.f.client.redis.ZScore(ctx, "inflight:simple", inflight(p.f.task)).Err() != redis.Nil {
+	if p.f.client.redis.ZScore(ctx, "inflight:"+worker, inflight(p.f.task)).Err() != redis.Nil {
 		t.Fatal("expired lease retained")
 	}
-	if score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+p.f.task.Domain, p.f.task.ID).Result(); err != nil || score != seconds(due) {
+	if score, err := p.f.client.redis.ZScore(ctx, "scrapes_"+worker+":"+p.f.task.Domain, p.f.task.ID).Result(); err != nil || score != seconds(due) {
 		t.Fatal("canonical future cycle deadline lost", err)
 	}
 	var attempts int
@@ -176,7 +177,7 @@ func testFirstAdoptionLegacyOrderedStage(t *testing.T, p firstOwnerFixture) {
 		t.Fatal("adoption invented an attempt", err)
 	}
 	restartPublicationRedisWithoutSave(t, p.f.client)
-	if persisted, err := p.f.client.redis.ZScore(ctx, "ft_scrapes_simple:"+p.f.task.Domain, p.f.task.ID).Result(); err != nil || persisted != score {
+	if persisted, err := p.f.client.redis.ZScore(ctx, "ft_scrapes_"+worker+":"+p.f.task.Domain, p.f.task.ID).Result(); err != nil || persisted != score {
 		t.Fatal("durable adoption lost pending stage", err)
 	}
 	if _, err := applyFirstFixture(t, p, true); err != nil {

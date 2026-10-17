@@ -126,7 +126,7 @@ func repairStagedDetailProjection(ctx context.Context, pool *pgxpool.Pool, clien
 				row.Hash = strconv.FormatInt(*hash, 10)
 			}
 			row.Interval = bound.Config["scrape_interval_hours"]
-			if binding.Profile == orderedHTTPDetailProfile || binding.Profile == orderedProxyHTTPDetailProfile {
+			if isOrderedDetailProfile(binding.Profile) {
 				chain, err := InspectOrderedDetail(row.BoardID, bound.Config, row.Source, binding.Worker)
 				if err != nil {
 					return err

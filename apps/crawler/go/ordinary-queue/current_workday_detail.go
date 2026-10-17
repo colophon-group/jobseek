@@ -115,7 +115,7 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 		return nil, err
 	}
 	d.ownershipProfile = d.profile.Profile
-	if d.profile.Profile == orderedHTTPDetailProfile || d.profile.Profile == orderedProxyHTTPDetailProfile {
+	if isOrderedDetailProfile(d.profile.Profile) {
 		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, claim.task.Worker)
 		if e != nil {
 			return nil, e
