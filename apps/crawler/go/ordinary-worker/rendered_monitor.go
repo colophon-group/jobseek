@@ -50,6 +50,12 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if slaughterWebFormsConfigured(profile, config) {
 		return discoverSlaughterWebForms(ctx, verified)
 	}
+	if qualifiedWixDOMHTTPMonitor(profile, config) {
+		return discoverQualifiedWixDOMHTTPMonitor(ctx, verified, profile, config)
+	}
+	if qualifiedLifepointDOMHTTPMonitor(profile, config) {
+		return discoverQualifiedLifepointDOMHTTPMonitor(ctx, verified, profile, config)
+	}
 	if qualifiedDOMHTTPMonitor(profile, config) {
 		return discoverQualifiedDOMHTTPMonitor(ctx, verified, profile, config)
 	}
