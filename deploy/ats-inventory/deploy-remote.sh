@@ -74,9 +74,15 @@ open_shared_lock() {
     # Create as deploy from the first inode-visible instant. Creating as root
     # and chowning afterwards leaves a race where the crawler deploy cannot
     # open its shared lock after a reboot.
-    runuser -u deploy -- python3 -c \
-      'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
-      "$lock" 2>/dev/null || true
+    if [[ -x /usr/local/libexec/jobseek-ats-inventory-host ]]; then
+      runuser -u deploy -- /usr/local/libexec/jobseek-ats-inventory-host \
+        host-create-lock "$lock" 2>/dev/null || true
+    else
+      # First native host-tool install and retained pre-native host rollback.
+      runuser -u deploy -- python3 -c \
+        'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
+        "$lock" 2>/dev/null || true
+    fi
   fi
   [[ -f "$lock" && ! -L "$lock" ]] || return 1
   chown deploy:deploy "$lock"
@@ -132,22 +138,18 @@ timeout --foreground --signal=TERM --kill-after=30s 250m \
   "bash /opt/jobseek-ats-inventory/deploy/ats-inventory/install-host-from-stdin.sh" \
   <"$payload"
 
+expected_wrapper="$(sha256sum deploy/ats-inventory/run.sh | awk '{print $1}')"
+[[ "$expected_wrapper" =~ ^[0-9a-f]{64}$ ]] || exit 1
 timeout --foreground --signal=TERM --kill-after=30s 5m \
-  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$DEPLOY_SHA'" <<'REMOTE'
+  ssh "${ssh_options[@]}" "root@$TARGET_HOST" "bash -s -- '$DEPLOY_SHA' '$expected_wrapper'" <<'REMOTE'
 set -euo pipefail
 expected_revision="$1"
+expected_wrapper="$2"
 systemctl is-enabled --quiet jobseek-ats-inventory.timer
 systemctl is-active --quiet jobseek-ats-inventory.timer
 [[ "$(systemctl show --property=Result --value jobseek-ats-inventory-network.service)" == success ]]
 /usr/local/sbin/jobseek-ats-inventory-control status
 [[ "$(tr -d '\n' </var/lib/jobseek-ats-inventory/deployed-sha)" == "$expected_revision" ]]
-python3 - <<'PY'
-import json
-from pathlib import Path
-
-payload = json.loads(Path("/var/lib/jobseek-ats-inventory/status/current.json").read_text())
-assert payload["last_attempt_success"] == 1
-assert payload["effective_mode"] == "report"
-assert payload["report"]["data_only"] is True
-PY
+/usr/local/libexec/jobseek-ats-inventory-host host-acceptance \
+  0 "$expected_revision" "$expected_wrapper" /var/lib/jobseek-ats-inventory
 REMOTE

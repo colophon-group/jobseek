@@ -375,6 +375,73 @@ def test_native_inventory_image_selection_preserves_explicit_old_image_rollback(
     assert "COPY --from=go-ats-inventory-build /out/go-ats-inventory" in dockerfile
 
 
+@pytest.mark.parametrize(
+    ("marker", "inspect_status", "expected"),
+    [
+        (
+            "v1",
+            0,
+            "/usr/local/bin/go-ats-inventory host-network-probe verify /run/probe/endpoints.json",
+        ),
+        (
+            "",
+            0,
+            "/app/.venv/bin/python /run/probe/network-probe.py verify /run/probe/endpoints.json",
+        ),
+        ("v2", 0, None),
+        ("", 7, None),
+    ],
+)
+def test_native_network_probe_keeps_explicit_retained_image_reversal(
+    tmp_path: Path, marker: str, inspect_status: int, expected: str | None
+) -> None:
+    source = NETWORK_HELPER.read_text()
+    function = (
+        "select_probe_command() {"
+        + source.split("select_probe_command() {", 1)[1].split("\n}\n", 1)[0]
+        + "\n}\n"
+    )
+    legacy = tmp_path / "retained-probe.py"
+    legacy.write_text("# retained image fixture\n")
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            """set -euo pipefail
+docker() {
+  [[ "$1" == image && "$2" == inspect && "${@: -1}" == test-digest ]] || return 9
+  (( INSPECT_STATUS == 0 )) || return "$INSPECT_STATUS"
+  printf '%s' "$IMAGE_MARKER"
+}
+ENDPOINTS=/test/endpoints
+"""
+            + function
+            + """
+select_probe_command test-digest
+printf '%s\\n' "${probe_command[*]}"
+""",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            **os.environ,
+            "IMAGE_MARKER": marker,
+            "INSPECT_STATUS": str(inspect_status),
+            "LEGACY_PROBE": str(legacy),
+        },
+    )
+    if expected is None:
+        assert result.returncode != 0
+        assert result.stdout == ""
+    else:
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == expected
+    assert source.index('select_probe_command "$image"') < source.index("\nremove_firewall\n")
+    assert '--entrypoint "${probe_command[0]}"' in source
+    assert '"${probe_command[@]:1}"' in source
+
+
 def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     control = CONTROL.read_text(encoding="utf-8")
     installer = INSTALLER.read_text(encoding="utf-8")
@@ -413,8 +480,13 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert '[[ -e "$WRITE_DISABLED" || -e "$ACCEPTANCE_PIN" ]]' in runner
     assert 'exec 8<"$CRAWLER_LOCK"' in installer
     assert 'exec 8>"$CRAWLER_LOCK"' not in installer
-    assert "runuser -u deploy -- python3 -c" in installer
-    assert "os.O_EXCL|os.O_NOFOLLOW" in installer
+    assert 'runuser -u deploy -- "$HOST_BINARY_CANDIDATE" host-create-lock' in installer
+    host_tools = (ROOT / "apps/crawler/go/ats-inventory/host_tools.go").read_text()
+    assert "syscall.O_EXCL|syscall.O_NOFOLLOW" in host_tools.replace(" ", "")
+    assert "/usr/local/libexec/jobseek-ats-inventory-host" in files
+    assert "jobseek-ats-inventory-network-probe-legacy.py" in files
+    assert 'host-capabilities)" == jobseek.ats-host-tools/v1' in installer
+    assert installer.index("host-capabilities") < installer.index("\nopen_shared_crawler_lock\n")
     assert 'chown deploy:deploy "$CRAWLER_LOCK"' in installer
     acceptance = installer.index("systemctl start jobseek-ats-inventory.service")
     disarm = installer.rindex("ROLLBACK_ARMED=0")
@@ -426,8 +498,9 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     arm = installer.index("ROLLBACK_ARMED=1")
     first_mutation = installer.index("stop_unit_if_present jobseek-ats-inventory.timer")
     assert initial_disarm < exact_gate < arm < first_mutation
-    assert 'payload["last_attempt_success"] == 1' in installer
-    assert 'payload["effective_mode"] == "report"' in installer
+    assert "host-acceptance" in installer
+    assert 'hostInteger(payload["last_attempt_success"]) != 1' in host_tools
+    assert 'payload["effective_mode"] != "report"' in host_tools
     assert "GitHub App private key is not PEM encoded" in installer
     assert "JOBSEEK_GITHUB_APP_PRIVATE_KEY_FILE" in installer
     receiver = RECEIVER.read_text(encoding="utf-8")

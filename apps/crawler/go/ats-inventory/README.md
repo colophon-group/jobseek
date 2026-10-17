@@ -36,5 +36,15 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build .
 ```
 
 The required crawler CI exercises this module and the installed image entrypoint.
+The same immutable binary supplies the host runner's status, bounded logging,
+GitHub App token, registry snapshot and network probe commands. The host installer
+preflights its capability marker before changing services, includes the copied
+binary and helper launchers in the existing rollback manifest, and accepts the
+report-only run before disarming rollback. Native images never fall back to
+Python after a helper failure. The exact old network probe remains available only
+when an explicitly selected retained image lacks the native host-tools marker.
+The initial pre-native deployment lock bootstrap is also retained during that
+recovery window. Offline Python helper files remain as compatibility oracles.
+
 Broader crawler coverage, freshness, resource comparisons, recovery, and final
 Python/browser retirement remain governed by the repository migration plan.

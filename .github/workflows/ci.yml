@@ -1032,6 +1032,10 @@ jobs:
           timeout --foreground --signal=TERM --kill-after=5s 30s \
             docker run --rm --network none --read-only \
             --entrypoint /usr/local/bin/go-ats-inventory jobseek-crawler-slim-ci:pr --help
+          test "$(docker image inspect --format '{{index .Config.Labels "org.jobseek.crawler.native-ats-host-tools"}}' jobseek-crawler-slim-ci:pr)" = v1
+          test "$(timeout --foreground --signal=TERM --kill-after=5s 30s \
+            docker run --rm --network none --read-only --memory 96m --cpus 0.25 --pids-limit 32 \
+            --entrypoint /usr/local/bin/go-ats-inventory jobseek-crawler-slim-ci:pr host-capabilities)" = jobseek.ats-host-tools/v1
 
       - name: Verify installed Go enrichment parity offline
         run: |
