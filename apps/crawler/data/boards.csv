@@ -21,6 +21,7 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 3cloud,3cloud-greenhouse,https://job-boards.greenhouse.io/3cloud,greenhouse,"{""token"": ""3cloud""}",skip,
 3m,3m-careers,https://3m.wd1.myworkdayjobs.com/search,workday,,workday,
 3red-partners,3red-partners-greenhouse,https://job-boards.greenhouse.io/3redpartners,greenhouse,"{""token"": ""3redpartners""}",skip,
+4th-day-trucking,4th-day-trucking-careers,https://4th-day-trucking.breezy.hr/,breezy,,json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
 66degrees,66degrees-greenhouse,https://job-boards.greenhouse.io/66degrees,greenhouse,"{""token"": ""66degrees""}",skip,
 6sense,6sense-greenhouse,https://job-boards.greenhouse.io/6sense,greenhouse,"{""token"": ""6sense""}",skip,
 7shifts,7shifts-greenhouse,https://job-boards.greenhouse.io/7shifts,greenhouse,"{""token"": ""7shifts""}",skip,
