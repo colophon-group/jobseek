@@ -39,29 +39,36 @@ their legacy owners. Work on several families per shared transport/control batch
 provider implementations often already exist, while original config support or
 complete rendering remains the admission blocker.
 
-1. **Finish shared configured-proxy transport.** Build on the isolated pinned
-   transport branch, incorporating source1081's publication fix before final
-   qualification. The current interception experiment fails native cookie and
-   redirect behavior under Lightpanda 1.0.1. The replacement prototype uses a
-   parent HTTP/CONNECT bridge plus a Linux child network restriction. It has
-   local bridge tests only and is unwired/unqualified. Prove actual Linux
-   subprocess/UID/capability isolation, cookies, redirects, upstream credentials,
-   destination pinning, verified TLS, cleanup and publisher policy through the
-   installed Lightpanda. Audit API replay fallbacks for proxy bypass. Keep
-   [draft PR #10643](https://github.com/colophon-group/jobseek/pull/10643) undeployed
-   until upstream destination enforcement and positive content proof pass.
+1. **Deliver the shared browser and HTTP batch in PR #10697.** The candidate
+   implements parent-pinned proxy transport across existing document families,
+   preserving native cookies, redirects, POST bodies and verified TLS. Actual
+   Linux tests with Lightpanda **1.0.1** cover these paths and child port isolation. Keep
+   the bridge port reserved until child cleanup is proved. Complete exact-head
+   CI, full cohort preservation and supported deployment. Six newly compiled
+   monitor and two detail configs still need positive original content proof:
+   the first three configured Webshare slots return HTTP **402** locally and from
+   production. Restore provider access before qualifying/admitting those routes;
+   keep original failure evidence and existing owners. Draft #10643 retains the
+   superseded transport research.
 2. **Qualify a larger original-config batch across existing profiles.** Exercise
    DOM, JSON-LD, API-browser, inline and other applicable compiled consumers with
    actual original/native fields and canonical lifecycle tests. Config alterations
    are diagnostic hypotheses until original semantics are proved. Changed full
    configs and foreign sources must reject. Include every actual scheduled route,
    immutable staged members, queue conservation and publisher-policy cases.
-3. **Resolve incomplete rendering with proved HTTP/API alternatives.** Concurrent
-   Lifepoint inventories differ materially (183 original / 296 native, 174 shared);
-   H3 Dynamics remains six original / five native. Direct HTTP alternatives
-   currently yield zero URLs despite successful fetches. Neither route is
-   qualified. Resolve pagination, source identity and completeness; fetch errors
-   or zero extraction do not establish an empty inventory.
+3. **Admit the two complete public HTTP replacements in the same batch.** H3
+   Dynamics now returns all six original jobs through its public Wix collection,
+   using fresh public bootstrap/session values. Lifepoint's complete result walk
+   returns **330** unique URLs, including all **183** original URLs and **147** additional
+   URLs, with a successful empty terminal page. The configured original browser
+   capture requested odd-numbered pages twice; its count is not a completeness
+   oracle. Both actual Go consumers retain original full-config hashes and
+   browser lanes. The canonical, policy and failure suite of **52 test nodes** passes with required
+   PostgreSQL/Redis fixtures and no skips. See the
+   [qualification aggregate](evidence/go-native-public-http-inventory-qualification-2026-10-17.json).
+   Finish the combined candidate's source binding, current-head CI, fresh full
+   admission and immutable staged member checks. These are qualified candidates,
+   not additional production ownership.
 4. **Deploy and admit qualified batches through the original workflows.** Use
    complete exact-head Required CI and actual Crawler Deploy Gate, immutable
    images, current holds/authority, supported incarnation rotation and full

@@ -63,7 +63,7 @@ if (( ! ci_rollback_smoke )); then
   [[ "$GHCR_PULL_USERNAME" =~ ^[A-Za-z0-9_-]+$ && -n "$GHCR_PULL_TOKEN" ]] || exit 2
 fi
 
-for relative in compose.yml inventory.json verify.py validate_pki.py lock.sh pins.env release.env pki/ca.pem pki/server.pem pki/server-key.pem pki/client.pem; do
+for relative in compose.yml inventory.json verify.py validate_pki.py lock.sh pins.env release.env pki/ca.pem pki/server.pem pki/server-key.pem pki/client.pem pki/proxies.json; do
   [[ -f "$STAGE/$relative" && ! -L "$STAGE/$relative" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$relative")" -le 131072 ]] || exit 2
 done
@@ -357,6 +357,7 @@ install -m 0555 "$STAGE/validate_pki.py" "$GENERATION/validate_pki.py"
 install -m 0444 "$STAGE/pki/ca.pem" "$GENERATION/pki/ca.pem"
 install -m 0444 "$STAGE/pki/server.pem" "$GENERATION/pki/server.pem"
 install -m 0400 "$STAGE/pki/server-key.pem" "$GENERATION/pki/server-key.pem"
+install -m 0400 "$STAGE/pki/proxies.json" "$GENERATION/pki/proxies.json"
 install -m 0600 "$STAGE/pki/client.pem" "$GENERATION/pki/client.pem"
 install -m 0600 "$STAGE/release.env" "$GENERATION/release.env"
 install -m 0444 "$STAGE/pins.env" "$GENERATION/pins.env"
@@ -370,12 +371,14 @@ python3 "$GENERATION/validate_pki.py" \
 cmp --silent "$GENERATION/pins.env" "$GENERATION/pins.revalidated.env" || exit 1
 rm -f -- "$GENERATION/pins.revalidated.env"
 
-# The service runs as uid/gid 10001. Grant ownership of only its exact private
-# key with an immutable, already-pulled image and an isolated one-shot helper.
-# Keep a verified descriptor open while deploy still owns the key so its final
-# contents and ownership metadata can be fsynced after the helper chowns it;
-# reopening the 0400 service-owned path as deploy would be impossible.
+# The service runs as uid/gid 10001. Grant ownership of its private key and
+# proxy registry with the already-pulled immutable image and isolated helper.
+# Keep verified descriptors open while deploy still owns both files, so their
+# bytes and ownership can be fsynced after chown without reopening 0400 files.
 exec 10<"$GENERATION/pki/server-key.pem"
+exec 11<"$GENERATION/pki/proxies.json"
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/11)" == \
+  "$(stat -Lc '%d:%i' "$GENERATION/pki/proxies.json")" ]] || exit 1
 [[ "$(stat -Lc '%d:%i' /proc/$$/fd/10)" == \
   "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
 docker run --rm \
@@ -387,18 +390,24 @@ docker run --rm \
   --user 0:0 \
   --entrypoint /bin/sh \
   --mount "type=bind,source=$GENERATION/pki/server-key.pem,target=/server-key.pem" \
+  --mount "type=bind,source=$GENERATION/pki/proxies.json,target=/proxies.json" \
   "$IMAGE_REF" \
-  -ceu 'chown 10001:10001 /server-key.pem'
+  -ceu 'chown 10001:10001 /server-key.pem /proxies.json'
 [[ "$(stat -c '%u:%g:%a' "$GENERATION/pki/server-key.pem")" == 10001:10001:400 ]] || exit 1
 [[ "$(stat -Lc '%d:%i' /proc/$$/fd/10)" == \
   "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
-python3 - 10 <<'PY'
+[[ "$(stat -c '%u:%g:%a:%h' "$GENERATION/pki/proxies.json")" == 10001:10001:400:1 ]] || exit 1
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/11)" == \
+  "$(stat -Lc '%d:%i' "$GENERATION/pki/proxies.json")" ]] || exit 1
+python3 - 10 11 <<'PY'
 import os
 import sys
 
-os.fsync(int(sys.argv[1]))
+for descriptor in sys.argv[1:]:
+    os.fsync(int(descriptor))
 PY
 exec 10<&-
+exec 11<&-
 [[ "$(stat -c '%a' "$GENERATION/pki/ca.pem")" == 444 ]] || exit 1
 [[ "$(stat -c '%a' "$GENERATION/pki/server.pem")" == 444 ]] || exit 1
 rm -f -- "$GENERATION/pki/client.pem"
@@ -413,6 +422,7 @@ fsync_files \
   "$GENERATION/release.env" \
   "$GENERATION/pins.env"
 fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"
+python3 "$GENERATION/verify.py" proxy-settings "$GENERATION/release.env"
 
 python3 "$GENERATION/verify.py" compose \
   "$GENERATION/compose.yml" "$GENERATION/release.env" "$GENERATION/inventory.json"

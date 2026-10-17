@@ -18,7 +18,11 @@ var qualifiedDOMHTTPMonitors = map[string]domHTTPMonitorRoute{
 }
 
 func qualifiedDOMHTTPMonitor(profile queue.GreenhouseMonitorProfile, config map[string]string) bool {
-	route, ok := qualifiedDOMHTTPMonitors[profile.EffectiveConfigSHA256]
+	return qualifiedDOMHTTPRoute(profile, config, qualifiedDOMHTTPMonitors)
+}
+
+func qualifiedDOMHTTPRoute(profile queue.GreenhouseMonitorProfile, config map[string]string, routes map[string]domHTTPMonitorRoute) bool {
+	route, ok := routes[profile.EffectiveConfigSHA256]
 	if !ok || profile.Provider != "dom" || profile.Profile != "dom.rendered-urls/v1" ||
 		profile.Endpoint != config["board_url"] || queue.MonitorWorker(profile) != queue.Browser {
 		return false

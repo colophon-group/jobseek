@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
 	"google.golang.org/protobuf/proto"
@@ -76,6 +77,7 @@ type EvaluationPrivacy interface {
 type ProviderFailure struct {
 	Code        runtimev1.ErrorCode
 	Disposition runtimev1.ErrorDisposition
+	HTTPStatus  *uint32
 }
 
 // RawEvaluation is a runner-produced JSON value awaiting mandatory privacy.
@@ -175,6 +177,10 @@ func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
 
 // NewRunnerFailure copies a typed provider failure after cleanup completes.
 func NewRunnerFailure(bound BoundInput, failure ProviderFailure) RunnerOutcome {
+	if failure.HTTPStatus != nil {
+		status := *failure.HTTPStatus
+		failure.HTTPStatus = &status
+	}
 	return RunnerOutcome{
 		kind: runnerOutcomeFailure, bindingFingerprint: bound.fingerprint, failure: failure,
 	}
@@ -215,6 +221,7 @@ type Adapter struct {
 	privacy         EvaluationPrivacy
 	renderOnly      bool
 	navigationWaits bool
+	configuredProxy bool
 	sessionBudget   time.Duration
 	largeDocument   bool
 }
@@ -248,6 +255,18 @@ func NewNavigationRenderOnly(runner Runner) (*Adapter, error) {
 	return &Adapter{runner: runner, renderOnly: true, navigationWaits: true}, nil
 }
 
+// NewConfiguredProxyNavigationRenderOnly additionally admits the exact opaque
+// proxy reference shape. The injected runner must resolve it from protected
+// startup configuration before any child or origin operation begins.
+func NewConfiguredProxyNavigationRenderOnly(runner Runner) (*Adapter, error) {
+	adapter, err := NewNavigationRenderOnly(runner)
+	if err != nil {
+		return nil, err
+	}
+	adapter.configuredProxy = true
+	return adapter, nil
+}
+
 // Execute validates and binds before one runner call. There is no retry,
 // fallback, or asynchronous wrapper. Every post-run failure discards all
 // partially mapped output.
@@ -265,7 +284,7 @@ func (adapter *Adapter) Execute(
 		ctx = context.Background()
 	}
 
-	bound, unsupported, ok := bindNavigation(input, adapter.navigationWaits)
+	bound, unsupported, ok := bindNavigationConfigured(input, adapter.navigationWaits, adapter.configuredProxy)
 	bound.largeDocument = adapter.largeDocument
 	if !ok {
 		return failureResult(
@@ -312,7 +331,13 @@ func (adapter *Adapter) Execute(
 		)
 	}
 	if outcome.kind == runnerOutcomeFailure {
-		if !validFailurePair(outcome.failure.Code, outcome.failure.Disposition) {
+		if adapter.configuredProxy && bound.input.Plan.Session != nil && outcome.failure.Code == runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS && outcome.failure.Disposition == runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY && outcome.failure.HTTPStatus != nil && *outcome.failure.HTTPStatus == 407 {
+			result := failureResult(outcome.failure.Code, outcome.failure.Disposition)
+			status := uint32(407)
+			result.GetError().Error.HttpStatus = &status
+			return result
+		}
+		if outcome.failure.HTTPStatus != nil || !validFailurePair(outcome.failure.Code, outcome.failure.Disposition) {
 			return failureResult(
 				runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 				runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
@@ -355,7 +380,11 @@ func bind(input *runtimev1.BrowserExecutionInput) (BoundInput, []runtimev1.Brows
 }
 
 func bindNavigation(input *runtimev1.BrowserExecutionInput, navigationWaits bool) (BoundInput, []runtimev1.BrowserCapability, bool) {
-	if !shallowB1Cardinalities(input) || proto.Size(input) > InputPayloadLimit ||
+	return bindNavigationConfigured(input, navigationWaits, false)
+}
+
+func bindNavigationConfigured(input *runtimev1.BrowserExecutionInput, navigationWaits, configuredProxy bool) (BoundInput, []runtimev1.BrowserCapability, bool) {
+	if !shallowB1Cardinalities(input, configuredProxy) || proto.Size(input) > InputPayloadLimit ||
 		hasUnknownFields(input.ProtoReflect()) {
 		return BoundInput{}, nil, false
 	}
@@ -368,14 +397,14 @@ func bindNavigation(input *runtimev1.BrowserExecutionInput, navigationWaits bool
 		return BoundInput{}, nil, false
 	}
 
-	_, unsupported, valid := validateCapabilities(cloned.Plan.RequiredCapabilities, navigationWaits)
+	_, unsupported, valid := validateCapabilities(cloned.Plan.RequiredCapabilities, navigationWaits, configuredProxy)
 	if !valid {
 		return BoundInput{}, nil, false
 	}
 	if len(unsupported) != 0 {
 		return BoundInput{}, unsupported, true
 	}
-	if !validB1Plan(cloned.Plan, navigationWaits) {
+	if !validB1Plan(cloned.Plan, navigationWaits, configuredProxy) {
 		return BoundInput{}, nil, false
 	}
 	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(cloned)
@@ -387,14 +416,14 @@ func bindNavigation(input *runtimev1.BrowserExecutionInput, navigationWaits bool
 
 // shallowB1Cardinalities executes before reflection, cloning, hashing, or any
 // recursive validation. It makes all later collection walks constant-bounded.
-func shallowB1Cardinalities(input *runtimev1.BrowserExecutionInput) bool {
+func shallowB1Cardinalities(input *runtimev1.BrowserExecutionInput, proxy ...bool) bool {
 	if input == nil || input.Plan == nil || input.Assignment == nil {
 		return false
 	}
 	plan := input.Plan
 	if len(plan.RequiredCapabilities) == 0 ||
 		len(plan.RequiredCapabilities) > int(runtimev1.BrowserCapability_BROWSER_CAPABILITY_TRANSPORT_OVERRIDES) ||
-		plan.Navigation == nil || len(plan.Navigation.Headers) != 0 || plan.Session != nil ||
+		plan.Navigation == nil || len(plan.Navigation.Headers) != 0 || !validProxySession(plan, len(proxy) == 1 && proxy[0]) ||
 		len(plan.Actions) != 0 || len(plan.Captures) > 1 || len(plan.Evaluations) > maxEvaluations ||
 		len(plan.Interceptions) != 0 || len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
 		return false
@@ -426,7 +455,8 @@ func validateCapabilities(
 	for capability := range seen {
 		if capability != runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER &&
 			capability != runtimev1.BrowserCapability_BROWSER_CAPABILITY_EVALUATE &&
-			!(len(responseCapture) == 1 && responseCapture[0] && capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_RESPONSE_CAPTURE) {
+			!(len(responseCapture) >= 1 && responseCapture[0] && capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_RESPONSE_CAPTURE) &&
+			!(len(responseCapture) == 2 && responseCapture[1] && capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_PROXY) {
 			unsupported = append(unsupported, capability)
 		}
 	}
@@ -435,9 +465,9 @@ func validateCapabilities(
 	return normalized, unsupported, true
 }
 
-func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
+func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool, proxy ...bool) bool {
 	if plan == nil || plan.ContractVersion != runtimeContractVersion || !validHTTPURL(plan.TargetUrl) ||
-		plan.Navigation == nil || plan.Session != nil || len(plan.Actions) != 0 ||
+		plan.Navigation == nil || !validProxySession(plan, len(proxy) == 1 && proxy[0]) || len(plan.Actions) != 0 ||
 		len(plan.Captures) > 1 || len(plan.Interceptions) != 0 ||
 		len(plan.Evaluations) > maxEvaluations ||
 		len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
@@ -795,4 +825,24 @@ func unsupportedResult(capabilities []runtimev1.BrowserCapability) *runtimev1.Br
 			Capabilities: append([]runtimev1.BrowserCapability(nil), capabilities...),
 		}},
 	}
+}
+
+// Proxy support confers neither a persistent session nor browser identity.
+// Requiring the explicit capability prevents a session from silently changing
+// transport, and rejects duplicated proxy capability declarations early.
+func validProxySession(plan *runtimev1.BrowserPlan, enabled bool) bool {
+	if plan == nil {
+		return false
+	}
+	count := 0
+	for _, capability := range plan.RequiredCapabilities {
+		if capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_PROXY {
+			count++
+		}
+	}
+	if plan.Session == nil {
+		return !enabled || count == 0
+	}
+	session := plan.Session
+	return enabled && count == 1 && session.SessionKey == nil && !session.Persistent && !session.HeadfulIdentity && session.ProxyPolicyRef != nil && browserproxy.ValidReference(*session.ProxyPolicyRef)
 }

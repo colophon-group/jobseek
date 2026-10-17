@@ -66,10 +66,13 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 // for inventory parsers whose details are scheduled separately.
 func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[string]json.RawMessage, provider, profile, token, endpoint string) (GreenhouseMonitorProfile, error) {
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
+	browserProxy := false
 	if string(md["proxy"]) == "true" {
 		directRenderedReplacement := provider == "dom" && profile == domRenderedMonitorProfile && config["monitor_needs_browser"] == "1" && selfIdentifyingDOMMonitorSource(config, md)
 		if proxy, ok := httpMonitorProxyProfiles[profile]; ok && config["monitor_needs_browser"] == "0" {
 			profile = proxy
+		} else if provider == "dom" && config["monitor_needs_browser"] == "1" && (profile == domRenderedMonitorProfile || profile == domRenderedRowsProfile) && !selfIdentifyingDOMMonitorSource(config, md) {
+			browserProxy = true
 		} else if !directRenderedReplacement && !ProfileRequiresProxy(profile) {
 			return fail()
 		}
@@ -179,6 +182,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	digest := sha256.Sum256(body)
 	p.EffectiveConfigSHA256, p.SnapshotSHA256 = hex.EncodeToString(digest[:]), configDigest(config)
 	p.Provider, p.Profile, p.Token, p.Endpoint = provider, profile, token, endpoint
+	p.BrowserProxy = browserProxy
 	return p, nil
 }
 

@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-17T15:45:00.503078+00:00",
+  "status": "qualified_working_tree_not_admitted",
+  "base_runtime_source": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+  "original_python_oracle": "40a1f6cbc5ad0c133a55703b3d67f5109a5faf41",
+  "original_go_adapters_disabled": true,
+  "h3_dynamics": {
+    "go_compiled_consumer": true,
+    "native_count": 6,
+    "original_config_sha256": "44a767ea5bb294e90c0b3bcc8d7acc9a75bc2fd03cd182f006f7f8bfb384dca5",
+    "original_count": 6,
+    "production_mutations": 0,
+    "profile": "dom.rendered-urls/v1",
+    "same_complete": true,
+    "verified_tls": true
+  },
+  "lifepoint_provider": {
+    "go_compiled_consumer": true,
+    "native_count": 330,
+    "original_config_sha256": "cb7508c3796122b4ce9fa4bcdf5f28fffdb2743248f49fcb9434419e2d5bf9d0",
+    "original_count": 183,
+    "original_only": 0,
+    "production_mutations": 0,
+    "profile": "dom.rendered-urls/v1",
+    "reference_api_count": 330,
+    "same_complete_api": true,
+    "truncated": false,
+    "verified_tls": true
+  },
+  "lifepoint_completeness": {
+    "independent_api_raw_items": 334,
+    "independent_api_unique_urls": 330,
+    "original_unique_urls": 183,
+    "original_only": 0,
+    "additional_api_urls": 147,
+    "full_nonempty_pages": 14,
+    "terminal_page": 14,
+    "terminal_http_status": 200,
+    "terminal_body_bytes": 0,
+    "original_browser_observation": "initial results plus odd-numbered pages requested twice; this is not an authoritative complete inventory",
+    "fresh_public_nonce_from_same_bound_page": true,
+    "request_pacing_seconds": 1,
+    "same_original_category_filters": true
+  },
+  "canonical_lifecycle": {
+    "observed_at_utc": "2026-10-17T15:35:18.067591+00:00",
+    "returncode": 0,
+    "test_nodes": {
+      "pass": 52,
+      "fail": 0,
+      "skip": 0
+    },
+    "private_required_postgres_redis": true,
+    "production_mutations": 0
+  },
+  "scope": [
+    "Original full config hashes and browser queue lanes retained",
+    "No production SQL Redis ownership receipt selector or image changed",
+    "Fresh public bootstrap and verified TLS; no stored site/session IDs or disabled TLS",
+    "Root redirect and every API response retain publisher-policy checks and a private source-bound response witness",
+    "Partial errors, malformed/missing totals, rate limits, repeated pages and foreign resources cannot become empty inventories",
+    "Shared empty/drop guard retained",
+    "Current-head CI, full cohort admission and supported deployment/staging still required",
+    "Full migration, sustained freshness, matched-work cost and final retirement remain incomplete"
+  ],
+  "private_evidence_sha256": {
+    "native1082-public-browser-api-frontier1/h3-go-compiled-actual4.json": "4bc4669d244c9bc83aa4d7e4642cdefc3ef0bd75882c26089493662d562a71cc",
+    "native1082-lifepoint-network-frontier2/go-compiled-complete-inventory7.json": "911a9ffccf48c3fba4c70d5c9797280240785d8b850f810ba9ed0875062332c4",
+    "native1082-lifepoint-network-frontier2/go-http-complete-inventory4.json": "c6f5791c599cba3584f4dc5640cd81439d8e6575b612c7bccafa35a95b3d98b2",
+    "native1082-public-browser-api-frontier1/public-http-pair-canonical-lifecycle4.json": "215ebb4f4437d533fd037733b70fe5240978fd8d2b22edf8552b8dfa1fc1d777",
+    "native1082-public-browser-api-frontier1/compiled-http-bindings1.json": "d2c65241ab091a9e41944b5a961ffa5ee353b07d5928679ec6b3c85db78a8ade"
+  },
+  "preintegration_source_sha256": {
+    "apps/crawler/go/ordinary-worker/dom_jsonld_verification.go": "4492ccc1cf9a163e600695673d5c58953889119a4db4bd76edac42364850664d",
+    "apps/crawler/go/ordinary-worker/qualified_dom_monitor_http.go": "3c16aa79e93354496ff1d6485de8d8d9df3155da0e9b28aaf102edbda870c575",
+    "apps/crawler/go/ordinary-worker/qualified_wix_monitor_http.go": "575a955d4aa2b34002c25268e638f5b491873b07429d4ea52411187d9627e4e0",
+    "apps/crawler/go/ordinary-worker/qualified_wix_monitor_http_test.go": "f0a579637f68280417c3b8051f6941bb6bed918cabb882fd7dc7578e7c380ea8",
+    "apps/crawler/go/ordinary-worker/qualified_lifepoint_monitor_http.go": "c0face355eb67320f1518b6ecb655a15b3f3088e36dbc3d1e8a6c233f6918d97",
+    "apps/crawler/go/ordinary-worker/qualified_lifepoint_monitor_http_test.go": "eaf6ff2872c4d16dd44e28f171ec90d43b71e5bc8243994ea6fbe9dbd9ce7c0c",
+    "apps/crawler/go/ordinary-worker/rendered_monitor.go": "f693562d2e6757afa23618fa45c4781c8871ac50b690a3357b6d6735e5c177b1"
+  },
+  "working_tree_source_sha256": {
+    "apps/crawler/go/ordinary-worker/dom_jsonld_verification.go": "4492ccc1cf9a163e600695673d5c58953889119a4db4bd76edac42364850664d",
+    "apps/crawler/go/ordinary-worker/qualified_dom_monitor_http.go": "3c16aa79e93354496ff1d6485de8d8d9df3155da0e9b28aaf102edbda870c575",
+    "apps/crawler/go/ordinary-worker/qualified_wix_monitor_http.go": "575a955d4aa2b34002c25268e638f5b491873b07429d4ea52411187d9627e4e0",
+    "apps/crawler/go/ordinary-worker/qualified_wix_monitor_http_test.go": "f0a579637f68280417c3b8051f6941bb6bed918cabb882fd7dc7578e7c380ea8",
+    "apps/crawler/go/ordinary-worker/qualified_lifepoint_monitor_http.go": "c0face355eb67320f1518b6ecb655a15b3f3088e36dbc3d1e8a6c233f6918d97",
+    "apps/crawler/go/ordinary-worker/qualified_lifepoint_monitor_http_test.go": "eaf6ff2872c4d16dd44e28f171ec90d43b71e5bc8243994ea6fbe9dbd9ce7c0c",
+    "apps/crawler/go/ordinary-worker/rendered_monitor.go": "6387d9e46bf50cee86eae2c368e21cd29a36b6244344866a3972258fcec8b64c"
+  },
+  "integration_runtime_version": "0.13.1082",
+  "integration_original_python_source_equality": {
+    "oracle": "40a1f6cbc5ad0c133a55703b3d67f5109a5faf41",
+    "installed": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+    "equal_files": [
+      "apps/crawler/src/core/monitor.py",
+      "apps/crawler/src/core/monitors/dom.py",
+      "apps/crawler/src/shared/browser.py",
+      "apps/crawler/src/shared/http.py"
+    ]
+  },
+  "integrated_http_consumers": {
+    "h3-compiled9.json": {
+      "go_compiled_consumer": true,
+      "native_count": 6,
+      "original_config_sha256": "44a767ea5bb294e90c0b3bcc8d7acc9a75bc2fd03cd182f006f7f8bfb384dca5",
+      "original_count": 6,
+      "production_mutations": 0,
+      "profile": "dom.rendered-urls/v1",
+      "same_complete": true,
+      "verified_tls": true
+    },
+    "lifepoint-compiled9.json": {
+      "go_compiled_consumer": true,
+      "native_count": 330,
+      "original_config_sha256": "cb7508c3796122b4ce9fa4bcdf5f28fffdb2743248f49fcb9434419e2d5bf9d0",
+      "original_count": 183,
+      "original_only": 0,
+      "production_mutations": 0,
+      "profile": "dom.rendered-urls/v1",
+      "reference_api_count": 330,
+      "same_complete_api": true,
+      "truncated": false,
+      "verified_tls": true
+    }
+  },
+  "integrated_worker_contracts": {
+    "observed_at_utc": "2026-10-17T15:58:43.617322+00:00",
+    "returncode": 0,
+    "test_nodes": {
+      "pass": 75,
+      "fail": 0,
+      "skip": 0
+    },
+    "private_required_postgres_redis": true,
+    "production_mutations": 0,
+    "scope": "Integrated source-bound HTTP pair, existing DOM/Pandape/verification, configured proxy health, ordered no-fetch fallback and large URL-publication regression"
+  }
+}

@@ -8,21 +8,28 @@ import (
 // NewDocumentSessionRenderOnly grants only the bounded time of a validated
 // sequential action pipeline and optional card collection. Navigation input
 // validation, render-only capability checks and cleanup remain authoritative.
-func NewDocumentSessionRenderOnly(runner Runner, pipeline []actions.Action, cards *actions.InlineCards) (*Adapter, error) {
-	return newDocumentSession(runner, pipeline, cards, false)
+func NewDocumentSessionRenderOnly(runner Runner, pipeline []actions.Action, cards *actions.InlineCards, configuredProxy ...bool) (*Adapter, error) {
+	return newDocumentSession(runner, pipeline, cards, false, configuredProxy...)
 }
 
 // NewLargeDocumentSessionRenderOnly admits complete, bounded documents without
 // requiring a synthetic action. It grants no evaluation or capture capability.
-func NewLargeDocumentSessionRenderOnly(runner Runner, pipeline []actions.Action, cards *actions.InlineCards) (*Adapter, error) {
-	return newDocumentSession(runner, pipeline, cards, true)
+func NewLargeDocumentSessionRenderOnly(runner Runner, pipeline []actions.Action, cards *actions.InlineCards, configuredProxy ...bool) (*Adapter, error) {
+	return newDocumentSession(runner, pipeline, cards, true, configuredProxy...)
 }
 
-func newDocumentSession(runner Runner, pipeline []actions.Action, cards *actions.InlineCards, largeDocument bool) (*Adapter, error) {
+func newDocumentSession(runner Runner, pipeline []actions.Action, cards *actions.InlineCards, largeDocument bool, configuredProxy ...bool) (*Adapter, error) {
 	if len(pipeline) == 0 && cards == nil && !largeDocument || len(pipeline) > 0 && !actions.Valid(pipeline) || cards != nil && !cards.Valid() {
 		return nil, actions.ErrActions
 	}
-	adapter, err := NewNavigationRenderOnly(runner)
+	if len(configuredProxy) > 1 {
+		return nil, actions.ErrActions
+	}
+	constructor := NewNavigationRenderOnly
+	if len(configuredProxy) == 1 && configuredProxy[0] {
+		constructor = NewConfiguredProxyNavigationRenderOnly
+	}
+	adapter, err := constructor(runner)
 	if err != nil {
 		return nil, err
 	}

@@ -70,6 +70,14 @@ func (runner runtimeV1Runner) Run(
 	}
 
 	config := runner.config
+	if session := input.Plan.Session; session != nil {
+		endpoint, ok := config.proxyEndpoints[session.GetProxyPolicyRef()]
+		if !ok {
+			return lightpandaadapter.NewRunnerFailure(bound, lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_INVALID_CONFIG, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_INVALID_CONFIG_POLICY})
+		}
+		config.proxy = &endpoint
+		task.proxy = &endpoint
+	}
 	config.TaskTimeout = lightpandaadapter.NavigationExecutionBudget(navigation)
 	config.TaskTimeout += actions.Budget(task.Actions) + inlineCardBudget(task.InlineCards)
 	run := runner.run
@@ -89,6 +97,19 @@ func (runner runtimeV1Runner) Run(
 				Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
 			})
 		case errors.As(err, &transport):
+			if config.proxy != nil {
+				failure := lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_INTERNAL, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY}
+				switch {
+				case transport.proxyAuth:
+					status := uint32(407)
+					failure = lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_HTTP_STATUS, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY, HTTPStatus: &status}
+				case transport.proxyTransport:
+					failure = lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY}
+				case transport.retryable:
+					failure = lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_NAVIGATION, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY}
+				}
+				return lightpandaadapter.NewRunnerFailure(bound, failure)
+			}
 			return lightpandaadapter.NewRunnerFailure(bound, lightpandaadapter.ProviderFailure{
 				Code: runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
 			})

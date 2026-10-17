@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	"net/url"
@@ -85,7 +86,7 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	if pipeline, err := actions.Parse(options["actions"]); err != nil || len(pipeline) > 0 && options["gone_url_pattern"] != nil && options["gone_url_pattern"] != "" {
 		return fail()
 	}
-	if err := validateRenderedNavigation(navigation, true); err != nil {
+	if err := validateConfiguredProxyNavigation(navigation); err != nil {
 		return fail()
 	}
 	// Reuse the configured static parser admission after removing only the
@@ -94,7 +95,7 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	for key, value := range options {
 		parser[key] = value
 	}
-	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy"} {
+	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy", "proxy", "transport_attempts"} {
 		delete(parser, key)
 	}
 	if qualifiedControls {
@@ -153,7 +154,32 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	}
 	digest := sha256.Sum256(body)
 	profile.EffectiveBoardSHA256 = hex.EncodeToString(digest[:])
+	profile.BrowserProxy = options["proxy"] == true
 	return profile, nil
+}
+
+// Only document routes with an implemented configured-proxy controller call
+// this validator. Other browser conversations retain their existing admission.
+func validateConfiguredProxyNavigation(options map[string]any) error {
+	if options["proxy"] != nil && options["proxy"] != true && options["proxy"] != false {
+		return ErrUnsupportedProfile
+	}
+	navigation := make(map[string]any, len(options))
+	for key, value := range options {
+		if key == "transport_attempts" && options["proxy"] == true {
+			if value == nil {
+				return ErrUnsupportedProfile
+			}
+			if _, err := browserproxy.OriginBlockAttempts(value); err != nil {
+				return ErrUnsupportedProfile
+			}
+			continue
+		}
+		if key != "proxy" {
+			navigation[key] = value
+		}
+	}
+	return validateRenderedNavigation(navigation, true)
 }
 
 func validateRenderedNavigation(options map[string]any, allowActions ...bool) error {
