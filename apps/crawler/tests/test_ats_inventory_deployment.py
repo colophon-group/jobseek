@@ -323,6 +323,58 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     )
 
 
+@pytest.mark.parametrize(
+    ("marker", "inspect_status", "expected", "legacy"),
+    [
+        ("v1", 0, "/usr/local/bin/go-ats-inventory", "0"),
+        ("", 0, "/app/.venv/bin/crawler ats-inventory", "1"),
+        ("v2", 0, None, None),
+        ("", 7, None, None),
+    ],
+)
+def test_native_inventory_image_selection_preserves_explicit_old_image_rollback(
+    marker: str, inspect_status: int, expected: str | None, legacy: str | None
+) -> None:
+    source = RUNNER.read_text(encoding="utf-8")
+    function = (
+        "select_inventory_command() {"
+        + source.split("select_inventory_command() {", 1)[1].split("\n}\n", 1)[0]
+        + "\n}\n"
+    )
+    script = (
+        """set -euo pipefail
+    docker() {
+      [[ "$1" == image && "$2" == inspect && "${@: -1}" == test-digest ]] || return 9
+      (( INSPECT_STATUS == 0 )) || return "$INSPECT_STATUS"
+      printf '%s' "$IMAGE_MARKER"
+    }
+    """
+        + function
+        + """
+    select_inventory_command test-digest
+    printf '%s\\n' "${ats_command[*]}" "$ats_legacy"
+    """
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "IMAGE_MARKER": marker, "INSPECT_STATUS": str(inspect_status)},
+        check=False,
+    )
+    if expected is None:
+        assert result.returncode != 0
+        assert result.stdout == ""
+    else:
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [expected, legacy]
+    assert '"${ats_command[@]}"' in source
+    assert source.index('select_inventory_command "$image"') < source.index("flock -u 8")
+    dockerfile = (ROOT / "apps/crawler/Dockerfile").read_text(encoding="utf-8")
+    assert 'LABEL org.jobseek.crawler.native-ats-inventory="v1"' in dockerfile
+    assert "COPY --from=go-ats-inventory-build /out/go-ats-inventory" in dockerfile
+
+
 def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     control = CONTROL.read_text(encoding="utf-8")
     installer = INSTALLER.read_text(encoding="utf-8")

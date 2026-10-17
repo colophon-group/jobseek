@@ -1,0 +1,331 @@
+{
+  "adp": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "adp",
+    "reason": null,
+    "seedable": true
+  },
+  "ashby": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "ashby",
+    "reason": null,
+    "seedable": true
+  },
+  "avature": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "avature",
+    "reason": null,
+    "seedable": true
+  },
+  "bamboohr": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "bamboohr",
+    "reason": null,
+    "seedable": true
+  },
+  "beisen": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "beisen",
+    "reason": null,
+    "seedable": true
+  },
+  "beisen_legacy": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "beisen",
+    "reason": null,
+    "seedable": true
+  },
+  "breezy": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "breezy",
+    "reason": null,
+    "seedable": true
+  },
+  "bytedance": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "bytedance",
+    "reason": null,
+    "seedable": true
+  },
+  "cornerstone": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "cornerstone",
+    "reason": null,
+    "seedable": true
+  },
+  "darwinbox": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "darwinbox",
+    "reason": null,
+    "seedable": true
+  },
+  "dayforce": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "dayforce",
+    "reason": null,
+    "seedable": true
+  },
+  "eightfold": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "eightfold",
+    "reason": null,
+    "seedable": true
+  },
+  "gem": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "gem",
+    "reason": null,
+    "seedable": true
+  },
+  "greenhouse": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "greenhouse",
+    "reason": null,
+    "seedable": true
+  },
+  "gupy": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "gupy",
+    "reason": null,
+    "seedable": true
+  },
+  "herp": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "herp",
+    "reason": null,
+    "seedable": true
+  },
+  "hrmos": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "hrmos",
+    "reason": null,
+    "seedable": true
+  },
+  "icims": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "icims",
+    "reason": null,
+    "seedable": true
+  },
+  "infojobs_es": {
+    "kind": "excluded",
+    "monitor_config_json": null,
+    "monitor_type": null,
+    "reason": "Job marketplace, not a company ATS tenant inventory.",
+    "seedable": false
+  },
+  "jazzhr": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "jazzhr",
+    "reason": null,
+    "seedable": true
+  },
+  "jobbankca": {
+    "kind": "excluded",
+    "monitor_config_json": null,
+    "monitor_type": null,
+    "reason": "Government job marketplace, not a company ATS tenant inventory.",
+    "seedable": false
+  },
+  "jobs_cz": {
+    "kind": "excluded",
+    "monitor_config_json": null,
+    "monitor_type": null,
+    "reason": "Job marketplace, not a company ATS tenant inventory.",
+    "seedable": false
+  },
+  "jobvite": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "jobvite",
+    "reason": null,
+    "seedable": true
+  },
+  "join_com": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "join",
+    "reason": null,
+    "seedable": true
+  },
+  "keka": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "keka",
+    "reason": null,
+    "seedable": true
+  },
+  "lever": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "lever",
+    "reason": null,
+    "seedable": true
+  },
+  "mercor": {
+    "kind": "generic",
+    "monitor_config_json": null,
+    "monitor_type": "api_sniffer",
+    "reason": "First-party board; let ws derive and verify the API configuration.",
+    "seedable": false
+  },
+  "moka": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "mokahr",
+    "reason": null,
+    "seedable": true
+  },
+  "oracle": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "oracle_hcm",
+    "reason": null,
+    "seedable": true
+  },
+  "pageup": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "pageup",
+    "reason": null,
+    "seedable": true
+  },
+  "paycom": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "paycom",
+    "reason": null,
+    "seedable": true
+  },
+  "paylocity": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "paylocity",
+    "reason": null,
+    "seedable": true
+  },
+  "personio": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "personio",
+    "reason": null,
+    "seedable": true
+  },
+  "phenom": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "phenom",
+    "reason": null,
+    "seedable": true
+  },
+  "pinpoint": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "pinpoint",
+    "reason": null,
+    "seedable": true
+  },
+  "recruitee": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "recruitee",
+    "reason": null,
+    "seedable": true
+  },
+  "recruiterbox": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "recruiterbox",
+    "reason": null,
+    "seedable": true
+  },
+  "rippling": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "rippling",
+    "reason": null,
+    "seedable": true
+  },
+  "seek": {
+    "kind": "excluded",
+    "monitor_config_json": null,
+    "monitor_type": null,
+    "reason": "SEEK/JobStreet/JobsDB marketplaces, not company ATS tenants.",
+    "seedable": false
+  },
+  "smartrecruiters": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "smartrecruiters",
+    "reason": null,
+    "seedable": true
+  },
+  "softgarden": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "softgarden",
+    "reason": null,
+    "seedable": true
+  },
+  "successfactors": {
+    "kind": "generic",
+    "monitor_config_json": "{\"preset\":\"successfactors\"}",
+    "monitor_type": "rss",
+    "reason": "SuccessFactors is implemented as the shared RSS monitor preset.",
+    "seedable": true
+  },
+  "taleo": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "taleo",
+    "reason": null,
+    "seedable": true
+  },
+  "teamtailor": {
+    "kind": "generic",
+    "monitor_config_json": "{\"preset\":\"teamtailor\"}",
+    "monitor_type": "rss",
+    "reason": "Teamtailor is implemented as the shared RSS monitor preset.",
+    "seedable": true
+  },
+  "ukg": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "ukg",
+    "reason": null,
+    "seedable": true
+  },
+  "workable": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "workable",
+    "reason": null,
+    "seedable": true
+  },
+  "workday": {
+    "kind": "native",
+    "monitor_config_json": null,
+    "monitor_type": "workday",
+    "reason": null,
+    "seedable": true
+  }
+}
