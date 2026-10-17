@@ -14,6 +14,12 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == pinnedProxyChildFlag {
+		if execPinnedProxyChild(args[1:]) != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if len(args) > 0 && args[0] == configuredBrowserProxyCheckFlag {
 		if len(args) != 2 {
 			os.Exit(1)

@@ -4,14 +4,18 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,13 +34,13 @@ func TestConfiguredBrowserProxyNeverPassesCredentialsInProcessArguments(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	command, err := (commandStarter{binary: "lightpanda", egressPolicy: defaultEgressPolicy(), proxy: &endpoint}).buildCommand(9222, io.Discard)
+	command, err := (commandStarter{binary: "lightpanda", egressPolicy: defaultEgressPolicy(), proxy: &endpoint, proxyBridgePort: 23456}).buildCommand(9222, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
 	args := strings.Join(command.Args, " ")
-	if !strings.Contains(args, "--http-proxy http://proxy.example:8000") || strings.Contains(args, "fixture-user") || strings.Contains(args, "fixture-secret") {
-		t.Fatal("proxy process arguments disclose authentication or omit configured endpoint")
+	if !strings.Contains(args, "--http-proxy "+pinnedProxyBridgeAddress(23456)) || strings.Contains(args, "proxy.example") || strings.Contains(args, "fixture-user") || strings.Contains(args, "fixture-secret") {
+		t.Fatal("child can reach an unpinned upstream or receives proxy credentials")
 	}
 	if proxies, err := parseBrowserProxies([]byte("[]")); err != nil || len(proxies) != 0 {
 		t.Fatal("explicit disabled registry was rejected")
@@ -138,10 +142,11 @@ func TestConfiguredBrowserProxyRunnerUsesTypedHopFailureWithoutProviderText(t *t
 
 func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *testing.T) {
 	binary := interactionIntegrationBinary(t)
-	for _, mode := range []string{"success", "public-subresource", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {
+	for _, mode := range []string{"success", "public-subresource", "post-json", "cookies", "publisher", "public-redirect", "gzip", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {
 		t.Run(mode, func(t *testing.T) {
 			var requests, authenticated, originCredentials, privateRequests atomic.Int64
-			proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var connectCalls atomic.Int64
+			proxy := newPinnedFixtureProxy(t, &connectCalls, mode == "bad-auth", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests.Add(1)
 				if r.Header.Get("Authorization") != "" {
 					originCredentials.Add(1)
@@ -149,12 +154,29 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 				if r.URL.Hostname() == "10.0.0.1" {
 					privateRequests.Add(1)
 				}
-				if mode == "bad-auth" || r.Header.Get("Proxy-Authorization") != "Basic "+base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-secret")) {
-					w.Header().Set("Proxy-Authenticate", `Basic realm="fixture"`)
-					w.WriteHeader(407)
+				authenticated.Add(1)
+				if mode == "public-redirect" && r.URL.Path == "/proxy-job" {
+					w.Header().Set("Location", "/final-job")
+					w.WriteHeader(302)
 					return
 				}
-				authenticated.Add(1)
+				if mode == "post-json" && r.URL.Path == "/api" {
+					body, _ := io.ReadAll(r.Body)
+					if r.Method != "POST" || string(body) != `{"page":2}` {
+						t.Error("browser POST identity/body changed")
+					}
+					w.Header().Set("Content-Type", "application/json")
+					io.WriteString(w, `{"ok":true}`)
+					return
+				}
+				if mode == "cookies" && r.URL.Path == "/cookie" {
+					if r.Header.Get("Cookie") != "fixture_session=one" {
+						t.Error("browser session cookie was not retained")
+					}
+					w.Header().Set("Content-Type", "application/json")
+					io.WriteString(w, `{"ok":true}`)
+					return
+				}
 				if mode == "public-subresource" && r.URL.Path == "/asset.js" {
 					w.Header().Set("Content-Type", "application/javascript")
 					_, _ = io.WriteString(w, `document.body.setAttribute("data-ready", "yes")`)
@@ -171,6 +193,26 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 					return
 				}
 				w.Header().Set("Content-Type", "text/html")
+				if mode == "post-json" {
+					io.WriteString(w, `<html><body><script>fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:2})}).then(r=>r.json()).then(v=>{if(v.ok)document.body.setAttribute('data-ready','yes')})</script></body></html>`)
+					return
+				}
+				if mode == "cookies" {
+					w.Header().Set("Set-Cookie", "fixture_session=one; Path=/")
+					io.WriteString(w, `<html><body><script>fetch('/cookie').then(r=>r.json()).then(v=>{if(v.ok)document.body.setAttribute('data-ready','yes')})</script></body></html>`)
+					return
+				}
+				if mode == "publisher" {
+					w.Header().Set("TDM-Reservation", "1")
+					w.Header().Set("TDM-Policy", "https://93.184.216.34/policy")
+				}
+				if mode == "gzip" {
+					w.Header().Set("Content-Encoding", "gzip")
+					compressed := gzip.NewWriter(w)
+					io.WriteString(compressed, "<html><body>Complete compressed proxy content</body></html>")
+					compressed.Close()
+					return
+				}
 				if mode == "public-subresource" {
 					_, _ = io.WriteString(w, `<html><body><script src="/asset.js"></script><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="></body></html>`)
 					return
@@ -194,30 +236,53 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			result, err := runTaskWithDependencies(ctx, config, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: endpoint.Address(), ca: ca, fixtureLoopback: "127.0.0.1"}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, Task{URL: source, Navigation: &navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_LOAD, timeout: 10 * time.Second}})
+			wait := runtimev1.WaitCondition_WAIT_CONDITION_LOAD
+			if mode == "post-json" || mode == "cookies" {
+				wait = runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE
+			}
+			result, err := runTaskWithDependencies(ctx, config, dependencies{process: commandStarter{binary: binary, proxy: &endpoint, egressPolicy: defaultEgressPolicy()}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy(), proxyTransport: pinnedFixtureTransport(ca)}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, Task{URL: source, Navigation: &navigationOptions{wait: wait, timeout: 10 * time.Second}})
 			if originCredentials.Load() != 0 {
 				t.Fatal("proxy authentication leaked to an origin challenge")
 			}
 			if strings.HasPrefix(mode, "private-") {
+				if mode != "private-target" && connectCalls.Load() == 0 {
+					t.Fatal("private follow-up was not reached from a successful public tunnel")
+				}
 				if privateRequests.Load() != 0 || err == nil {
 					t.Fatalf("private destination result: proxy_requests=%d blocked_target_requests=%d status=%d error=%t", requests.Load(), privateRequests.Load(), result.Status, err != nil)
 				}
 				return
 			}
 			if mode == "bad-auth" {
-				if requests.Load() > 3 || (err == nil && result.Status == 200) {
+				var failure *navigationTransportError
+				if !errors.As(err, &failure) || !failure.proxyAuth {
+					t.Fatal("upstream407 lost typed proxy authentication failure")
+				}
+				if connectCalls.Load() == 0 || connectCalls.Load() > 3 || (err == nil && result.Status == 200) {
 					t.Fatalf("proxy repeated challenge: requests=%d status=%d error=%t", requests.Load(), result.Status, err != nil)
 				}
 				return
 			}
 			if authenticated.Load() < 1 {
-				t.Fatal("physical proxy authentication did not occur")
+				t.Fatalf("physical proxy authentication did not occur: fixture error=%v", err)
 			}
 			if mode == "success" && (err != nil || result.Status != 200 || !strings.Contains(result.HTML, "Proxy engineer")) {
 				t.Fatal("physical authenticated proxy did not render complete content")
 			}
 			if mode == "public-subresource" && (err != nil || result.Status != 200 || !strings.Contains(result.HTML, `data-ready="yes"`)) {
 				t.Fatal("proxy request guard prevented a public script or data resource")
+			}
+			if (mode == "post-json" || mode == "cookies") && (err != nil || result.Status != 200 || !strings.Contains(result.HTML, `data-ready="yes"`)) {
+				t.Fatalf("browser session/body capture failed: fixture error=%v", err)
+			}
+			if mode == "publisher" && (err != nil || result.ResourcePolicy == nil || result.ResourcePolicy.GetTdmReservationHeader() != "1" || result.ResourcePolicy.GetTdmPolicyHeader() != "https://93.184.216.34/policy") {
+				t.Fatal("publisher response headers lost main document correlation")
+			}
+			if mode == "public-redirect" && (err != nil || !strings.Contains(result.FinalURL, "/final-job") || !strings.Contains(result.HTML, "Proxy engineer")) {
+				t.Fatalf("public redirect lost original URL/content: fixture status=%d URL=%s HTMLbytes=%d error=%v", result.Status, result.FinalURL, len(result.HTML), err)
+			}
+			if mode == "gzip" && (err != nil || !strings.Contains(result.HTML, "Complete compressed proxy content")) {
+				t.Fatal("compressed proxy response was not decoded completely")
 			}
 			if requests.Load() > 6 {
 				t.Fatal("proxy challenge loop exceeded bounded fixture requests")
@@ -226,7 +291,7 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 	}
 }
 
-func TestPhysicalLightpandaConfiguredProxyHTTPSConnectAuthentication(t *testing.T) {
+func TestPhysicalLightpandaConfiguredProxyHTTPSRejectsUntrustedOrigin(t *testing.T) {
 	binary := interactionIntegrationBinary(t)
 	certificate, ca := dayforceOriginTLS(t, "93.184.216.34")
 	var originCalls, originCredentials, connectAuth, connectCalls atomic.Int64
@@ -284,8 +349,80 @@ func TestPhysicalLightpandaConfiguredProxyHTTPSConnectAuthentication(t *testing.
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	config := Config{Binary: binary, EgressPolicy: defaultEgressPolicy(), TaskTimeout: 15 * time.Second, proxy: &endpoint}
-	result, err := runTaskWithDependencies(ctx, config, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: endpoint.Address(), ca: ca, fixtureLoopback: "127.0.0.1"}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, Task{URL: "https://93.184.216.34/job", Navigation: &navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_LOAD, timeout: 10 * time.Second}})
-	if err != nil || result.Status != 200 || !strings.Contains(result.HTML, "Verified HTTPS proxy job") || originCalls.Load() < 1 || connectAuth.Load() < 1 || originCredentials.Load() != 0 {
-		t.Fatalf("HTTPS proxy qualification failed: status=%d error=%t origin_calls=%d authenticated_connects=%d credential_leaks=%d connect_calls=%d", result.Status, err != nil, originCalls.Load(), connectAuth.Load(), originCredentials.Load(), connectCalls.Load())
+	result, err := runTaskWithDependencies(ctx, config, dependencies{process: commandStarter{binary: binary, proxy: &endpoint, egressPolicy: defaultEgressPolicy()}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy(), proxyTransport: pinnedFixtureTransport(ca)}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, Task{URL: "https://93.184.216.34/job", Navigation: &navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_LOAD, timeout: 10 * time.Second}})
+	if err == nil || result.Status == 200 || originCalls.Load() != 0 || connectAuth.Load() < 1 || originCredentials.Load() != 0 {
+		t.Fatalf("HTTPS proxy qualification failed: status=%d error=%v origin_calls=%d authenticated_connects=%d credential_leaks=%d connect_calls=%d", result.Status, err, originCalls.Load(), connectAuth.Load(), originCredentials.Load(), connectCalls.Load())
 	}
+}
+
+// Only the Go test dependency maps the checked public proxy address to a local
+// fixture. The actual child has only the task bridge IP/port available;
+// original TLS verification is retained without any certificate exemption.
+func pinnedFixtureTransport(ca string) func(browserproxy.Endpoint, EgressPolicy) (*http.Transport, error) {
+	return func(endpoint browserproxy.Endpoint, policy EgressPolicy) (*http.Transport, error) {
+		transport, err := newPinnedBrowserProxyTransport(endpoint, policy)
+		if err != nil {
+			return nil, err
+		}
+		proxy, _ := url.Parse(endpoint.Address())
+		var prefixes []netip.Prefix
+		for _, raw := range strings.Split(policy.blockCIDRs, ",") {
+			prefixes = append(prefixes, netip.MustParsePrefix(raw))
+		}
+		tunnel := &pinnedBrowserProxyTunnel{endpoint: endpoint, prefixes: prefixes, lookup: func(ctx context.Context, network, host string) ([]netip.Addr, error) {
+			if host == proxy.Hostname() {
+				return []netip.Addr{netip.MustParseAddr("93.184.216.35")}, nil
+			}
+			return net.DefaultResolver.LookupNetIP(ctx, network, host)
+		}, dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			return (&net.Dialer{Timeout: time.Second}).DialContext(ctx, network, proxy.Host)
+		}}
+		transport.DialContext = tunnel.connect
+		if ca != "" {
+			roots := x509.NewCertPool()
+			raw, err := os.ReadFile(ca)
+			if err != nil || !roots.AppendCertsFromPEM(raw) {
+				return nil, errors.New("fixture TLS root unavailable")
+			}
+			transport.TLSClientConfig.RootCAs = roots
+		}
+		return transport, nil
+	}
+}
+
+func newPinnedFixtureProxy(t *testing.T, attempts *atomic.Int64, badAuth bool, origin http.Handler) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		host, _, err := net.SplitHostPort(r.Host)
+		if r.Method != "CONNECT" || err != nil || net.ParseIP(host) == nil {
+			t.Error("upstream received an unpinned hostname")
+			w.WriteHeader(403)
+			return
+		}
+		if badAuth || r.Header.Get("Proxy-Authorization") != "Basic "+base64.StdEncoding.EncodeToString([]byte("fixture-user:fixture-secret")) {
+			w.WriteHeader(407)
+			return
+		}
+		conn, buffer, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.SetDeadline(time.Now().Add(15 * time.Second))
+		buffer.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
+		if buffer.Flush() != nil {
+			return
+		}
+		request, err := http.ReadRequest(buffer.Reader)
+		if err != nil {
+			return
+		}
+		defer request.Body.Close()
+		recorder := httptest.NewRecorder()
+		origin.ServeHTTP(recorder, request)
+		response := recorder.Result()
+		defer response.Body.Close()
+		response.Write(conn)
+	}))
 }

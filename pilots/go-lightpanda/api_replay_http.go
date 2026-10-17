@@ -58,13 +58,22 @@ func newReplayHTTPFallback(o api.BrowserReplayOptions, policy EgressPolicy) (api
 		}
 		return nil, errReplayCapture
 	}
+	return newReplayHTTPFallbackWithTransport(o, transport, transport.CloseIdleConnections)
+}
+
+// A proxy-bound replay uses the same parent-owned pinned transport as browser
+// requests. A replay fallback must never silently switch to direct egress.
+func newReplayHTTPFallbackWithTransport(o api.BrowserReplayOptions, transport http.RoundTripper, closeHTTP func()) (api.Fetch, func(), error) {
+	if transport == nil || closeHTTP == nil {
+		return nil, nil, errReplayCapture
+	}
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(next *http.Request, prior []*http.Request) error {
 		if len(prior) > 20 || !o.Inventory.ResourceMatches(next.URL.String()) {
 			return errReplayCapture
 		}
 		return nil
 	}}
-	return replayHTTPFetcher(o, client), transport.CloseIdleConnections, nil
+	return replayHTTPFetcher(o, client), closeHTTP, nil
 }
 
 func replayHTTPAddressesAllowed(prefixes []netip.Prefix, ips []netip.Addr) bool {
