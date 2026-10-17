@@ -282,8 +282,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 					result.Batches.Foreign += batch.Foreign
 					result.Batches.ForeignRelisted += batch.ForeignRelisted
 					result.Batches.Deduplicated += batch.Deduplicated
-					for _, detail := range batch.Details {
-						if _, err := cycle.EnqueueURLDetail(ctx, detail); err != nil {
+					for offset := 0; offset < len(batch.Details); offset += queue.URLDetailPublicationBatch {
+						end := min(offset+queue.URLDetailPublicationBatch, len(batch.Details))
+						if _, err := cycle.EnqueueURLDetails(ctx, batch.Details[offset:end]); err != nil {
 							return err
 						}
 					}
@@ -685,8 +686,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			result.Batches.Foreign += batch.Foreign
 			result.Batches.ForeignRelisted += batch.ForeignRelisted
 			result.Batches.Deduplicated += batch.Deduplicated
-			for _, detail := range batch.Details {
-				if _, err := cycle.EnqueueURLDetail(ctx, detail); err != nil {
+			for offset := 0; offset < len(batch.Details); offset += queue.URLDetailPublicationBatch {
+				end := min(offset+queue.URLDetailPublicationBatch, len(batch.Details))
+				if _, err := cycle.EnqueueURLDetails(ctx, batch.Details[offset:end]); err != nil {
 					return failure("enqueue", err)
 				}
 			}
