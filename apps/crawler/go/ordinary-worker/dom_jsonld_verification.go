@@ -30,7 +30,16 @@ func domVerificationResponseMatches(p queue.GreenhouseMonitorProfile, config map
 	}
 	b := r.domVerification
 	c, e := queue.DOMMonitorOptions(config)
-	return e == nil && (c.RequireJSONLD || c.HasDetailFilters() || c.TitleScan != nil || c.PDFProof != nil) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
+	qualifiedChildResource := false
+	if qualifiedWixDOMHTTPMonitor(p, config) {
+		route := qualifiedWixDOMHTTPMonitors[p.EffectiveConfigSHA256]
+		qualifiedChildResource = (wixJobsScope{route.host, route.path}).ResourceMatches(r.endpoint)
+	}
+	if qualifiedLifepointDOMHTTPMonitor(p, config) {
+		route := qualifiedLifepointDOMHTTPMonitors[p.EffectiveConfigSHA256]
+		qualifiedChildResource = (lifepointJobsScope{route.host, route.path, "jobs.lifepointhealth.net"}).ResourceMatches(r.endpoint)
+	}
+	return e == nil && (c.RequireJSONLD || c.HasDetailFilters() || c.TitleScan != nil || c.PDFProof != nil || qualifiedChildResource) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
 }
 
 // The private binding comes from this complete listing's exact candidate set,
