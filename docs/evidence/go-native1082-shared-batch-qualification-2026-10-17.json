@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-17T16:02:43.267285+00:00",
+  "status": "qualified_candidate_not_admitted",
+  "runtime_version": "0.13.1082",
+  "lightpanda": "1.0.1",
+  "serving_source": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+  "serving_epoch": 368,
+  "preserved_floor": {
+    "monitors": 7842,
+    "details": 7862
+  },
+  "full_floor_replay": {
+    "candidate_head": "4e79f10673d2c1d8eb14f4e8e754ab9b11cc7581",
+    "source_revision": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+    "scheduled_owned_postings": 1742711,
+    "queued_owned_postings": 1742711,
+    "owned_cache_mismatches": 0,
+    "captured_owned_scheduled_minus_queued": 0,
+    "all_actual_owned_routes_checked": true,
+    "new_production_ownership": 0
+  },
+  "subsequent_unchanged_inspector_and_dependency_trees": {
+    "apps/crawler/go/ordinary-queue": true,
+    "apps/crawler/contracts": true,
+    "apps/crawler/go/api-sniffer-monitor": true,
+    "apps/crawler/go/dom-detail": true,
+    "apps/crawler/go/jsonld-detail": true,
+    "apps/crawler/go/publisher-policy": true
+  },
+  "subsequent_changes": "Proxy bridge stop/port quarantine and parent-owned typed failure precedence; two worker HTTP routes; portable docs. The full route inspector/dependency inputs are identical to the replayed head.",
+  "actual_linux_proxy_proof": {
+    "observed_at_utc": "2026-10-17T15:57:39.301197+00:00",
+    "returncode": 0,
+    "test_binary_sha256": "eaa22e6876fe42273c0c516e969c38ff12427a7b04fb7a89168c7c8050695394",
+    "lightpanda": "1.0.1",
+    "official_arm64_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+    "pass_nodes": 17,
+    "fail_nodes": 0,
+    "skip_nodes": 0,
+    "scope": "Actual Linux UID10002 exec-port isolation, proxy native HTTP/session/redirect/policy/rejection cases, public verified TLS and untrusted TLS refusal, authoritative typed407, stop-with-port-quarantine until explicit cleanup. No production runtime changes."
+  },
+  "integrated_worker_contracts": {
+    "observed_at_utc": "2026-10-17T15:58:43.617322+00:00",
+    "returncode": 0,
+    "test_nodes": {
+      "pass": 75,
+      "fail": 0,
+      "skip": 0
+    },
+    "private_required_postgres_redis": true,
+    "production_mutations": 0,
+    "scope": "Integrated source-bound HTTP pair, existing DOM/Pandape/verification, configured proxy health, ordered no-fetch fallback and large URL-publication regression"
+  },
+  "ordered_transport_focus": {
+    "queue_pass": 11,
+    "worker_pass": 7,
+    "fixture_skips": 0
+  },
+  "broader_queue_local": {
+    "pass": 841,
+    "optional_protected_public_capture_skips": 2
+  },
+  "public_http_pair": {
+    "h3_original": 6,
+    "h3_actual_go": 6,
+    "lifepoint_original": 183,
+    "lifepoint_actual_go": 330,
+    "lifepoint_independent_api": 330,
+    "original_only": 0,
+    "all_original_config_hashes_and_lanes_retained": true
+  },
+  "ownership_expansion": "Only the two HTTP monitors are content-qualified candidates. Six proxy monitors/two proxy details newly compile but original content qualification is blocked by configured WebshareHTTP402. No production ownership is added by this PR.",
+  "production_mutations": 0,
+  "remaining_required": "Exact final-head whole CI/deploy gate, fresh full cohort admission, immutable staged member readback and supported deployment/activation. Full migration/freshness/matched cost/final retirement remain open.",
+  "private_evidence_sha256": {
+    "proxy-bridge-physical-linux9.json": "ae8365ca228e7a9182d1b7ae7142c945b44dfbd080b1ddd109a9b607644da8c9",
+    "integrated-worker-contracts9.json": "de616363f308d5fc4f030320e3a714d33a455045c891579ef99dfb6bf3f3ef00",
+    "current-floor2/current-floor-routes2.json": "a4dbbab2adaaf2f621674a7a3a6e12b6c0869d3f42871331bc0c8d8857dfc4e5",
+    "integrated-public-http9/h3-compiled9.json": "4bc4669d244c9bc83aa4d7e4642cdefc3ef0bd75882c26089493662d562a71cc",
+    "integrated-public-http9/lifepoint-compiled9.json": "911a9ffccf48c3fba4c70d5c9797280240785d8b850f810ba9ed0875062332c4"
+  }
+}

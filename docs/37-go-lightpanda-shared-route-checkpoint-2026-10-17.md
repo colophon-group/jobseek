@@ -70,6 +70,17 @@ HTTP/2. Failure and publisher-policy queue cases pass. The immutable detail
 membership index removes repeated fleet allocations; its microbenchmark does
 not establish production throughput or cost savings.
 
+The following [PR #10697](https://github.com/colophon-group/jobseek/pull/10697)
+combines shared configured-proxy support and two complete HTTP replacements.
+The actual Go consumers return six H3 Dynamics jobs and **330** Lifepoint provider
+jobs, retaining every original job. Fresh source-bound public bootstrap avoids
+stored session/site values; both original config hashes and browser lanes remain.
+The canonical, policy and failure suite of **52 test nodes** passes with required PostgreSQL/Redis
+fixtures and no skips. The [candidate qualification](evidence/go-native-public-http-inventory-qualification-2026-10-17.json)
+records scope and evidence hashes. Current-head CI and supported fresh admission
+remain required. Proxy ownership expansion is held while configured Webshare
+slots return HTTP **402** and positive original content comparisons are unavailable.
+
 A roughly **376-second** matched-endpoint live observation records **20 successful
 monitors / 323 successful details**, zero claim errors, restarts or OOMs, plus
 five monitor failures, eight detail failures and 20 detail host-circuit events.

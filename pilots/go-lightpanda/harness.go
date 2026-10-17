@@ -272,7 +272,9 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 		runErr = errors.Join(runErr, errResourceLimit)
 	}
 	if task.proxyBridge != nil {
-		runErr = errors.Join(runErr, task.proxyBridge.Err())
+		// The parent owns the actual upstream status; a derivative browser
+		// cancellation/navigation error cannot replace its typed hop failure.
+		runErr = errors.Join(task.proxyBridge.Err(), runErr)
 	}
 	if runErr != nil {
 		return Result{}, runErr
