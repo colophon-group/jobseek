@@ -63,6 +63,23 @@ existing owners; every board remains enabled.
    existing parsers, controllers and recovery commands; avoid one-provider release
    cycles where a shared-contract batch can be qualified together.
 
+### Next candidate — release 0.13.1084
+
+The next grouped candidate reuses the existing browser/API consumer for a complete
+2,312-job inventory and adds the original DOM selector-list contract for another
+monitor. Real private canonical processing persists all 2,313 jobs, checks every
+API rich preparation against the original, and settles both original queue lanes.
+Five raw titles differ only by whitespace removed by the actual original
+canonical text helper. Linux physical qualification remains pending. The shared
+cold-projection change selects the same existing inspector from the immutable
+profile and retains full config/source/domain/lane validation.
+
+Local required checks pass 56 worker nodes, 18 queue nodes and 837 DOM nodes, with
+zero skips. See [candidate evidence](evidence/go-native1084-shared-batch-2026-10-17.json).
+The current serving floor above remains unchanged until supported release and
+admission succeed. Other browser pagination, unavailable providers, freshness,
+operational retirement and broader resource proof remain unfinished.
+
 ## Complete freshness and operational retirement alongside coverage
 
 At 18:48 UTC, **1,628,508** owned scheduled postings are over 24 hours overdue and

@@ -94,5 +94,37 @@
     "text": "No vacancies",
     "job_count": 0,
     "accepted": true
+  },
+  {
+    "name": "group-second-selector",
+    "source": "<p class=\"empty\">No vacancies</p>",
+    "selector": ".missing, .empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "group-document-order",
+    "source": "<p class=\"first\">Open roles</p><p class=\"later\">No vacancies</p>",
+    "selector": ".later, .first",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": false
+  },
+  {
+    "name": "group-overlap",
+    "source": "<p id=\"empty\" class=\"empty\">No vacancies</p>",
+    "selector": ".empty, #empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "group-quoted-comma",
+    "source": "<p data-state=\"none, available\">No vacancies</p>",
+    "selector": "[data-state=\"none, available\"], .empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
   }
 ]

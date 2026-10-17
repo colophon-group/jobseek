@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "status": "qualified candidate, not serving",
+  "version": "0.13.1084",
+  "production_floor": {
+    "source_revision": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+    "routing_epoch": 370,
+    "monitors": 7850,
+    "details": 7864
+  },
+  "changes": [
+    "Preserve original CSS selector-list and first-document-match empty-inventory behavior",
+    "Ignore legacy DOM url/job_link_pattern metadata with original semantics while retaining complete config binding",
+    "Select the same existing detail inspector from the immutable staged profile during cold projection; preserve all route, source, domain, lane and full-config checks"
+  ],
+  "actual_original_config_candidates": {
+    "DOM_complete_URL_count": 1,
+    "API_complete_refreshed_URL_count": 2312,
+    "API_original_nonnull_fields_canonical_input_mismatches": 0,
+    "API_raw_title_outer_whitespace_differences_normalized_by_original_helper": 5,
+    "real_canonical_jobs": 2313,
+    "real_API_original_native_rich_preparations_equal": 2312,
+    "full_original_configs_and_lanes_retained": true,
+    "macOS_official_lightpanda": "1.0.1",
+    "Linux_validation": "pending; not production admission evidence"
+  },
+  "required_local_contracts": {
+    "modules": [
+      {
+        "module": "ordinary-worker",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 56,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      {
+        "module": "ordinary-queue",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 18,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      {
+        "module": "dom-detail",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 837,
+          "fail": 0,
+          "skip": 0
+        }
+      }
+    ],
+    "required_private_Postgres_Redis": true,
+    "production_mutations": 0
+  },
+  "local_cold_route_benchmark": {
+    "arms": [
+      {
+        "case": "workday/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 133838.0,
+        "bytes_per_op": 27501,
+        "allocations_per_op": 367
+      },
+      {
+        "case": "workday/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 77064.0,
+        "bytes_per_op": 14995,
+        "allocations_per_op": 203
+      },
+      {
+        "case": "workday-proxy/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 154190.0,
+        "bytes_per_op": 31264,
+        "allocations_per_op": 469
+      },
+      {
+        "case": "workday-proxy/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 87459.0,
+        "bytes_per_op": 16824,
+        "allocations_per_op": 236
+      },
+      {
+        "case": "smartrecruiters/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 86745.0,
+        "bytes_per_op": 15517,
+        "allocations_per_op": 286
+      },
+      {
+        "case": "smartrecruiters/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 29808.0,
+        "bytes_per_op": 5420,
+        "allocations_per_op": 95
+      },
+      {
+        "case": "jsonld/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 115767.0,
+        "bytes_per_op": 23029,
+        "allocations_per_op": 423
+      },
+      {
+        "case": "jsonld/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 60563.0,
+        "bytes_per_op": 11227,
+        "allocations_per_op": 195
+      },
+      {
+        "case": "jsonld-proxy/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 76546.0,
+        "bytes_per_op": 18309,
+        "allocations_per_op": 289
+      },
+      {
+        "case": "jsonld-proxy/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 31658.0,
+        "bytes_per_op": 8776,
+        "allocations_per_op": 136
+      },
+      {
+        "case": "dom/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 83113.0,
+        "bytes_per_op": 20744,
+        "allocations_per_op": 313
+      },
+      {
+        "case": "dom/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 48636.0,
+        "bytes_per_op": 12128,
+        "allocations_per_op": 173
+      }
+    ],
+    "scope": "Matched local same-process route-inspector benchmark. Full-config/source validation remains in the selected existing inspector and caller. Not production cutover duration or whole-service cost evidence."
+  },
+  "proof_scope": "Real original discovery, actual native worker/service discovery, full-record comparisons, and private canonical PG/Redis processing. Existing browser/API route is reused. Production changes require final CI/Gate and original deployment/staging/activation. This record does not claim serving, cgroup containment, whole-fleet cost, sustained freshness, or full migration completion.",
+  "required_local_cold_projection_contracts": {
+    "pass": 53,
+    "fail": 0,
+    "skip": 0,
+    "real_private_Postgres_Redis": true
+  }
+}

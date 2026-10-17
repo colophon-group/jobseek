@@ -54,6 +54,34 @@ cases = [
     ),
     ("mixed-text", '<p class="empty">No<b>vacancies</b></p>', ".empty", "No vacancies", []),
     ("unicode-spaces", '<p class="empty">No\u00a0vacancies</p>', ".empty", "No vacancies", []),
+    (
+        "group-second-selector",
+        '<p class="empty">No vacancies</p>',
+        ".missing, .empty",
+        "No vacancies",
+        [],
+    ),
+    (
+        "group-document-order",
+        '<p class="first">Open roles</p><p class="later">No vacancies</p>',
+        ".later, .first",
+        "No vacancies",
+        [],
+    ),
+    (
+        "group-overlap",
+        '<p id="empty" class="empty">No vacancies</p>',
+        ".empty, #empty",
+        "No vacancies",
+        [],
+    ),
+    (
+        "group-quoted-comma",
+        '<p data-state="none, available">No vacancies</p>',
+        '[data-state="none, available"], .empty',
+        "No vacancies",
+        [],
+    ),
 ]
 out = []
 for name, source, selector, text, urls in cases:
