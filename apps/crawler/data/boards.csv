@@ -6269,6 +6269,7 @@ security-bank,security-bank-careers,https://sbchero.darwinbox.com/ms/candidate/c
 securityscorecard,securityscorecard-greenhouse,https://job-boards.greenhouse.io/securityscorecard,greenhouse,"{""token"": ""securityscorecard""}",skip,
 seed,seed-greenhouse,https://job-boards.greenhouse.io/seed,greenhouse,"{""token"": ""seed""}",skip,
 seeing-systems,seeing-systems-yc,https://www.ycombinator.com/companies/seeing-systems/jobs,dom,"{""render"": false, ""url_filter"": ""/companies/seeing-systems/jobs/[^/?]+""}",json-ld,
+sees-candies,sees-candies-careers,https://sees.wd1.myworkdayjobs.com/sees_candies,workday,,workday,
 seesaw,seesaw-greenhouse,https://job-boards.greenhouse.io/seesaw,greenhouse,"{""token"": ""seesaw""}",skip,
 sei-labs,sei-labs-ashby,https://jobs.ashbyhq.com/sei-labs,ashby,"{""token"": ""sei-labs""}",skip,
 sekoia-io,sekoia-io-careers,https://careers.sekoia.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sekoia.com/jobs.rss""}",skip,
