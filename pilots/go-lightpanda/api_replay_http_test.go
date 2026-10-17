@@ -15,6 +15,24 @@ import (
 
 type replayRoundTrip func(*http.Request) (*http.Response, error)
 
+func TestAPIReplayHTTPFallbackRetainsBoundProxyTransport(t *testing.T) {
+	options := replayFetchOptions(t)
+	calls, closed := 0, false
+	transport := replayRoundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Request: r, Body: io.NopCloser(strings.NewReader(`{"jobs":[]}`))}, nil
+	})
+	fetch, closeHTTP, err := newReplayHTTPFallbackWithTransport(options, transport, func() { closed = true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := fetch(context.Background(), api.Request{Method: options.Inventory.Method, URL: options.Inventory.Endpoint})
+	closeHTTP()
+	if err != nil || document == nil || calls != 1 || !closed {
+		t.Fatal("replay changed the bound proxy transport or lifecycle", err, calls, closed)
+	}
+}
+
 func (f replayRoundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestAPIReplayHTTPFallbackUsesRefreshedCredentialsAndHTTPPageBudget(t *testing.T) {

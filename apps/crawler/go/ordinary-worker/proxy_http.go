@@ -27,7 +27,7 @@ func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, clai
 		if err != nil {
 			return false, err
 		}
-		return queue.ProfileRequiresProxy(profile.Profile), nil
+		return profile.BrowserProxy || queue.ProfileRequiresProxy(profile.Profile), nil
 	}
 	if claim.Descriptor().Kind != queue.Scrape {
 		return false, queue.ErrConfiguration
@@ -42,7 +42,7 @@ func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, clai
 	if err != nil {
 		return false, err
 	}
-	return queue.ProfileRequiresProxy(detail.Profile().Profile), nil
+	return detail.Profile().BrowserProxy || queue.ProfileRequiresProxy(detail.Profile().Profile), nil
 }
 
 // Monitor TLS settings and Workday detail exceptions are resolved from

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 )
 
@@ -16,9 +17,13 @@ type Navigation struct {
 	WaitFallback                                *string
 	TimeoutMS                                   uint64
 	TransportRetries                            uint32
+	ProxyPolicyRef                              string
 }
 
 func NavigationInput(c Navigation) (*runtimev1.BrowserExecutionInput, error) {
+	if c.ProxyPolicyRef != "" && !browserproxy.ValidReference(c.ProxyPolicyRef) {
+		return nil, errors.New("invalid navigation proxy policy")
+	}
 	waits := map[string]runtimev1.WaitCondition{
 		"commit":           runtimev1.WaitCondition_WAIT_CONDITION_COMMIT,
 		"domcontentloaded": runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED,
@@ -46,8 +51,14 @@ func NavigationInput(c Navigation) (*runtimev1.BrowserExecutionInput, error) {
 	for retry := uint32(1); retry <= c.TransportRetries; retry++ {
 		operations = append(operations, &runtimev1.OriginOperationRef{OriginRequestId: c.OriginRequestID + ":transport-retry-" + strconv.Itoa(int(retry)), OperationSequence: retry + 1, Role: "transport_retry", ParentOriginRequestId: &c.OriginRequestID, RequestFingerprint: operations[0].RequestFingerprint})
 	}
-	return &runtimev1.BrowserExecutionInput{
+	input := &runtimev1.BrowserExecutionInput{
 		Assignment: &runtimev1.BrowserAssignment{Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, CapabilityClass: runtimev1.BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION, ServiceLane: runtimev1.BrowserServiceLane_BROWSER_SERVICE_LANE_LIGHTPANDA, RoutingRevision: c.RoutingRevision},
 		Plan:       &runtimev1.BrowserPlan{ContractVersion: runtimeContract, TargetUrl: c.URL, RequiredCapabilities: []runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER}, Navigation: navigation, OriginOperations: operations},
-	}, nil
+	}
+	if c.ProxyPolicyRef != "" {
+		ref := c.ProxyPolicyRef
+		input.Plan.Session = &runtimev1.SessionPlan{ProxyPolicyRef: &ref}
+		input.Plan.RequiredCapabilities = append(input.Plan.RequiredCapabilities, runtimev1.BrowserCapability_BROWSER_CAPABILITY_PROXY)
+	}
+	return input, nil
 }

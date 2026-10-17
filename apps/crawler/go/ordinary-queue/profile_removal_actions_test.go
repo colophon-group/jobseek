@@ -42,8 +42,13 @@ func TestDOMAndInlineRemovalPipelinesBindBrowserOwnership(t *testing.T) {
 			body, _ = json.Marshal(metadata)
 			changed = cloneConfig(c)
 			changed["metadata"] = string(body)
-			if _, err := InspectRichMonitor(profileBoardID, changed); err == nil {
-				t.Fatal("unsupported proxy admitted")
+			proxy, err := InspectRichMonitor(profileBoardID, changed)
+			if provider == "inline" {
+				if err == nil {
+					t.Fatal("unimplemented inline proxy admitted")
+				}
+			} else if err != nil || !proxy.BrowserProxy || MonitorWorker(proxy) != Browser || proxy.EffectiveConfigSHA256 == q.EffectiveConfigSHA256 {
+				t.Fatal("document proxy removal pipeline lost its transport binding", err)
 			}
 		})
 	}

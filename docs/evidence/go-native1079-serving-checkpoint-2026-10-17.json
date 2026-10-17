@@ -1,0 +1,368 @@
+{
+  "schema": "jobseek.go-lightpanda.delivery-checkpoint/v1",
+  "status": "source1079 serving independently verified",
+  "full_goal": "active and incomplete",
+  "source_revision": "18eb097289dd6deb93d0166a9c7ebb1f2c922357",
+  "qualified_head": "83b51633dd8a473eb078e7d79c2ef860fa64bb72",
+  "version": "0.13.1079",
+  "qualified_and_installed_whole_repository_trees_equal": true,
+  "lightpanda": "1.0.1",
+  "lightpanda_latest_verified_date": "2026-10-16 UTC",
+  "routing_epoch": 364,
+  "last_verified_outgoing_cold_epoch": 363,
+  "active_cohort": {
+    "monitors": 7840,
+    "details": 7838
+  },
+  "preserved_floor": {
+    "monitors": 7840,
+    "details": 7833
+  },
+  "new_ownership": {
+    "monitors": 0,
+    "details": 5
+  },
+  "plan_sha256": "6e8baa4137a0bea19851eb6f0d9231ef28dd89e71af3503cc7e6c1e1e94c8581",
+  "projection_sha1": "9e9cfe8eb2fa7bd2294210107542153a7ac72f67",
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:8abb93817e7a085a0affb8af095f77488020397f86aff00786b6db78f4dee2c0",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:e08797a0c1161bfcb7c86a8f22611e881b37d7313cba0619cad560fb365731cc",
+    "renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a9f1ec8f80143a7b1f4d49bdcc3363694a6a43626255998d873ff27ad9b96349"
+  },
+  "ci": {
+    "required": 38975646588,
+    "crawler_deploy_gate": 38975644636,
+    "qualified_head": "83b51633dd8a473eb078e7d79c2ef860fa64bb72",
+    "complete_success": true
+  },
+  "supported_rollout": {
+    "crawler_run": 38979048878,
+    "renderer_run": 38979113766,
+    "whole_workflows_success": true,
+    "attempt": 1,
+    "only_original_committed_cutover_wrappers": true,
+    "activation_completed_at_utc": "2026-10-16T23:53:10.497879+00:00",
+    "natural_lease_expiry": true,
+    "no_direct_production_sql_redis_lease_or_receipt_edits": true
+  },
+  "independent_serving_observed_at_utc": "2026-10-16T23:53:21.050161+00:00",
+  "all_ten_actors_running": true,
+  "health": "passed",
+  "staged_qualification": {
+    "all_members": 15678,
+    "all_five_original_native_full_config_reference_bindings_match": true,
+    "cold_projection_repairs_owned_by_original_activation": true
+  },
+  "postactivation": {
+    "all_actual_owned_routes_checked": true,
+    "candidate_head": "83b51633dd8a473eb078e7d79c2ef860fa64bb72",
+    "captured_owned_scheduled_minus_queued": 3,
+    "census_observed_at": "2026-10-16T23:53:30.575741+00:00",
+    "census_sha256": "3fe15ce5003b87d7c535d5eba0a6bd441fa5bc3a24af2d6401aa059626308b5a",
+    "details_preserved": 7838,
+    "epoch": 364,
+    "monitors_preserved": 7840,
+    "new_production_ownership": 0,
+    "observed_at_utc": "2026-10-17T00:02:13Z",
+    "owned_cache_mismatches": 0,
+    "queued_owned_postings": 1747990,
+    "scheduled_owned_by_profile": {
+      "adp.public-detail/v1": 987,
+      "api_sniffer.browser-detail/v1": 17892,
+      "api_sniffer.http-detail/v1": 19266,
+      "detail.ordered-http/v1": 976,
+      "detail.ordered-proxy-http/v1": 0,
+      "dom.direct-detail/v1": 143257,
+      "dom.proxy-detail/v1": 3200,
+      "dom.rendered-detail/v1": 19689,
+      "eightfold.jsonld-api-detail/v1": 18602,
+      "eightfold.proxy-jsonld-api-detail/v1": 39060,
+      "embedded.direct-detail/v1": 36437,
+      "embedded.rendered-detail/v1": 0,
+      "headhunter.proxy-api-detail/v1": 45,
+      "infor.session-detail/v1": 226,
+      "jazzhr.public-detail/v1": 12759,
+      "jobconvo.public-detail/v1": 17,
+      "jobstreet.graphql-detail/v1": 15,
+      "johdi.api-detail/v1": 11,
+      "join.nextdata-detail/v1": 4107,
+      "jsonld.direct-detail/v1": 336237,
+      "jsonld.proxy-detail/v1": 2739,
+      "jsonld.rendered-detail/v1": 50946,
+      "linkedin.guest-detail/v1": 539,
+      "mokahr.encrypted-detail/v1": 10877,
+      "notion.public-detail/v1": 42,
+      "onlyfy.public-detail/v1": 32,
+      "oracle_hcm.api-detail/v1": 301063,
+      "oracle_hcm.proxy-api-detail/v1": 700,
+      "paycom.public-detail/v1": 11302,
+      "paycor.public-detail/v1": 226,
+      "paylocity.html-detail/v1": 90,
+      "paylocity.proxy-html-detail/v1": 45,
+      "pdf.public-detail/v1": 168,
+      "peoplesoft.session-detail/v1": 225,
+      "phuketall.public-detail/v1": 9,
+      "recruiterbox.public-detail/v1": 1298,
+      "rippling.v1-detail/v1": 532,
+      "seek.graphql-detail/v1": 122,
+      "skip.unscheduled-detail/v1": 151,
+      "smartrecruiters.api-detail/v1": 77376,
+      "taleo.enterprise-detail/v1": 112,
+      "tupu360.public-detail/v1": 151,
+      "veryeast.public-detail/v1": 12,
+      "workable.api-detail/v1": 8014,
+      "workable.proxy-api-detail/v1": 167,
+      "workday.cxs-detail/v1": 565194,
+      "workday.proxy-cxs-detail/v1": 63078
+    },
+    "scheduled_owned_postings": 1747993,
+    "scope": "candidate current-canonical/cache compilation and every currently scheduled actual owned URL; non-atomic SQL/Redis census, captured queue gap retained; not cutover admission or historical loss proof",
+    "source_revision": "18eb097289dd6deb93d0166a9c7ebb1f2c922357"
+  },
+  "queue_comparison": {
+    "before_queued": 1746877,
+    "after_queued": 1747990,
+    "retained": 1744472,
+    "before_only": 2405,
+    "after_only": 3518,
+    "postcapture_owned_unqueued": 3,
+    "before_capture_sha256": "1f381b51ba4258deff20496ede3653a6325448c689218ad1d0476a3ed3350ff3",
+    "after_capture_sha256": "3fe15ce5003b87d7c535d5eba0a6bd441fa5bc3a24af2d6401aa059626308b5a",
+    "scope": "exact queued-ID comparison for previous and current admitted detail cohorts across non-atomic captures; current eligibility accounting follows; no historical/global zero-loss claim"
+  },
+  "current_canonical_accounting": {
+    "observed_at_utc": "2026-10-17T00:01:24.118119+00:00",
+    "groups": {
+      "before_only": {
+        "total": 2405,
+        "missing": 0,
+        "inactive": 2268,
+        "unscheduled": 126,
+        "board_disabled": 0,
+        "outside_owned_details": 0,
+        "eligible_queued": 11,
+        "eligible_unqueued": 0,
+        "current_epoch_native_completed": 0
+      },
+      "post_capture_unqueued": {
+        "total": 3,
+        "missing": 0,
+        "inactive": 3,
+        "unscheduled": 0,
+        "board_disabled": 0,
+        "outside_owned_details": 0,
+        "eligible_queued": 0,
+        "eligible_unqueued": 0,
+        "current_epoch_native_completed": 3
+      },
+      "previous_held_case": {
+        "total": 1,
+        "missing": 0,
+        "inactive": 0,
+        "unscheduled": 0,
+        "board_disabled": 0,
+        "outside_owned_details": 0,
+        "eligible_queued": 1,
+        "eligible_unqueued": 0,
+        "current_epoch_native_completed": 0
+      }
+    },
+    "scope": "Current canonical categories and queue presence for every exact outgoing-only and postcapture-unqueued owned ID plus prior held case; non-atomic read-only evidence, not historical or causal proof"
+  },
+  "current_owned_freshness": {
+    "observed_at": "2026-10-16T23:54:22.491341+00:00",
+    "epoch": 364,
+    "owned_scheduled": 1747991,
+    "owned_due_now": 1699941,
+    "owned_overdue24h": 1638756,
+    "owned_overdue48h": 1580255,
+    "source_revision": "18eb097289dd6deb93d0166a9c7ebb1f2c922357",
+    "scope": "read-only current owned scheduled/due-age counts; no sustained freshness or backlog causality claim"
+  },
+  "remaining_frontier_snapshot": {
+    "monitors": 57,
+    "details": 59,
+    "excludes_b0_records": 3,
+    "fresh_census_required_if_data_changes": true
+  },
+  "next_batch": {
+    "added_by_profile": {
+      "api_sniffer.browser-detail/v1": 1,
+      "detail.ordered-browser/v1": 1,
+      "dom.direct-detail/v1": 6,
+      "dom.rendered-detail/v1": 10,
+      "jsonld.direct-detail/v1": 1,
+      "onlyfy.public-detail/v1": 1,
+      "skip.unscheduled-detail/v1": 1
+    },
+    "added_details": 21,
+    "added_scheduled_postings": 2194,
+    "candidate_head": "4a94d4d4f0e83b378d014b727ccc446d86261426",
+    "current_census_sha256": "3fe15ce5003b87d7c535d5eba0a6bd441fa5bc3a24af2d6401aa059626308b5a",
+    "epoch": 364,
+    "observed_at_utc": "2026-10-17T00:07:59Z",
+    "preserved_details": 7838,
+    "preserved_monitors": 7840,
+    "production_ownership": false,
+    "proposed_details": 7859,
+    "proposed_monitors": 7840,
+    "scope": "current full canonical/cache compiler and actual route validation; 19 no current scheduled routes, one existing no-fetch contract and one mixed original-reference chain; proposed only",
+    "source_revision": "18eb097289dd6deb93d0166a9c7ebb1f2c922357"
+  },
+  "next_batch_pr": 10663,
+  "next_batch_runtime_deployed": false,
+  "next_batch_required_ci": "pending full CI38984884116, runtime contracts38984883930 and deploy gate38984882488 on4a94d4d4f0e83b378d014b727ccc446d86261426. Prior da68 queue failures fixed; no prior-head green authority reused.",
+  "unfinished": [
+    "Remaining enabled monitor/detail configurations",
+    "Browser proxy upstream destination enforcement",
+    "Sustained production freshness and task error diagnosis",
+    "Matched whole-lane CPU/RAM/density/attributable cost including renderer and infrastructure",
+    "Final supported reversal and recovery window",
+    "Retire production Python/Playwright/Chromium after coverage and recovery proof; preserve useful offline and scoped operator tooling"
+  ],
+  "scope": "Aggregate source-bound serving, current exact-ID evidence and bounded matched live observation. SQL/Redis captures are non-atomic. No historical global zero-loss, sustained freshness, matched outgoing workload, monetary cost or full-migration completion claim. Protected raw evidence stays outside Git.",
+  "protected_evidence_sha256": {
+    "native-ordinary-admission1079/activate-ordinary-result2.json": "9186359840d61d4dc356830a17415b05e7724c4504cb29de4daf778d71cb6bc3",
+    "native-ordinary-admission1079/independent-serving1079-1.json": "320e79d9a3dfe82c8dec4647c9f0ffecb31cd307dcc34b4e6bfab67897ff99b6",
+    "native-ordinary-admission1079/independent-renderer1.json": "5034a0624586ca691111f14e5a6eb34565771afea01053b5362cc1b8457c4526",
+    "native-ordinary-admission1079/staged-qualification1.json": "8c113ea7b56d2c24a00f1ef49d0e9056ed2d2121f5dcbc37a910f6815136b1ff",
+    "native-ordinary-admission1079/new-stage-binding1.json": "c66c60f263dfe97e00c1aae9e492ecf4aa9fb451f8d22760e5ef93d50126f9fd",
+    "native-ordinary-admission1079/admission/postactive-current-floor-routes1.json": "b432f0f955d21648f217a6c613d9f4b17ca18895bb3de5c93a0b191c22854b2e",
+    "native-ordinary-admission1079/queue-id-comparison1.json": "fd4322cf9863b26e418b1c5d133f19ffa132236f16581196029532922978286d",
+    "native-ordinary-admission1079/current-eligibility1.json": "c2ac0c2879bb0e2034d7ecdc14bc95a110a9bdab0443d215aaceca7c7e1a21d4",
+    "native-ordinary-admission1079/current-owned-freshness1079-1.json": "ea90cfe4ec161b30a31579a70abd5d41408c9091740c06b7c6909dfc8865a6ad",
+    "native-ordinary-admission1079/runtime-python-boundary-audit1.json": "d1e81f626287b4acf10e97694c5979011fa5ad86e11021fa68f160b781732aa2",
+    "native1080-shared-controls-references1/refreshed-grouped-admission2.json": "718ec63086aafd9d8ab1e0958b56f86f6f32662fe83615b6dec77d666231df01",
+    "native-ordinary-admission1079/matched-runtime-observation1.json": "8b57320c854adcb89eafc979c4f28c97acb2b292de0c851edbd94cea6af5ce2c",
+    "native1080-shared-controls-references1/refreshed-grouped-admission3.json": "1edc76ea67424beb1cf04c344e8ae87ae76510dc3c742b0df2cc1dd6d6452f33",
+    "native1080-shared-controls-references1/committed-ci-fix-source-binding3.json": "f60dd4fdd05312eaaa1738772d400771d62aa4771c3fb2ea2f0620b4a8ec8ac0"
+  },
+  "matched_runtime_observation": {
+    "source_revision": "18eb097289dd6deb93d0166a9c7ebb1f2c922357",
+    "window_start": "2026-10-17T00:04:32.935316+00:00",
+    "window_end": "2026-10-17T00:10:41.226157+00:00",
+    "crawler_seconds": 368.290841,
+    "renderer_seconds": 368.045551,
+    "task_seconds": 368.090219,
+    "maximum_endpoint_skew_seconds": 0.20062200000000985,
+    "crawler_12_actor_mean_cpu_cores": 2.1925944609629866,
+    "crawler_10_consumer_mean_cpu_cores": 1.2712744219452365,
+    "mean_cpu_by_crawler_actor": {
+      "worker-1": 0.02414165385122895,
+      "worker-2": 0.023872195616181507,
+      "worker-3": 0.023362359423974924,
+      "browser-1": 0.1333829151618788,
+      "drain": 0.005890336545187123,
+      "exporter": 0.004900645900124353,
+      "lightpanda-producer": 0.013582577797529317,
+      "lightpanda-executor": 0.024979111549504975,
+      "lightpanda-claimant": 0.02071516353565795,
+      "ordinary-go": 0.9964474625639687,
+      "redis": 0.8812905396145868,
+      "alloy": 0.04002949940316327
+    },
+    "renderer_mean_cpu_cores": 0.05934565691842856,
+    "observed_actor_cpu_cores_combined": 2.251940117881415,
+    "crawler_actor_ram_start_bytes": 4053282816,
+    "crawler_actor_ram_end_bytes": 4425900032,
+    "renderer_ram_start_bytes": 68804608,
+    "renderer_ram_end_bytes": 27299840,
+    "native_tasks_delta": {
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"}": 1.0,
+      "crawler_tasks_total{kind=\"monitor\",status=\"gone\"}": 6.0,
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"}": 116.0,
+      "crawler_tasks_total{kind=\"scrape\",status=\"failed\"}": 2.0,
+      "crawler_tasks_total{kind=\"scrape\",status=\"host_circuit_open\"}": 24.0,
+      "crawler_tasks_total{kind=\"scrape\",status=\"skipped\"}": 53.0,
+      "crawler_tasks_total{kind=\"scrape\",status=\"succeeded\"}": 102.0,
+      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"}": 1.0,
+      "crawler_tasks_total{kind=\"scrape\",status=\"unacknowledged\"}": 2.0
+    },
+    "native_claim_errors_delta": 8.0,
+    "restart_delta": 0,
+    "scope": "Matched source-bound live time windows across crawler12actor, renderer and native task counters. CPU includes Redis/Alloy; excludes remote PostgreSQL/Typesense/R2/network and unrelated host services. Not a controlled matched-workload comparison with outgoing release, sustained freshness or attributable monetary cost proof."
+  },
+  "subsequent_rollout_status": {
+    "observed_at_utc": "2026-10-17T00:54:00Z",
+    "outgoing_native_authority": "retired through original supported wrappers",
+    "cold_epoch": 365,
+    "outgoing_selectors_absent": 25,
+    "merged_source1080": "77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb",
+    "qualified_head1080": "4a94d4d4f0e83b378d014b727ccc446d86261426",
+    "whole_repository_tree_equal": true,
+    "crawler_original_deploy": {
+      "run": 38987729482,
+      "attempt": 1,
+      "state": "running"
+    },
+    "renderer_original_deploy": {
+      "run": 38987842103,
+      "attempt": 1,
+      "state": "success"
+    },
+    "proposed_cohort": {
+      "monitors": 7840,
+      "details": 7859
+    },
+    "additional_details": 21,
+    "profile_families": 7,
+    "additional_scheduled_routes_validated": 2194,
+    "native1080_serving_proof": "pending",
+    "future_batch": {
+      "pr": 10665,
+      "head": "46206af78e5a60757dad78e7b006fcd6b185ebd7",
+      "original_qualified_head": "bd71bcf33201b276b3f622fb65ffa880b5051f85",
+      "whole_tree_equal": true,
+      "compiled_linux_canonical_dom_sources": 6,
+      "new_detail_configs": 3,
+      "new_monitor_configs": 2,
+      "monitor_inventory_per_source": 20,
+      "protocols": [
+        "HTTP/1",
+        "HTTP/2"
+      ],
+      "full_current_ci": "running",
+      "deployed": false
+    }
+  },
+  "subsequent_source1080_recovery_checkpoint": {
+    "source": "77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb",
+    "version": "0.13.1080",
+    "lightpanda": "1.0.1",
+    "epoch": 366,
+    "original_deployments": "both success",
+    "independent_native_serving_cohort": {
+      "monitors": 7840,
+      "details": 7859
+    },
+    "staged_members_fully_decoded": 15699,
+    "additional_full_config_bindings": 21,
+    "all_actual_owned_urls_checked": 1771567,
+    "queued_cache_mismatches": 0,
+    "captured_queued": 1762328,
+    "captured_unqueued": 9239,
+    "current_eligible_unqueued_before_retirement": 9163,
+    "original_supported_retirement_completed_at_utc": "2026-10-17T11:58:00.810375+00:00",
+    "ordinary_authority_now": "absent",
+    "legacy_stack": "restored",
+    "b0": "active366",
+    "publisher_aware_retired_followup_eligible_unqueued": 9132,
+    "issue": "https://github.com/colophon-group/jobseek/issues/10693",
+    "direct_sql_redis_lease_receipt_repairs": 0,
+    "fix_local_regression": {
+      "providers": [
+        "workday",
+        "smartrecruiters"
+      ],
+      "cases": [
+        "new513",
+        "existing_lost_enqueue513"
+      ],
+      "baseline_hash_reads": 1558,
+      "candidate_hash_reads": 46,
+      "production_repair_proved": false
+    },
+    "ownership_expansion": "held pending publication fix completeCI supportedrollout and exactaffectedset repair",
+    "scope": "Historical serving and full-route proof followed by a current queue conservation failure and supported retirement; not full migration completion."
+  }
+}

@@ -119,6 +119,12 @@ func TestSharedHTTPProxyCurrentRegistryCoverage(t *testing.T) {
 			pending[provider]++
 			continue
 		}
+		if p.BrowserProxy {
+			if provider != "dom" || MonitorWorker(p) != Browser || ProfileRequiresProxy(p.Profile) {
+				t.Fatal("configured browser proxy escaped its document route")
+			}
+			continue // Local eligibility only; this test grants no live ownership.
+		}
 		if !ProfileRequiresProxy(p.Profile) || MonitorWorker(p) != Simple {
 			if provider != "dom" || !qualifiedRendered[c["board_url"]] || p.Profile != domRenderedMonitorProfile || MonitorWorker(p) != Browser || ProfileRequiresProxy(p.Profile) {
 				t.Fatal("proxy config acquired wrong transport")

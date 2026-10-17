@@ -415,6 +415,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 			cleanup()
 			return runtimeStartupFailure("renderer_assets")
 		}
+		renderer.(*NativeRenderedDetails).proxyHTTP = proxyHTTP
 	}
 	if startup.Err() != nil {
 		cleanup()

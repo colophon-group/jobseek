@@ -35,7 +35,7 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	if request.LargeDocument {
 		constructor = lightpandaadapter.NewLargeDocumentSessionRenderOnly
 	}
-	adapter, err := constructor(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities, largeDocument: request.LargeDocument}, request.Actions, request.InlineCards)
+	adapter, err := constructor(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities, largeDocument: request.LargeDocument}, request.Actions, request.InlineCards, len(execution.dayforceConfig.proxyEndpoints) > 0)
 	if err != nil {
 		return response, err
 	}

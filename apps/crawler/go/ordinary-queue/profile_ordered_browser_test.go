@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -65,7 +66,6 @@ func TestOrderedBrowserRejectsUnsupportedControlsAndLaneChanges(t *testing.T) {
 	for _, metadata := range []string{
 		`{"scraper_type":"dom","scraper_config":{"render":true,"steps":[{"tag":"h1","field":"title"}],"fallback":{"type":"json-ld"}}}`,
 		`{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"stealth":true}}}}`,
-		`{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"proxy":true}}}}`,
 		`{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"persistent_context":true}}}}`,
 		`{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":"true"}}}}`,
 		`{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom"}}}`,
@@ -75,6 +75,30 @@ func TestOrderedBrowserRejectsUnsupportedControlsAndLaneChanges(t *testing.T) {
 		config["scraper_needs_browser"], config["metadata"] = "1", metadata
 		if _, err := InspectOrderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser); err == nil {
 			t.Fatal("unsupported mixed chain admitted")
+		}
+	}
+}
+
+func TestOrderedBrowserConfiguredProxyRetainsIndependentStageAndNoFetchBinding(t *testing.T) {
+	for _, empty := range []bool{false, true} {
+		config := jsonldDetailConfig()
+		config["scraper_needs_browser"] = "1"
+		metadata := `{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"proxy":true,"steps":[{"tag":"p","field":"description"}]}}}}`
+		if empty {
+			metadata = `{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"proxy":true}}}}`
+		}
+		config["metadata"] = metadata
+		chain, err := InspectOrderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser)
+		if err != nil || len(chain.Stages) != 2 || chain.Stages[0].BrowserProxy || chain.Stages[0].Profile != jsonldDetailProfile || chain.Stages[1].BrowserProxy == empty {
+			t.Fatal("configured proxy changed the independent primary or no-fetch transport", err)
+		}
+		if empty && (chain.Stages[1].Profile != orderedEmptyDOMDetailProfile || chain.Stages[1].DOMConfig != nil) || !empty && chain.Stages[1].Profile != domRenderedDetailProfile {
+			t.Fatal("fallback lost its original parser behavior")
+		}
+		config["metadata"] = strings.Replace(metadata, `"proxy":true`, `"proxy":false`, 1)
+		changed, err := InspectOrderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser)
+		if err != nil || changed.EffectiveBoardSHA256 == chain.EffectiveBoardSHA256 {
+			t.Fatal("original proxy option escaped whole-chain ownership binding", err)
 		}
 	}
 }

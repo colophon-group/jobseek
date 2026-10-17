@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/browserproxy"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -75,6 +77,8 @@ var (
 // Task navigates one fresh target, then runs a bounded action pipeline, one
 // expression, or a provider conversation. These execution modes are exclusive.
 type Task struct {
+	proxy             *browserproxy.Endpoint
+	proxyBridge       *pinnedBrowserProxyBridge
 	URL               string
 	LargeDocument     bool
 	Actions           []actions.Action
@@ -137,6 +141,8 @@ type dependencies struct {
 }
 
 type Config struct {
+	proxyEndpoints map[string]browserproxy.Endpoint
+	proxy          *browserproxy.Endpoint
 	Binary         string
 	EgressPolicy   EgressPolicy
 	TaskTimeout    time.Duration
@@ -165,6 +171,7 @@ func normalizeConfig(config Config) (Config, error) {
 }
 
 func runTask(ctx context.Context, config Config, task Task) (Result, error) {
+	task.proxy = config.proxy
 	var err error
 	config, err = normalizeConfig(config)
 	if err != nil {
@@ -173,7 +180,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 	return runTaskWithDependencies(ctx, config, dependencies{
 		process: commandStarter{
 			binary: config.Binary, egressPolicy: config.EgressPolicy,
-			isolateChild: config.isolateChild,
+			isolateChild: config.isolateChild, proxy: config.proxy,
 		},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
 		executor:     chromedpExecutor{egressPolicy: config.EgressPolicy},
@@ -184,6 +191,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 }
 
 func runTaskWithDependencies(ctx context.Context, config Config, deps dependencies, task Task) (Result, error) {
+	task.proxy = config.proxy
 	var err error
 	config, err = normalizeConfig(config)
 	if err != nil {
@@ -194,6 +202,42 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 	}
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
+	}
+
+	taskCtx, cancel := context.WithTimeout(ctx, config.TaskTimeout)
+	defer cancel()
+	bridgeRelease := true // No child exists until Start succeeds.
+	if task.proxy != nil {
+		starter, ok := deps.process.(commandStarter)
+		if !ok {
+			return Result{}, errBrowserProxyNetworkPolicy
+		}
+		constructor := newPinnedBrowserProxyTransport
+		if executor, ok := deps.executor.(chromedpExecutor); ok && executor.proxyTransport != nil {
+			constructor = executor.proxyTransport
+		}
+		transport, err := constructor(*task.proxy, config.EgressPolicy)
+		if err != nil {
+			return Result{}, errBrowserProxy
+		}
+		bridge, err := newPinnedBrowserProxyBridge(taskCtx, transport, cancel)
+		if err != nil {
+			transport.CloseIdleConnections()
+			return Result{}, err
+		}
+		defer func() {
+			if bridgeRelease {
+				bridge.Close()
+			} else {
+				// Cleanup failure is fatal to the resident service. Quarantine
+				// the port until process exit rather than serving another task.
+				bridge.Stop()
+			}
+		}()
+		task.proxyBridge = bridge
+		starter.proxy = task.proxy
+		starter.proxyBridgePort = bridge.port
+		deps.process = starter
 	}
 
 	port, err := deps.allocatePort()
@@ -207,13 +251,14 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 		}
 		return Result{}, fmt.Errorf("start lightpanda: %w", err)
 	}
+	bridgeRelease = false
 	state := watchProcess(process)
 
-	taskCtx, cancel := context.WithTimeout(ctx, config.TaskTimeout)
 	result, runErr := executeTaskSafely(taskCtx, deps, process, state, port, task)
 	cancel()
 
 	cleanupErr := cleanupProcess(config, deps, process, state, port)
+	bridgeRelease = cleanupErr == nil
 	if cleanupErr != nil {
 		runErr = errors.Join(
 			runErr,
@@ -225,6 +270,11 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 	}
 	if cleanupErr == nil && errors.Is(state.waitErr(), errResourceLimit) {
 		runErr = errors.Join(runErr, errResourceLimit)
+	}
+	if task.proxyBridge != nil {
+		// The parent owns the actual upstream status; a derivative browser
+		// cancellation/navigation error cannot replace its typed hop failure.
+		runErr = errors.Join(task.proxyBridge.Err(), runErr)
 	}
 	if runErr != nil {
 		return Result{}, runErr
@@ -576,9 +626,11 @@ func waitUntil(done <-chan struct{}, timeout time.Duration) bool {
 }
 
 type commandStarter struct {
-	binary       string
-	egressPolicy EgressPolicy
-	isolateChild bool
+	proxyBridgePort uint16
+	proxy           *browserproxy.Endpoint
+	binary          string
+	egressPolicy    EgressPolicy
+	isolateChild    bool
 }
 
 func (s commandStarter) Start(port int) (managedProcess, error) {
@@ -598,12 +650,28 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error
 		return nil, err
 	}
 	args := fixedLightpandaServeArgs(port, s.egressPolicy.blockCIDRs)
-	command := exec.Command(s.binary, args...)
+	binary := s.binary
+	if s.proxy != nil {
+		if s.proxyBridgePort == 0 {
+			return nil, errBrowserProxyNetworkPolicy
+		}
+		// Only the exact bridge IP is exempted. Landlock independently permits
+		// only its ephemeral TCP port, including after redirects or proxy bypass.
+		args = fixedLightpandaServeArgs(port, "0.0.0.0/0,::/0,-127.0.0.1/32")
+		args = append(args, "--http-proxy", pinnedProxyBridgeAddress(s.proxyBridgePort))
+		var err error
+		binary, err = os.Executable()
+		if err != nil {
+			return nil, errBrowserProxyNetworkPolicy
+		}
+		args = append([]string{pinnedProxyChildFlag, strconv.Itoa(int(s.proxyBridgePort)), s.binary}, args...)
+	}
+	command := exec.Command(binary, args...)
 	if s.isolateChild {
 		if s.binary != lightpandaServiceBinary {
 			return nil, errors.New("isolated service requires the pinned lightpanda binary")
 		}
-		command = isolatedChildCommand(s.binary, args...)
+		command = isolatedChildCommand(binary, args...)
 	}
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
 	attributes, err := lightpandaProcessAttributes(s.isolateChild)
@@ -844,7 +912,11 @@ func fetchVersion(ctx context.Context, client *http.Client, endpoint string) (st
 	return version.WebSocketDebuggerURL, true, nil
 }
 
-type chromedpExecutor struct{ egressPolicy EgressPolicy }
+type chromedpExecutor struct {
+	egressPolicy EgressPolicy
+	// Private dependency seam for hermetic socket fixtures; never Config or wire data.
+	proxyTransport func(browserproxy.Endpoint, EgressPolicy) (*http.Transport, error)
+}
 
 type mainDocumentResponse struct {
 	resourcePolicy  *runtimev1.ResourcePolicySignals
@@ -906,27 +978,39 @@ func comparableDocumentURL(raw string) (string, error) {
 }
 
 func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
+	if task.proxy != nil && task.proxyBridge == nil {
+		return Result{}, errBrowserProxyNetworkPolicy
+	}
+	fallback := func(options apisniffer.BrowserReplayOptions) (apisniffer.Fetch, func(), error) {
+		if task.proxy != nil {
+			return newReplayHTTPFallbackWithTransport(options, task.proxyBridge.transport, func() {})
+		}
+		return newReplayHTTPFallback(options, executor.egressPolicy)
+	}
 	if task.APIReplay != nil && task.APIReplay.detailConverse == nil && task.APIReplay.fallback == nil {
 		copyTask := *task.APIReplay
-		fetch, closeHTTP, err := newReplayHTTPFallback(copyTask.options, executor.egressPolicy)
+		fetch, closeHTTP, err := fallback(copyTask.options)
 		if err != nil {
 			return Result{}, err
 		}
 		defer closeHTTP()
 		copyTask.fallback = fetch
 		copyTask.fallbackFactory = func(options apisniffer.BrowserReplayOptions) (apisniffer.Fetch, func(), error) {
-			return newReplayHTTPFallback(options, executor.egressPolicy)
+			return fallback(options)
 		}
 		task.APIReplay = &copyTask
 	}
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)
 	defer cancelAllocator()
 	var targetOptions []chromedp.ContextOption
-	if task.Dayforce != nil {
+	if task.Dayforce != nil || task.proxy != nil {
 		// CDP decode/exception diagnostics can contain private request headers
 		// or the compiled expression. Session failures use fixed owned errors.
 		discardDiagnostic := func(string, ...any) {}
 		targetOptions = []chromedp.ContextOption{chromedp.WithLogf(discardDiagnostic), chromedp.WithErrorf(discardDiagnostic)}
+	}
+	if task.proxy != nil {
+		targetOptions = append(targetOptions, configuredProxyContext(task.proxyBridge.address))
 	}
 	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
