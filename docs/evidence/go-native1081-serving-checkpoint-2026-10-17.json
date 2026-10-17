@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-17T14:13:03.263565+00:00",
+  "full_migration_status": "active_incomplete",
+  "runtime_version": "0.13.1081",
+  "source_revision": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+  "qualified_head": "36459bec8df50c33b51ead19090ce08ba12556eb",
+  "whole_repository_tree_equal_at_runtime_merge": true,
+  "lightpanda": {
+    "version": "1.0.1",
+    "latest_stable_verified_date_utc": "2026-10-17",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1"
+  },
+  "routing_epoch": 368,
+  "admitted_monitors": 7842,
+  "admitted_details": 7862,
+  "preserved_prior_floor": {
+    "monitors": 7840,
+    "details": 7859
+  },
+  "runtime_pr": 10665,
+  "required_workflows": {
+    "required_ci": 39031577441,
+    "native_runtime_contracts": 39031577455,
+    "actual_crawler_deploy_gate": 39031576067,
+    "all_exact_qualified_head_complete_success": true
+  },
+  "original_deployments": {
+    "crawler_success": 39033443601,
+    "renderer_success": 39033864706,
+    "renderer_first_failed_run": 39033479546,
+    "renderer_first_failure": "cgroup memory attestation drifted; left renderer cold",
+    "fresh_original_renderer_retry_succeeded": true,
+    "independent_current_renderer_memory_max": 1073741824,
+    "independent_current_renderer_swap_max": 0,
+    "first_failure_cause_beyond_guard_unproved": true
+  },
+  "activation": {
+    "original_supported_wrapper_returncode": 0,
+    "completed_at_utc": "2026-10-17T13:35:08.846917+00:00",
+    "full_staged_plan_members": 15704,
+    "five_new_original_config_bindings_attested": true,
+    "independent_source_images_receipts_sql_redis_ten_actor_health_pass": true,
+    "initial_outer_attempt_stopped_before_original_wrapper_due_to_admin_oneoff": true,
+    "direct_production_sql_redis_lease_receipt_patches": false
+  },
+  "route_and_queue_capture": {
+    "all_actual_owned_routes_checked": true,
+    "captured_owned_scheduled_minus_queued": 0,
+    "census_observed_at": "2026-10-17T13:46:25.963862+00:00",
+    "census_sha256": "88e8ec4021414027374ec276aee5adc156c0eb0cf7e9a03363381fd6057f79fe",
+    "observed_at_utc": "2026-10-17T13:57:41Z",
+    "owned_cache_mismatches": 0,
+    "queued_owned_postings": 1742711,
+    "scheduled_owned_postings": 1742711
+  },
+  "exact_queued_id_comparison": {
+    "prior_queued": 1762328,
+    "current_queued": 1742711,
+    "retained": 1727840,
+    "prior_only": 34488,
+    "current_only": 14871,
+    "prior_only_current_canonical_accounting": {
+      "total": 34488,
+      "missing": 0,
+      "inactive": 34104,
+      "unscheduled": 384,
+      "board_disabled": 0,
+      "outside_owned_details": 0,
+      "publisher_reserved": 0,
+      "eligible_queued": 0,
+      "eligible_unqueued": 0,
+      "current_epoch_native_completed": 0
+    },
+    "scope": "Exact non-atomic captures followed by current canonical and publisher-aware classification; no historical or unbounded zero-loss claim."
+  },
+  "repaired_original_gap": {
+    "issue": 10693,
+    "original_captured_set": 9239,
+    "initial_current_eligible_unqueued": 9163,
+    "after_supported_ordinary_retirement_still_eligible_unqueued": 9132,
+    "after_supported_1081_activation_all_eligible_queued": 9239,
+    "followup_current_canonical_accounting": {
+      "total": 9239,
+      "missing": 0,
+      "inactive": 0,
+      "unscheduled": 0,
+      "board_disabled": 0,
+      "outside_owned_details": 0,
+      "publisher_reserved": 0,
+      "eligible_queued": 9239,
+      "eligible_unqueued": 0,
+      "current_epoch_native_completed": 851
+    },
+    "live_workday_smartrecruiters_monitor_publication_after_fix_not_yet_observed": true
+  },
+  "publication_batch_regression": {
+    "bounded_batch_size": 64,
+    "real_workday_smartrecruiters_new_and_lost_enqueue_cases": 4,
+    "posts_per_case": 513,
+    "baseline_hash_reads": 1558,
+    "candidate_hash_reads": 46,
+    "focused_queue_race_pass_nodes": 31,
+    "focused_worker_race_pass_nodes": 38,
+    "fixture_skips": 0
+  },
+  "runtime_observation": {
+    "observed_at_utc": "2026-10-17T13:43:57.875427+00:00",
+    "source_revision": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+    "epoch": 368,
+    "crawler_window_seconds": 376.697972,
+    "renderer_window_seconds": 375.628142,
+    "task_window_seconds": 376.690336,
+    "initial_endpoint_skew_seconds": 0.435607,
+    "final_endpoint_skew_seconds": 1.12667,
+    "task_deltas": {
+      "monitor/failed": 5.0,
+      "monitor/succeeded": 20.0,
+      "scrape/failed": 8.0,
+      "scrape/host_circuit_open": 20.0,
+      "scrape/succeeded": 323.0
+    },
+    "claim_error_delta": 0.0,
+    "crawler_cpu_cores_by_actor": {
+      "worker-1": 0.022852161784401644,
+      "worker-2": 0.0224363459010074,
+      "worker-3": 0.02250478003635231,
+      "browser-1": 0.7224232521219944,
+      "drain": 0.006404693360016284,
+      "exporter": 0.004511423278912688,
+      "lightpanda-producer": 0.013325086337337649,
+      "lightpanda-executor": 0.024170438061184997,
+      "lightpanda-claimant": 0.021572651312282618,
+      "ordinary-go": 0.39437196917003847,
+      "redis": 1.062872640047024,
+      "alloy": 0.04004305072287461
+    },
+    "crawler_cpu_cores": 2.3574884921334274,
+    "renderer_cpu_cores": 0.11558156630341078,
+    "combined_cpu_cores": 2.4730700584368384,
+    "crawler_memory_endpoint_bytes": [
+      5020114944,
+      4037509120
+    ],
+    "renderer_memory_endpoint_bytes": [
+      150257664,
+      84598784
+    ],
+    "restarts": 0,
+    "ooms": 0,
+    "scope": "Matched timestamp endpoints for 12 crawler actors, renderer and native task counts. No heavy census, eligibility or freshness audit by this chat overlapped. Uncontrolled live work and startup/backlog effects; remote SQL, Typesense, R2, network, unrelated host services and possible externally scheduled work excluded. This is not a causal throughput/cost comparison or final attributable-cost proof."
+  },
+  "freshness": {
+    "observed_at_utc": "2026-10-17T13:44:55.640322+00:00",
+    "owned_scheduled": 1742711,
+    "due": 1697824,
+    "overdue_24h": 1623769,
+    "overdue_48h": 1566722,
+    "oldest_due_at": "2026-03-24T17:31:01.019392+00:00",
+    "source_revision": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+    "epoch": 368,
+    "owned_detail_boards": 7862,
+    "scope": "current source-bound scheduled posting lateness for full admitted cohort; no historical loss or per-provider service guarantee"
+  },
+  "current_native_monitor_activity": {
+    "observed_at_utc": "2026-10-17T13:57:03.609119+00:00",
+    "completed_board_fences_by_provider": [
+      {
+        "provider": "accenture",
+        "completed_boards": 4,
+        "first_completion": "2026-10-17T13:43:58.178142+00:00",
+        "last_completion": "2026-10-17T13:56:08.475936+00:00"
+      },
+      {
+        "provider": "api_sniffer",
+        "completed_boards": 14,
+        "first_completion": "2026-10-17T13:38:42.624067+00:00",
+        "last_completion": "2026-10-17T13:51:00.939493+00:00"
+      },
+      {
+        "provider": "darwinbox",
+        "completed_boards": 1,
+        "first_completion": "2026-10-17T13:38:16.773485+00:00",
+        "last_completion": "2026-10-17T13:38:16.773485+00:00"
+      },
+      {
+        "provider": "dayforce",
+        "completed_boards": 2,
+        "first_completion": "2026-10-17T13:36:57.949773+00:00",
+        "last_completion": "2026-10-17T13:52:46.622319+00:00"
+      },
+      {
+        "provider": "dom",
+        "completed_boards": 54,
+        "first_completion": "2026-10-17T13:35:36.707347+00:00",
+        "last_completion": "2026-10-17T13:56:39.605349+00:00"
+      },
+      {
+        "provider": "inline",
+        "completed_boards": 5,
+        "first_completion": "2026-10-17T13:36:18.187761+00:00",
+        "last_completion": "2026-10-17T13:48:55.207754+00:00"
+      },
+      {
+        "provider": "nextdata",
+        "completed_boards": 2,
+        "first_completion": "2026-10-17T13:42:17.374506+00:00",
+        "last_completion": "2026-10-17T13:51:45.727779+00:00"
+      }
+    ],
+    "new_canonical_jobs_on_owned_monitors": []
+  },
+  "first_time_priority_pressure": {
+    "observed_at_utc": "2026-10-17T14:09:19.719281+00:00",
+    "source_revision": "2ba9c62a977307d1e8d5299ca5defbf24ee902ce",
+    "counts": {
+      "workday": {
+        "due_scrapes": 1057149,
+        "due_monitors": 489,
+        "ft_monitors": 0,
+        "domains": 404,
+        "ft_scrapes": 5232
+      },
+      "smartrecruiters": {
+        "due_scrapes": 244368,
+        "due_monitors": 128,
+        "ft_monitors": 0,
+        "domains": 11,
+        "ft_scrapes": 3411
+      }
+    },
+    "scope": "Read-only first-time/recurring queue pressure across immutable selected provider domains, including other boards sharing those domains; not a per-posting ownership or eligibility proof."
+  },
+  "remaining_captured_assignments_excluding_b0": {
+    "monitors": 55,
+    "details": 35,
+    "selected_board_records": 7900,
+    "b0_boards_excluded": 3,
+    "scope": "Same complete board capture and ordinary cohort; unsupported and unqualified replacements remain with legacy owners."
+  },
+  "remaining_exit_criteria": [
+    "Remaining enabled monitor/detail replacements with actual original/native content and lifecycle proof",
+    "Sustained freshness and failure reduction, observing first-time backlog drain before changing the existing priority contract",
+    "Native operational consumers and supported final reversal/recovery window",
+    "Comparable matched-work resources, density and attributable cost",
+    "Production Python Playwright Chromium retirement, preserving useful isolated offline Python"
+  ],
+  "private_evidence_sha256": {
+    "merged-runtime-binding1.json": "789f0e55f14e2424a1d8310c01d160c3b86d1d374339c4dee1600d375ecb9212",
+    "complete-current-head-ci1.json": "9f192de07d747b6c8496ea98955dee49aa661f1df408943a67cd3c5d9deaa0ae",
+    "independent-serving1081-1.json": "e0cd94e64b42c1ab615a06a93b80791e0430e9986c5fef0b4d7c482860b01432",
+    "staged-qualification1.json": "904b388efb8b31665ff6bc20f3e0d7a670d970fd38dce8f3c989490fd39f0d0a",
+    "admission/postactive-current-floor-routes1.json": "a5935944e3955bf5482858d8ca5c7da0825e9b55b582b5823f843220fda19fe3",
+    "queue-id-comparison1.json": "acfadaac8d794da532623af589f5cf5a8645c81951d59f56bdc522c9557330f6",
+    "current-source-gap-after-census1.json": "5a79d650d823dae8b752577d94ec68e451484f58b0062e870f610ceb8a4e6c3e",
+    "matched-runtime-observation1.json": "3ce8b748a8e56b5cdabef26aa1f6430df6976debd539ed167e1b4a7918deb879",
+    "current-owned-freshness1081-1.json": "16d730dc5473dfc54524315c6cb848906b503b436f2ebd49f6d34ef01d933cb9",
+    "native-publication-activity1.json": "7afe5b15d17ade4220ef405d4c87e1e520da9e659346621797f92e40f43f729c",
+    "native-monitor-schedule1.json": "ac08e64ec7a0a33c72b9a917bc3b94264d785af211dd1548d41eb5665f58d415",
+    "native-simple-priority-pressure1.json": "50f52934e24bd57cb73b468f58d5f5621889556ab6fc1e6da6b25e234e14158d"
+  }
+}
