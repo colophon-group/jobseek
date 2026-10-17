@@ -52,7 +52,7 @@ func writeFeedControl(conn net.Conn, c feed.Control) error {
 }
 
 // Page frames are provisional. Only the final control frame follows cleanup.
-func feedPageResult(r Result) *runtimev1.BrowserResult {
+func feedPageResult(r Result, domPage ...bool) *runtimev1.BrowserResult {
 	if r.ResponseBody == nil || uint64(len(r.ResponseBody)) > feed.BodyLimit || r.Status < 100 || r.Status > 599 || !resourcepolicy.Valid(r.ResourcePolicy) {
 		return runtimeV1Failure(runtimev1.ErrorCode_ERROR_CODE_INTERNAL, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY)
 	}
@@ -68,7 +68,11 @@ func feedPageResult(r Result) *runtimev1.BrowserResult {
 		return out
 	}
 	status := uint32(r.Status)
-	return sanitizeRuntimeV1Result(&runtimev1.BrowserResult{ContractVersion: "crawler.runtime/v1", Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, Outcome: &runtimev1.BrowserResult_Success{Success: &runtimev1.BrowserSuccess{FinalUrl: r.FinalURL, Status: &status, ResourcePolicy: r.ResourcePolicy, Html: manifest([]byte{}), Captures: []*runtimev1.CapturedValue{{CaptureId: "feed", Body: manifest(r.ResponseBody)}}}}})
+	id := "feed"
+	if len(domPage) > 0 && domPage[0] {
+		id = "dom-page"
+	}
+	return sanitizeRuntimeV1Result(&runtimev1.BrowserResult{ContractVersion: "crawler.runtime/v1", Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, Outcome: &runtimev1.BrowserResult_Success{Success: &runtimev1.BrowserSuccess{FinalUrl: r.FinalURL, Status: &status, ResourcePolicy: r.ResourcePolicy, Html: manifest([]byte{}), Captures: []*runtimev1.CapturedValue{{CaptureId: id, Body: manifest(r.ResponseBody)}}}}})
 }
 
 func (service *runtimeV1Service) handleFeed(parent context.Context, conn net.Conn, reader *bufio.Reader, r feed.Request) {
@@ -151,7 +155,7 @@ func (service *runtimeV1Service) handleFeed(parent context.Context, conn net.Con
 				_ = writeRuntimeV1Result(conn, runtimeV1Failure(code, disposition))
 				return Result{}, e
 			}
-			if e = writeRuntimeV1Result(conn, feedPageResult(result)); e != nil {
+			if e = writeRuntimeV1Result(conn, feedPageResult(result, r.DOM != nil)); e != nil {
 				return Result{}, e
 			}
 			pages++

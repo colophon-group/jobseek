@@ -65,20 +65,33 @@ existing owners; every board remains enabled.
 
 ### Next candidate — release 0.13.1084
 
-The next grouped candidate reuses the existing browser/API consumer for a complete
-2,312-job inventory and adds the original DOM selector-list contract for another
-monitor. Real private canonical processing persists all 2,313 jobs, checks every
-API rich preparation against the original, and settles both original queue lanes.
-Five raw titles differ only by whitespace removed by the actual original
-canonical text helper. Linux physical qualification remains pending. The shared
-cold-projection change selects the same existing inspector from the immutable
-profile and retains full config/source/domain/lane validation.
+One grouped admission proposes **four more monitors**, preserving the entire
+7,850/7,864 floor and targeting **7,854 monitors / 7,864 details**. The existing
+browser/API consumer matches a refreshed complete 2,311-job inventory; direct
+DOM adds one job; held browser pagination adds one and 74 jobs. Real private
+canonical processing persists all **2,387 jobs**, checks every API rich
+preparation against the original, and settles all four original queue lanes.
+Five raw titles differ only by whitespace removed by the actual original text
+helper. The 51-to-1 drop guard stays intact and protects older jobs.
 
-Local required checks pass 56 worker nodes, 18 queue nodes and 837 DOM nodes, with
-zero skips. See [candidate evidence](evidence/go-native1084-shared-batch-2026-10-17.json).
-The current serving floor above remains unchanged until supported release and
-admission succeed. Other browser pagination, unavailable providers, freshness,
-operational retirement and broader resource proof remain unfinished.
+The shared DOM session renders its root once, then fetches raw HTML in that
+same target. It retains cookies, observed policy signals, original query starts,
+bounded retries, challenge/failure behavior and cleanup. A physical official
+Linux Lightpanda 1.0.1 fixture proves root rendering, cookie affinity, raw tails
+without script execution, retry/header provenance and child cleanup. Explicit
+lean resource policy uses the existing pinned-engine font/media exclusion proof;
+its original value remains in the full immutable config binding. A third DOM
+candidate returns HTTP403 and remains unqualified.
+
+The cold projection selects the same existing inspector from its immutable
+profile, retaining full config/source/domain/lane validation. Required private
+checks pass 53 cold nodes, the earlier 56 worker/18 queue/837 DOM checks, and
+49 additional held-DOM/resource-policy worker nodes, with no skips. See
+[candidate evidence](evidence/go-native1084-shared-batch-2026-10-17.json).
+Final combined-head CI/Gate, physical Linux references, fresh whole-route
+qualification and original deployment/admission remain required. The serving
+floor above is unchanged. Other browser controls, unavailable providers,
+freshness, operations and final retirement remain unfinished.
 
 ## Complete freshness and operational retirement alongside coverage
 

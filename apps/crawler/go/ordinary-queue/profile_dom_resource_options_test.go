@@ -42,12 +42,19 @@ func TestDOMAutoResourceNormalizationRetainsImmutableBinding(t *testing.T) {
 			t.Fatal("malformed recon flag accepted")
 		}
 	}
-	for _, policy := range []string{"lean", "aggressive", "unknown"} {
+	for _, policy := range []string{"aggressive", "unknown"} {
 		clone := cloneConfig(config)
 		clone["metadata"] = strings.Replace(clone["metadata"], `"auto"`, `"`+policy+`"`, 1)
 		if _, e := InspectRichMonitor(p.BoardID, clone); e == nil {
 			t.Fatal("unqualified resource policy accepted")
 		}
+	}
+	lean := cloneConfig(config)
+	lean["metadata"] = strings.Replace(lean["metadata"], `"auto"`, `"lean"`, 1)
+	leanProfile, err := InspectRichMonitor(p.BoardID, lean)
+	_, leanOptions, optionsErr := RenderedDOMMonitorOptions(lean)
+	if err != nil || optionsErr != nil || leanOptions["resource_policy"] != "none" || leanProfile.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
+		t.Fatal("pinned font/media exclusion or original policy binding lost", err, optionsErr)
 	}
 	static := cloneConfig(config)
 	static["monitor_needs_browser"] = "0"

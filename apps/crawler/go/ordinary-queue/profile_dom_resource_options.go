@@ -12,7 +12,7 @@ func normalizeDOMLightpandaResourceOptions(options map[string]any) error {
 		}
 	}
 	policy := options["resource_policy"]
-	if policy == "auto" {
+	if policy == "auto" || policy == "lean" {
 		options["resource_policy"] = "none"
 	}
 	delete(options, "bot_protection")

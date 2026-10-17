@@ -24,25 +24,30 @@ var digest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var parameter = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]{0,63}$`)
 
 type Request struct {
-	Protocol            string  `json:"protocol"`
-	RequestID           string  `json:"request_id"`
-	ConfigFingerprint   string  `json:"config_fingerprint"`
-	FeedURL             string  `json:"feed_url"`
-	PageParameter       string  `json:"page_parameter"`
-	Start               int     `json:"start"`
-	Increment           int     `json:"increment"`
-	MaxPages            int     `json:"max_pages"`
-	Wait                string  `json:"wait"`
-	WaitFallback        *string `json:"wait_fallback,omitempty"`
-	NavigationTimeoutMS uint64  `json:"navigation_timeout_ms"`
-	TimeoutMS           uint64  `json:"timeout_ms"`
+	Protocol            string        `json:"protocol"`
+	RequestID           string        `json:"request_id"`
+	ConfigFingerprint   string        `json:"config_fingerprint"`
+	FeedURL             string        `json:"feed_url"`
+	PageParameter       string        `json:"page_parameter"`
+	Start               int           `json:"start"`
+	Increment           int           `json:"increment"`
+	MaxPages            int           `json:"max_pages"`
+	Wait                string        `json:"wait"`
+	WaitFallback        *string       `json:"wait_fallback,omitempty"`
+	NavigationTimeoutMS uint64        `json:"navigation_timeout_ms"`
+	TimeoutMS           uint64        `json:"timeout_ms"`
+	DOM                 *DOMTraversal `json:"dom,omitempty"`
 }
 
 func (r Request) Valid() bool {
 	if r.Protocol != Protocol || !digest.MatchString(r.RequestID) || !digest.MatchString(r.ConfigFingerprint) || len(r.FeedURL) > 8192 || strings.ContainsAny(r.FeedURL, "\x00\r\n\t ") || r.Start < 1 || r.Start > 10_000_000 || r.Increment < 1 || r.Increment > 10_000_000 || r.MaxPages < 1 || r.MaxPages > 50001 || int64(r.Start)+int64(r.MaxPages-1)*int64(r.Increment) > 10_000_000 || r.NavigationTimeoutMS < 1 || r.NavigationTimeoutMS > 120000 || r.TimeoutMS < 1 || r.TimeoutMS > MaxDurationMS {
 		return false
 	}
-	if r.PageParameter != "" && !parameter.MatchString(r.PageParameter) || r.PageParameter == "" && (r.Start != 1 || r.Increment != 1 || r.MaxPages != 1) {
+	if r.DOM != nil {
+		if !r.DOM.Valid() || r.PageParameter != "" || r.Start != 1 || r.Increment != 1 || r.MaxPages > 10000 {
+			return false
+		}
+	} else if r.PageParameter != "" && !parameter.MatchString(r.PageParameter) || r.PageParameter == "" && (r.Start != 1 || r.Increment != 1 || r.MaxPages != 1) {
 		return false
 	}
 	if r.WaitFallback != nil && (*r.WaitFallback == r.Wait || *r.WaitFallback != "commit" && *r.WaitFallback != "domcontentloaded" && *r.WaitFallback != "load" && *r.WaitFallback != "networkidle") {
@@ -57,6 +62,9 @@ func (r Request) Valid() bool {
 func (r Request) PageURL(page int) (string, error) {
 	if !r.Valid() || page < r.Start || (page-r.Start)%r.Increment != 0 || (page-r.Start)/r.Increment >= r.MaxPages {
 		return "", ErrProtocol
+	}
+	if r.DOM != nil {
+		return r.DOM.PageURL(r.FeedURL, page)
 	}
 	if r.PageParameter == "" {
 		return r.FeedURL, nil

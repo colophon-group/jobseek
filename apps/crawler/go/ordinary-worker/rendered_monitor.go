@@ -93,6 +93,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		})
 	}
 	if profile.Provider == "dom" {
+		if queue.DOMMonitorUsesHeldPagination(config) {
+			return r.fetchHeldDOMPagination(ctx, profile, config, options)
+		}
 		return collectRenderedDOMPages(ctx, profile, config, verified, func(attempt int) (*runtimev1.BrowserResult, error) {
 			return r.executeMonitorNavigation(ctx, profile, options, attempt)
 		})
