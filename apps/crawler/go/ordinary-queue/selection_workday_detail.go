@@ -17,12 +17,7 @@ const detailPostingCursorQuery = "SELECT id::text,source_url FROM job_posting WH
 // resolves the actual SQL posting and full canonical board before original Lua
 // checks priority, fairness, throttle, configuration and exclusive ownership.
 func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64, worker WorkerType) ([]ownershipCandidate, error) {
-	details := make([]ownershipDetail, 0, len(a.ownership.document.Details))
-	for _, detail := range a.ownership.document.Details {
-		if detail.Worker == worker {
-			details = append(details, detail)
-		}
-	}
+	details, bindings := a.ownership.detailSelection(worker)
 	if len(details) == 0 {
 		return nil, nil
 	}
@@ -34,10 +29,6 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 	count := min(8, len(details))
 	a.detailCursors[worker] = (start + 1) % len(details)
 	a.ownershipMu.Unlock()
-	bindings := make(map[string]ownershipDetail, len(details))
-	for _, detail := range details {
-		bindings[detail.BoardID] = detail
-	}
 	var candidates []ownershipCandidate
 	type boardObservation struct {
 		profile WorkdayDetailProfile

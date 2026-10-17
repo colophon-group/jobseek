@@ -73,11 +73,12 @@ type ownershipProjectionDocument struct {
 // Staging cannot activate it. A supported quiesced transaction must bind
 // the existing B0 epoch, exact revision and both owners' Redis projection.
 type OwnershipPlan struct {
-	document       ownershipDocument
-	body           string
-	digest         string
-	projectionHash string
-	projection     string
+	document         ownershipDocument
+	body             string
+	digest           string
+	projectionHash   string
+	projection       string
+	detailSelections map[WorkerType]ownershipDetailSelection
 }
 
 func (p *OwnershipPlan) SHA256() string {
@@ -203,7 +204,7 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 		// Retained pre-compact owners keep their exact original projection for
 		// supported retirement. No runtime path rebuilds either projection.
 		projectionHash := sha1.Sum([]byte(body))
-		return &OwnershipPlan{document: doc, body: body, digest: digest, projection: body, projectionHash: hex.EncodeToString(projectionHash[:])}, nil
+		return (&OwnershipPlan{document: doc, body: body, digest: digest, projection: body, projectionHash: hex.EncodeToString(projectionHash[:])}).indexDetailSelections(), nil
 	}
 	projectionDoc := ownershipProjectionDocument{Version: ownershipProjectionVersion, Epoch: doc.Epoch, SourceRevision: doc.SourceRevision, PlanSHA256: digest, Members: make(map[string]string, len(doc.Members))}
 	for _, member := range doc.Members {
@@ -220,7 +221,7 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 		return nil, ErrAuthorityLost
 	}
 	projectionHash := sha1.Sum(projection)
-	return &OwnershipPlan{document: doc, body: body, digest: digest, projection: string(projection), projectionHash: hex.EncodeToString(projectionHash[:])}, nil
+	return (&OwnershipPlan{document: doc, body: body, digest: digest, projection: string(projection), projectionHash: hex.EncodeToString(projectionHash[:])}).indexDetailSelections(), nil
 }
 
 // StageGreenhouseOwnership captures canonical enabled profiles under the lease,
