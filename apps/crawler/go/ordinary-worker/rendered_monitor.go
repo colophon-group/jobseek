@@ -50,6 +50,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if slaughterWebFormsConfigured(profile, config) {
 		return discoverSlaughterWebForms(ctx, verified)
 	}
+	if qualifiedDOMHTTPMonitor(profile, config) {
+		return discoverQualifiedDOMHTTPMonitor(ctx, verified, profile, config)
+	}
 	if queue.NativeBrowserProfile(profile.Profile) {
 		return r.fetchNativeBrowserProvider(ctx, profile, config)
 	}

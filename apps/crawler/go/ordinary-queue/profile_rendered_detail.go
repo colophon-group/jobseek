@@ -74,6 +74,12 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 			navigation[key] = value
 		}
 	}
+	qualifiedControls := scraper == "dom" && qualifiedRenderedDOMControls(boardID, config, metadata, source, options)
+	if qualifiedControls {
+		for _, key := range []string{"stealth", "skip_ssl", "warmup_url"} {
+			delete(navigation, key)
+		}
+	}
 	// The original DOM scraper checks gone redirects before action execution.
 	// Until the action protocol carries that guard, retain these configurations.
 	if pipeline, err := actions.Parse(options["actions"]); err != nil || len(pipeline) > 0 && options["gone_url_pattern"] != nil && options["gone_url_pattern"] != "" {
@@ -90,6 +96,11 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	}
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy"} {
 		delete(parser, key)
+	}
+	if qualifiedControls {
+		for _, key := range []string{"stealth", "skip_ssl", "warmup_url"} {
+			delete(parser, key)
+		}
 	}
 	if ownership && scraper == "dom" {
 		if dom.ValidateFetchURLTransform(options["fetch_url_transform"]) != nil {
