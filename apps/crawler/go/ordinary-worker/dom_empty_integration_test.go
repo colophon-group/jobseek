@@ -12,7 +12,7 @@ func TestRealDOMExplicitEmptyPreservesFailedInventory(t *testing.T) {
 	for _, rendered := range []bool{false, true} {
 		for _, mode := range []string{"jobs", "verified-zero", "missing-zero", "wrong-first-marker"} {
 			t.Run(fmt.Sprintf("rendered=%v/%s", rendered, mode), func(t *testing.T) {
-				md := `{"link_selector":"a.job","empty_selector":".empty","empty_text":"No vacancies","scraper_type":"skip"`
+				md := `{"link_selector":"a.job","empty_selector":".empty, .alternate-empty","empty_text":"No vacancies","scraper_type":"skip"`
 				worker := queue.Simple
 				if rendered {
 					worker = queue.Browser
@@ -34,10 +34,10 @@ func TestRealDOMExplicitEmptyPreservesFailedInventory(t *testing.T) {
 					body = `<a class="job" href="/jobs/` + f.company + `">Engineer</a>`
 				}
 				if mode == "verified-zero" {
-					body = `<p class="empty"> NO <span>Vacancies</span> today</p>`
+					body = `<p class="alternate-empty"> NO <span>Vacancies</span> today</p>`
 				}
 				if mode == "wrong-first-marker" {
-					body = `<p class="empty">Other</p><p class="empty">No vacancies</p>`
+					body = `<p class="alternate-empty">Other</p><p class="empty">No vacancies</p>`
 				}
 				calls := 0
 				client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {

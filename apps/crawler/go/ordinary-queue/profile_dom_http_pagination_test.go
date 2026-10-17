@@ -30,7 +30,8 @@ func TestQualifiedDOMHTTPPaginationBindsOriginalConfigAndBoard(t *testing.T) {
 			t.Fatal("changed full original configuration accepted", key)
 		}
 	}
-	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
-		t.Fatal("unqualified browser-pagination source admitted")
+	p, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || MonitorWorker(p) != Browser || !DOMMonitorUsesHeldPagination(c) || DOMMonitorHasQualifiedHTTPPagination(profileBoardID, c) {
+		t.Fatal("generic pagination lost its held session or acquired qualified HTTP authority", err)
 	}
 }

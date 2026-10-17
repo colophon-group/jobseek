@@ -35,8 +35,10 @@ func TestGroupedFragmentLeanDOMKeepsExactSourceAndNavigation(t *testing.T) {
 			}
 			clone := cloneConfig(c)
 			clone["board_url"] += "-unproved"
-			if _, err := InspectRichMonitor(profileBoardID, clone); err == nil {
-				t.Fatal("unproved source acquired fragment/lean authority")
+			if name == "tyson_thailand" {
+				assertGenericLeanWithoutSourceProof(t, clone, p)
+			} else if _, err := InspectRichMonitor(profileBoardID, clone); err == nil {
+				t.Fatal("unproved source acquired fragment authority")
 			}
 			var metadata map[string]any
 			if json.Unmarshal(reference.Metadata, &metadata) != nil {
@@ -46,10 +48,23 @@ func TestGroupedFragmentLeanDOMKeepsExactSourceAndNavigation(t *testing.T) {
 			body, _ := json.Marshal(metadata)
 			clone = cloneConfig(c)
 			clone["metadata"] = string(body)
-			if _, err := InspectRichMonitor(profileBoardID, clone); err == nil {
+			if name == "tyson_thailand" {
+				assertGenericLeanWithoutSourceProof(t, clone, p)
+			} else if _, err := InspectRichMonitor(profileBoardID, clone); err == nil {
 				t.Fatal("changed metadata acquired source authority")
 			}
 		})
+	}
+}
+
+func assertGenericLeanWithoutSourceProof(t *testing.T, config map[string]string, original GreenhouseMonitorProfile) {
+	t.Helper()
+	profile, err := InspectRichMonitor(original.BoardID, config)
+	listing, navigation, optionsErr := RenderedDOMMonitorOptions(config)
+	if err != nil || optionsErr != nil || profile.Profile != original.Profile ||
+		profile.EffectiveConfigSHA256 == original.EffectiveConfigSHA256 ||
+		listing.RequireNonEmpty || navigation["resource_policy"] != "none" {
+		t.Fatal("generic lean normalization changed its binding or acquired exact-source inventory proof", err, optionsErr)
 	}
 }
 

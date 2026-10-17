@@ -17,7 +17,7 @@ func TestListingEmptyMatchesActualPythonLegacyEvidence(t *testing.T) {
 	if e != nil || json.Unmarshal(body, &cases) != nil {
 		t.Fatal("Python reference unavailable", e)
 	}
-	if len(cases) != 12 {
+	if len(cases) != 16 {
 		t.Fatal("reference cases missing")
 	}
 	for _, c := range cases {
@@ -47,5 +47,30 @@ func TestListingEmptyConfigurationRefusesAmbiguousInventories(t *testing.T) {
 		if _, e := ListingOptions(o, "https://example.com/careers"); e == nil {
 			t.Fatal("unsupported empty contract admitted", o)
 		}
+	}
+}
+
+func TestListingEmptySelectorListsKeepFirstDocumentMatch(t *testing.T) {
+	for _, tc := range []struct {
+		name, selector, source string
+		accepted               bool
+	}{
+		{"later-selector-matches", ".missing, .empty", `<div class="empty">No jobs</div>`, true},
+		{"document-order-before-selector-order", ".later, .first", `<div class="first">Open roles below</div><div class="later">No jobs</div>`, false},
+		{"overlapping-selectors", ".empty, #empty", `<div class="empty" id="empty">No jobs</div>`, true},
+		{"quoted-comma", `[data-state="none, available"], .empty`, `<div data-state="none, available">No jobs</div>`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			options, err := ListingOptions(Object{"empty_selector": tc.selector, "empty_text": "No jobs", "link_selector": "a.job"}, "https://example.com/careers")
+			if err != nil {
+				t.Fatal("valid selector group refused", err)
+			}
+			if (ValidateListingEmpty(tc.source, options, 0) == nil) != tc.accepted {
+				t.Fatal("selector group changed first-match empty proof")
+			}
+			if err := ValidateListingEmpty(tc.source, options, 1); err != nil {
+				t.Fatal("empty marker overrode a nonempty inventory", err)
+			}
+		})
 	}
 }

@@ -31,7 +31,7 @@ func listingEmptyOptions(config Object, c *ListingConfig) error {
 	if c.Selector == "" && c.OnclickSelector == "" && c.RichRows == nil || c.Pagination != nil || c.Encoding != "" && c.OnclickSelector == "" {
 		return ErrListingEmpty
 	}
-	_, err := cascadia.Parse(c.EmptySelector)
+	_, err := cascadia.ParseGroup(c.EmptySelector)
 	return err
 }
 
@@ -51,7 +51,7 @@ func ValidateListingEmpty(source string, c ListingConfig, jobCount int) error {
 	if err != nil {
 		return err
 	}
-	selector, err := cascadia.Parse(c.EmptySelector)
+	selector, err := cascadia.ParseGroup(c.EmptySelector)
 	if err != nil {
 		return err
 	}

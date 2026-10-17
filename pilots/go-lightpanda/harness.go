@@ -1022,6 +1022,9 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 		if err := chromedp.Run(targetCtx); err != nil {
 			return Result{}, fmt.Errorf("initialize feed session: %w", err)
 		}
+		if task.Feed.request.DOM != nil {
+			return executeDOMTraversal(ctx, targetCtx, task)
+		}
 		return task.Feed.converse(ctx, func(pageCtx context.Context, endpoint string) (Result, error) {
 			step := task
 			step.Feed = nil

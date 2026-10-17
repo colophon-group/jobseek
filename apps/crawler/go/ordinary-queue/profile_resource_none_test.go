@@ -33,7 +33,15 @@ func TestRenderedResourceNoneKeepsProfileAndCanonicalFence(t *testing.T) {
 		auto.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 || options["resource_policy"] != "none" {
 		t.Fatal("qualified auto normalization lost original policy binding", e, optionsErr)
 	}
-	for _, value := range []any{"lean", "aggressive", false, 1, map[string]any{}, []any{}, " none"} {
+	md["resource_policy"] = "lean"
+	encode()
+	lean, e := InspectRichMonitor(profileBoardID, c)
+	_, options, optionsErr = RenderedDOMMonitorOptions(c)
+	if e != nil || optionsErr != nil || lean.Profile != p.Profile ||
+		lean.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 || lean.EffectiveConfigSHA256 == auto.EffectiveConfigSHA256 || options["resource_policy"] != "none" {
+		t.Fatal("pinned lean normalization lost the original policy binding", e, optionsErr)
+	}
+	for _, value := range []any{"aggressive", false, 1, map[string]any{}, []any{}, " none"} {
 		md["resource_policy"] = value
 		encode()
 		if _, e := InspectRichMonitor(profileBoardID, c); e == nil {

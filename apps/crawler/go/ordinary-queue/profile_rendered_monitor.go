@@ -111,7 +111,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		}
 		if flag, exists := pagination["browser"]; exists {
 			var browser bool
-			if json.Unmarshal(flag, &browser) != nil || browser && !qualifiedHTTPPagination {
+			if json.Unmarshal(flag, &browser) != nil || browser && !qualifiedHTTPPagination && !domHeldPaginationSupported(md) {
 				return fail()
 			}
 			delete(pagination, "browser")
@@ -141,6 +141,18 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	listing, err := directDOMMonitorOptions(clone)
 	if err != nil {
 		return fail()
+	}
+	if !qualifiedHTTPPagination && DOMMonitorUsesHeldPagination(config) && (listing.Pagination == nil || listing.Pagination.Template != "" || listing.Pagination.AdvertisedRanges != nil || listing.RequireJSONLD || listing.PDFProof != nil || listing.RichRows != nil || listing.FetchURL != "") {
+		return fail()
+	}
+	if !qualifiedHTTPPagination && DOMMonitorUsesHeldPagination(config) {
+		var pagination map[string]json.RawMessage
+		if json.Unmarshal(md["pagination"], &pagination) != nil {
+			return fail()
+		}
+		if value := pagination["transport_attempts"]; value == nil || string(value) == "null" {
+			listing.Pagination.Attempts = 2
+		}
 	}
 	listing.RequireNonEmpty = selfIdentifying
 	return listing, options, nil

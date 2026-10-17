@@ -22,6 +22,27 @@ type canonicalDetailProjection struct {
 	Steps                                                    int
 }
 
+// The immutable staged plan has already selected the board's detail profile.
+// Avoid trying every unrelated scraper for each row of the large provider
+// backlogs. The existing inspector still validates the full config and actual
+// source; the caller checks the resulting profile and ownership hash as before.
+func inspectColdDetailProjectionRoute(binding ownershipDetail, config map[string]string, source string) (WorkdayDetailProfile, error) {
+	switch binding.Profile {
+	case "workday.cxs-detail/v1", "workday.proxy-cxs-detail/v1":
+		return InspectWorkdayDetail(binding.BoardID, config, source, binding.Worker)
+	case smartRecruitersDetailProfile:
+		return InspectAPIDetail(binding.BoardID, config, source, binding.Worker)
+	case jsonldDetailProfile, jsonldProxyDetailProfile:
+		return InspectJSONLDDetail(binding.BoardID, config, source, binding.Worker)
+	case "dom.direct-detail/v1", "dom.proxy-detail/v1":
+		return InspectDOMDetail(binding.BoardID, config, source, binding.Worker)
+	case "embedded.direct-detail/v1":
+		return InspectEmbeddedDetail(binding.BoardID, config, source, binding.Worker)
+	default:
+		return inspectDetail(binding.BoardID, config, source, binding.Worker)
+	}
+}
+
 // Repair queued legacy projections and wholly absent scheduled caches under
 // the original cold session and immutable staged plan. Canonical SQL rows and
 // receipts never change. Correct projections, deadletters and orphaned caches
@@ -113,7 +134,7 @@ func repairStagedDetailProjection(ctx context.Context, pool *pgxpool.Pool, clien
 			if row.Worker != string(binding.Worker) {
 				return ErrUnsupportedProfile
 			}
-			profile, err := inspectDetail(row.BoardID, bound.Config, row.Source, binding.Worker)
+			profile, err := inspectColdDetailProjectionRoute(binding, bound.Config, row.Source)
 			if err != nil || profile.Profile != binding.Profile || profile.CompanyID != bound.CompanyID || profile.EffectiveBoardSHA256 != bound.EffectiveConfigHash || !detailDomainMatches(binding.Domain, profile) {
 				return ErrAuthorityLost
 			}

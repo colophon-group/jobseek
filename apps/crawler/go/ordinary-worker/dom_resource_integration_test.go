@@ -11,7 +11,7 @@ import (
 )
 
 func TestRealDOMAutoResourceInventoryAndAtomicFailure(t *testing.T) {
-	for _, kind := range []string{"auto", "none"} {
+	for _, kind := range []string{"auto", "none", "lean"} {
 		t.Run(kind, func(t *testing.T) {
 			for _, mode := range []string{"complete", "failed", "reserved"} {
 				t.Run(mode, func(t *testing.T) {

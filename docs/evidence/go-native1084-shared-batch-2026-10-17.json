@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "status": "Four-configuration grouped candidate; production admission and final exact-head CI remain pending",
+  "version": "0.13.1084",
+  "production_floor": {
+    "source_revision": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+    "routing_epoch": 370,
+    "monitors": 7850,
+    "details": 7864
+  },
+  "changes": [
+    "Preserve original CSS selector-list and first-document-match empty-inventory behavior",
+    "Ignore legacy DOM url/job_link_pattern metadata with original semantics while retaining complete config binding",
+    "Select the same existing detail inspector from the immutable staged profile during cold projection; preserve all route, source, domain, lane and full-config checks",
+    "Keep one rendered DOM root and later raw HTML fetches in the same affine browser target, reusing the existing document-session transport with an explicit typed DOM traversal and capture provenance",
+    "Preserve query starts -1/0, bounded jittered retries, challenge/failure/publisher dispositions, original drop guards, session cleanup and original URL parser",
+    "Apply the pinned engine font/media exclusion proof to explicit lean resource policy; preserve the original policy in the immutable full config binding"
+  ],
+  "actual_original_config_candidates": {
+    "API_original_nonnull_fields_canonical_input_mismatches": 0,
+    "API_raw_title_outer_whitespace_differences_normalized_by_original_helper": 5,
+    "full_original_configs_and_lanes_retained": true,
+    "macOS_official_lightpanda": "1.0.1",
+    "Linux_validation": "API and direct DOM physical full-config parity complete on frozen source901; affine DOM cookie/raw-tail/retry/header/cleanup fixture passes on official Linux1.0.1. Final frozen combined source and actual Linux rendered DOM references remain pending.",
+    "monitor_configurations": 4,
+    "families": [
+      "DOM direct URLs",
+      "DOM rendered root and browser-fetched HTML pagination",
+      "browser API items"
+    ],
+    "actual_current_complete_URLs": [
+      2311,
+      1,
+      1,
+      74
+    ],
+    "actual_current_total": 2387,
+    "real_current_canonical_jobs": 2387,
+    "real_current_API_original_native_rich_preparations_equal": 2311,
+    "original_drop_guard_retained": {
+      "original_recent_count": 51,
+      "current_matched_inventory": 1,
+      "gone_skipped": "drop",
+      "prior_job_missing_count": 0
+    }
+  },
+  "required_local_contracts": {
+    "modules": [
+      {
+        "module": "ordinary-worker",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 56,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      {
+        "module": "ordinary-queue",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 18,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      {
+        "module": "dom-detail",
+        "returncode": 0,
+        "test_nodes": {
+          "pass": 837,
+          "fail": 0,
+          "skip": 0
+        }
+      }
+    ],
+    "required_private_Postgres_Redis": true,
+    "production_mutations": 0
+  },
+  "local_cold_route_benchmark": {
+    "arms": [
+      {
+        "case": "workday/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 133838.0,
+        "bytes_per_op": 27501,
+        "allocations_per_op": 367
+      },
+      {
+        "case": "workday/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 77064.0,
+        "bytes_per_op": 14995,
+        "allocations_per_op": 203
+      },
+      {
+        "case": "workday-proxy/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 154190.0,
+        "bytes_per_op": 31264,
+        "allocations_per_op": 469
+      },
+      {
+        "case": "workday-proxy/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 87459.0,
+        "bytes_per_op": 16824,
+        "allocations_per_op": 236
+      },
+      {
+        "case": "smartrecruiters/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 86745.0,
+        "bytes_per_op": 15517,
+        "allocations_per_op": 286
+      },
+      {
+        "case": "smartrecruiters/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 29808.0,
+        "bytes_per_op": 5420,
+        "allocations_per_op": 95
+      },
+      {
+        "case": "jsonld/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 115767.0,
+        "bytes_per_op": 23029,
+        "allocations_per_op": 423
+      },
+      {
+        "case": "jsonld/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 60563.0,
+        "bytes_per_op": 11227,
+        "allocations_per_op": 195
+      },
+      {
+        "case": "jsonld-proxy/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 76546.0,
+        "bytes_per_op": 18309,
+        "allocations_per_op": 289
+      },
+      {
+        "case": "jsonld-proxy/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 31658.0,
+        "bytes_per_op": 8776,
+        "allocations_per_op": 136
+      },
+      {
+        "case": "dom/all-scrapers",
+        "iterations": 2000,
+        "ns_per_op": 83113.0,
+        "bytes_per_op": 20744,
+        "allocations_per_op": 313
+      },
+      {
+        "case": "dom/selected-profile",
+        "iterations": 2000,
+        "ns_per_op": 48636.0,
+        "bytes_per_op": 12128,
+        "allocations_per_op": 173
+      }
+    ],
+    "scope": "Matched local same-process route-inspector benchmark. Full-config/source validation remains in the selected existing inspector and caller. Not production cutover duration or whole-service cost evidence."
+  },
+  "proof_scope": "Read-only original/native captures and real isolated canonical processing, including supplied fields, immutable original configurations, original queue lanes, and existing drop guards. Exact final-head CI/Gate, final physical Linux replay, fresh full-route census and supported deployment/staging/activation are still required. This is not serving, production cgroup containment, whole-fleet cost, sustained freshness, or full migration completion.",
+  "required_local_cold_projection_contracts": {
+    "pass": 53,
+    "fail": 0,
+    "skip": 0,
+    "real_private_Postgres_Redis": true
+  },
+  "captured_at_utc": "2026-10-17T19:36:01.177119+00:00",
+  "additional_required_local_contracts": {
+    "module": "ordinary-worker",
+    "returncode": 0,
+    "test_nodes": {
+      "pass": 49,
+      "fail": 0,
+      "skip": 0
+    }
+  },
+  "canonical_writer_cases": [
+    {
+      "actual_original_and_native_rich_preparations_equal": 2311,
+      "canonical_absence_count": 1,
+      "canonical_jobs": 2311,
+      "complete_original_config_retained": true,
+      "native_claim_settled": true,
+      "native_gone_skip_reason": "",
+      "original_queue_lane_retained": true,
+      "production_mutations": 0,
+      "profile": "api_sniffer.browser-items/v1"
+    },
+    {
+      "actual_original_and_native_rich_preparations_equal": 0,
+      "canonical_absence_count": 0,
+      "canonical_jobs": 1,
+      "complete_original_config_retained": true,
+      "native_claim_settled": true,
+      "native_gone_skip_reason": "drop",
+      "original_queue_lane_retained": true,
+      "production_mutations": 0,
+      "profile": "dom.rendered-urls/v1"
+    },
+    {
+      "actual_original_and_native_rich_preparations_equal": 0,
+      "canonical_absence_count": 1,
+      "canonical_jobs": 1,
+      "complete_original_config_retained": true,
+      "native_claim_settled": true,
+      "native_gone_skip_reason": "",
+      "original_queue_lane_retained": true,
+      "production_mutations": 0,
+      "profile": "dom.direct-urls/v1"
+    },
+    {
+      "actual_original_and_native_rich_preparations_equal": 0,
+      "canonical_absence_count": 1,
+      "canonical_jobs": 74,
+      "complete_original_config_retained": true,
+      "native_claim_settled": true,
+      "native_gone_skip_reason": "",
+      "original_queue_lane_retained": true,
+      "production_mutations": 0,
+      "profile": "dom.rendered-urls/v1"
+    }
+  ],
+  "physical_Linux_DOM_session_fixture": {
+    "returncode": 0,
+    "elapsed_seconds": 0.7239162921905518,
+    "uid": 10002,
+    "gid": 10002,
+    "no_new_privileges": true,
+    "inherited_and_ambient_capabilities_cleared": true,
+    "official_lightpanda_version": "1.0.1",
+    "official_arm64_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+    "candidate_binary_sha256": "a28e525b7846e6cad0105b3312d5095938efc6bda68c7da704b07aae7f6dd3ad",
+    "task_owned_child_cleanup_needed": 0,
+    "production_runtime_changes": 0
+  },
+  "unqualified_candidates": {
+    "additional_DOM_lean_pagination": {
+      "original_prior_reference_jobs": 2644,
+      "actual_native_latest_status": 403,
+      "admitted": false
+    },
+    "new_proxy_content": "Provider HTTP402 remains held"
+  },
+  "proof_SHA256": {
+    "four_full_original_canonical_writers": "fe7e179cd26715915d612e1a524cf8469c4e9c2a2c57bc2a3be389afbad0924c",
+    "held_DOM_worker_policy_failure_contracts": "37e6c5438917f707e8fd7de3594fa1b1a69836480f3c3b3189385263ac08b028",
+    "pinned_Linux_cookie_raw_tail_retry_cleanup": "82e1953e7a66fa66c10c14c1efa199247b57a1fa6bc7497b17951ee28f1f4b51",
+    "actual_DOM_original_parity": "76cf90bbc29ba4b8898ba38968db7dccdd7be9970d3ed7b2de7e4e7d1ad2fd17",
+    "Linux_API_original_full_field_comparison": "3568b096c847f07682a146638250d299a23a84fa57c236f00ff35ad9dc7921df",
+    "cold_required_Postgres_Redis": "b0b2c9c53f46d7c68cc4e291f5e16c39d73595bfaae23c7b923c03259aa8a4b1"
+  },
+  "proposed_admission": {
+    "monitors": 7854,
+    "details": 7864,
+    "prior_monitors": 7850,
+    "prior_details": 7864,
+    "added_monitors": 4,
+    "added_details": 0,
+    "serving": false
+  },
+  "prior_two_configuration_capture": {
+    "DOM_complete_URL_count": 1,
+    "API_complete_refreshed_URL_count": 2312,
+    "real_canonical_jobs": 2313,
+    "real_API_original_native_rich_preparations_equal": 2312
+  }
+}

@@ -233,6 +233,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "dom":
+		// Legacy DOM metadata keeps these aliases but Python never reads them.
+		// Retain them in the full ownership hash without selecting another URL
+		// or applying an additional link filter.
+		allowed["url"], allowed["job_link_pattern"] = true, true
 		allowed["my_job_shop"] = true
 		allowed["title_matched_url_scan"] = true
 		allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
