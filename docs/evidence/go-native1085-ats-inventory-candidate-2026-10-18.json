@@ -1,0 +1,64 @@
+{
+  "schema": "jobseek.native1085.ats-inventory-candidate/v1",
+  "recorded_at_utc": "2026-10-17T22:32:12.089982+00:00",
+  "implementation_commit": "6d6def15896fb2ebbe92489705141fabdef71651",
+  "base_source": "1741d2319db7c3eaa55dc266517fc701e5888ced",
+  "version": "0.13.1085",
+  "production_ownership_granted": false,
+  "goal_complete": false,
+  "native_command": "go-ats-inventory",
+  "scope": [
+    "existing47family compatibility and data-only inventory ingestion",
+    "last-known-good inventory and byte-compatible impact cache",
+    "projected Parquet reads and conservative company impact matching",
+    "candidate normalization, local/GitHub/SQLite deduplication and preserved issue text",
+    "rate-aware, capped queue reports/dry-run/refill and uncertain-create reconciliation",
+    "Docker image, explicit retained-old-image rollback command and existing host write/credential/resource contracts"
+  ],
+  "live_original_inventory_equivalence": {
+    "original_source_revision": "40a1f6cbc5ad0c133a55703b3d67f5109a5faf41",
+    "manifest_sha256": "2f69a38cf4a75ad11e153e9653101d31aaff5eee176678b9905c58d402819e02",
+    "inventory_sha256": "f8ea9bdcc5f41c2a955492cb05d9617bd2d52bd916ae16679ecc94a87c6e7eec",
+    "rows": 80390,
+    "families": 47,
+    "every_original_parsed_ATS_name_slug_URL_field_equal": true,
+    "entire_original_family_counts_equal": true,
+    "live_GitHub_writes": 0
+  },
+  "live_original_impact_equivalence": {
+    "original_source_revision": "40a1f6cbc5ad0c133a55703b3d67f5109a5faf41",
+    "manifest_sha256": "2f69a38cf4a75ad11e153e9653101d31aaff5eee176678b9905c58d402819e02",
+    "complete_real_Parquet_families": 3,
+    "artifact_job_rows": 7815,
+    "inventory_companies": 57,
+    "every_original_family_summary_and_company_impact_equal": true,
+    "every_serialized_family_cache_byte_equal": true,
+    "GitHub_writes": 0
+  },
+  "local_validation": {
+    "Go_race_vet_tidy_pass": true,
+    "original_Python_and_host_contract_tests_passed": 52,
+    "host_deployment_tests_passed": 17,
+    "fake_HTTP_CLI_dry_run_refill_dedup_quarantine_rate_limit_and_unknown_create_reconciliation": true,
+    "actual_external_GitHub_creates": 0
+  },
+  "same_release_browser_config_batch": {
+    "registry_rows": 3,
+    "new_monitor_assignments": 3,
+    "new_detail_assignments": 2,
+    "complete_monitor_inventory_URLs": 12,
+    "usable_canonical_detail_comparisons": 6,
+    "actual_original_canonical_absence_guards_verified": true,
+    "never_rescrape_SQL_Redis_semantics_preserved": true,
+    "empty_JSONLD_case_excluded": true,
+    "proposed_ordinary_monitors": 7857,
+    "proposed_ordinary_details": 7866
+  },
+  "pending_at_recording": [
+    "final whole-head Required CI and actual Crawler Deploy Gate",
+    "installed Linux image verification",
+    "fresh full-route/cohort qualification and original whole deployment/cutover",
+    "production ATS runner acceptance and full operational audit",
+    "full migration exit criteria"
+  ]
+}
