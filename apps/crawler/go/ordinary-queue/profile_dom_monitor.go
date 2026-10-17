@@ -94,6 +94,9 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if _, err := FeedMonitorURLRules(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	if _, qualified := qualifiedDOMHTTPPaginationSources[domHTTPPaginationConfigFingerprint(config)]; qualified && !DOMMonitorHasQualifiedHTTPPagination(boardID, config) {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
 	listing, err := DOMMonitorOptions(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
