@@ -1,164 +1,111 @@
 # Go and Lightpanda migration delivery plan
 
-Full delivery remains **active and incomplete**. Preserve every enabled board;
-complete production Go execution, native ownership lifecycle and recovery, then
-remove production Python, Playwright and Chromium. Keep useful offline Python.
+Deliver the **full migration**, preserving every enabled board and canonical
+content/publisher/queue behavior. Production execution and operational consumers
+must run in Go using the latest stable Lightpanda or proved native HTTP/API
+routes. Remove production Python, Playwright and Chromium after replacement
+coverage and supported recovery are established; retain useful isolated offline
+Python. The goal remains **active and incomplete**.
 
-## Current checkpoint — 2026-10-17
+## Current serving checkpoint — October 17, 2026
 
-Release **0.13.1081** is merged in [PR #10665](https://github.com/colophon-group/jobseek/pull/10665)
-as `2ba9c62a977307d1e8d5299ca5defbf24ee902ce`, with an identical whole tree to
-qualified head `36459bec8df50c33b51ead19090ce08ba12556eb`. Complete current-head
-Required CI, native runtime contracts and the actual Crawler Deploy Gate pass.
-The original crawler and renderer workflows are running for that source;
-**incoming native ownership is not yet granted**. Lightpanda remains **1.0.1**,
-the latest stable release verified on October 17 UTC.
+Release **0.13.1081**, source `2ba9c62a977307d1e8d5299ca5defbf24ee902ce`, serves
+**7,842 monitors / 7,862 details** at epoch **368**, preserving the previous
+7,840/7,859 floor. Latest stable **Lightpanda 1.0.1** was reverified October 17 at
+14:14 UTC against the [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.1).
+Exact qualified-head CI, both original deployments, supported staging/activation
+and independent full serving checks pass.
 
-The outgoing **0.13.1080** cohort served **7,840 monitors / 7,859 details** and
-passed all **1,771,567** captured actual scheduled routes, with zero mismatches
-among queued cache records. Longer observation found **9,163** eligible records
-absent from both detail lanes and the scrape cache. All lacked descriptions.
-The original ordinary retirement completed at **11:58 UTC**, restoring legacy
-workers, but follow-up still found **9,132** eligible unqueued records. The
-supported B0 reversal subsequently completed at cold epoch **367**, with both
-native receipts absent; the reviewed helper cleared all **25** selectors and
-independent readback confirmed absence. No production SQL, Redis, lease or
-receipt was manually patched.
+Full postactivation replay validates **1,742,711 actual owned scheduled URLs**,
+all captured queued with zero cache mismatches. Current canonical and publisher
+checks account for every outgoing-only ID. All **9,239 original queue-gap IDs**
+are now queued, including 851 current-epoch native completions. Natural post-fix
+Workday/SmartRecruiters monitor publication remains unobserved; keep
+[issue #10693](https://github.com/colophon-group/jobseek/issues/10693) open until
+actual subsequent monitor publication and sustained conservation are proved.
+These current non-atomic captures do not establish historical zero loss.
 
-[Issue #10693](https://github.com/colophon-group/jobseek/issues/10693) tracks this
-queue gap. Release1081 reuses the existing **64-item** fenced publisher in both
-ordinary and streamed URL-only monitor paths. Real 513-item Workday and
-SmartRecruiters new/lost-enqueue repair cases pass, reducing ownership/cache
-hash reads from **1,558 to 46**, with exact canonical stubs, first-time queues
-and settlement retained. Focused race suites pass **31 queue / 38 worker** nodes
-without fixture skips. The live causal link and sustained repair remain open.
-
-The same release qualifies **two monitors and three detail configurations**,
-preserving 7,840/7,859 and targeting **7,842/7,862**. Fresh full-cohort replay
-checks all **1,771,583** proposed scheduled routes and five full original config
-bindings; it reports the existing queue gap explicitly. Both monitors match
-fresh Chromium 20-URL inventories over actual HTTP/1.1 and HTTP/2. Follow the
-original source-bound deployment/staging/activation workflow, then verify the
-exact affected IDs, fresh full-fleet conservation and subsequent large monitor
-cycles. Production Python/browser removal remains gated by the full delivery
-criteria below.
-
-### Previous serving proof
-
-The completed **0.13.1079** serving proof binds source
-`18eb097289dd6deb93d0166a9c7ebb1f2c922357`, with latest stable Lightpanda **1.0.1**.
-The full **7,840-monitor / 7,838-detail** cohort served at epoch **364**,
-preserving every member of the previous 7,840/7,833 floor and adding five detail
-boards across DOM/JSON-LD HTTP/API and unchanged direct routes.
-
-[PR #10660](https://github.com/colophon-group/jobseek/pull/10660) delivers shared
-browser capacity before claims at configured discovery/monitor concurrency 60/15.
-Qualified head `83b51633dd8a473eb078e7d79c2ef860fa64bb72` and installed merge have
-identical whole repository trees. Full Linux execution suites, Required CI and
-Crawler Deploy Gate pass. Both original deployments and source-bound supported
-staging/activation pass; independent all-ten-actor serving readback passes.
-Activation completed at **23:53:10 UTC**. Full postactive replay validates all
-**1,747,993 owned scheduled URLs**, with **zero owned cache mismatches**. Current
-accounting resolves all three captured unqueued records and every outgoing-only
-ID; none remains eligible and unqueued. This is non-atomic current evidence,
-not historical or global zero-loss proof.
-
-The next supported retirement and cold B0 reversal completed at epoch
-**365**, with both native receipts absent and all 25 outgoing selectors cleared
-through the original helper and independently checked. Source1080 merged as
-`77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`; both original deployments and
-source-bound activation later succeeded, as detailed in the current recovery
-checkpoint above. The local SSH result was lost across a host sleep, so serving
-was established independently before any retry; activation was not duplicated.
-
-See the [latest portable checkpoint](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md).
-The [previous checkpoint](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
-retains the source1078 full route and exact-ID/current-eligibility evidence.
-
-Freshness remains unfinished: at **23:54 UTC**, **1,638,756 owned postings** are
-more than 24 hours overdue. Early successful cycles and zero restarts/OOMs do
-not establish sustained freshness; measure the startup claim-error delta and
-useful throughput after the full census. Outgoing actor-resource and task windows
-were separate and excluded the renderer host, so matched whole-lane cost also
-remains open.
-
-[PR #10663](https://github.com/colophon-group/jobseek/pull/10663) adds ordered
-HTTP-to-browser detail fallback and original empty-DOM no-fetch behavior with
-full lifecycle tests. Current head `4a94d4d4f0e83b378d014b727ccc446d86261426` has
-a corrected Lua parity/proxy-fixture follow-up; complete Required CI, installed
-image parity and the actual deploy gate pass. Its merged whole tree equals this
-qualified head. The proposed **21-detail, seven-family** batch passes fresh
-source1079 full canonical/cache fingerprint and all **2,194** actual additional
-scheduled route checks, preserving 7,840/7,838 and targeting
-**7,840/7,859**. Nineteen existing compiled candidates had no scheduled routes
-at the old capture; one uses an existing no-fetch contract and one uses the new
-ordered chain. This is a qualification proposal, not an ownership or empty-inventory
-claim.
-
-[PR #10665](https://github.com/colophon-group/jobseek/pull/10665) is the next
-prepared batch: three full-config scoped normal-Lightpanda replacements, two
-full-config scoped HTTP monitor readers, and immutable detail membership indexing.
-Six original DOM sources match all fields through compiled consumers, canonical
-writes and isolated Linux execution. Both monitors match fresh original 20-URL
-inventories over HTTP/1 and HTTP/2; real queue tests preserve failure and publisher
-policy. Changed configs and foreign sources reject. The integrated publication fix at
-`36459bec8df50c33b51ead19090ce08ba12556eb` passes complete current-head CI and
-fresh full-cohort qualification. The merged source has the identical whole tree;
-original deployment and supported admission remain required, as recorded above.
+The [serving checkpoint](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md)
+and [aggregate evidence](evidence/go-native1081-serving-checkpoint-2026-10-17.json)
+retain source/image/workflow bindings, failure/recovery evidence, full-config
+qualifications and observation limits. No production operation is pending.
 
 ## Continue in substantial shared-contract batches
 
-The captured remaining frontier is **57 monitors / 59
-details**, excluding the three B0 records. Counts require a fresh census if data
-changes. Preserve the admitted floor through every subsequent batch.
+The current captured frontier outside ordinary ownership, excluding three B0
+boards, is **55 monitors / 35 details**. Refresh the census when registry data
+changes. Preserve every admitted member and leave unqualified assignments with
+their legacy owners. Work on several families per shared transport/control batch;
+provider implementations often already exist, while original config support or
+complete rendering remains the admission blocker.
 
-Prioritize shared browser transport and configuration controls across DOM,
-JSON-LD, API-browser, inline and Njoyn. The provider implementations already exist;
-unsupported configuration does not imply that another provider port is needed.
-An offline diagnostic that removed transport controls exposed existing parsers
-for 18 more monitors and 29 details. Those altered configurations are
-**unqualified**. Prove original semantics and actual content/lifecycle behavior
-before accepting any replacement transport or browser-option change.
+1. **Finish shared configured-proxy transport.** Build on the isolated pinned
+   transport branch, incorporating source1081's publication fix before final
+   qualification. The current interception experiment fails native cookie and
+   redirect behavior under Lightpanda 1.0.1. The replacement prototype uses a
+   parent HTTP/CONNECT bridge plus a Linux child network restriction. It has
+   local bridge tests only and is unwired/unqualified. Prove actual Linux
+   subprocess/UID/capability isolation, cookies, redirects, upstream credentials,
+   destination pinning, verified TLS, cleanup and publisher policy through the
+   installed Lightpanda. Audit API replay fallbacks for proxy bypass. Keep
+   [draft PR #10643](https://github.com/colophon-group/jobseek/pull/10643) undeployed
+   until upstream destination enforcement and positive content proof pass.
+2. **Qualify a larger original-config batch across existing profiles.** Exercise
+   DOM, JSON-LD, API-browser, inline and other applicable compiled consumers with
+   actual original/native fields and canonical lifecycle tests. Config alterations
+   are diagnostic hypotheses until original semantics are proved. Changed full
+   configs and foreign sources must reject. Include every actual scheduled route,
+   immutable staged members, queue conservation and publisher-policy cases.
+3. **Resolve incomplete rendering with proved HTTP/API alternatives.** Concurrent
+   Lifepoint inventories differ materially (183 original / 296 native, 174 shared);
+   H3 Dynamics remains six original / five native. Direct HTTP alternatives
+   currently yield zero URLs despite successful fetches. Neither route is
+   qualified. Resolve pagination, source identity and completeness; fetch errors
+   or zero extraction do not establish an empty inventory.
+4. **Deploy and admit qualified batches through the original workflows.** Use
+   complete exact-head Required CI and actual Crawler Deploy Gate, immutable
+   images, current holds/authority, supported incarnation rotation and full
+   source-bound staging/activation. Verify serving and current exact-ID queue
+   conservation after each expansion. Preserve original failure evidence.
 
-[Lightpanda supports proxy configuration](https://lightpanda.io/docs/guides/configure-a-proxy),
-while the production renderer currently has no admitted proxy path. Current
-unsupported configs include 19 monitor and 26 detail proxy requests, overlapping
-other controls. Test a shared native transport against the full original config,
-with bounded attempts, existing publisher policy, egress isolation and scoped
-credentials. These occurrence counts are opportunities, not promised admissions.
+## Finish freshness and operational retirement alongside coverage
 
-Draft [PR #10643](https://github.com/colophon-group/jobseek/pull/10643) implements
-shared configured browser-proxy transport across several profile families.
-Required CI, architecture and renderer rollback suites and all 16 isolated ARM
-whole-lane arms pass. Its deploy gate is intentionally red while draft. Proxy
-ownership remains held until upstream destination enforcement is qualified;
-local DNS checks do not pin a remote proxy resolver. Repeated live evidence also
-includes HTTP403 and changing inventories, and the two compared detail outputs
-have no positive descriptions. Complete these proofs before deployment/admission.
+At 13:44 UTC, **1,623,769 postings are over 24 hours overdue**, including
+1,566,722 over 48 hours. A bounded matched-endpoint observation records 20
+successful monitors / 323 successful details with zero claim errors, restarts or
+OOMs; this does not establish sustained freshness. Measure useful throughput,
+lateness, failures and queue conservation over longer intervals. Observe the
+finite first-time backlog draining before changing the existing strict first-time
+priority contract: selected Workday/SmartRecruiters domains currently have
+5,232/3,411 first-time details ahead of recurring monitors. Shared-domain queue
+counts are not exact per-posting ownership proof.
 
-Prioritize proved native HTTP/API alternatives for content that Lightpanda does
-not render completely, alongside shared controls across multiple profile families.
-Keep the serving release and its qualification intact while developing the next
-batch in an isolated worktree. Reuse unchanged compiled profiles when possible;
-ownership expansion still needs supported incarnation rotation and fresh full-cohort
-admission. Audit actual production commands: reconciliation already invokes Go
-directly and current registry sync uses its native Go entrypoint. Preserve old
-rollback-image compatibility until that recovery window expires.
-Use actual original/native inventory, fields and canonical lifecycle evidence;
-original fetch errors do not establish an empty inventory. Resolve rendering,
-pagination and source-identity differences without dropping fields or members.
+Current deployment migrations, registry sync, provider repairs and reconciliation
+already invoke Go. Audit every production command and maintenance consumer;
+legacy Python branches still support retained rollback images. Prove the final
+supported quiesced reversal and recovery window before removing those branches
+and runtime-only images/assets.
+
+Finish comparable **matched-work** CPU/RAM/density and attributable cost evidence
+across all relevant actors. The current roughly 376-second live window averages
+2.36 crawler CPU cores plus 0.12 renderer cores, but has uncontrolled startup and
+backlog effects and excludes remote SQL, Typesense, R2/network and unrelated host
+services. It is not a causal efficiency or final cost comparison.
 
 ## Full-delivery exit criteria
 
-- Every enabled monitor/detail route has a proved Go replacement and current
-  canonical write/queue/freshness behavior; no enabled-board coverage reduction.
-- Deployment, CSV publication, native ownership handoff, maintenance and rollback
-  work through supported committed workflows with exact source/image identity.
-- Comparable whole-lane CPU/RAM/density and attributable cost evidence includes
-  all relevant actors and uses matched work with explicit measurement limits.
-- Supported cold reversal and the recovery window are proved before deleting
-  production Python/Playwright/Chromium and their runtime-only assets.
+- Every enabled monitor/detail route has a proved Go replacement with complete
+  canonical fields, publisher policy, queues and sustained freshness; coverage
+  never drops to make migration appear complete.
+- Deployment, CSV publication, native ownership lifecycle, maintenance and
+  recovery use supported committed workflows with exact source/image identities.
+- Comparable matched-work resource, density and attributable cost evidence covers
+  the relevant execution and operational actors with explicit limits.
+- Supported final reversal and the recovery window are proved, then production
+  Python, Playwright, Chromium and runtime-only assets are removed. Useful
+  isolated offline tooling may remain.
 
-Use the [portable delivery checkpoint](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md)
-and its linked evidence for the detailed prior proofs. Earlier chronological
-notes are preserved in [Git history](https://github.com/colophon-group/jobseek/blob/cbd1f37f3803a29dcd6693aa0a120992513edda6/docs/27-go-lightpanda-continuation-plan.md).
+Update this plan and the portable checkpoint after material delivery. Earlier
+chronological evidence remains in [Git history](https://github.com/colophon-group/jobseek/commits/main/docs/27-go-lightpanda-continuation-plan.md)
+and linked checkpoint aggregates; do not turn preparatory probes into serving
+or completion claims.
