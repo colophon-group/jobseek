@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-17T19:00:36.166330+00:00",
+  "full_migration_status": "active_incomplete",
+  "runtime_version": "0.13.1083",
+  "source_revision": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+  "qualified_head": "702dd9a45eef3f40e2171d5e33851dbfdfb37d06",
+  "whole_repository_tree_equal_at_runtime_merge": true,
+  "runtime_pr": 10700,
+  "preceding_shared_transport_pr": 10697,
+  "lightpanda": {
+    "version": "1.0.1",
+    "latest_stable_reverified_at_utc": "2026-10-17T18:13:12.032292+00:00",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1",
+    "installed_official_engine_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+    "renderer_memory_bytes": 1073741824,
+    "renderer_swap_bytes": 0
+  },
+  "routing_epoch": 370,
+  "admitted_monitors": 7850,
+  "admitted_details": 7864,
+  "preserved_prior_floor": {
+    "monitors": 7842,
+    "details": 7862
+  },
+  "new_batch": {
+    "monitors": 8,
+    "details": 2,
+    "complete_HTTP_monitor_inventory_urls": 1227,
+    "browser_pagination_HTTP_configurations": 6,
+    "browser_pagination_HTTP_inventory_urls": 891,
+    "rich_titles_and_pending_description_rows": 331,
+    "H3_Dynamics_jobs": 6,
+    "Lifepoint_unique_jobs": 330,
+    "Lifepoint_original_jobs_retained": 183,
+    "new_detail_retained_scheduled_routes_checked": 1345,
+    "actual_Linux_original_detail_samples": 4,
+    "full_original_config_bindings_attested": 10
+  },
+  "required_workflows": {
+    "required_ci": 39051376739,
+    "native_runtime_contracts": 39051376699,
+    "actual_crawler_deploy_gate": 39051376748,
+    "all_exact_qualified_head_complete_success": true
+  },
+  "original_deployments": {
+    "crawler": 39053801550,
+    "renderer": 39053988250,
+    "both_complete_success_attempt1": true
+  },
+  "activation": {
+    "original_supported_wrapper_returncode": 0,
+    "completed_at_utc": "2026-10-17T18:41:43.332897+00:00",
+    "full_immutable_staged_assignments": 15714,
+    "all_ten_original_configuration_bindings_attested": true,
+    "independent_source_images_receipts_SQL_Redis_ten_actor_health_pass": true,
+    "manual_production_SQL_Redis_lease_receipt_patches": false
+  },
+  "route_and_queue_capture": {
+    "census_observed_at": "2026-10-17T18:43:14.076973+00:00",
+    "census_sha256": "d6c7ed17de3bd57bb0f4dcfa590621fe3377ef68039ff42d40938e49850eda8b",
+    "observed_at_utc": "2026-10-17T18:53:21Z",
+    "all_actual_owned_routes_checked": true,
+    "scheduled_owned_postings": 1741241,
+    "queued_owned_postings": 1741241,
+    "captured_owned_scheduled_minus_queued": 0,
+    "owned_cache_mismatches": 0
+  },
+  "exact_queued_ID_comparison": {
+    "before_queued": 1742085,
+    "after_queued": 1741241,
+    "retained": 1740432,
+    "before_only": 1653,
+    "after_only": 809,
+    "source_revision": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+    "epoch": 370,
+    "scope": "Exact private ID sets across non-atomic proposed-cohort captures; current canonical accounting for every before-only ID follows.",
+    "before_only_current_canonical_accounting": {
+      "captured_gap": 1653,
+      "currently_present": 1653,
+      "missing": 0,
+      "eligible": 0,
+      "eligible_unqueued": 0,
+      "queued": 1639,
+      "inactive": 1647,
+      "unscheduled": 1653,
+      "outside_owned_details": 0,
+      "board_disabled": 0,
+      "publisher_reserved": 0,
+      "described": 1647,
+      "native_current_epoch_completed": 0,
+      "due_now": 0,
+      "failures_at_least3": 5,
+      "due_with_failures_below3": 0
+    }
+  },
+  "targeted_scheduler_recovery": {
+    "original_installed_maintenance_window_success": true,
+    "native_enqueues": 811,
+    "installed_native_cursor_commands": 1622,
+    "window_seconds": 267.923,
+    "restoration_failures": 0,
+    "forced_termination": false,
+    "attempt1": "preflight refused producer restart-policy assumption before worker stop or queue mutation",
+    "attempt2": "temporary root caller could not access private producer socket; zero enqueues and full fleet restored",
+    "attempt3": "original authorized root caller with DAC_OVERRIDE only, unchanged private socket, exact per-ID dry-run and native rebuild; complete fleet restored",
+    "postactivation_current_exact_ID_accounting": {
+      "captured_gap": 811,
+      "currently_present": 811,
+      "missing": 0,
+      "eligible": 787,
+      "eligible_unqueued": 0,
+      "queued": 787,
+      "inactive": 24,
+      "unscheduled": 24,
+      "publisher_reserved": 0,
+      "described": 732,
+      "native_current_epoch_completed": 10,
+      "due_now": 760,
+      "failures_at_least3": 0,
+      "due_with_failures_below3": 760
+    },
+    "scope": "Non-atomic current accounting. Inactive and unscheduled transitions are retained; no historical or unbounded zero-loss claim."
+  },
+  "freshness": {
+    "observed_at_utc": "2026-10-17T18:48:59.571002+00:00",
+    "owned_scheduled": 1741232,
+    "due": 1686389,
+    "overdue_24h": 1628508,
+    "overdue_48h": 1573433,
+    "oldest_due_at": "2026-03-24T17:31:01.019392+00:00",
+    "source_revision": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+    "epoch": 370,
+    "owned_detail_boards": 7864,
+    "scope": "current source-bound scheduled posting lateness for full admitted cohort; no historical loss or per-provider service guarantee"
+  },
+  "matched_B0_fixture_evidence": {
+    "source1082_workflow": 39047715033,
+    "qualified_candidate": "28c63e5cad62698fe23343a156d31e23e9f6d95c",
+    "pairs": [
+      {
+        "pair_index": 0,
+        "concurrency": 1,
+        "candidate_cpu_seconds": 1.801083,
+        "control_cpu_seconds": 2.733056,
+        "candidate_peak_bytes": 101052416,
+        "control_peak_bytes": 339525632,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 1,
+        "concurrency": 1,
+        "candidate_cpu_seconds": 1.796782,
+        "control_cpu_seconds": 2.720593,
+        "candidate_peak_bytes": 93003776,
+        "control_peak_bytes": 340684800,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 2,
+        "concurrency": 1,
+        "candidate_cpu_seconds": 1.722979,
+        "control_cpu_seconds": 2.729255,
+        "candidate_peak_bytes": 96288768,
+        "control_peak_bytes": 337055744,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 3,
+        "concurrency": 4,
+        "candidate_cpu_seconds": 2.475248,
+        "control_cpu_seconds": 7.121303,
+        "candidate_peak_bytes": 110604288,
+        "control_peak_bytes": 840814592,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 4,
+        "concurrency": 4,
+        "candidate_cpu_seconds": 2.654,
+        "control_cpu_seconds": 6.997786,
+        "candidate_peak_bytes": 110718976,
+        "control_peak_bytes": 826949632,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 5,
+        "concurrency": 4,
+        "candidate_cpu_seconds": 2.631491,
+        "control_cpu_seconds": 7.45254,
+        "candidate_peak_bytes": 114774016,
+        "control_peak_bytes": 839696384,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 6,
+        "concurrency": 4,
+        "candidate_cpu_seconds": 2.59588,
+        "control_cpu_seconds": 7.363013,
+        "candidate_peak_bytes": 109445120,
+        "control_peak_bytes": 832278528,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      },
+      {
+        "pair_index": 7,
+        "concurrency": 4,
+        "candidate_cpu_seconds": 2.553962,
+        "control_cpu_seconds": 7.05102,
+        "candidate_peak_bytes": 110678016,
+        "control_peak_bytes": 838123520,
+        "canonical_equal": true,
+        "cleanup_exact": true
+      }
+    ],
+    "density_ratios": [
+      6.256633355251336,
+      7.1890366790035785,
+      6.83654271081403,
+      12.567123063091687,
+      11.748504843716777,
+      11.719473935813816,
+      12.111015541051415,
+      12.226007761228558
+    ],
+    "artifact_sha256": "c366e66d1e2353e859009a79953415fee0869a08936fd276b4259dba20de31da",
+    "scope": "Eight bounded matched B0 candidate/control fixture pairs. This does not establish whole-fleet attributable cost or sustained production freshness."
+  },
+  "configured_proxy_health": {
+    "observed_at_utc": "2026-10-17T18:58:00.101951+00:00",
+    "bound_source": "759b3a3d4be4b38df1ad7aa5afda150189de6383",
+    "configured_slots": 10,
+    "tested_slots": [
+      {
+        "slot": 0,
+        "error_type": "URLError",
+        "proxy_payment_402": true,
+        "proxy_auth_407": false,
+        "proxy_denied_403": false,
+        "timeout": false
+      },
+      {
+        "slot": 1,
+        "error_type": "URLError",
+        "proxy_payment_402": true,
+        "proxy_auth_407": false,
+        "proxy_denied_403": false,
+        "timeout": false
+      },
+      {
+        "slot": 2,
+        "error_type": "URLError",
+        "proxy_payment_402": true,
+        "proxy_auth_407": false,
+        "proxy_denied_403": false,
+        "timeout": false
+      }
+    ],
+    "production_mutations": 0
+  },
+  "remaining_captured_assignments_excluding_B0": {
+    "monitors": 47,
+    "details": 33,
+    "enabled_board_records": 7900,
+    "B0_boards_excluded": 3
+  },
+  "remaining_exit_criteria": [
+    "Remaining enabled configurations in shared browser/API/HTTP batches with original/native fields and lifecycle proof",
+    "Sustained freshness and failure behavior; provider failures retained, not hidden",
+    "Remaining production operational consumers and supported final reversal/recovery window",
+    "Broad comparable matched work, density and attributable resource/cost evidence",
+    "Production Python Playwright Chromium retirement, retaining useful isolated offline Python"
+  ],
+  "private_evidence_sha256": {
+    "merged-runtime-binding1.json": "4d1e82d4822acf780217254adf156fa2d51235ddda7c5c614b54a44ba25d71bf",
+    "complete-current-head-ci1.json": "3c164632b53ddd7307f2d19c684659b8c6f35975edbc11ae2feb65085c70af9d",
+    "original-deployment-runs1.json": "8c66848d6363ffe838fa671f668454d65b733bcfdad2813f5af9c56e23f4fe54",
+    "crawler-published-images1.json": "155b02bb90ee7e1710c4697a0672d5b5a6e3d73379592fe6b5b1f32d6182f4d1",
+    "renderer-published-images1.json": "d0b3af2fd420a547c1fd0f4b8d98dabf587058e6b5932668af75ffb19e85af77",
+    "independent-renderer-engine1083-1.json": "21e25ff4370c478a44730fdfb6947db089eeafa33ac45c8b8293d37722ca1d17",
+    "latest-lightpanda-running-binding1.json": "b76604c7c139b602c8f17d6517c89cc48e5bf7c031ffe2e02e37e3a927d72329",
+    "staged-qualification1.json": "d5e6ac354e5f40cfd69fbc27cde09880ee584db6334274b5f4894f559bc901de",
+    "activate-ordinary-result2.json": "c2ed2cbfafc5dab3922234889ae0db0d1ad7d45009b9b652b2d7a680ba78ea69",
+    "independent-serving1083-1.json": "0b557458114578b30eef3efd8cd5c636c1e72a559dec75edeec6172d28fb65c7",
+    "admission/fresh-ten-routes1.json": "949918b453e256f11f8e745aa1465cbf5873374b098ec1ea5c689fa1077ba73d",
+    "admission/postactive-ten-routes1.json": "7d17f9c5e9565aa367f2e00cf41b9ecc1c5d251e6603ebf605cb6a9afbc0817d",
+    "queue-id-comparison1.json": "396ce6e43d01e399cadaa2654c0d31be60b670106dbdb6e1936a230af6829e62",
+    "before-only-current1.private.json": "11158b959cddea291a24de60b6c8752b45c6bb6fe572fdac56a4ccdc7b962f0c",
+    "gap-recovery-window3/result.json": "8bccd67547ecadeadd14cdc96f94732b0b0081f3dacb67d72164beabf1a804b4",
+    "gap-recovery-window3/maintenance-window.private.log": "b5ab4013ab3b4029264a764e18a04a825196466bf82bcc549372e42f7d39ebaf",
+    "new-detail-gap-current4.private.json": "286e72955a22a3752006394e85e707ac39d9dcb95fc0260263a8e892036d9454",
+    "postactive-gap-current1.private.json": "1dcc300ecfa311546d4f89d9ce339722dd4f33848401e689d1570312b76b43f9",
+    "current-owned-freshness1083-1.json": "fe9f8c15d6d5e696b7301d8a3586d4d632f58ec9d5a20fc220ac3df766d32020",
+    "production-proxy-health3.json": "ee7f896e9c7279274041ec3a649e37cc24dd26af367ba71d411dfb15da395765"
+  }
+}
