@@ -324,5 +324,45 @@
       "full_current_ci": "running",
       "deployed": false
     }
+  },
+  "subsequent_source1080_recovery_checkpoint": {
+    "source": "77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb",
+    "version": "0.13.1080",
+    "lightpanda": "1.0.1",
+    "epoch": 366,
+    "original_deployments": "both success",
+    "independent_native_serving_cohort": {
+      "monitors": 7840,
+      "details": 7859
+    },
+    "staged_members_fully_decoded": 15699,
+    "additional_full_config_bindings": 21,
+    "all_actual_owned_urls_checked": 1771567,
+    "queued_cache_mismatches": 0,
+    "captured_queued": 1762328,
+    "captured_unqueued": 9239,
+    "current_eligible_unqueued_before_retirement": 9163,
+    "original_supported_retirement_completed_at_utc": "2026-10-17T11:58:00.810375+00:00",
+    "ordinary_authority_now": "absent",
+    "legacy_stack": "restored",
+    "b0": "active366",
+    "publisher_aware_retired_followup_eligible_unqueued": 9132,
+    "issue": "https://github.com/colophon-group/jobseek/issues/10693",
+    "direct_sql_redis_lease_receipt_repairs": 0,
+    "fix_local_regression": {
+      "providers": [
+        "workday",
+        "smartrecruiters"
+      ],
+      "cases": [
+        "new513",
+        "existing_lost_enqueue513"
+      ],
+      "baseline_hash_reads": 1558,
+      "candidate_hash_reads": 46,
+      "production_repair_proved": false
+    },
+    "ownership_expansion": "held pending publication fix completeCI supportedrollout and exactaffectedset repair",
+    "scope": "Historical serving and full-route proof followed by a current queue conservation failure and supported retirement; not full migration completion."
   }
 }

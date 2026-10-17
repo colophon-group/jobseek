@@ -7,9 +7,39 @@ serving proof binds source `18eb097289dd6deb93d0166a9c7ebb1f2c922357` and Lightp
 preserving the entire previous 7,840/7,833 cohort and adding five detail boards.
 The supported ordinary retirement and B0 reversal have since completed at cold
 epoch **365**, and all 25 outgoing selector keys are independently absent.
-PR #10663 merged as `77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`; the original
-crawler deployment is running and the original renderer deployment has succeeded.
-Incoming native ownership and source1080 serving proof remain pending.
+PR #10663 merged as `77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`. Both original
+deployments succeeded, and B0 activation established epoch366. Original ordinary
+staging fully decoded all **15,699** members and bound all 21 additional complete
+configurations to their qualified references. Independent source/image/receipt,
+SQL/Redis and all-ten-actor serving checks passed for **7,840/7,859**. A local
+host sleep lost the activation SSH result; independent verification confirmed
+remote completion, and activation was not retried.
+
+Full postactivation replay passed **1,771,567** owned scheduled URLs and found
+zero mismatches among queued cache records. The non-atomic capture held
+**1,762,328 queued IDs / 9,239 unqueued scheduled records**. Current accounting
+separately found **9,163** still eligible and unqueued: **5,683 Workday / 3,477
+SmartRecruiters / 3 rendered DOM**, across 51 boards. All lacked descriptions
+and cache entries; 4,912 were created after native startup and 9,025 had no native
+write fence. No canonical record in these compared sets was missing. Publisher
+reservation checks do not explain the gap.
+
+The original supported ordinary retirement completed at **11:58 UTC**. The full
+legacy stack is restored, ordinary authority is absent, and B0 remains active
+at epoch366. Follow-up still finds **9,132** eligible unqueued records; retirement
+alone did not repair them. Preserve this failure evidence and use the supported
+next deployment/sync/ownership workflow for reseeding. No SQL, Redis, lease or
+receipt was directly edited. [Issue #10693](https://github.com/colophon-group/jobseek/issues/10693)
+tracks the current investigation and repair criteria.
+
+The URL-only paths still publish each detail through a separate fenced
+transaction. Reuse the existing bounded 64-item API already used by the rich
+pipeline. The candidate passes real Workday/SmartRecruiters 513-item new and
+existing-lost-enqueue cases, reducing ownership/cache hash reads from **1,558 to
+46** while preserving canonical stubs, every first-time queue entry and exact
+settlement. The live causal link and repair remain to be proved; full current
+CI, failure/deadline/publisher/streaming tests and sustained post-rollout exact-ID
+accounting are required before expanding ownership.
 
 ## Delivered shared contracts
 

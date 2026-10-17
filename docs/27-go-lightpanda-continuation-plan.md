@@ -6,6 +6,38 @@ remove production Python, Playwright and Chromium. Keep useful offline Python.
 
 ## Current checkpoint — 2026-10-17
 
+Installed source **0.13.1080**, `77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`, uses
+Lightpanda **1.0.1** at epoch **366**. Its **7,840-monitor / 7,859-detail** ordinary
+cohort passed independent serving checks and full replay of **1,771,567** actual
+scheduled URLs, with zero mismatches among queued cache records.
+
+The longer live observation found **9,163** active scheduled records absent from
+both detail lanes and their scrape cache, including missing descriptions. This
+is a separate queue-conservation failure; route compilation does not resolve it.
+The original supported retirement completed at **11:58 UTC**, restoring the full
+legacy stack while B0 remains active at epoch366. Independent readback confirms
+ordinary authority is absent. A publisher-aware follow-up still finds **9,132**
+eligible unqueued records; retirement alone did not reseed them. No production
+SQL, Redis, lease or receipt was manually patched.
+
+[Issue #10693](https://github.com/colophon-group/jobseek/issues/10693) tracks the
+evidence, bounded publication fix and required supported repair. Before further
+ownership expansion, wire the existing 64-item detail publisher through ordinary
+and streamed URL-only monitor paths, qualify the current head, and use the
+supported deployment/sync/activation workflow. Recheck the exact affected set
+and sustained large-inventory cycles afterwards. A real 513-item regression
+fails the old Workday path's observation budget (1,558 hash reads); the candidate
+passes Workday/SmartRecruiters new and lost-enqueue repair cases with 46 reads
+each, preserving all first-time tasks and canonical stubs. This is a local
+operational-contract result, not a production throughput or cost claim.
+
+The next PR's two monitors, three detail configurations and immutable membership
+index remain qualified on their previous head. Include the publication fix and
+rerun complete current-head CI and admission proof before deployment. Production
+Python/browser removal remains blocked on the full delivery criteria below.
+
+### Previous serving proof
+
 The completed **0.13.1079** serving proof binds source
 `18eb097289dd6deb93d0166a9c7ebb1f2c922357`, with latest stable Lightpanda **1.0.1**.
 The full **7,840-monitor / 7,838-detail** cohort served at epoch **364**,
@@ -24,12 +56,13 @@ accounting resolves all three captured unqueued records and every outgoing-only
 ID; none remains eligible and unqueued. This is non-atomic current evidence,
 not historical or global zero-loss proof.
 
-The supported retirement and cold B0 reversal have since completed at epoch
+The next supported retirement and cold B0 reversal completed at epoch
 **365**, with both native receipts absent and all 25 outgoing selectors cleared
 through the original helper and independently checked. Source1080 merged as
-`77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`; its original crawler deployment is
-running and renderer deployment has succeeded. Do not describe native source1080
-as serving until its source-bound staging, activation and independent proof pass.
+`77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`; both original deployments and
+source-bound activation later succeeded, as detailed in the current recovery
+checkpoint above. The local SSH result was lost across a host sleep, so serving
+was established independently before any retry; activation was not duplicated.
 
 See the [latest portable checkpoint](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md).
 The [previous checkpoint](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
