@@ -149,7 +149,8 @@ func InspectOrderedDetail(boardID string, config map[string]string, source strin
 		if emptyDOM {
 			stage.Profile = orderedEmptyDOMDetailProfile
 			stage.DOMConfig = nil
-			stage.SkipSSL = false // No origin read or TLS exception is used.
+			stage.SkipSSL = false      // No origin read or TLS exception is used.
+			stage.BrowserProxy = false // No proxy selection is needed without a read.
 		}
 		stage.EffectiveBoardSHA256 = p.EffectiveBoardSHA256
 		p.Stages = append(p.Stages, stage)

@@ -13,11 +13,15 @@ import (
 )
 
 func TestRealOrderedBrowserDetailSeparateHTTPAndRenderedAttempts(t *testing.T) {
-	for _, mode := range []string{"primary-content", "primary-empty", "fallback-reserved", "canonical-reserved", "fallback-empty"} {
+	for _, mode := range []string{"primary-content", "primary-empty", "fallback-reserved", "canonical-reserved", "fallback-empty", "fallback-empty-proxy"} {
 		t.Run(mode, func(t *testing.T) {
+			emptyFallback := mode == "fallback-empty" || mode == "fallback-empty-proxy"
 			metadata := `{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","fields":["description"],"config":{"render":true,"steps":[{"tag":"p","field":"description","html":true}]}}}}`
-			if mode == "fallback-empty" {
+			if emptyFallback {
 				metadata = `{"scraper_type":"json-ld","scraper_config":{"fallback":{"type":"dom","config":{"render":true,"wait":"load"}}}}`
+				if mode == "fallback-empty-proxy" {
+					metadata = strings.Replace(metadata, `"wait":"load"`, `"wait":"load","proxy":true`, 1)
+				}
 			}
 			f, a := independentDetailOwnedProviderSetup(t, "dom", metadata, "", queue.Browser)
 			ctx := context.Background()
@@ -74,9 +78,15 @@ func TestRealOrderedBrowserDetailSeparateHTTPAndRenderedAttempts(t *testing.T) {
 				t.Fatal("separate browser fallback claim unavailable", err)
 			}
 			before := calls
+			if emptyFallback {
+				usesProxy, err := runtimeClaimUsesProxy(ctx, a, next)
+				if err != nil || usesProxy {
+					t.Fatal("no-fetch fallback requires proxy startup or a live endpoint", err)
+				}
+			}
 			result, err = RunDetail(ctx, a, next, client, processor, circuits, renderer)
 			wantRenders := 1
-			if mode == "fallback-empty" {
+			if emptyFallback {
 				wantRenders = 0
 			}
 			if err != nil || result == nil || !result.Settled || calls != before || renders != wantRenders {
@@ -87,14 +97,14 @@ func TestRealOrderedBrowserDetailSeparateHTTPAndRenderedAttempts(t *testing.T) {
 			var reserved bool
 			var due *time.Time
 			var lease *time.Time
-			if err := f.pg.QueryRow(ctx, "SELECT titles[1],scrape_failures,tdm_reserved,next_scrape_at,leased_until FROM job_posting WHERE id=$1::uuid", f.original).Scan(&title, &failures, &reserved, &due, &lease); err != nil || (failures != 0 && mode != "fallback-empty") || lease != nil {
+			if err := f.pg.QueryRow(ctx, "SELECT titles[1],scrape_failures,tdm_reserved,next_scrape_at,leased_until FROM job_posting WHERE id=$1::uuid", f.original).Scan(&title, &failures, &reserved, &due, &lease); err != nil || (failures != 0 && !emptyFallback) || lease != nil {
 				t.Fatal("fallback canonical failure/lease differs", err)
 			}
 			want := "Senior Software Engineer"
 			if mode == "primary-empty" {
 				want = "Original"
 			}
-			if mode == "fallback-empty" {
+			if emptyFallback {
 				if failures != 0 || title != want || reserved || result.HTTP.Requests != 0 || result.Cycle.Status != "succeeded" {
 					t.Fatal("empty fallback fetched or changed original partial-save behavior")
 				}
