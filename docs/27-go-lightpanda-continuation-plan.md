@@ -6,35 +6,42 @@ remove production Python, Playwright and Chromium. Keep useful offline Python.
 
 ## Current checkpoint — 2026-10-17
 
-Installed source **0.13.1080**, `77e02b324f2f42a9e767f0dba03fc2d9ec12a4eb`, uses
-Lightpanda **1.0.1** at epoch **366**. Its **7,840-monitor / 7,859-detail** ordinary
-cohort passed independent serving checks and full replay of **1,771,567** actual
-scheduled URLs, with zero mismatches among queued cache records.
+Release **0.13.1081** is merged in [PR #10665](https://github.com/colophon-group/jobseek/pull/10665)
+as `2ba9c62a977307d1e8d5299ca5defbf24ee902ce`, with an identical whole tree to
+qualified head `36459bec8df50c33b51ead19090ce08ba12556eb`. Complete current-head
+Required CI, native runtime contracts and the actual Crawler Deploy Gate pass.
+The original crawler and renderer workflows are running for that source;
+**incoming native ownership is not yet granted**. Lightpanda remains **1.0.1**,
+the latest stable release verified on October 17 UTC.
 
-The longer live observation found **9,163** active scheduled records absent from
-both detail lanes and their scrape cache, including missing descriptions. This
-is a separate queue-conservation failure; route compilation does not resolve it.
-The original supported retirement completed at **11:58 UTC**, restoring the full
-legacy stack while B0 remains active at epoch366. Independent readback confirms
-ordinary authority is absent. A publisher-aware follow-up still finds **9,132**
-eligible unqueued records; retirement alone did not reseed them. No production
-SQL, Redis, lease or receipt was manually patched.
+The outgoing **0.13.1080** cohort served **7,840 monitors / 7,859 details** and
+passed all **1,771,567** captured actual scheduled routes, with zero mismatches
+among queued cache records. Longer observation found **9,163** eligible records
+absent from both detail lanes and the scrape cache. All lacked descriptions.
+The original ordinary retirement completed at **11:58 UTC**, restoring legacy
+workers, but follow-up still found **9,132** eligible unqueued records. The
+supported B0 reversal subsequently completed at cold epoch **367**, with both
+native receipts absent; the reviewed helper cleared all **25** selectors and
+independent readback confirmed absence. No production SQL, Redis, lease or
+receipt was manually patched.
 
-[Issue #10693](https://github.com/colophon-group/jobseek/issues/10693) tracks the
-evidence, bounded publication fix and required supported repair. Before further
-ownership expansion, wire the existing 64-item detail publisher through ordinary
-and streamed URL-only monitor paths, qualify the current head, and use the
-supported deployment/sync/activation workflow. Recheck the exact affected set
-and sustained large-inventory cycles afterwards. A real 513-item regression
-fails the old Workday path's observation budget (1,558 hash reads); the candidate
-passes Workday/SmartRecruiters new and lost-enqueue repair cases with 46 reads
-each, preserving all first-time tasks and canonical stubs. This is a local
-operational-contract result, not a production throughput or cost claim.
+[Issue #10693](https://github.com/colophon-group/jobseek/issues/10693) tracks this
+queue gap. Release1081 reuses the existing **64-item** fenced publisher in both
+ordinary and streamed URL-only monitor paths. Real 513-item Workday and
+SmartRecruiters new/lost-enqueue repair cases pass, reducing ownership/cache
+hash reads from **1,558 to 46**, with exact canonical stubs, first-time queues
+and settlement retained. Focused race suites pass **31 queue / 38 worker** nodes
+without fixture skips. The live causal link and sustained repair remain open.
 
-The next PR's two monitors, three detail configurations and immutable membership
-index remain qualified on their previous head. Include the publication fix and
-rerun complete current-head CI and admission proof before deployment. Production
-Python/browser removal remains blocked on the full delivery criteria below.
+The same release qualifies **two monitors and three detail configurations**,
+preserving 7,840/7,859 and targeting **7,842/7,862**. Fresh full-cohort replay
+checks all **1,771,583** proposed scheduled routes and five full original config
+bindings; it reports the existing queue gap explicitly. Both monitors match
+fresh Chromium 20-URL inventories over actual HTTP/1.1 and HTTP/2. Follow the
+original source-bound deployment/staging/activation workflow, then verify the
+exact affected IDs, fresh full-fleet conservation and subsequent large monitor
+cycles. Production Python/browser removal remains gated by the full delivery
+criteria below.
 
 ### Previous serving proof
 
@@ -94,11 +101,10 @@ full-config scoped HTTP monitor readers, and immutable detail membership indexin
 Six original DOM sources match all fields through compiled consumers, canonical
 writes and isolated Linux execution. Both monitors match fresh original 20-URL
 inventories over HTTP/1 and HTTP/2; real queue tests preserve failure and publisher
-policy. Changed configs and foreign sources reject. Current head
-`46206af78e5a60757dad78e7b006fcd6b185ebd7` retains the qualified whole tree after
-rebasing onto source1080; full CI is running. Finish source1080 serving proof,
-then refresh full-cohort qualification for the proposed 7,842/7,862 target before
-the next supported rotation. No new ownership is granted by these local proofs.
+policy. Changed configs and foreign sources reject. The integrated publication fix at
+`36459bec8df50c33b51ead19090ce08ba12556eb` passes complete current-head CI and
+fresh full-cohort qualification. The merged source has the identical whole tree;
+original deployment and supported admission remain required, as recorded above.
 
 ## Continue in substantial shared-contract batches
 

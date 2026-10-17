@@ -25,9 +25,11 @@ write fence. No canonical record in these compared sets was missing. Publisher
 reservation checks do not explain the gap.
 
 The original supported ordinary retirement completed at **11:58 UTC**. The full
-legacy stack is restored, ordinary authority is absent, and B0 remains active
-at epoch366. Follow-up still finds **9,132** eligible unqueued records; retirement
-alone did not repair them. Preserve this failure evidence and use the supported
+legacy stack was restored with ordinary authority absent and B0 active at
+epoch366. Follow-up still found **9,132** eligible unqueued records; retirement
+alone did not repair them. The subsequent original B0 reversal completed at
+**12:31 UTC**, establishing cold epoch **367**. Both native receipts and all
+25 outgoing selector keys are independently absent. Preserve this failure evidence and use the supported
 next deployment/sync/ownership workflow for reseeding. No SQL, Redis, lease or
 receipt was directly edited. [Issue #10693](https://github.com/colophon-group/jobseek/issues/10693)
 tracks the current investigation and repair criteria.
@@ -37,9 +39,10 @@ transaction. Reuse the existing bounded 64-item API already used by the rich
 pipeline. The candidate passes real Workday/SmartRecruiters 513-item new and
 existing-lost-enqueue cases, reducing ownership/cache hash reads from **1,558 to
 46** while preserving canonical stubs, every first-time queue entry and exact
-settlement. The live causal link and repair remain to be proved; full current
-CI, failure/deadline/publisher/streaming tests and sustained post-rollout exact-ID
-accounting are required before expanding ownership.
+settlement. Focused race suites pass **31 queue / 38 worker** nodes without skips, including
+failure, deadlines, publisher policy and streamed Nextdata. Complete current-head
+CI and the actual deployment gate pass. The live causal link and sustained repair
+remain to be proved through supported rollout and exact-ID accounting.
 
 ## Delivered shared contracts
 
@@ -125,10 +128,17 @@ responses. Foreign hosts and changed full configurations are rejected.
 The immutable membership index removes per-poll fleet allocations in the focused
 benchmark while retaining live SQL, Redis, priority and lease observations. This
 is a microbenchmark, not a production throughput or cost result. Current head
-`46206af78e5a60757dad78e7b006fcd6b185ebd7` has the identical whole tree as its
-qualified pre-rebase source; complete current-head CI is running. This batch is
-not deployed or admitted. After source1080 serving proof, refresh its full-cohort
-qualification and use the supported rotation; proposed target is 7,842/7,862.
+`36459bec8df50c33b51ead19090ce08ba12556eb` integrates the URL publication fix.
+Complete current-head Required CI, runtime contracts and Crawler Deploy Gate pass.
+PR #10665 merged at **12:40 UTC** as
+`2ba9c62a977307d1e8d5299ca5defbf24ee902ce`, with an identical whole repository
+tree. Both original deployment workflows are running; no incoming ownership is
+yet granted. Fresh full-cohort replay passes all **1,771,583** actual proposed
+routes and the full five config bindings. The captured missing-queue count is
+retained explicitly; this is not serving or queue-conservation proof. Supported
+staging/activation targets **7,842/7,862**, preserving the complete 7,840/7,859
+floor. Verify the actual immutable staged payload, current cold repair and exact
+affected queue set before expanding further.
 
 Draft [PR #10643](https://github.com/colophon-group/jobseek/pull/10643) remains
 undeployed while browser-proxy upstream destination enforcement is unqualified.
