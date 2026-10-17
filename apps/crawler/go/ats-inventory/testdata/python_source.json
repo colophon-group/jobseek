@@ -1,0 +1,264 @@
+{
+  "fixtures": [
+    {
+      "manifest": "{\"by_ats\": {\"greenhouse\": {\"rows\": 10}, \"lever\": {\"rows\": 10}}, \"by_ats_companies\": {\"greenhouse\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/greenhouse/companies.csv\", \"rows\": 1, \"sha256\": \"f300f10844ecfc75f12a0deb789ce9ddb41209c38307e65436e81d43ad4658d9\", \"size_bytes\": 100}, \"lever\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/lever/companies.csv\", \"rows\": 1, \"sha256\": \"21f2dcaa6f47cfacb542f1ff16aae70cab9a1f2407e3c8fd4e783725c2831833\", \"size_bytes\": 100}}, \"companies\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/companies.csv\", \"rows\": 2, \"sha256\": \"d5bff25264ed02a5b9859b77d6e8c50bcad0f6c84a87112ad0f7b5c498493b92\", \"size_bytes\": 136}, \"generated_at\": \"2026-10-01T12:00:00+00:00\", \"stats\": {\"total_companies\": 2}, \"version\": \"2.0\"}",
+      "csv": "ats,name,slug,url\ngreenhouse,  Straße 東京  ,example,https://boards.greenhouse.io/example\nlever,Second,,https://jobs.lever.co/second\n",
+      "etag": "\"v1\""
+    },
+    {
+      "manifest": "{\"by_ats\": {\"greenhouse\": {\"rows\": 10}, \"lever\": {\"rows\": 10}, \"unknown_vendor\": {\"rows\": 10}}, \"by_ats_companies\": {\"greenhouse\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/greenhouse/companies.csv\", \"rows\": 1, \"sha256\": \"f300f10844ecfc75f12a0deb789ce9ddb41209c38307e65436e81d43ad4658d9\", \"size_bytes\": 100}, \"lever\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/lever/companies.csv\", \"rows\": 1, \"sha256\": \"21f2dcaa6f47cfacb542f1ff16aae70cab9a1f2407e3c8fd4e783725c2831833\", \"size_bytes\": 100}, \"unknown_vendor\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/unknown_vendor/companies.csv\", \"rows\": 1, \"sha256\": \"0557c67807ad1c35c5f5780fd111d275853daeb7039d1762c7349349c0d1e071\", \"size_bytes\": 100}}, \"companies\": {\"csv\": \"https://storage.stapply.ai/jobhive/v1/companies.csv\", \"rows\": 3, \"sha256\": \"5afa721c978ad7c67f51de027d4c3d4927b1b76fbbe0d71cedac5b0abe6ecf63\", \"size_bytes\": 198}, \"generated_at\": \"2026-10-02T12:00:00+00:00\", \"stats\": {\"total_companies\": 3}, \"version\": \"2.0\"}",
+      "csv": "ats,name,slug,url\ngreenhouse,Straße 東京,example,https://boards.greenhouse.io/example-new\nlever,Second,,https://jobs.lever.co/second\nunknown_vendor,Unmatched,new,https://careers.example.test/new\n",
+      "etag": "\"v2\""
+    }
+  ],
+  "sequence": [
+    {
+      "phase": "first",
+      "report": {
+        "source": "kalil0321/ats-scrapers published inventory",
+        "data_only": true,
+        "manifest_sha256": "7cb57623d6038d2d61ac8fc2839b369b4734e92f6c03c7c2238b08c906fb3fb4",
+        "manifest_etag": "\"v1\"",
+        "inventory_sha256": "d5bff25264ed02a5b9859b77d6e8c50bcad0f6c84a87112ad0f7b5c498493b92",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "validated_at": "2026-10-17T21:45:00+00:00",
+        "changed": true,
+        "etag_revalidated": false,
+        "rows": 2,
+        "families": 2,
+        "family_counts": {
+          "greenhouse": 1,
+          "lever": 1
+        },
+        "new_families": [
+          "greenhouse",
+          "lever"
+        ],
+        "removed_families": [],
+        "changed_urls": 0,
+        "coverage": {
+          "total_rows": 2,
+          "supported_rows": 2,
+          "unsupported_rows": 0,
+          "excluded_rows": 0,
+          "candidate_rows": 2,
+          "supported_candidate_rows": 2,
+          "classified_coverage_pct": 100.0,
+          "candidate_coverage_pct": 100.0,
+          "unsupported_families": [],
+          "excluded_families": [],
+          "candidate_generation_allowed": true
+        }
+      },
+      "rows": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "example",
+          "url": "https://boards.greenhouse.io/example"
+        },
+        {
+          "ats": "lever",
+          "name": "Second",
+          "slug": "",
+          "url": "https://jobs.lever.co/second"
+        }
+      ]
+    },
+    {
+      "phase": "304",
+      "report": {
+        "source": "kalil0321/ats-scrapers published inventory",
+        "data_only": true,
+        "manifest_sha256": "7cb57623d6038d2d61ac8fc2839b369b4734e92f6c03c7c2238b08c906fb3fb4",
+        "manifest_etag": "\"v1\"",
+        "inventory_sha256": "d5bff25264ed02a5b9859b77d6e8c50bcad0f6c84a87112ad0f7b5c498493b92",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "validated_at": "2026-10-17T21:45:00+00:00",
+        "changed": false,
+        "etag_revalidated": true,
+        "rows": 2,
+        "families": 2,
+        "family_counts": {
+          "greenhouse": 1,
+          "lever": 1
+        },
+        "new_families": [],
+        "removed_families": [],
+        "changed_urls": 0,
+        "coverage": {
+          "total_rows": 2,
+          "supported_rows": 2,
+          "unsupported_rows": 0,
+          "excluded_rows": 0,
+          "candidate_rows": 2,
+          "supported_candidate_rows": 2,
+          "classified_coverage_pct": 100.0,
+          "candidate_coverage_pct": 100.0,
+          "unsupported_families": [],
+          "excluded_families": [],
+          "candidate_generation_allowed": true
+        }
+      },
+      "rows": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "example",
+          "url": "https://boards.greenhouse.io/example"
+        },
+        {
+          "ats": "lever",
+          "name": "Second",
+          "slug": "",
+          "url": "https://jobs.lever.co/second"
+        }
+      ]
+    },
+    {
+      "phase": "recovery",
+      "report": {
+        "source": "kalil0321/ats-scrapers published inventory",
+        "data_only": true,
+        "manifest_sha256": "7cb57623d6038d2d61ac8fc2839b369b4734e92f6c03c7c2238b08c906fb3fb4",
+        "manifest_etag": "\"v1\"",
+        "inventory_sha256": "d5bff25264ed02a5b9859b77d6e8c50bcad0f6c84a87112ad0f7b5c498493b92",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "validated_at": "2026-10-17T21:45:00+00:00",
+        "changed": false,
+        "etag_revalidated": false,
+        "rows": 2,
+        "families": 2,
+        "family_counts": {
+          "greenhouse": 1,
+          "lever": 1
+        },
+        "new_families": [],
+        "removed_families": [],
+        "changed_urls": 0,
+        "coverage": {
+          "total_rows": 2,
+          "supported_rows": 2,
+          "unsupported_rows": 0,
+          "excluded_rows": 0,
+          "candidate_rows": 2,
+          "supported_candidate_rows": 2,
+          "classified_coverage_pct": 100.0,
+          "candidate_coverage_pct": 100.0,
+          "unsupported_families": [],
+          "excluded_families": [],
+          "candidate_generation_allowed": true
+        }
+      },
+      "rows": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "example",
+          "url": "https://boards.greenhouse.io/example"
+        },
+        {
+          "ats": "lever",
+          "name": "Second",
+          "slug": "",
+          "url": "https://jobs.lever.co/second"
+        }
+      ]
+    },
+    {
+      "phase": "changed",
+      "report": {
+        "source": "kalil0321/ats-scrapers published inventory",
+        "data_only": true,
+        "manifest_sha256": "b94571bd30e86a1640d212067626622e3a9c4b59c02a89f899dd9aff9b9452b1",
+        "manifest_etag": "\"v2\"",
+        "inventory_sha256": "5afa721c978ad7c67f51de027d4c3d4927b1b76fbbe0d71cedac5b0abe6ecf63",
+        "generated_at": "2026-10-02T12:00:00+00:00",
+        "validated_at": "2026-10-17T21:45:00+00:00",
+        "changed": true,
+        "etag_revalidated": false,
+        "rows": 3,
+        "families": 3,
+        "family_counts": {
+          "greenhouse": 1,
+          "lever": 1,
+          "unknown_vendor": 1
+        },
+        "new_families": [
+          "unknown_vendor"
+        ],
+        "removed_families": [],
+        "changed_urls": 1,
+        "coverage": {
+          "total_rows": 3,
+          "supported_rows": 2,
+          "unsupported_rows": 1,
+          "excluded_rows": 0,
+          "candidate_rows": 3,
+          "supported_candidate_rows": 2,
+          "classified_coverage_pct": 66.666667,
+          "candidate_coverage_pct": 66.666667,
+          "unsupported_families": [
+            "unknown_vendor"
+          ],
+          "excluded_families": [],
+          "candidate_generation_allowed": false
+        }
+      },
+      "rows": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "example",
+          "url": "https://boards.greenhouse.io/example-new"
+        },
+        {
+          "ats": "lever",
+          "name": "Second",
+          "slug": "",
+          "url": "https://jobs.lever.co/second"
+        },
+        {
+          "ats": "unknown_vendor",
+          "name": "Unmatched",
+          "slug": "new",
+          "url": "https://careers.example.test/new"
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/manifest.json",
+      "conditional": ""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/companies.csv",
+      "conditional": ""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/manifest.json",
+      "conditional": "\"v1\""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/manifest.json",
+      "conditional": "\"v1\""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/manifest.json",
+      "conditional": ""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/companies.csv",
+      "conditional": ""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/manifest.json",
+      "conditional": "\"v1\""
+    },
+    {
+      "url": "https://storage.stapply.ai/jobhive/v1/companies.csv",
+      "conditional": ""
+    }
+  ]
+}

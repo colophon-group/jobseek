@@ -1,0 +1,1136 @@
+{
+  "input": [
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-0",
+      "url": "https://JOBS.example/Company/0",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-1",
+      "url": "https://JOBS.example/Company/1",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-2",
+      "url": "https://JOBS.example/Company/2",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-3",
+      "url": "https://JOBS.example/Company/3",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-4",
+      "url": "https://JOBS.example/Company/4",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-5",
+      "url": "https://JOBS.example/Company/5",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-6",
+      "url": "https://JOBS.example/Company/6",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-7",
+      "url": "https://JOBS.example/Company/7",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-8",
+      "url": "https://JOBS.example/Company/8",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-9",
+      "url": "https://JOBS.example/Company/9",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-10",
+      "url": "https://JOBS.example/Company/10",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-11",
+      "url": "https://JOBS.example/Company/11",
+      "impact_unknown": false,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-12",
+      "url": "https://JOBS.example/Company/12",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-13",
+      "url": "https://JOBS.example/Company/13",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-14",
+      "url": "https://JOBS.example/Company/14",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-15",
+      "url": "https://JOBS.example/Company/15",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-16",
+      "url": "https://JOBS.example/Company/16",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-17",
+      "url": "https://JOBS.example/Company/17",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-18",
+      "url": "https://JOBS.example/Company/18",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-19",
+      "url": "https://JOBS.example/Company/19",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-20",
+      "url": "https://JOBS.example/Company/20",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-21",
+      "url": "https://JOBS.example/Company/21",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-22",
+      "url": "https://JOBS.example/Company/22",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-23",
+      "url": "https://JOBS.example/Company/23",
+      "impact_unknown": true,
+      "active_jobs": 0,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-24",
+      "url": "https://JOBS.example/Company/24",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-25",
+      "url": "https://JOBS.example/Company/25",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-26",
+      "url": "https://JOBS.example/Company/26",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-27",
+      "url": "https://JOBS.example/Company/27",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-28",
+      "url": "https://JOBS.example/Company/28",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-29",
+      "url": "https://JOBS.example/Company/29",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-30",
+      "url": "https://JOBS.example/Company/30",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-31",
+      "url": "https://JOBS.example/Company/31",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-32",
+      "url": "https://JOBS.example/Company/32",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-33",
+      "url": "https://JOBS.example/Company/33",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-34",
+      "url": "https://JOBS.example/Company/34",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-35",
+      "url": "https://JOBS.example/Company/35",
+      "impact_unknown": false,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-36",
+      "url": "https://JOBS.example/Company/36",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-37",
+      "url": "https://JOBS.example/Company/37",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-38",
+      "url": "https://JOBS.example/Company/38",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-39",
+      "url": "https://JOBS.example/Company/39",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-40",
+      "url": "https://JOBS.example/Company/40",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-41",
+      "url": "https://JOBS.example/Company/41",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-42",
+      "url": "https://JOBS.example/Company/42",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-43",
+      "url": "https://JOBS.example/Company/43",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-44",
+      "url": "https://JOBS.example/Company/44",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-45",
+      "url": "https://JOBS.example/Company/45",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-46",
+      "url": "https://JOBS.example/Company/46",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-47",
+      "url": "https://JOBS.example/Company/47",
+      "impact_unknown": true,
+      "active_jobs": 1,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-48",
+      "url": "https://JOBS.example/Company/48",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-49",
+      "url": "https://JOBS.example/Company/49",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-50",
+      "url": "https://JOBS.example/Company/50",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-51",
+      "url": "https://JOBS.example/Company/51",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-52",
+      "url": "https://JOBS.example/Company/52",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-53",
+      "url": "https://JOBS.example/Company/53",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-54",
+      "url": "https://JOBS.example/Company/54",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-55",
+      "url": "https://JOBS.example/Company/55",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-56",
+      "url": "https://JOBS.example/Company/56",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-57",
+      "url": "https://JOBS.example/Company/57",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-58",
+      "url": "https://JOBS.example/Company/58",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-59",
+      "url": "https://JOBS.example/Company/59",
+      "impact_unknown": false,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-60",
+      "url": "https://JOBS.example/Company/60",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 0,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Straße",
+      "slug": "fixture-61",
+      "url": "https://JOBS.example/Company/61",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 1,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Straße",
+      "slug": "fixture-62",
+      "url": "https://JOBS.example/Company/62",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 2,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-63",
+      "url": "https://JOBS.example/Company/63",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 3,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "STRASSE",
+      "slug": "fixture-64",
+      "url": "https://JOBS.example/Company/64",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 0,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "STRASSE",
+      "slug": "fixture-65",
+      "url": "https://JOBS.example/Company/65",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 1,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-66",
+      "url": "https://JOBS.example/Company/66",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 2,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "İstanbul",
+      "slug": "fixture-67",
+      "url": "https://JOBS.example/Company/67",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 3,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "İstanbul",
+      "slug": "fixture-68",
+      "url": "https://JOBS.example/Company/68",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 0,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-69",
+      "url": "https://JOBS.example/Company/69",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 0,
+      "location_count": 1,
+      "country_codes": [],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Σigma",
+      "slug": "fixture-70",
+      "url": "https://JOBS.example/Company/70",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 1,
+      "location_count": 2,
+      "country_codes": [
+        "CH"
+      ],
+      "latest_posted_at": null
+    },
+    {
+      "ats": "workday",
+      "name": "Σigma",
+      "slug": "fixture-71",
+      "url": "https://JOBS.example/Company/71",
+      "impact_unknown": true,
+      "active_jobs": 9,
+      "remote_jobs": 2,
+      "location_count": 3,
+      "country_codes": [
+        "DE",
+        "US"
+      ],
+      "latest_posted_at": null
+    }
+  ],
+  "ranked_source_keys": [
+    "workday:https://jobs.example/company/59",
+    "workday:https://jobs.example/company/71",
+    "workday:https://jobs.example/company/55",
+    "workday:https://jobs.example/company/67",
+    "workday:https://jobs.example/company/51",
+    "workday:https://jobs.example/company/63",
+    "greenhouse:https://jobs.example/company/50",
+    "greenhouse:https://jobs.example/company/62",
+    "greenhouse:https://jobs.example/company/58",
+    "greenhouse:https://jobs.example/company/70",
+    "greenhouse:https://jobs.example/company/54",
+    "greenhouse:https://jobs.example/company/66",
+    "workday:https://jobs.example/company/53",
+    "workday:https://jobs.example/company/65",
+    "workday:https://jobs.example/company/49",
+    "workday:https://jobs.example/company/61",
+    "workday:https://jobs.example/company/57",
+    "workday:https://jobs.example/company/69",
+    "greenhouse:https://jobs.example/company/56",
+    "greenhouse:https://jobs.example/company/68",
+    "greenhouse:https://jobs.example/company/52",
+    "greenhouse:https://jobs.example/company/64",
+    "greenhouse:https://jobs.example/company/48",
+    "greenhouse:https://jobs.example/company/60",
+    "workday:https://jobs.example/company/35",
+    "workday:https://jobs.example/company/47",
+    "workday:https://jobs.example/company/31",
+    "workday:https://jobs.example/company/43",
+    "workday:https://jobs.example/company/27",
+    "workday:https://jobs.example/company/39",
+    "greenhouse:https://jobs.example/company/26",
+    "greenhouse:https://jobs.example/company/38",
+    "greenhouse:https://jobs.example/company/34",
+    "greenhouse:https://jobs.example/company/46",
+    "greenhouse:https://jobs.example/company/30",
+    "greenhouse:https://jobs.example/company/42",
+    "workday:https://jobs.example/company/29",
+    "workday:https://jobs.example/company/41",
+    "workday:https://jobs.example/company/25",
+    "workday:https://jobs.example/company/37",
+    "workday:https://jobs.example/company/33",
+    "workday:https://jobs.example/company/45",
+    "greenhouse:https://jobs.example/company/32",
+    "greenhouse:https://jobs.example/company/44",
+    "greenhouse:https://jobs.example/company/28",
+    "greenhouse:https://jobs.example/company/40",
+    "greenhouse:https://jobs.example/company/24",
+    "greenhouse:https://jobs.example/company/36",
+    "workday:https://jobs.example/company/23",
+    "workday:https://jobs.example/company/19",
+    "workday:https://jobs.example/company/15",
+    "greenhouse:https://jobs.example/company/14",
+    "greenhouse:https://jobs.example/company/22",
+    "greenhouse:https://jobs.example/company/18",
+    "workday:https://jobs.example/company/17",
+    "workday:https://jobs.example/company/13",
+    "workday:https://jobs.example/company/21",
+    "greenhouse:https://jobs.example/company/20",
+    "greenhouse:https://jobs.example/company/16",
+    "greenhouse:https://jobs.example/company/12",
+    "workday:https://jobs.example/company/11",
+    "workday:https://jobs.example/company/7",
+    "workday:https://jobs.example/company/3",
+    "greenhouse:https://jobs.example/company/2",
+    "greenhouse:https://jobs.example/company/10",
+    "greenhouse:https://jobs.example/company/6",
+    "workday:https://jobs.example/company/5",
+    "workday:https://jobs.example/company/1",
+    "workday:https://jobs.example/company/9",
+    "greenhouse:https://jobs.example/company/8",
+    "greenhouse:https://jobs.example/company/4",
+    "greenhouse:https://jobs.example/company/0"
+  ],
+  "source_keys": [
+    "greenhouse:https://jobs.example/company/0",
+    "workday:https://jobs.example/company/1",
+    "greenhouse:https://jobs.example/company/2",
+    "workday:https://jobs.example/company/3",
+    "greenhouse:https://jobs.example/company/4",
+    "workday:https://jobs.example/company/5",
+    "greenhouse:https://jobs.example/company/6",
+    "workday:https://jobs.example/company/7",
+    "greenhouse:https://jobs.example/company/8",
+    "workday:https://jobs.example/company/9",
+    "greenhouse:https://jobs.example/company/10",
+    "workday:https://jobs.example/company/11",
+    "greenhouse:https://jobs.example/company/12",
+    "workday:https://jobs.example/company/13",
+    "greenhouse:https://jobs.example/company/14",
+    "workday:https://jobs.example/company/15",
+    "greenhouse:https://jobs.example/company/16",
+    "workday:https://jobs.example/company/17",
+    "greenhouse:https://jobs.example/company/18",
+    "workday:https://jobs.example/company/19",
+    "greenhouse:https://jobs.example/company/20",
+    "workday:https://jobs.example/company/21",
+    "greenhouse:https://jobs.example/company/22",
+    "workday:https://jobs.example/company/23",
+    "greenhouse:https://jobs.example/company/24",
+    "workday:https://jobs.example/company/25",
+    "greenhouse:https://jobs.example/company/26",
+    "workday:https://jobs.example/company/27",
+    "greenhouse:https://jobs.example/company/28",
+    "workday:https://jobs.example/company/29",
+    "greenhouse:https://jobs.example/company/30",
+    "workday:https://jobs.example/company/31",
+    "greenhouse:https://jobs.example/company/32",
+    "workday:https://jobs.example/company/33",
+    "greenhouse:https://jobs.example/company/34",
+    "workday:https://jobs.example/company/35",
+    "greenhouse:https://jobs.example/company/36",
+    "workday:https://jobs.example/company/37",
+    "greenhouse:https://jobs.example/company/38",
+    "workday:https://jobs.example/company/39",
+    "greenhouse:https://jobs.example/company/40",
+    "workday:https://jobs.example/company/41",
+    "greenhouse:https://jobs.example/company/42",
+    "workday:https://jobs.example/company/43",
+    "greenhouse:https://jobs.example/company/44",
+    "workday:https://jobs.example/company/45",
+    "greenhouse:https://jobs.example/company/46",
+    "workday:https://jobs.example/company/47",
+    "greenhouse:https://jobs.example/company/48",
+    "workday:https://jobs.example/company/49",
+    "greenhouse:https://jobs.example/company/50",
+    "workday:https://jobs.example/company/51",
+    "greenhouse:https://jobs.example/company/52",
+    "workday:https://jobs.example/company/53",
+    "greenhouse:https://jobs.example/company/54",
+    "workday:https://jobs.example/company/55",
+    "greenhouse:https://jobs.example/company/56",
+    "workday:https://jobs.example/company/57",
+    "greenhouse:https://jobs.example/company/58",
+    "workday:https://jobs.example/company/59",
+    "greenhouse:https://jobs.example/company/60",
+    "workday:https://jobs.example/company/61",
+    "greenhouse:https://jobs.example/company/62",
+    "workday:https://jobs.example/company/63",
+    "greenhouse:https://jobs.example/company/64",
+    "workday:https://jobs.example/company/65",
+    "greenhouse:https://jobs.example/company/66",
+    "workday:https://jobs.example/company/67",
+    "greenhouse:https://jobs.example/company/68",
+    "workday:https://jobs.example/company/69",
+    "greenhouse:https://jobs.example/company/70",
+    "workday:https://jobs.example/company/71"
+  ]
+}

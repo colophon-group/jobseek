@@ -1,0 +1,248 @@
+{
+  "manifest": {
+    "by_ats": {
+      "greenhouse": {
+        "parquet": "https://storage.stapply.ai/jobhive/v1/greenhouse/jobs.parquet",
+        "parquet_sha256": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+        "parquet_size_bytes": 3253,
+        "rows": 7
+      }
+    }
+  },
+  "rows": [
+    {
+      "ats": "greenhouse",
+      "name": "Straße 東京",
+      "slug": "one",
+      "url": "https://boards.greenhouse.io/one"
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Ambiguous",
+      "slug": "amb1",
+      "url": "https://boards.greenhouse.io/amb1"
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Ambiguous",
+      "slug": "amb2",
+      "url": "https://boards.greenhouse.io/amb2"
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Unique Name",
+      "slug": "unique/site",
+      "url": "https://boards.greenhouse.io/unique"
+    },
+    {
+      "ats": "greenhouse",
+      "name": "Direct Name",
+      "slug": "direct",
+      "url": "https://boards.greenhouse.io/direct"
+    },
+    {
+      "ats": "lever",
+      "name": "Missing",
+      "slug": "missing",
+      "url": "https://jobs.lever.co/missing"
+    }
+  ],
+  "sequence": [
+    {
+      "phase": "first",
+      "report": {
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "derived_at": "2026-10-17T21:45:00+00:00",
+        "changed": true,
+        "downloads": 1,
+        "companies": 6,
+        "impact_known": 3,
+        "impact_unknown": 3,
+        "active_companies": 3,
+        "family_artifacts": {
+          "greenhouse": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+          "lever": null
+        },
+        "family_reports": {
+          "greenhouse": {
+            "artifact_rows": 7,
+            "buckets": 6,
+            "companies": 5,
+            "known_companies": 3,
+            "matched_jobs": 4,
+            "status": "derived",
+            "unmatched_jobs": 3
+          },
+          "lever": {
+            "companies": 1,
+            "known_companies": 0,
+            "matched_jobs": 0,
+            "status": "artifact_missing",
+            "unmatched_jobs": 0
+          }
+        }
+      },
+      "pointer": {
+        "algorithm_version": 3,
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "schema_version": 1,
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "validated_at": "2026-10-17T21:45:00+00:00"
+      },
+      "family_summary_sha256": "013b618cf0b0d9aab08e3ccedcbc60b8907c881afcfb5ee21d0cde3d8ac62d29"
+    },
+    {
+      "phase": "cached",
+      "report": {
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "derived_at": "2026-10-17T21:45:00+00:00",
+        "changed": false,
+        "downloads": 0,
+        "companies": 6,
+        "impact_known": 3,
+        "impact_unknown": 3,
+        "active_companies": 3,
+        "family_artifacts": {
+          "greenhouse": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+          "lever": null
+        },
+        "family_reports": {
+          "greenhouse": {
+            "artifact_rows": 7,
+            "buckets": 6,
+            "companies": 5,
+            "known_companies": 3,
+            "matched_jobs": 4,
+            "status": "derived",
+            "unmatched_jobs": 3
+          },
+          "lever": {
+            "companies": 1,
+            "known_companies": 0,
+            "matched_jobs": 0,
+            "status": "artifact_missing",
+            "unmatched_jobs": 0
+          }
+        }
+      },
+      "pointer": {
+        "algorithm_version": 3,
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "schema_version": 1,
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "validated_at": "2026-10-17T21:45:00+00:00"
+      },
+      "family_summary_sha256": "013b618cf0b0d9aab08e3ccedcbc60b8907c881afcfb5ee21d0cde3d8ac62d29"
+    },
+    {
+      "phase": "recovered",
+      "report": {
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "derived_at": "2026-10-17T21:45:00+00:00",
+        "changed": true,
+        "downloads": 1,
+        "companies": 6,
+        "impact_known": 3,
+        "impact_unknown": 3,
+        "active_companies": 3,
+        "family_artifacts": {
+          "greenhouse": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+          "lever": null
+        },
+        "family_reports": {
+          "greenhouse": {
+            "artifact_rows": 7,
+            "buckets": 6,
+            "companies": 5,
+            "known_companies": 3,
+            "matched_jobs": 4,
+            "status": "derived",
+            "unmatched_jobs": 3
+          },
+          "lever": {
+            "companies": 1,
+            "known_companies": 0,
+            "matched_jobs": 0,
+            "status": "artifact_missing",
+            "unmatched_jobs": 0
+          }
+        }
+      },
+      "pointer": {
+        "algorithm_version": 3,
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "schema_version": 1,
+        "snapshot_sha256": "d35d156c8ccd18f5f40d5e1816fae0a5697b6741d05f45b445cda1ffa4310e66",
+        "validated_at": "2026-10-17T21:45:00+00:00"
+      },
+      "family_summary_sha256": "013b618cf0b0d9aab08e3ccedcbc60b8907c881afcfb5ee21d0cde3d8ac62d29"
+    },
+    {
+      "phase": "manifest_changed",
+      "report": {
+        "snapshot_sha256": "debc15f7157fccbd8825ee99e2c781655da3e9cf63ae340c4a88c14fcf2596d2",
+        "manifest_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "derived_at": "2026-10-17T21:45:00+00:00",
+        "changed": true,
+        "downloads": 0,
+        "companies": 6,
+        "impact_known": 3,
+        "impact_unknown": 3,
+        "active_companies": 3,
+        "family_artifacts": {
+          "greenhouse": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+          "lever": null
+        },
+        "family_reports": {
+          "greenhouse": {
+            "artifact_rows": 7,
+            "buckets": 6,
+            "companies": 5,
+            "known_companies": 3,
+            "matched_jobs": 4,
+            "status": "derived",
+            "unmatched_jobs": 3
+          },
+          "lever": {
+            "companies": 1,
+            "known_companies": 0,
+            "matched_jobs": 0,
+            "status": "artifact_missing",
+            "unmatched_jobs": 0
+          }
+        }
+      },
+      "pointer": {
+        "algorithm_version": 3,
+        "generated_at": "2026-10-01T12:00:00+00:00",
+        "inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "manifest_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "schema_version": 1,
+        "snapshot_sha256": "debc15f7157fccbd8825ee99e2c781655da3e9cf63ae340c4a88c14fcf2596d2",
+        "validated_at": "2026-10-17T21:45:00+00:00"
+      },
+      "family_summary_sha256": "013b618cf0b0d9aab08e3ccedcbc60b8907c881afcfb5ee21d0cde3d8ac62d29"
+    }
+  ],
+  "requests": [
+    "https://storage.stapply.ai/jobhive/v1/greenhouse/jobs.parquet",
+    "https://storage.stapply.ai/jobhive/v1/greenhouse/jobs.parquet"
+  ]
+}

@@ -1,137 +1,102 @@
 # Go and Lightpanda migration delivery plan
 
 Deliver the **full migration**, preserving every enabled board, canonical content,
-publisher policy and queue behavior. Production execution and operational
-consumers must use Go with the latest stable Lightpanda or proved native HTTP/API
-routes. Retire production Python, Playwright and Chromium after replacement
-coverage and supported recovery are established; retain useful isolated offline
-Python. The goal remains **active and incomplete**.
+publisher policy, queues and demonstrated freshness. Production execution and
+operational consumers must use Go with the latest stable self-hosted Lightpanda
+or proved native HTTP/API routes. Retire production Python, Playwright and
+Chromium after replacement coverage and supported recovery are established;
+retain useful isolated offline Python. The goal remains **active and incomplete**.
 
-## Verified serving checkpoint — October 17, 2026
+## Verified serving checkpoint — October 18, 2026
 
-Release **0.13.1083**, source `759b3a3d4be4b38df1ad7aa5afda150189de6383`, serves
-**7,850 monitors / 7,864 details** at epoch **370**. It preserves every member of
-the previous 7,842/7,862 floor and adds eight monitors and two detail configurations
-as one batch. Latest stable **Lightpanda 1.0.1** was reverified at 18:13 UTC; the
-running renderer matches the official Linux binary checksum, immutable image and
-1 GiB memory limit with zero swap. See the [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.1).
+Release **0.13.1084**, source `1741d2319db7c3eaa55dc266517fc701e5888ced`, serves
+**7,854 monitors / 7,864 details** at epoch **372**, preserving the entire previous
+7,850/7,864 floor. Self-hosted **Lightpanda 1.0.1** is verified against the official
+Linux binary and immutable image. See the [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.1).
 
-Exact qualified-head Required CI, native runtime contracts and actual Crawler
-Deploy Gate pass. Both original deployments and supported B0/ordinary activation
-pass. All 15,714 immutable staged assignments and ten new original-config
-bindings are decoded and attested. Independent serving checks pass for exact
-source/images, receipts, SQL/Redis ownership and all ten actors.
+Both original deployments and supported B0/ordinary activation pass. All 15,718
+immutable assignments and four new configuration bindings are attested. Strict
+independent source/image/receipt/SQL/Redis/health readback passes for all ten actors.
+Full postactivation replay captures all **1,746,797** owned scheduled URLs queued,
+with zero owned cache mismatches or captured gaps. Every before-only queued ID
+is currently accounted for as a retained unscheduled canonical record.
 
-Full postactivation replay validates **1,741,241 actual owned scheduled URLs**:
-all are captured queued, with zero owned cache mismatches or captured gaps.
-Current exact-ID accounting classifies all 1,653 before-only queued IDs as
-present and unscheduled; none is currently eligible and unqueued. The installed
-maintenance workflow also restored 811 previously missing schedules through the
-existing native rebuild command, with full fleet restoration. Follow-up accounts
-for every original ID and records native completions. These non-atomic captures
-do not establish historical or unbounded zero loss.
+The [serving checkpoint](39-go-lightpanda-four-monitor-checkpoint-2026-10-18.md)
+and [aggregate evidence](evidence/go-native1084-serving-checkpoint-2026-10-18.json)
+retain scope, inherited failures and non-atomic-observation limits. Three current
+Linux successes contain 2,387 URLs. The fourth newly owned monitor preserves its
+inherited HTTP403 failure; availability is not restored. No deployment mutation
+is pending. The enabled frontier, excluding three B0 boards, is **43 monitors /
+33 details**. Every board remains enabled.
 
-The [serving checkpoint](38-go-lightpanda-ten-member-checkpoint-2026-10-17.md)
-and [aggregate evidence](evidence/go-native1083-serving-checkpoint-2026-10-17.json)
-retain qualification, original failures and supported recovery evidence. No
-production mutation is pending. The current captured frontier, excluding three
-B0 boards, is **47 monitors / 33 details**. Unqualified assignments retain their
-existing owners; every board remains enabled.
+## Deliver the next substantial batch
 
-## Continue in substantial shared-contract batches
+The combined **0.13.1085** implementation ports the full ATS inventory command to
+Go and proposes **three monitor / two detail** configuration admissions together.
+It preserves the full 7,854/7,864 serving floor and targets **7,857 / 7,866**.
 
-1. **Finish the next browser/API/configuration batch.** A complete new pass covers
-   all 28 remaining nonproxy monitors across DOM, RSS and API-sniffer families.
-   Six original inventories are complete and nonempty; direct HTTP diagnostics
-   do not reproduce them. Exercise the actual existing Lightpanda/API consumers
-   and implement the missing shared controls, retaining complete original
-   configurations, identities and lanes. Unverified empty responses and original
-   failures remain unqualified. Include actual title/description/location and
-   other non-null fields, canonical writes, publisher policy and failure queues.
-2. **Restore provider access before proxy content qualification.** At 18:58 UTC,
-   the first three of ten configured Webshare slots return HTTP **402** from the
-   installed production image. The shared parent-pinned proxy transport is
-   deployed and tested, but six newly compiled monitor and two detail configs
-   still lack positive original content comparisons. Keep those assignments with
-   their current owners and retain the original failure evidence. No provider
-   payment/account changes are authorized by external probe results.
-3. **Keep admission and release work together.** Preserve the full current floor,
-   replay every actual scheduled route, decode the complete immutable staged
-   payload, then use the original deployment/cutover workflows. Require exact-head
-   full CI and actual Deploy Gate, current holds/authority and immutable images.
-   Verify serving plus exact-ID queue conservation after each expansion. Reuse
-   existing parsers, controllers and recovery commands; avoid one-provider release
-   cycles where a shared-contract batch can be qualified together.
+The new command carries over the existing 47-family registry, source validation,
+last-known-good caches, projected Parquet impact calculation, conservative
+identity/deduplication, SQLite ledger, preserved issue text, rate handling and
+capped queue modes. It is wired into the immutable image and host runner with
+existing write gates, credentials, budgets and completion events. Retained older
+images keep their explicit rollback command during the recovery window.
 
-### Next candidate — release 0.13.1084
+Go matches every parsed field in the live **80,390-row / 47-family** inventory.
+Three complete real Parquet families covering **7,815 job rows / 57 companies**
+match Python's summaries, company impacts and exact cache bytes. Frozen Python
+cache/ledger/identity/queue oracles and fake-HTTP full CLI tests pass, along with
+52 retained original/host contracts. These tests create no real GitHub issues.
 
-One grouped admission proposes **four more monitors**, preserving the entire
-7,850/7,864 floor and targeting **7,854 monitors / 7,864 details**. The existing
-browser/API consumer matches a refreshed complete 2,311-job inventory; direct
-DOM adds one job; held browser pagination adds one and 74 jobs. Real private
-canonical processing persists all **2,387 jobs**, checks every API rich
-preparation against the original, and settles all four original queue lanes.
-Five raw titles differ only by whitespace removed by the actual original text
-helper. The 51-to-1 drop guard stays intact and protects older jobs.
+The configuration batch has complete original/native 12-URL monitor inventories
+and six usable full-content detail comparisons, actual canonical processing,
+absence guards and preserved `never` rescrape SQL/Redis behavior. One empty JSON-LD
+case is excluded. Do not count empty maps as usable content.
 
-The shared DOM session renders its root once, then fetches raw HTML in that
-same target. It retains cookies, observed policy signals, original query starts,
-bounded retries, challenge/failure behavior and cleanup. A physical official
-Linux Lightpanda 1.0.1 fixture proves root rendering, cookie affinity, raw tails
-without script execution, retry/header provenance and child cleanup. Explicit
-lean resource policy uses the existing pinned-engine font/media exclusion proof;
-its original value remains in the full immutable config binding. A third DOM
-candidate returns HTTP403 and remains unqualified.
+Finish final whole-head CI/Gate and installed-image checks, freeze the combined
+configuration references, refresh every actual route, decode the full immutable
+staged plan, then use the original deployment/cutover workflows. Verify serving,
+exact-ID queue dispositions, natural execution and ATS runner acceptance. See
+[candidate evidence](evidence/go-native1085-ats-inventory-candidate-2026-10-18.json).
 
-The cold projection selects the same existing inspector from its immutable
-profile, retaining full config/source/domain/lane validation. Required private
-checks pass 53 cold nodes, the earlier 56 worker/18 queue/837 DOM checks, and
-49 additional held-DOM/resource-policy worker nodes, with no skips. See
-[candidate evidence](evidence/go-native1084-shared-batch-2026-10-17.json).
-Final combined-head CI/Gate, physical Linux references, fresh whole-route
-qualification and original deployment/admission remain required. The serving
-floor above is unchanged. Other browser controls, unavailable providers,
-freshness, operations and final retirement remain unfinished.
+## Continue coverage and operations together
 
-## Complete freshness and operational retirement alongside coverage
+- Qualify the remaining browser/API/action/configuration contracts in substantial
+  shared batches. Reuse existing parsers, controllers and recovery commands;
+  retain full identities/configs, actual non-null fields, publisher policy,
+  canonical writes and failure queues. Unverified empty responses stay unqualified.
+- The last recorded configured Webshare probes return HTTP402. Restore provider
+  access before claiming positive proxy content qualification. Keep existing
+  failure evidence and enabled boards; external evidence cannot authorize account
+  or payment changes.
+- Audit actual remaining Python entrypoints and ownership/configuration lifecycle
+  after registry publication. Finish the native consumer and recovery paths before
+  removing their runtime dependencies. Keep the final reversal supported throughout.
 
-At 18:48 UTC, **1,628,508** owned scheduled postings are over 24 hours overdue and
-**1,573,433** over 48 hours. Preserve the existing first-time priority contract;
-measure useful completions, lateness, failure dispositions and queue conservation
-over sustained intervals. Source1081 natural Workday/SmartRecruiters monitor
-cycles produced 17 canonical jobs, all queued, described and completed by native
-details. Keep [issue #10693](https://github.com/colophon-group/jobseek/issues/10693)
-open for sustained proof. Do not hide unavailable providers or turn failures into
-empty inventories to improve the metrics.
+## Finish freshness, resource proof and retirement
 
-Migrations, registry sync, provider repairs, reconciliation, exporter and R2 drain
-already have Go execution paths. Finish the production command/maintenance audit,
-including callers that still enter through Python CLI bootstrap. Legacy rollback
-branches remain until final supported quiesced reversal and the recovery window
-are proved. Keep changes to the cold projection pass bounded: the staged profile
-can select the same existing inspector without trying unrelated scrapers for
-every posting, while retaining complete config/source/hash validation.
+At 22:22 UTC on October 17, **1,637,563** owned scheduled postings are over 24 hours
+late and **1,582,101** over 48 hours. Preserve first-time priority; measure useful
+completions, lateness, failure dispositions and queue conservation over sustained
+intervals. Keep [issue #10693](https://github.com/colophon-group/jobseek/issues/10693)
+open. Do not turn unavailable publishers or failures into empty inventories.
 
-The source1082 whole-lane fixture workflow passes eight matched candidate/control
-pairs with equal canonical digests and exact cleanup. Candidate peaks are about
-93–115 MB versus 337–841 MB, with 1.72–2.65 versus 2.72–7.45 measured CPU seconds.
-This is bounded B0 fixture evidence. Complete broader comparable matched-work
-CPU/RAM/density and attributable cost evidence across relevant actors, with
-explicit exclusions; do not extrapolate fixture ratios into whole-fleet savings.
+Current matched whole-lane B0 fixtures pass eight candidate/control pairs with
+equal canonical digests and exact cleanup, bound to the production runtime tree.
+They are synthetic. Complete broader comparable matched-work CPU/RAM/density and
+attributable-cost evidence across relevant actors with explicit limits.
 
-## Full-delivery exit criteria
+Full-delivery exit criteria remain:
 
 - Every enabled monitor/detail configuration has a proved Go replacement with
-  complete canonical fields, publisher policy, queues and demonstrated freshness
-  and failure behavior. Coverage never drops to make migration appear complete.
+  complete canonical fields, policy, queues, freshness and failure behavior.
 - Deployment, data publication, native ownership lifecycle, maintenance and
-  recovery use supported committed workflows with exact source/image identities.
-- Comparable matched-work resource/density and attributable cost evidence covers
-  relevant execution and operational actors with explicit limits.
-- Supported final reversal and its recovery window are proved, then production
-  Python, Playwright, Chromium and runtime-only assets are removed. Useful
-  isolated offline tooling may remain.
+  recovery use committed workflows with exact source/image identities.
+- Comparable resource/density and attributable-cost evidence covers relevant
+  execution and operational actors.
+- Exercise final supported quiesced reversal and establish its recovery window,
+  then remove production Python, Playwright, Chromium and runtime-only assets.
+  Useful isolated offline tooling may remain.
 
-Update this plan and portable checkpoint after material delivery. Earlier
-chronological evidence remains in Git history and the linked historical
-checkpoints; probes and compiler readiness are not serving or completion claims.
+Update the portable checkpoint after material delivery. Probes, compiler readiness
+and an implemented command are not serving or full-completion claims.

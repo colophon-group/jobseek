@@ -58,8 +58,8 @@ Status tags:
 - [26 - Go Typesense Backfill Production Evidence](26-go-typesense-backfill-production-evidence.md)
   `[runbook]` - completed full backfill/reconciliation proof and measured resource limits.
 - [27 - Go and Lightpanda Migration Continuation Plan](27-go-lightpanda-continuation-plan.md)
-  `[proposal]` - latest salary candidate and deployed checkpoint, paced native
-  worker migration, enabled-fleet coverage, and production Python retirement.
+  `[runbook]` - latest verified serving checkpoint, grouped coverage and operational
+  batches, freshness/resource evidence, supported recovery and full Python retirement.
 
 - [28 - Go Location Resolver Checkpoint (2026-09-30)](28-go-location-resolver-checkpoint-2026-09-30.md)
 - [29 - Native Go B0 Executor Candidate (2026-09-30)](29-native-go-b0-executor-checkpoint-2026-09-30.md)
@@ -77,6 +77,7 @@ Status tags:
 - [36 - Go and Lightpanda Document Batch Checkpoint (2026-10-16)](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
 - [37 - Go and Lightpanda Serving Checkpoint (2026-10-17)](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md)
 - [38 - Go and Lightpanda Ten-Member Checkpoint (2026-10-17)](38-go-lightpanda-ten-member-checkpoint-2026-10-17.md)
+- [39 - Go and Lightpanda Four-Monitor Checkpoint (2026-10-18)](39-go-lightpanda-four-monitor-checkpoint-2026-10-18.md)
   `[runbook]` - current recovery, grouped cutover and full production Python retirement plan.
 
 ## Search, SEO, And Web Read Paths

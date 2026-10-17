@@ -236,6 +236,15 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/personio-monitor-live ./cmd/live
 
+# Native data-only ATS inventory and durable candidate queue.
+FROM docker.io/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-ats-inventory-build
+WORKDIR /workspace/apps/crawler/go/ats-inventory
+COPY go/ats-inventory/ ./
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/go-ats-inventory .
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM docker.io/library/python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -280,6 +289,8 @@ COPY --from=go-ordinary-worker-build /out/go-pdf-text /usr/local/bin/go-pdf-text
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
 # Native sync and parked Umantis recovery are part of the immutable image contract.
 LABEL org.jobseek.crawler.native-maintenance="v1"
+LABEL org.jobseek.crawler.native-ats-inventory="v1"
+COPY --from=go-ats-inventory-build /out/go-ats-inventory /usr/local/bin/go-ats-inventory
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
 RUN chmod 0755 /usr/local/bin/exporter-entrypoint
