@@ -75,6 +75,7 @@ Status tags:
 - [34 - Go and Lightpanda Five-Monitor Checkpoint (2026-10-16)](34-go-lightpanda-five-monitor-checkpoint-2026-10-16.md)
 - [35 - Go and Lightpanda Runtime Checkpoint (2026-10-16)](35-go-lightpanda-runtime-checkpoint-2026-10-16.md)
 - [36 - Go and Lightpanda Document Batch Checkpoint (2026-10-16)](36-go-lightpanda-document-batch-checkpoint-2026-10-16.md)
+- [37 - Go and Lightpanda Serving Checkpoint (2026-10-17)](37-go-lightpanda-shared-route-checkpoint-2026-10-17.md)
   `[runbook]` - current recovery, grouped cutover and full production Python retirement plan.
 
 ## Search, SEO, And Web Read Paths
