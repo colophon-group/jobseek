@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestJSONLDRecoveryBindsTenantAndSeparateProxyNeed(t *testing.T) {
 	if err != nil || p.JSONLDRecovery == nil || !p.JSONLDRecovery.Proxy || p.JSONLDRecovery.Company != "fixture" || ProfileRequiresProxy(p.Profile) {
 		t.Fatal("primary/recovery transport binding lost", err)
 	}
-	a := &Authority{ownership: &OwnershipPlan{document: ownershipDocument{Details: []ownershipDetail{{BoardID: jsonldBoardID, Profile: p.Profile, Config: c}}}}}
+	a := &Authority{ownership: &OwnershipPlan{document: ownershipDocument{Details: []ownershipDetail{{BoardID: jsonldBoardID, Worker: Simple, Profile: p.Profile, Config: c}}}}}
 	if !a.RequiresProxyHTTP() {
 		t.Fatal("fallback proxy resources not required")
 	}
@@ -37,7 +38,7 @@ func TestJSONLDRecoveryDetachedProfileAndOrderedProxyNeed(t *testing.T) {
 	if err != nil || len(p.Stages) != 2 || p.Stages[0].JSONLDRecovery == nil {
 		t.Fatal("ordered configured recovery lost", err)
 	}
-	a := &Authority{ownership: &OwnershipPlan{document: ownershipDocument{Details: []ownershipDetail{{BoardID: jsonldBoardID, Profile: orderedHTTPDetailProfile, Config: c}}}}}
+	a := &Authority{ownership: &OwnershipPlan{document: ownershipDocument{Details: []ownershipDetail{{BoardID: jsonldBoardID, Worker: Simple, Profile: orderedHTTPDetailProfile, Config: c}}}}}
 	if !a.RequiresProxyHTTP() || ProfileRequiresProxy(p.Stages[0].Profile) {
 		t.Fatal("ordered fallback proxy resources lost")
 	}
@@ -46,5 +47,34 @@ func TestJSONLDRecoveryDetachedProfileAndOrderedProxyNeed(t *testing.T) {
 	detached.JSONLDRecovery.Company = "unbound"
 	if d.Profile().JSONLDRecovery.Company != "fixture" {
 		t.Fatal("detached recovery changed the immutable attempt")
+	}
+}
+
+func TestJSONLDRecoveryOrderedProxyNeedBindsWorker(t *testing.T) {
+	for _, lane := range []WorkerType{Simple, Browser} {
+		for _, proxy := range []bool{false, true} {
+			t.Run(string(lane)+map[bool]string{false: "-direct", true: "-proxy"}[proxy], func(t *testing.T) {
+				c := jsonldDetailConfig()
+				fallback := map[string]any{"steps": []any{map[string]any{"tag": "h1", "field": "title"}}}
+				if lane == Browser {
+					c["scraper_needs_browser"] = "1"
+					fallback["render"] = true
+				}
+				body, err := json.Marshal(map[string]any{"scraper_type": "json-ld", "scraper_config": map[string]any{"workday_fallback": map[string]any{"company": "fixture", "wd_instance": "wd5", "site": "External", "proxy": proxy}, "fallback": map[string]any{"type": "dom", "config": fallback}}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				c["metadata"] = string(body)
+				p, err := InspectOrderedDetail(jsonldBoardID, c, c["board_url"], lane)
+				if err != nil {
+					t.Fatal("ordered reference unsupported", err)
+				}
+				binding := ownershipDetail{BoardID: jsonldBoardID, Worker: lane, Profile: orderedDetailOwnership(p).Profile, Config: c}
+				a := &Authority{ownership: &OwnershipPlan{document: ownershipDocument{Details: []ownershipDetail{binding}}}}
+				if a.RequiresProxyHTTP() != proxy {
+					t.Fatal("ordered stage recovery proxy requirement lost")
+				}
+			})
+		}
 	}
 }

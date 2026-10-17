@@ -72,7 +72,7 @@ local old_step, new_step, next_step_at = ARGV[10] or "", ARGV[11] or "", ARGV[12
 local handoff = old_step ~= "" or new_step ~= "" or next_step_at ~= "" or (ARGV[13] or "") ~= "" or (ARGV[14] or "") ~= ""
 if handoff then
     local old, new, at = tonumber(old_step), tonumber(new_step), tonumber(next_step_at)
-    if wtype ~= "simple" or task_type ~= "scrape" or supplied_token == "" or
+    if (wtype ~= "simple" and wtype ~= "browser") or task_type ~= "scrape" or supplied_token == "" or
        previous_metadata ~= "" or next_metadata ~= "" or learned_host ~= "" or
        old == nil or old < 0 or old > 6 or old ~= math.floor(old) or tostring(old) ~= old_step or
        new == nil or new ~= old + 1 or tostring(new) ~= new_step or
