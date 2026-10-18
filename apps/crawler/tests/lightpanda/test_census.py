@@ -189,6 +189,74 @@ def test_nextdata_static_request_headers_are_accepted_without_leaking(tmp_path: 
     assert "secret-agent" not in rendered
 
 
+def test_nextdata_scraper_navigation_actions_are_classified_and_sanitized(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "rendered-nextdata-detail",
+                scraper_type="nextdata",
+                scraper_config={
+                    "render": True,
+                    "actions": [
+                        {
+                            "action": "evaluate",
+                            "required": True,
+                            "script": "window.__secret_job = 'private-content'",
+                        }
+                    ],
+                    "timeout": 20000,
+                    "wait": "networkidle",
+                    "wait_fallback": "domcontentloaded",
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    record = next(
+        record
+        for record in manifest["records"]
+        if record["profile_kind"] == "configured" and record["surface"] == "scraper"
+    )
+
+    assert record["browser_required"] is True
+    assert {"action.evaluate", "javascript.evaluate", "navigation.wait_fallback"} <= set(
+        record["capabilities"]
+    )
+    assert record["compatibility_class"] == "javascript_execution"
+    rendered = manifest_bytes(manifest).decode("ascii")
+    assert "__secret_job" not in rendered
+    assert "private-content" not in rendered
+
+
+@pytest.mark.parametrize(
+    "extra_config",
+    [
+        {"actions": [{"action": "teleport"}]},
+        {"actions": [{"action": "evaluate", "script": ""}]},
+        {"unknown_browser_key": True},
+        {"wait_fallback": "invalid-load-state"},
+    ],
+)
+def test_nextdata_scraper_navigation_config_still_fails_closed(
+    tmp_path: Path, extra_config: dict[str, object]
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-nextdata-detail",
+                scraper_type="nextdata",
+                scraper_config={"render": True, **extra_config},
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError):
+        build_manifest(boards)
+
+
 def test_inline_skip_ssl_is_accepted_and_sanitized(tmp_path: Path) -> None:
     boards = _write_boards(
         tmp_path / "boards.csv",
