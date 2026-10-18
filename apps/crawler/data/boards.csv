@@ -7827,6 +7827,8 @@ yum-china,yum-china-campus,https://campus.51job.com/yumchina/project.html,nextda
 yum-china,yum-china-careers,https://yumchina.zhiye.com/Social,beisen,"{""tenant"": ""yumchina"", ""variant"": ""legacy"", ""listing_path"": ""/Social"", ""legacy_template"": ""standard""}",dom,"{""steps"": [{""text"": ""工作职责"", ""field"": ""description"", ""html"": true, ""stop"": ""现在申请""}], ""enrich"": [""description""]}"
 yum-china,yum-china-office,https://yumchinarsc.zhiye.com/social,beisen,"{""tenant"": ""yumchinarsc"", ""variant"": ""modern"", ""portal_id"": ""a69a0b8a-b20d-40e5-b45c-27af4421580f"", ""tenant_id"": 612076}",skip,
 yuno,yuno-careers,https://jobs.lever.co/yuno,lever,"{""token"": ""yuno""}",skip,
+zachry-group,zachry-group-careers,https://fa-evfm-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1029,oracle_hcm,,oracle_hcm,"{""enrich"": [""description"", ""employment_type""]}"
+zachry-group,zachry-group-careers-ph,https://ph.jobstreet.com/companies/zachry-group-168550095737225/jobs,jobstreet,"{""host"": ""ph.jobstreet.com"", ""company_id"": ""168550095737225"", ""organisation_id"": ""662316""}",jobstreet,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""date_posted"", ""base_salary""]}"
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zam,zam-greenhouse,https://job-boards.greenhouse.io/zam,greenhouse,"{""token"": ""zam""}",skip,
 zama,zama-careers,https://jobs.zama.org,dom,"{""render"": false, ""url_filter"": {""include"": ""/jobs/"", ""exclude"": ""candidatures-spontanees""}}",json-ld,

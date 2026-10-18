@@ -55,9 +55,9 @@ func TestJobStreetLegacySessionRegistryBindings(t *testing.T) {
 			if e != nil || actual.EffectiveBoardSHA256 != d.EffectiveBoardSHA256 || len(actual.EnrichmentFields) != 6 {
 				t.Fatal(actual, e)
 			}
-			foreign := strings.Replace(source, "sg.jobstreet.com", "my.jobstreet.com", 1)
+			foreign := "https://my.jobstreet.com/job/123"
 			if foreign == source {
-				foreign = strings.Replace(source, "my.jobstreet.com", "sg.jobstreet.com", 1)
+				foreign = "https://sg.jobstreet.com/job/123"
 			}
 			if _, e := inspectDetail(profileBoardID, c, foreign, Simple); e == nil {
 				t.Fatal("foreign market accepted")
@@ -80,7 +80,7 @@ func TestJobStreetLegacySessionRegistryBindings(t *testing.T) {
 			}
 		}
 	}
-	if count[jobStreetMonitorProfile] != 3 || count[legacySFSessionProfile] != 3 {
+	if count[jobStreetMonitorProfile] != 4 || count[legacySFSessionProfile] != 3 {
 		t.Fatal("registry coverage", count)
 	}
 }

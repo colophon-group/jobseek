@@ -24,6 +24,7 @@ COMPANY_ID = "175608148114568"
 ORGANISATION_ID = "744981"
 BOARD_URL = f"https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn-{COMPANY_ID}/jobs"
 SG_BOARD_URL = f"https://sg.jobstreet.com/companies/ehl-educational-group-{COMPANY_ID}/jobs"
+PH_BOARD_URL = f"https://ph.jobstreet.com/companies/zachry-group-{COMPANY_ID}/jobs"
 
 
 def _summary(
@@ -133,11 +134,13 @@ class TestIdentity:
             BOARD_URL.removesuffix("/jobs"),
             BOARD_URL + "/",
             SG_BOARD_URL,
+            PH_BOARD_URL,
         ],
     )
     def test_extracts_company_identity(self, url: str):
-        expected_host = "sg.jobstreet.com" if url == SG_BOARD_URL else "my.jobstreet.com"
+        expected_host = url.split("/")[2]
         assert _identity_from_url(url) == (expected_host, COMPANY_ID)
+        assert detect_ats_from_url(url) == "jobstreet"
 
     @pytest.mark.parametrize(
         "url",
@@ -151,6 +154,8 @@ class TestIdentity:
             "https://my.jobstreet.com/Tecan-CDMO-Solutions-PN-Sdn.-Bhd.-jobs",
             "https://my.jobstreet.com/companies/tecan-123/jobs",
             "https://my.jobstreet.com.evil.test/companies/tecan-175608148114568/jobs",
+            PH_BOARD_URL + "?page=2",
+            PH_BOARD_URL.replace("ph.jobstreet.com", "ph.jobstreet.com.evil.test"),
         ],
     )
     def test_rejects_untrusted_or_filtered_urls(self, url: str):
@@ -173,7 +178,8 @@ class TestMonitor:
         assert salary is not None
         assert salary["currency"] == expected_currency
 
-    async def test_discovers_rich_summaries_without_detail_requests(self):
+    @pytest.mark.parametrize("market", ["my", "sg", "ph"])
+    async def test_discovers_rich_summaries_without_detail_requests(self, market):
         job_id = "93872133"
         graphql_queries: list[str] = []
 
@@ -183,8 +189,10 @@ class TestMonitor:
                 graphql_queries.append(body["query"])
                 return httpx.Response(200, json=_company_payload(), request=request)
             assert request.url.path == "/api/jobsearch/v5/search"
+            assert request.url.host == f"{market}.jobstreet.com"
             assert request.url.params["companyid"] == ORGANISATION_ID
-            assert request.url.params["siteKey"] == "my"
+            assert request.url.params["siteKey"] == market
+            assert request.url.params["locale"] == f"en-{market.upper()}"
             assert request.url.params["source"] == "COMPANY"
             return httpx.Response(
                 200,
@@ -193,11 +201,14 @@ class TestMonitor:
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await discover({"board_url": BOARD_URL}, client)
+            result = await discover(
+                {"board_url": BOARD_URL.replace("my.jobstreet.com", f"{market}.jobstreet.com")},
+                client,
+            )
 
         assert len(result) == 1
         job = result[0]
-        assert job.url == f"https://my.jobstreet.com/job/{job_id}"
+        assert job.url == f"https://{market}.jobstreet.com/job/{job_id}"
         assert job.title == f"Role {job_id}"
         assert job.description is None
         assert job.locations == ["Simpang Ampat, Penang"]
@@ -298,17 +309,18 @@ class TestProbe:
             "company_id": COMPANY_ID,
         }
 
-    async def test_singapore_url_uses_singapore_market_config(self):
+    @pytest.mark.parametrize("board,market", [(SG_BOARD_URL, "sg"), (PH_BOARD_URL, "ph")])
+    async def test_market_url_uses_market_config(self, board, market):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/graphql":
                 return httpx.Response(200, json=_company_payload(), request=request)
-            assert request.url.params["siteKey"] == "sg"
-            assert request.url.params["locale"] == "en-SG"
+            assert request.url.params["siteKey"] == market
+            assert request.url.params["locale"] == f"en-{market.upper()}"
             return httpx.Response(200, json=_search_payload([]), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            assert await can_handle(SG_BOARD_URL, client) == {
-                "host": "sg.jobstreet.com",
+            assert await can_handle(board, client) == {
+                "host": f"{market}.jobstreet.com",
                 "company_id": COMPANY_ID,
                 "organisation_id": ORGANISATION_ID,
                 "jobs": 0,
@@ -340,10 +352,11 @@ class TestScraper:
             "https://my.jobstreet.com/job/93872133",
             "https://my.jobstreet.com/job/93872133/",
             "https://sg.jobstreet.com/job/93872133",
+            "https://ph.jobstreet.com/job/93872133",
         ],
     )
     def test_extracts_job_identity(self, url: str):
-        expected_host = "sg.jobstreet.com" if url.startswith("https://sg.") else "my.jobstreet.com"
+        expected_host = url.split("/")[2]
         assert _job_identity_from_url(url) == (expected_host, "93872133")
 
     @pytest.mark.parametrize(
@@ -353,6 +366,8 @@ class TestScraper:
             "https://id.jobstreet.com/job/93872133",
             "https://my.jobstreet.com/job/not-a-number",
             "https://my.jobstreet.com/job/93872133?tracking=x",
+            "https://ph.jobstreet.com.evil.test/job/93872133",
+            "https://ph.jobstreet.com/job/93872133?tracking=x",
         ],
     )
     def test_rejects_untrusted_job_urls(self, url: str):
@@ -398,11 +413,13 @@ class TestScraper:
         )
         assert result == JobContent()
 
-    async def test_scrape_uses_anonymous_graphql_detail(self):
+    @pytest.mark.parametrize("market", ["my", "sg", "ph"])
+    async def test_scrape_uses_anonymous_graphql_detail(self, market):
         def handler(request: httpx.Request) -> httpx.Response:
             body = _request_json(request)
             assert request.url.path == "/graphql"
-            assert body["variables"] == {"id": "93872133", "locale": "en-MY"}
+            assert request.url.host == f"{market}.jobstreet.com"
+            assert body["variables"] == {"id": "93872133", "locale": f"en-{market.upper()}"}
             return httpx.Response(
                 200,
                 json=_detail_payload("93872133"),
@@ -411,7 +428,7 @@ class TestScraper:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape(
-                "https://my.jobstreet.com/job/93872133",
+                f"https://{market}.jobstreet.com/job/93872133",
                 {},
                 client,
             )

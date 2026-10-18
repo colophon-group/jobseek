@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -123,5 +125,43 @@ func TestJobStreetBoundRequestsAndFailureConservation(t *testing.T) {
 	out, e = DiscoverJobStreet(ctx, o, func(context.Context, Request) ([]byte, error) { calls++; return nil, nil })
 	if e == nil || len(out.Jobs) != 0 || calls != 0 {
 		t.Fatal("cancelled inventory")
+	}
+}
+
+func TestJobStreetPhilippinesMarketAndEmployerBinding(t *testing.T) {
+	board := "https://ph.jobstreet.com/companies/zachry-group-168550095737225/jobs"
+	o, err := JobStreetOptionsFromMetadata(board, `{"host":"ph.jobstreet.com","company_id":"168550095737225","organisation_id":"662316"}`)
+	if err != nil || o.SiteKey != "ph" || o.Locale != "en-PH" {
+		t.Fatal(o, err)
+	}
+	pageURL, _ := url.Parse(o.PageRequest(1).URL)
+	if pageURL.Host != o.Host || pageURL.Query().Get("siteKey") != "ph" || pageURL.Query().Get("locale") != "en-PH" || pageURL.Query().Get("companyid") != "662316" {
+		t.Fatal("Philippines employer request drift", pageURL)
+	}
+	request, host, id, err := JobStreetDetailRequest("https://ph.jobstreet.com/job/94784683", nil)
+	var body struct {
+		Variables map[string]string `json:"variables"`
+	}
+	if err != nil || host != o.Host || id != "94784683" || request.URL != o.CompanyRequest().URL || json.Unmarshal([]byte(request.Body), &body) != nil || body.Variables["locale"] != "en-PH" {
+		t.Fatal("Philippines detail request drift", request, err)
+	}
+	for _, boardURL := range []string{board + "?page=2", strings.Replace(board, "ph.jobstreet.com", "ph.jobstreet.com.evil.test", 1)} {
+		if _, err := JobStreetOptionsFromMetadata(boardURL, "{}"); err == nil {
+			t.Fatal("accepted filtered or foreign board", boardURL)
+		}
+	}
+	for _, employerID := range []string{"662316", "foreign"} {
+		payload, _ := json.Marshal(map[string]any{
+			"data":       []any{map[string]any{"id": "94784683", "title": "Document Controller", "employer": map[string]string{"id": employerID, "companyId": o.CompanyID}}},
+			"totalCount": 1, "solMetadata": map[string]int{"pageNumber": 1, "pageSize": 100, "totalJobCount": 1},
+		})
+		jobs, total, err := ParseJobStreetPage(payload, o, 1)
+		if employerID == "foreign" {
+			if err == nil || len(jobs) != 0 {
+				t.Fatal("foreign employer escaped", jobs, err)
+			}
+		} else if err != nil || total != 1 || len(jobs) != 1 || jobs[0].Fields["url"] != "https://ph.jobstreet.com/job/94784683" {
+			t.Fatal(jobs, total, err)
+		}
 	}
 }

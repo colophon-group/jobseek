@@ -29,7 +29,7 @@ func jobStreetURL(raw string) (*url.URL, error) {
 	if e != nil || len(raw) > 8192 || !strings.EqualFold(u.Scheme, "https") || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.Fragment != "" || u.Port() != "" && u.Port() != "443" || strings.Contains(u.RawPath, "%") {
 		return nil, ErrOptions
 	}
-	if h := strings.ToLower(u.Hostname()); h != "my.jobstreet.com" && h != "sg.jobstreet.com" {
+	if h := strings.ToLower(u.Hostname()); h != "my.jobstreet.com" && h != "sg.jobstreet.com" && h != "ph.jobstreet.com" {
 		return nil, ErrOptions
 	}
 	return u, nil
@@ -340,10 +340,7 @@ func JobStreetDetailRequest(source string, config map[string]any) (Request, stri
 		return Request{}, "", "", ErrOptions
 	}
 	host := strings.ToLower(u.Hostname())
-	locale := "en-MY"
-	if host == "sg.jobstreet.com" {
-		locale = "en-SG"
-	}
+	locale := "en-" + strings.ToUpper(strings.SplitN(host, ".", 2)[0])
 	return jobStreetGraphQL(host, jobStreetDetailQuery, map[string]string{"id": match[1], "locale": locale}), host, match[1], nil
 }
 func ParseJobStreetDetail(body []byte, host, id string) (JobStreetJob, error) {
