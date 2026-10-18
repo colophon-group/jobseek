@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7900,
-    "boards_sha256": "50fc4c7f6562ef21bf9a20ff8eb3d7ca1dd16045717bd654944c15aeddd31e26",
+    "boards_row_count": 7902,
+    "boards_sha256": "8ec496ad1fb55312385a1394f4b3c8f5bf2c5b9c87c398f10fe0ad0469999f24",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "d033296947826b64ae130c9da5998b672b60a0c9fd22cbf270dad476df944907",
+  "manifest_sha256": "bc906a5b5fce192d7e8e39fe7e5a2b07c505cc5033aad95d265693a76688ecea",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -7552,12 +7552,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "8acbcac8ca308d31a2c46d3f5abf71c76d44cbb81817ca92375514fbddc45a56",
       "crawler_type": "nextdata",
-      "digest_sha256": "723412e979fbdd6154d22beed09bd558886afb742e30355df8b6d7fc608812f4",
+      "digest_sha256": "a3eb87ae8514119810c99696f3a9a0af52d60c457dcfa5a65de0d0228772ac5b",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.nextdata",
       "profile_kind": "registry",
-      "source_count": 54,
-      "source_refs_sha256": "502695a45bd5b1926b6ab38efd2683bb5b6d898b195e9149de5654ea322a180f",
+      "source_count": 55,
+      "source_refs_sha256": "f111e696bb5f79b727aba98c894d0f7f24b6ff93b1b7e1da59df7f475f702607",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7686,12 +7686,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "73c7f1309b8aa267a58a69e9c21ba8e1bf5190064418b1cffe22e1dd617a08ae",
       "crawler_type": "json-ld",
-      "digest_sha256": "166318fec2576dee40bc0e5dd2feffa8d19b34e96bf504fd7ea029c224fadc0a",
+      "digest_sha256": "3715ef3fcf4871d3cb1e419f6081d0bfc63e7583addca9b5aba5fb174ff8bdca",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.json-ld",
       "profile_kind": "registry",
-      "source_count": 812,
-      "source_refs_sha256": "0b1f1707d0e6835fb457c753849c0f3f9963ea863d71a87f8f77e281310b94f2",
+      "source_count": 813,
+      "source_refs_sha256": "537f839785694632044d52b63973e320d0a8861d3f7195c8aa61a49a3adf3649",
       "status": "inventory",
       "surface": "scraper"
     },
