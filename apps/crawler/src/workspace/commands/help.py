@@ -3114,7 +3114,8 @@ jobstreet — JobStreet employer profile
   Note:     Use the canonical unfiltered employer URL ending in
             /companies/{slug}-{company_id}/jobs. Legacy *-jobs search routes
             are Cloudflare-guarded and are not accepted as board identities.
-            Malaysia (my) and Singapore (sg) employer profiles are supported.
+            Malaysia (my), Singapore (sg) and Philippines (ph) employer
+            profiles are supported.
 
   Config:
     {"company_id": "175608148114568", "organisation_id": "744981"}
@@ -4949,11 +4950,12 @@ headhunter — HeadHunter vacancy detail API scraper
 SCRAPER_JOBSTREET = """\
 jobstreet — JobStreet vacancy detail GraphQL scraper
 
-  API:      POST https://my.jobstreet.com/graphql
+  API:      POST https://{market}.jobstreet.com/graphql
   Returns:  title, complete HTML description, locations, employment type,
             posting date, base salary, expiration date and employer metadata
   Config:   Standard enrich list (auto-configured)
-  Note:     Derives the numeric ID from my.jobstreet.com/job/{id}. Runs on the
+  Note:     Derives the numeric ID from {market}.jobstreet.com/job/{id} for
+            Malaysia, Singapore and the Philippines. Runs on the
             normal scrape schedule so the hourly employer monitor performs
             only the company-scoped listing pass.
 """

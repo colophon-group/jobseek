@@ -34,6 +34,11 @@ PAGE_SIZE = 100
 MAX_JOBS = 10_000
 
 _HOST_CONFIG = {
+    "ph.jobstreet.com": {
+        "site_key": "ph",
+        "locale": "en-PH",
+        "language": "en",
+    },
     "my.jobstreet.com": {
         "site_key": "my",
         "locale": "en-MY",

@@ -540,7 +540,7 @@ def detect_ats_from_url(url: str) -> str | None:
     ):
         return "jobbank104"
     if (
-        host == "my.jobstreet.com"
+        host in {"my.jobstreet.com", "sg.jobstreet.com", "ph.jobstreet.com"}
         and parsed.scheme == "https"
         and parsed.username is None
         and parsed.password is None
