@@ -5671,6 +5671,7 @@ projective-group,projective-group-careers,https://projectivegroup.recruitee.com/
 projective-group,projective-group-careers-talent,https://talent.projectivegroup.com/open-positions/,dom,"{""render"": true, ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""repeat"", ""selector"": ""#load-more-jobs"", ""max"": 20, ""wait_ms"": 2000}], ""url_filter"": ""/jobs/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=job-location"", ""field"": ""location"", ""optional"": true}, {""text"": ""About"", ""field"": ""description"", ""stop"": ""APPLY FOR THIS JOB"", ""html"": true}]}"
 prolaio,prolaio-greenhouse,https://job-boards.greenhouse.io/prolaio,greenhouse,"{""token"": ""prolaio""}",skip,
 prolific,prolific-greenhouse,https://job-boards.greenhouse.io/prolific,greenhouse,"{""token"": ""prolific""}",skip,
+promedica,promedica-careers,https://promedica.wd12.myworkdayjobs.com/external_careers,workday,,workday,
 prometheus-real-estate-group,prometheus-real-estate-group-greenhouse,https://job-boards.greenhouse.io/prometheusrealestategroup,greenhouse,"{""token"": ""prometheusrealestategroup""}",skip,
 prompt,prompt-ashby,https://jobs.ashbyhq.com/prompt,ashby,"{""token"": ""prompt""}",skip,
 proofofplay,proofofplay-ashby,https://jobs.ashbyhq.com/proofofplay,ashby,"{""token"": ""proofofplay""}",skip,
