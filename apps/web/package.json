@@ -98,12 +98,12 @@
     "@next/bundle-analyzer": "^16.3.6",
     "@next/eslint-plugin-next": "^16.3.6",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/negotiator": "^0.6.5",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitest/ui": "^5.0.0",
+    "@vitest/ui": "^5.0.5",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "esbuild": "0.28.1",
@@ -114,6 +114,6 @@
     "tsx": "^4.23.13",
     "typescript": "^5",
     "typescript-eslint": "^8.70.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   }
 }
