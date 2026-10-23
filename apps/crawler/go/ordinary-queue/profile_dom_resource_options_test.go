@@ -63,3 +63,38 @@ func TestDOMAutoResourceNormalizationRetainsImmutableBinding(t *testing.T) {
 		t.Fatal("rendered resource proof granted static admission")
 	}
 }
+
+func TestDOMDetailResourcePoliciesKeepFullBindingAndParserScope(t *testing.T) {
+	hashes := map[string]bool{}
+	for _, resourcePolicy := range []string{"none", "lean", "auto"} {
+		config := renderedDetailConfig("dom")
+		var metadata map[string]any
+		if json.Unmarshal([]byte(config["metadata"]), &metadata) != nil {
+			t.Fatal("configured parser unavailable")
+		}
+		metadata["scraper_config"].(map[string]any)["resource_policy"] = resourcePolicy
+		body, _ := json.Marshal(metadata)
+		config["metadata"] = string(body)
+		profile, err := InspectRenderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser)
+		if err != nil || profile.DOMConfig["resource_policy"] != resourcePolicy || config["metadata"] != string(body) {
+			t.Fatal("original detail policy escaped its immutable binding", err)
+		}
+		if hashes[profile.EffectiveBoardSHA256] {
+			t.Fatal("different original detail policies reused ownership")
+		}
+		hashes[profile.EffectiveBoardSHA256] = true
+	}
+	for _, scraper := range []string{"dom", "json-ld"} {
+		for _, resourcePolicy := range []any{"aggressive", "unknown", true, 1} {
+			config := renderedDetailConfig(scraper)
+			var metadata map[string]any
+			json.Unmarshal([]byte(config["metadata"]), &metadata)
+			metadata["scraper_config"].(map[string]any)["resource_policy"] = resourcePolicy
+			body, _ := json.Marshal(metadata)
+			config["metadata"] = string(body)
+			if _, err := InspectRenderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser); err == nil {
+				t.Fatal("unqualified detail policy admitted", scraper, resourcePolicy)
+			}
+		}
+	}
+}
