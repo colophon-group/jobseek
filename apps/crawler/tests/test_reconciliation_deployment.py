@@ -327,7 +327,7 @@ def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
 
     lock = maintenance.index("exec 9>/run/lock/jobseek-crawler-mutation.lock")
     proof = maintenance.index(chain)
-    hygiene = maintenance.index('crawler-host-hygiene.py"')
+    hygiene = maintenance.index("run_native_host_hygiene || hygiene_status=$?")
 
     assert maintenance.count(chain) == 1
     assert lock < proof < hygiene

@@ -1769,6 +1769,12 @@ jobs:
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
+          go build -o "$RUNNER_TEMP/crawler-maintenance-tools" .
+
+      - name: Compare original and native host hygiene commands
+        env:
+          JOBSEEK_NATIVE_HYGIENE_BINARY: ${{ runner.temp }}/crawler-maintenance-tools
+        run: node --test scripts/crawler-host-hygiene.test.mjs
 
       - name: Verify native ATS inventory and durable candidate queue
         working-directory: apps/crawler/go/ats-inventory
