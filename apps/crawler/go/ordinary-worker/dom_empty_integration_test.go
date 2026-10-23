@@ -5,6 +5,7 @@ import (
 	"fmt"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -38,6 +39,11 @@ func TestRealDOMExplicitEmptyPreservesFailedInventory(t *testing.T) {
 				}
 				if mode == "wrong-first-marker" {
 					body = `<p class="alternate-empty">Other</p><p class="empty">No vacancies</p>`
+				}
+				if !rendered {
+					// Real document directories put both jobs and explicit zero
+					// markers after inline assets beyond the preview limit.
+					body = strings.Repeat(" ", 836_000) + body
 				}
 				calls := 0
 				client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {

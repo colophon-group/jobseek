@@ -194,7 +194,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		return c, ErrListingProof
 	}
 	c.Document, err = directDocumentOptions(config, endpoint)
-	if c.MyJobShop || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
+	if c.MyJobShop || c.EmptySelector != "" || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
 		c.Document.MaxBodyBytes = 2 << 20
 	}
 	// The listing outer loop owns one shared attempt budget across statuses,
