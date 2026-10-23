@@ -1,5 +1,91 @@
 # Go and Lightpanda migration delivery plan
 
+## Active full replacement — October 23, 2026
+
+The owner resumed complete production replacement and retirement. The Codex goal
+is active; [epic #7935](https://github.com/colophon-group/jobseek/issues/7935) is
+the current checklist and [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+is reopened for final retirement. Preserve useful isolated offline Python.
+
+Read-only live receipts and service identities still select **0.13.1084**,
+source `1741d2319db7c3eaa55dc266517fc701e5888ced`, epoch **372**. Ordinary
+ownership is **7,854 monitors / 7,864 details** across **7,900 enabled boards**.
+The retained serving checkpoint uses self-hosted Lightpanda 1.0.1; recheck the
+latest upstream stable release before any renderer transition.
+
+A fresh read-only SQL census at **2026-10-23 13:42:53 UTC** compared every enabled
+board with the retained active cohort. **43 monitor / 33 detail assignments**
+remain outside ordinary ownership. Three B0 boards (Browser Use, bunq, Algorized)
+remain separately tracked; their monitors and details must survive final lifecycle
+reconciliation. This non-atomic census does not prove current content parity,
+whole scheduled-route coverage or sustained queue conservation.
+
+The [sanitized exact inventory](evidence/go-retirement-frontier-2026-10-23.json)
+records UUIDs, structural controls, snapshot config fingerprints and issue
+membership. It contains no credentials, raw config values, posting content or
+host addresses. Fingerprints identify this census; they are not ownership grants.
+
+| Shared batch | Monitors | Details | Issue |
+|---|---:|---:|---|
+| Staged cleanup and native ATS runner | 3 | 2 | [#10788](https://github.com/colophon-group/jobseek/issues/10788) |
+| Proxy and persistent sessions | 16 | 24 | [#10792](https://github.com/colophon-group/jobseek/issues/10792) |
+| Nonproxy browser monitors | 14 | 0 | [#10790](https://github.com/colophon-group/jobseek/issues/10790) |
+| HTTP inventories, document policies and static binding | 10 | 1 | [#10789](https://github.com/colophon-group/jobseek/issues/10789) |
+| Nonproxy rendered details | 0 | 6 | [#10791](https://github.com/colophon-group/jobseek/issues/10791) |
+| **Total outside ordinary ownership** | **43** | **33** | |
+
+Every assignment occurs in one group. Different assignments on the same board
+can have different blockers. Bright Horizons monitor is staged, while its detail
+remains in the proxy group; an empty comparison did not qualify it. Groove Quantum
+and Orange Quantum Systems contribute both surfaces to the staged group.
+
+Start with existing [PR #10707](https://github.com/colophon-group/jobseek/pull/10707):
+candidate **0.13.1085** ports ATS inventory and proposes the five cleanup assignments.
+Recorded exact-head CI, runtime contracts, B0 admission and Deploy Gate pass;
+installed-image checks, fresh full-cohort staging, supported deployment and native
+runner acceptance remain. Only actual admission raises the ordinary floor to
+**7,857 / 7,866** and leaves **40 / 31**. Compilation and an unverified empty
+result do not establish content qualification. Reuse existing parsers, transports,
+controllers and recovery commands in substantial shared-contract batches.
+
+[#10793](https://github.com/colophon-group/jobseek/issues/10793) tracks actual
+production entrypoints across Compose, timers, protected workflows and recovery
+callers. Go paths already exist for migrations, sync, exporter, R2 drain,
+reconciliation and provider repairs. Finish command bootstrap and packaging.
+The first new implementation, candidate **0.13.1086**, moves scheduled maintenance
+preflight and host hygiene to the existing source-bound Go deployment tools.
+Exact-source/checksum verification, host mutation locking, operation budgets,
+Typesense credentials and independent hygiene accounting remain. The native audit
+preserves resource selection, age thresholds, advisory cleanup and exit codes;
+it never performs cleanup. Python remains an offline parity reference used by
+the separate host-hygiene qualification workflow. This is candidate work,
+not a deployed crawler replacement.
+
+After each admission, preserve the entire enabled/owned floor, replay actual
+scheduled routes, decode every staged assignment, then use the original immutable
+deployment and quiesced ownership workflows. Verify source/images/receipts,
+SQL/Redis authority, every actor and exact-ID queue dispositions after activation.
+Respect current holds and changed-head/operator decisions.
+
+Keep [#10693](https://github.com/colophon-group/jobseek/issues/10693) open for
+sustained natural execution, queue conservation and freshness. The October 17
+checkpoint recorded 1,637,563 owned postings over 24 hours overdue; this is
+historical, not a fresh October 23 measurement. Keep first-time priority and
+publisher policy. The last recorded Webshare responses are HTTP402; recheck
+access before content qualification, without treating probes as payment/account
+authority or blocked publishers as empty inventories.
+
+[#8648](https://github.com/colophon-group/jobseek/issues/8648) retains bounded
+resource evidence. Eight synthetic B0 matched pairs do not establish whole-fleet
+savings. Complete broader comparable CPU/RAM/density and attributable-cost proof.
+Full retirement requires every enabled configuration and B0/ordinary lifecycle,
+native operational consumers, sustained correctness/freshness, broader resource
+evidence, final supported quiesced reversal and its recovery window. Then remove
+production Python, Playwright, Chromium and obsolete runtime-only assets.
+
+<details>
+<summary>Historical October 17 delivery checkpoint and original exit criteria</summary>
+
 Deliver the **full migration**, preserving every enabled board, canonical content,
 publisher policy and queue behavior. Production execution and operational
 consumers must use Go with the latest stable Lightpanda or proved native HTTP/API
@@ -135,3 +221,5 @@ explicit exclusions; do not extrapolate fixture ratios into whole-fleet savings.
 Update this plan and portable checkpoint after material delivery. Earlier
 chronological evidence remains in Git history and the linked historical
 checkpoints; probes and compiler readiness are not serving or completion claims.
+
+</details>

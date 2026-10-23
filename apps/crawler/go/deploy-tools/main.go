@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,12 @@ import (
 var sourceRevision = "unbuilt"
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "host-hygiene" {
+		if status := runHostHygiene(args[1:], os.Stdout, os.Stderr); status != 0 {
+			return commandStatus(status)
+		}
+		return nil
+	}
 	if len(args) == 7 && args[0] == "b0-receipt-identity" || len(args) == 10 && args[0] == "b0-receipt-attest" {
 		reply, err := b0ReceiptReply(args[1:], args[0] == "b0-receipt-attest")
 		if err != nil {
@@ -110,6 +117,10 @@ func run(args []string) error {
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
+		var status commandStatus
+		if errors.As(err, &status) {
+			os.Exit(int(status))
+		}
 		fmt.Fprintln(os.Stderr, "crawler deployment tools rejected:", err)
 		os.Exit(1)
 	}

@@ -70,6 +70,25 @@ if (command === "list-units") {
       encoding: "utf8",
     },
   );
+  if (process.env.JOBSEEK_NATIVE_HYGIENE_BINARY) {
+    const native = spawnSync(
+      process.env.JOBSEEK_NATIVE_HYGIENE_BINARY,
+      ["host-hygiene", "--now", "2026-07-20T12:00:00Z", "--proc-uptime", uptime],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PATH: `${dir}:${process.env.PATH}`,
+          MOCK_CONTAINERS: JSON.stringify(containers),
+          MOCK_UNITS: JSON.stringify(units),
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(native.status, result.status, native.stderr);
+    assert.equal(native.stdout, result.stdout);
+    assert.equal(native.stderr, result.stderr);
+  }
   rmSync(dir, { recursive: true, force: true });
   return result;
 }
@@ -168,4 +187,25 @@ test("host hygiene succeeds when old resources are managed", () => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /host hygiene clean/);
+});
+
+test("host hygiene retains threshold, future-time and advisory shell quoting", () => {
+  const result = runHygiene({
+    containers: [
+      container({id: "at-boundary", name: "boundary", startedAt: "2026-07-19T12:00:00Z"}),
+      container({id: "too-new", name: "below-threshold", startedAt: "2026-07-19T12:00:00.000001Z"}),
+      container({id: "future", name: "future", startedAt: "2026-07-21T12:00:00Z"}),
+    ],
+    units: {
+      "quoted'fixture.service": {
+        subState: "exited",
+        fragment: "/run/systemd/transient/quoted'fixture.service",
+        activeAtMicros: 500_000_000_000,
+      },
+    },
+  });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /found 2 stale resource/);
+  assert.match(result.stderr, /boundary age=1d00h/);
+  assert.doesNotMatch(result.stderr, /below-threshold|future/);
 });
