@@ -246,7 +246,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
        -o /out/go-ats-inventory .
 
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
-FROM docker.io/library/python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
+FROM docker.io/library/python:3.14.7-slim-trixie@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS base
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
