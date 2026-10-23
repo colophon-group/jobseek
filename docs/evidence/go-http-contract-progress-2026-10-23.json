@@ -176,7 +176,8 @@
     "The other HTTP group contracts, sustained freshness, operational consumers and final reversal/retirement remain open.",
     "Preserve the separately authorized production recovery #10794 and its source-bound repair #10796; no overlapping production mutation was performed.",
     "Additional original source checks: APT returns HTTP404; Black Ore exposes unverified empty output; FIG original configuration cannot classify the new layouts; both Swiss legacy URLs repeatedly return redirects refused by the original public-header path; Persistent API returns HTTP503. These are retained failures/unknowns, not positive inventories.",
-    "Direct sample probes for seven ALTEN details return HTTP403. A Glasswall HTTP200 body is Cloudflare Error 521 support content, so superficially nonempty extracted fields do not qualify it. Other sampled sources had missing fields, unavailable content or a stale HTTP404; no proxy controls were removed."
+    "Direct sample probes for seven ALTEN details return HTTP403. A Glasswall HTTP200 body is Cloudflare Error 521 support content, so superficially nonempty extracted fields do not qualify it. Other sampled sources had missing fields, unavailable content or a stale HTTP404; no proxy controls were removed.",
+    "PR #10797 targets main so the full required PR workflow runs. Its implementation ancestry includes pending ATS PR #10707; merge that prerequisite first, then refresh the exact main/head before final admission. Draft state and the production restoration hold remain in force."
   ],
   "current_candidate_qualification": {
     "board_slug": "international-gymnastics-federation-jobs",
@@ -200,5 +201,9 @@
     "validation_origin": "original Python and native readers replayed the same current captured HTTP/PDF responses, without network fallback",
     "installed_image_and_production_admission": false
   },
-  "candidate_version": "0.13.1089"
+  "candidate_version": "0.13.1089",
+  "implementation_pr": 10797,
+  "pr_base": "main",
+  "prerequisite_pr": 10707,
+  "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52"
 }
