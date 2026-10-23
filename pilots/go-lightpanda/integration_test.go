@@ -17,15 +17,17 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
 
+const lightpandaPinnedDarwinArm64SHA256 = "9f3ee749a55d1abc5f8fdda0d9559c3b2abcec5bff5bfe902bc06c0a89538ec4"
+
 var lightpandaPinnedSHA256 = map[string]string{
-	"amd64": "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd",
-	"arm64": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+	"amd64": "ae7d01d261efb9e480e18ce3424533332883863bcf70b12a4321b5733f37e19e",
+	"arm64": "ac546dfc43c533430da92b75ab36f2a29da7d6324d5d38baf606ef2e0d849345",
 }
 
 func TestLightpandaIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.0.2 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -116,7 +118,7 @@ func TestLightpandaIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.0.2 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -181,7 +183,7 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.0.2 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {

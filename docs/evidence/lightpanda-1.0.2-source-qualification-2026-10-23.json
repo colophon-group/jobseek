@@ -1,0 +1,95 @@
+{
+  "schema_version": "jobseek.lightpanda-release-qualification/v1",
+  "date": "2026-10-23",
+  "issue": 10798,
+  "release": {
+    "tag": "1.0.2",
+    "published_at": "2026-10-23T09:01:02Z",
+    "url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.2",
+    "prerelease": false
+  },
+  "source_qualification": {
+    "tag": "1.0.2",
+    "index_digest": "sha256:5d1d724c476957d8c2f8393a51fd089477523b0e5aa9c783c48688785d934fb9",
+    "binary_path": "/usr/bin/lightpanda",
+    "platforms": {
+      "amd64": {
+        "manifest_digest": "sha256:0fd590f7072f15ff8f681b546bdda231a9f1d65360da27376c02cb72b2a0413e",
+        "image_created_at": "2026-10-23T09:04:39.464998953Z",
+        "binary_layer_digest": "sha256:63be09a1b6b44187cd7f5b2ebc53dfc7d137d4c2cb4a4c3561fbadb6e3446b5d",
+        "binary_sha256": "ae7d01d261efb9e480e18ce3424533332883863bcf70b12a4321b5733f37e19e",
+        "binary_size": 76408136
+      },
+      "arm64": {
+        "manifest_digest": "sha256:94b7a6c97648a68a0905ea6f225b7ee36ba75b51bc6c6d5427f523f803f8e572",
+        "image_created_at": "2026-10-23T09:04:40.577980143Z",
+        "binary_layer_digest": "sha256:ec1ea5a2d8988e7671f7def90afecf563e49ac27ad151c9425f0bfa85a9f88ef",
+        "binary_sha256": "ac546dfc43c533430da92b75ab36f2a29da7d6324d5d38baf606ef2e0d849345",
+        "binary_size": 73830456
+      }
+    }
+  },
+  "verification_asset": {
+    "platform": "darwin/arm64",
+    "name": "lightpanda-aarch64-macos",
+    "sha256": "9f3ee749a55d1abc5f8fdda0d9559c3b2abcec5bff5bfe902bc06c0a89538ec4",
+    "size": 93242456,
+    "version_command_result": "1.0.2"
+  },
+  "method": [
+    "Retrieved official multi-architecture OCI index and manifests through registry API; independently hashed response bytes and checked registry digest headers.",
+    "Hashed each Linux layer before bounded tar inspection; copied only the canonical regular executable without running upstream image commands.",
+    "Matched extracted executable bytes, SHA-256 and size against independently downloaded official release assets on both Linux architectures.",
+    "Updated the canonical OCI copy path to /usr/bin/lightpanda and retained the binary-only runtime build.",
+    "Separately verified the official macOS arm64 executable; local physical research does not grant Linux serving qualification."
+  ],
+  "current_local_physical_tests": {
+    "platform": "darwin/arm64",
+    "race": true,
+    "passed": [
+      "single-detail network capture",
+      "rotating API path/pagination and publisher denial",
+      "document interactions/navigation/history and failure cleanup",
+      "fragment navigation and rendered fields",
+      "heap-limit failure, child reaping and subsequent successful independent navigation"
+    ],
+    "full_native_race_suite": "Unit/race suite without physical opt-in passes. Full physical opt-in exposes four 1.0.2 macOS visibility regressions plus two Linux-only proxy isolation fixtures unsupported on macOS; no complete physical pass is claimed.",
+    "Linux_physical_fixture_suites": "pending CI",
+    "unit_race_vet_tidy_format_and_pin_contract": "passed",
+    "wait_state_regression": {
+      "platform": "darwin/arm64",
+      "original_Python_reference_cases": 21,
+      "official_1_0_1_cases_passed": 21,
+      "official_1_0_2_cases_passed": 17,
+      "failing_cases": [
+        "visible-contents-preserved-space",
+        "visible-contents-nbsp",
+        "visible-contents-text",
+        "contents-hidden-parent"
+      ],
+      "discriminating_geometry": "Same display:contents text ranges have width=5,height=5 under verified 1.0.1, width=0,height=5 under verified 1.0.2; computed styles and input HTML are the same. Existing native visibility correctly refuses zero-width ranges.",
+      "supported_Linux_architecture_verification": "pending; added original wait-state suite to mandatory physical image qualification",
+      "promotion_allowed": false
+    }
+  },
+  "contracts_to_revalidate": [
+    "Per-top-level-page history and navigation replacement",
+    "Cookie ordering and context/session affinity",
+    "Extended private-network blocking with existing independent egress protections",
+    "No-cors method and 401/407 authentication failure behavior",
+    "CDP client Origin handling, event shapes and process resource/cleanup guarantees"
+  ],
+  "production_transition": {
+    "performed": false,
+    "existing_production_release": "1.0.1 (historical last verified checkpoint; recovery currently owns live transitions)",
+    "ownership_or_count_changed": false,
+    "hold": "Separate #10794/#10796 recovery must explicitly clear before overlapping production or main/VERSION merge.",
+    "required_remaining": [
+      "exact-head required CI and physical Linux amd64/arm64 fixture suites",
+      "source-bound protected service build and supported mTLS/network acceptance",
+      "actual current complete configuration/field qualification and resource evidence",
+      "supported renderer deployment and rollback with exact existing crawler cohorts preserved",
+      "installed identities and sustained useful natural execution/freshness"
+    ]
+  }
+}
