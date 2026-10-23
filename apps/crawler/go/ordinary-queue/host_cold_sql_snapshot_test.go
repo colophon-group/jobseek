@@ -3,11 +3,48 @@ package queue
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
+
+func TestColdCanonicalSnapshotBudgetsFleetHistoryWithinCallerDeadline(t *testing.T) {
+	pool := hostSQLFixture(t)
+	for _, callerBudget := range []time.Duration{30 * time.Minute, time.Minute} {
+		parent, cancel := context.WithTimeout(context.Background(), callerBudget)
+		err := WithHostColdSQLLifecycle(parent, pool, hostSQLBindingFixture(), func(ctx context.Context, scope *HostColdSQL) error {
+			err := coldCanonicalSnapshotTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
+				deadline, ok := ctx.Deadline()
+				remaining := time.Until(deadline)
+				if !ok || remaining > callerBudget || remaining > 15*time.Minute {
+					t.Fatal("snapshot widened the caller or administrative ceiling", remaining)
+				}
+				if callerBudget > 2*time.Minute && remaining <= 2*time.Minute {
+					t.Fatal("fleet history still has the exhausted two-minute budget", remaining)
+				}
+				var statement, idle string
+				if err := tx.QueryRow(ctx, "SELECT current_setting('statement_timeout'), current_setting('idle_in_transaction_session_timeout')").Scan(&statement, &idle); err != nil {
+					return err
+				}
+				if statement != "10s" || idle != "15min" {
+					t.Fatal("snapshot changed per-statement protection or lost bounded idle time", statement, idle)
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return scope.Check(ctx)
+		})
+		cancel()
+		if err != nil {
+			t.Fatal("bounded fleet-history snapshot failed", err)
+		}
+		hostSQLAssertReleased(t, pool)
+	}
+}
 
 func TestColdCanonicalSnapshotOutlivesRuntimeCapWithoutReleasingBarriers(t *testing.T) {
 	pool := hostSQLFixture(t)
