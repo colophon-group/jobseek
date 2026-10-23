@@ -16,8 +16,13 @@ and [#10796](https://github.com/colophon-group/jobseek/pull/10796) restore the e
 cohort. Overlapping production mutations and main/VERSION merges remain on hold
 until that recovery explicitly clears. Re-read installed identities, enabled
 boards and cohort receipts after restoration before updating serving counts.
-The retained checkpoint uses self-hosted Lightpanda 1.0.1; recheck the
-latest upstream stable release before any renderer transition.
+The retained checkpoint uses self-hosted Lightpanda 1.0.1. Stable **1.0.2** was
+released on October 23 and is independently source-qualified in
+[#10798](https://github.com/colophon-group/jobseek/issues/10798) /
+[draft #10799](https://github.com/colophon-group/jobseek/pull/10799).
+Four original visibility cases pass with official 1.0.1 but fail with 1.0.2 on
+macOS; supported Linux physical qualification remains required. Keep the renderer
+transition separate and unpromoted until compatibility is established.
 
 A fresh read-only SQL census at **2026-10-23 13:42:53 UTC** compared every enabled
 board with the retained active cohort. **43 monitor / 33 detail assignments**
@@ -45,17 +50,28 @@ can have different blockers. Bright Horizons monitor is staged, while its detail
 remains in the proxy group; an empty comparison did not qualify it. Groove Quantum
 and Orange Quantum Systems contribute both surfaces to the staged group.
 
-Start with existing [PR #10707](https://github.com/colophon-group/jobseek/pull/10707):
-candidate **0.13.1087** ports ATS inventory and proposes the five cleanup assignments.
-The October 23 refresh preserves all **7,901** current-main catalogue entries,
-including Mandarin Oriental, and regenerates the deterministic census. Its
-compression dependency has been updated to the patched release. Incorporate the
-recovery's final main revision and clock fixture correction, then run new
-exact-head CI, installed-image checks, full-cohort staging, supported deployment
-and native runner acceptance. Only actual admission raises the old ordinary floor to
-**7,857 / 7,866** and leaves **40 / 31**. Compilation and an unverified empty
-result do not establish content qualification. Reuse existing parsers, transports,
-controllers and recovery commands in substantial shared-contract batches.
+The combined **0.13.1089** candidate in
+[PR #10797](https://github.com/colophon-group/jobseek/pull/10797) includes the ATS
+port and five cleanup assignments from
+[PR #10707](https://github.com/colophon-group/jobseek/pull/10707), native maintenance
+from [PR #10795](https://github.com/colophon-group/jobseek/pull/10795), and the document
+contracts below. Keep the component PRs available for review; supersede them only
+after the complete combined candidate is verified and delivered. This gives one
+source for final Required CI, installed-image checks, native command acceptance,
+full-cohort staging and supported deployment/cold handoff.
+
+The candidate preserves all **7,901** current-main catalogue entries, including
+Mandarin Oriental, and regenerates the deterministic census. Its ATS compression
+dependency uses the patched release. It includes recovery main
+`6e1d0ebb3f2294b95e94e26854d5d4fefd282d52` and its clock fixture correction. Repeated
+public ECR HTTP429 failures blocked the old sitemap build comparator; its exact
+Go image index was independently verified on official Docker Hub and the build
+source changed without changing the toolchain version or digest.
+
+The old ATS-only proposal was **7,857 / 7,866**, conditional on admission against
+the old census. Refresh the actual post-recovery registry and staged payload to
+derive the combined floor; newly published catalogue entries are not automatic
+native ownership. Compilation and unverified empty results are not content proof.
 
 [#10793](https://github.com/colophon-group/jobseek/issues/10793) tracks actual
 production entrypoints across Compose, timers, protected workflows and recovery
@@ -68,10 +84,9 @@ Typesense credentials and independent hygiene accounting remain. The native audi
 preserves resource selection, age thresholds, advisory cleanup and exit codes;
 it never performs cleanup. Python remains an offline parity reference used by
 the separate host-hygiene qualification workflow. This is candidate work,
-not a deployed crawler replacement. Candidate **0.13.1088** follows recovery
-**0.13.1086** and the ATS candidate **0.13.1087**. Both candidates now include the
-recovery main revision; deployment and main merges remain on hold until
-restoration clears. Follow-up fixes bound streamed inventory output and keep the
+not a deployed crawler replacement. The maintenance changes are now included in
+the combined **0.13.1089** candidate; deployment and main merges remain on hold
+until restoration clears. Follow-up fixes bound streamed inventory output and keep the
 reconciliation ordering proof on the native command.
 
 The first [HTTP contract implementation](https://github.com/colophon-group/jobseek/tree/fix-crawler/native-http-contract-batch)
@@ -81,6 +96,17 @@ private PostgreSQL/Redis canonical, failure and publisher-policy checks pass.
 Current FIBA and Tesco captures do not establish positive inventory qualification;
 no ownership or group-count reduction is claimed. The remainder of #10789 and
 installed-image/current-content admission are still required.
+
+Current World Gymnastics replay now agrees on two headquarters and two excluded
+member-federation documents, including both complete job field maps. Native
+legacy empty selectors retain the original bounded full page instead of cutting
+the links after 500,000 characters. Two current detail bindings also have positive
+content evidence: correct Flex/Jetcool's Onlyfy reader to its actual Workday source
+(all six populated fields agree), and remove VUMC's obsolete stealth flag after
+original Chromium and native 1.0.1 agree on all four populated fields. Preserve
+VUMC's original lean policy by reusing the existing native DOM resource contract;
+original policy values stay in immutable bindings and unknown policies still fail.
+See [detail evidence](evidence/go-current-detail-bindings-2026-10-23.json).
 
 After each admission, preserve the entire enabled/owned floor, replay actual
 scheduled routes, decode every staged assignment, then use the original immutable

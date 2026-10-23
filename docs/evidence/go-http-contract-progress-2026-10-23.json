@@ -205,5 +205,22 @@
   "implementation_pr": 10797,
   "pr_base": "main",
   "prerequisite_pr": 10707,
-  "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52"
+  "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+  "delivery_candidate": {
+    "pr": 10797,
+    "version": "0.13.1089",
+    "components": [
+      10707,
+      10795
+    ],
+    "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+    "serving_renderer_unchanged": "1.0.1",
+    "renderer_1_0_2_transition_separate": [
+      10798,
+      10799
+    ],
+    "current_catalogue_preserved": 7901,
+    "required_final_head_CI": "pending",
+    "production_ownership_changed": false
+  }
 }
