@@ -532,7 +532,18 @@ Scheduling policy:
 
 For each accepted issue:
 
-1. Select the oldest eligible `company-request` issue, acquire a local SQLite
+1. Read every page of the open `company-request` backlog through the REST
+   issues endpoint in creation order. Do not use a fixed oldest-100 search
+   result: submitted PRs and manual claims can occupy that entire window and
+   strand later eligible requests. Ignore PR entries returned by the issues
+   endpoint. Check candidates in order, retaining retry/backoff and linked-PR
+   guards. Prune expired runner-owned claims only for candidates without a
+   linked PR, then re-read claims; manual and recent claims remain blocking.
+   Emit `codex_candidate_selection` with total/inspected counts, selected issue,
+   and counts for linked PRs, active claims, backoff and GitHub lookup failures.
+   An empty/blocked queue is idle; API failure or unverifiable eligibility with
+   no safe candidate fails the service visibly and retries on the next wake.
+   Select the oldest eligible issue, acquire a local SQLite
    lease, post a runner-owned `<!-- ws-claim -->` comment, then re-check claims
    and open PRs before launching Codex. If the runner loses the race, delete
    only its own claim and exit.

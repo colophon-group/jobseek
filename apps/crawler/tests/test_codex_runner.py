@@ -120,7 +120,9 @@ class FakeGitHub:
     def delete_claim(self, comment_id: int) -> None:
         self.deleted.append(comment_id)
 
-    def prune_stale_runner_claims(self, label: str, *, older_than_s: int) -> None:
+    def prune_stale_runner_claims(
+        self, label: str, *, older_than_s: int, issues: list[int] | None = None
+    ) -> None:
         self.pruned.append((label, older_than_s))
 
 
@@ -621,7 +623,7 @@ def test_two_governors_racing_same_ledger_only_one_claims(tmp_path: Path) -> Non
     assert second_admission is None
     assert len(first_gh.claimed) == 1
     assert second_gh.claimed == []
-    assert first_gh.pruned == [("company-request", config.lease_timeout_s)]
+    assert first_gh.pruned == []
 
 
 def test_lost_cross_host_claim_race_deletes_only_own_claim(tmp_path: Path) -> None:
@@ -835,10 +837,175 @@ def test_unknown_claim_state_fails_closed_before_posting_claim(tmp_path: Path) -
     github = FakeGitHub(issue=101, fail_claim_lookup=True)
     governor = CompanyResolverGovernor(config, github=github)
 
-    assert governor.admit_one() is None
+    with pytest.raises(GitHubStateError, match="eligibility"):
+        governor.admit_one()
 
     assert github.claimed == []
     assert github.deleted == []
+
+
+def test_complete_backlog_reaches_candidate_after_first_100(monkeypatch, tmp_path, capsys):
+    from src.workspace import git
+
+    pages = [[{"number": n} for n in range(1, 101)], [{"number": 101}]]
+    commands = []
+
+    def fake_run(cmd, **kwargs):
+        commands.append(cmd)
+        return SimpleNamespace(returncode=0, stdout=json.dumps(pages), stderr="")
+
+    monkeypatch.setattr(git, "_run", fake_run)
+    monkeypatch.setattr(git, "_resolve_repo", lambda: "owner/repo")
+    github = FakeGitHub()
+    github.list_open_issues = GitHubCoordinator().list_open_issues
+    github.check_existing_prs = lambda issue: (
+        [{"headRefName": "add-company/existing", "isDraft": False}] if 1 < issue <= 100 else []
+    )
+    github.list_claims = lambda issue: (
+        [ClaimComment(id=1, body="<!-- ws-claim -->\nmanual claim")] if issue == 1 else []
+    )
+    governor = CompanyResolverGovernor(_config(tmp_path), github=github)
+
+    admission = governor.admit_one()
+
+    assert admission is not None and admission.issue == 101
+    assert len(commands) == 1
+    assert commands[0][:4] == ["gh", "api", "--paginate", "--slurp"]
+    assert "GET" in commands[0]
+    assert "sort=created" in commands[0] and "direction=asc" in commands[0]
+    assert "labels=company-request" in commands[0]
+    selection = json.loads(capsys.readouterr().err)
+    assert selection == dict(
+        event="codex_candidate_selection",
+        candidates=101,
+        inspected=101,
+        selected_issue=101,
+        linked_pr=99,
+        active_claim=1,
+        backoff=0,
+        github_error=0,
+    )
+
+
+@pytest.mark.parametrize(
+    "pages,expected",
+    [
+        ([[]], []),
+        (
+            [[{"number": 1}, {"number": 2, "pull_request": {}}], [{"number": 1}, {"number": 3}]],
+            [1, 3],
+        ),
+    ],
+)
+def test_backlog_excludes_prs_and_deduplicates_page_overlap(monkeypatch, pages, expected):
+    from src.workspace import git
+
+    monkeypatch.setattr(git, "_resolve_repo", lambda: "owner/repo")
+    monkeypatch.setattr(
+        git,
+        "_run",
+        lambda *a, **k: SimpleNamespace(returncode=0, stdout=json.dumps(pages), stderr=""),
+    )
+    assert GitHubCoordinator().list_open_issues("company-request") == expected
+
+
+@pytest.mark.parametrize(
+    "stdout,returncode",
+    [
+        ("", 0),
+        ("[]", 0),
+        ('[{"number": 1}]', 0),
+        ('[[{"number": true}]]', 0),
+        ('[[{"number": 1}], {}]', 0),
+        ('[[{"number": 1}], [{"number": 2}]]', 1),
+    ],
+)
+def test_invalid_or_partial_backlog_is_not_empty_queue(monkeypatch, tmp_path, stdout, returncode):
+    from src.workspace import git
+
+    monkeypatch.setattr(git, "_resolve_repo", lambda: "owner/repo")
+    monkeypatch.setattr(
+        git,
+        "_run",
+        lambda *a, **k: SimpleNamespace(
+            returncode=returncode, stdout=stdout, stderr="private API diagnostic"
+        ),
+    )
+    github = FakeGitHub()
+    github.list_open_issues = GitHubCoordinator().list_open_issues
+    governor = CompanyResolverGovernor(_config(tmp_path), github=github)
+    monkeypatch.setattr(governor, "_retry_failed_trace_exports", lambda: None)
+    monkeypatch.setattr(governor, "should_start", lambda: SimpleNamespace(should_run=True))
+
+    result = governor.run_once()
+
+    assert result.state == "failed"
+    assert "issue" in result.error
+    assert "private API diagnostic" not in result.error
+    assert github.claimed == []
+
+
+def test_empty_backlog_is_explicit_idle(monkeypatch, tmp_path, capsys):
+    github = FakeGitHub(issue=None)
+    governor = CompanyResolverGovernor(_config(tmp_path), github=github)
+    monkeypatch.setattr(governor, "_retry_failed_trace_exports", lambda: None)
+    monkeypatch.setattr(governor, "should_start", lambda: SimpleNamespace(should_run=True))
+    result = governor.run_once()
+    assert result.state == "skipped"
+    assert result.error == "no open company requests"
+    assert json.loads(capsys.readouterr().err)["candidates"] == 0
+
+
+@pytest.mark.parametrize("manual_claim", [True, False])
+def test_stale_claim_cleanup_is_candidate_scoped(tmp_path, manual_claim):
+    github = FakeGitHub(issues=list(range(1, 103)))
+    stale = ClaimComment(
+        id=7,
+        body="<!-- ws-claim -->\nWorking\nrun: issue-101-old",
+        created_at="2020-01-01T00:00:00Z",
+    )
+    manual = ClaimComment(id=8, body="<!-- ws-claim -->\nmanual", created_at="2020-01-01T00:00:00Z")
+    recent = ClaimComment(
+        id=9,
+        body="<!-- ws-claim -->\nWorking\nrun: issue-102-new",
+        created_at="2099-01-01T00:00:00Z",
+    )
+    github.check_existing_prs = lambda issue: (
+        [{"headRefName": "add-company/existing", "isDraft": True}] if issue <= 100 else []
+    )
+    github.prune_stale_runner_claims = GitHubCoordinator.prune_stale_runner_claims.__get__(github)
+
+    def claims(issue):
+        if github.claimed:
+            return [ClaimComment(id=github.claimed[-1][2], body="<!-- ws-claim -->\nours")]
+        candidates = ([stale, manual] if manual_claim else [stale]) if issue == 101 else [recent]
+        return [c for c in candidates if c.id not in github.deleted]
+
+    github.list_claims = claims
+    governor = CompanyResolverGovernor(_config(tmp_path), github=github)
+
+    admission = governor.admit_one()
+    assert github.deleted == [7]
+    if manual_claim:
+        assert admission is None
+        assert github.claimed == []
+    else:
+        assert admission is not None and admission.issue == 101
+
+
+def test_unknown_candidate_does_not_block_independent_issue(tmp_path, capsys):
+    github = FakeGitHub(issues=[101, 102])
+
+    def lookup(issue):
+        if issue == 101:
+            raise GitHubStateError("lookup unavailable")
+        return []
+
+    github.check_existing_prs = lookup
+    governor = CompanyResolverGovernor(_config(tmp_path), github=github)
+    admission = governor.admit_one()
+    assert admission is not None and admission.issue == 102
+    assert json.loads(capsys.readouterr().err)["github_error"] == 1
 
 
 def test_github_claim_listing_flattens_paginated_comments(monkeypatch) -> None:
@@ -916,7 +1083,9 @@ def test_github_prunes_only_old_runner_owned_claims(monkeypatch) -> None:
     monkeypatch.setattr(git, "_resolve_repo", lambda: "owner/repo")
     monkeypatch.setattr(git, "_run", fake_run)
 
-    GitHubCoordinator().prune_stale_runner_claims("company-request", older_than_s=3600)
+    GitHubCoordinator().prune_stale_runner_claims(
+        "company-request", older_than_s=3600, issues=[101]
+    )
 
     assert deleted == [2]
 
