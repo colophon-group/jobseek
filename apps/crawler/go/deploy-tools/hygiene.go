@@ -35,6 +35,10 @@ func (output *hygieneOutput) Write(body []byte) (int, error) {
 	return output.Buffer.Write(body)
 }
 
+func (output *hygieneOutput) ReadFrom(reader io.Reader) (int64, error) {
+	return io.Copy(struct{ io.Writer }{output}, reader)
+}
+
 // Docker inspect includes environment variables and credentials. Keep its output
 // private and emit only the same reviewed inventory fields as the original audit.
 func runHygieneCommand(ctx context.Context, name string, args ...string) ([]byte, error) {

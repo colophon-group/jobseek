@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -138,5 +139,13 @@ func TestHygieneCommandFailureDoesNotPrintRawHostOutput(t *testing.T) {
 	body, err := runHygieneCommand(context.Background(), command)
 	if err == nil || body != nil || strings.Contains(err.Error(), "fixture-private-env") {
 		t.Fatal("raw host output entered diagnostic", err)
+	}
+}
+
+func TestHygieneInventoryCopyCannotBypassOutputLimit(t *testing.T) {
+	var output hygieneOutput
+	reader := struct{ io.Reader }{strings.NewReader(strings.Repeat("x", (32<<20)+1))}
+	if _, err := io.Copy(&output, reader); err == nil || output.Len() > 32<<20 {
+		t.Fatal("streamed inventory bypassed the output bound", output.Len(), err)
 	}
 }
