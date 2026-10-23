@@ -1,0 +1,30 @@
+{
+  "schema_version": "jobseek.native-reconciliation-state-candidate/v1",
+  "date": "2026-10-23",
+  "candidate_version": "0.13.1090",
+  "parent_batch_pr": 10797,
+  "operations_issue": 10793,
+  "status": "isolated follow-up candidate; no production state or installed helper changed",
+  "behavior": [
+    "Native deployment tools implement the existing reconciliation install/check CLI and the installed jobseek-reconciliation-state alias.",
+    "Both Linux artifacts, restricted SHA256 manifest, compiled source and installed alias identity are verified before touching timer/files.",
+    "State remains root-owned and deploy-group-readable (0750 directory, 0640 files), with temporary-file write, fsync, mode/ownership, atomic rename and directory fsync.",
+    "Install remains root-only; stored revision independently matches compiled source as well as optional expected revision/digest.",
+    "Reject symlink or oversized state and validate both supplied state values before the first publication.",
+    "Existing full file/timer rollback restores the previous helper, including older Python installations.",
+    "The original Python helper moves to isolated offline fixtures and is no longer uploaded/installed as the active host helper."
+  ],
+  "validation": {
+    "actual_original_native_command_parity_and_source_cases": 10,
+    "reconciliation_python_contract_regressions": 17,
+    "workflow_and_actual_command_tests": 102,
+    "native_deploy_tools": "full race, vet, tidy-diff and format checks",
+    "shell_and_workflow": "bash syntax, ShellCheck and actionlint"
+  },
+  "remaining": [
+    "Actual Linux root-install/deploy-reader private fixture qualification at final committed source.",
+    "Required exact-head CI and Crawler Deploy Gate after parent delivery and retargeting to main.",
+    "Protected workflow deployment, installed source/permissions readback and a real bounded reconciliation slice.",
+    "Remaining ATS/renderer host helpers, all unsupported monitor/detail assignments, sustained freshness and final reversal/retirement."
+  ]
+}

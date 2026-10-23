@@ -78,6 +78,7 @@ jobs:
           scripts/crawler-version.test.mjs
           scripts/crawler-runtime-contract.test.mjs
           scripts/crawler-host-hygiene.test.mjs
+          scripts/reconciliation-state.test.mjs
           scripts/docs-index.test.mjs
           scripts/seo-content-dates.test.mjs
           scripts/dealroom-company-requests.test.mjs
@@ -1769,12 +1770,17 @@ jobs:
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
-          go build -o "$RUNNER_TEMP/crawler-maintenance-tools" .
+          go build -ldflags "-X main.sourceRevision=$GITHUB_SHA" -o "$RUNNER_TEMP/crawler-maintenance-tools" .
 
       - name: Compare original and native host hygiene commands
         env:
           JOBSEEK_NATIVE_HYGIENE_BINARY: ${{ runner.temp }}/crawler-maintenance-tools
         run: node --test scripts/crawler-host-hygiene.test.mjs
+
+      - name: Compare original and native reconciliation state commands
+        env:
+          JOBSEEK_NATIVE_RECONCILIATION_BINARY: ${{ runner.temp }}/crawler-maintenance-tools
+        run: node --test scripts/reconciliation-state.test.mjs
 
       - name: Verify native ATS inventory and durable candidate queue
         working-directory: apps/crawler/go/ats-inventory

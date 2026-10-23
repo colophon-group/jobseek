@@ -23,5 +23,14 @@ through its deployment workflow and attest that contract, then use the
 supported crawler rollback. Keep the existing selector/c1 rollback procedure
 for crawler image changes.
 
-The root host installer/state verifier still uses Python. This change removes
-Python from the scheduled reconciliation process, not from every host utility.
+The host state verifier is the source-bound native deployment executable,
+installed as jobseek-reconciliation-state. The workflow builds both Linux
+architectures; the installer verifies their checksums and compiled source
+before changing the timer or installed files. Existing transactional rollback
+also restores the prior verifier, including historical Python installations.
+
+The native command preserves atomic, synced revision/digest files, root-only
+installation and deploy-group read access. It independently binds the stored
+revision to its compiled source, refuses symlink/oversized state and validates
+both supplied values before publication. The Python implementation remains only
+as an offline command-parity reference under apps/crawler/tests/fixtures/.

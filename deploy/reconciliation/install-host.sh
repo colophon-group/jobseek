@@ -11,6 +11,14 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_ROOT=/var/lib/jobseek-reconciliation
 DEPLOY_SHA="${JOBSEEK_RECONCILIATION_DEPLOY_SHA:-}"
 WRAPPER_SHA256="$(sha256sum "$REPO_ROOT/deploy/reconciliation/run.sh" | awk '{print $1}')"
+[[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "ERROR: reconciliation deployment SHA is required" >&2
+  exit 1
+}
+# shellcheck source=apps/crawler/scripts/native-deploy-tools.sh
+# shellcheck disable=SC1091
+source "$REPO_ROOT/apps/crawler/scripts/native-deploy-tools.sh"
+initialize_native_deploy_tools "$REPO_ROOT/apps/crawler/scripts" "$DEPLOY_SHA"
 FILES=(
   /usr/local/sbin/jobseek-reconciliation-state
   /usr/local/sbin/jobseek-crawler-reconciliation
@@ -75,8 +83,12 @@ cleanup() {
 trap cleanup EXIT
 
 install -o root -g root -m 0755 \
-  "$REPO_ROOT/deploy/reconciliation/state.py" \
+  "$NATIVE_DEPLOY_TOOLS" \
   /usr/local/sbin/jobseek-reconciliation-state
+[[ "$(env -i /usr/local/sbin/jobseek-reconciliation-state --build-info)" == "{\"source_revision\":\"$DEPLOY_SHA\"}" ]] || {
+  echo "ERROR: installed native reconciliation state source differs" >&2
+  exit 1
+}
 install -o root -g root -m 0755 \
   "$REPO_ROOT/deploy/reconciliation/run.sh" \
   /usr/local/sbin/jobseek-crawler-reconciliation

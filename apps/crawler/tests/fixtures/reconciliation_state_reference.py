@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install or verify the crawler reconciliation deployment contract."""
+"""Retained offline oracle for the native reconciliation state command."""
 
 from __future__ import annotations
 
