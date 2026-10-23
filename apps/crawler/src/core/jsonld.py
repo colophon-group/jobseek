@@ -297,6 +297,33 @@ def _extract_locations(
         if isinstance(address, str):
             address_text = _clean_text(address)
         elif isinstance(address, dict):
+            # iCIMS packs multiple US locations into one locality, with a
+            # region on the first line and country-region on later lines.
+            # Require the entire multiline value to match before splitting.
+            locality = address.get("addressLocality")
+            country = address.get("addressCountry")
+            if isinstance(country, dict):
+                country = country.get("name")
+            lines = re.split(r"\r?\n", locality.strip()) if isinstance(locality, str) else []
+            matches = [
+                re.fullmatch(r"([A-Z]{2})-(\S.*)", line.strip().removeprefix("US-"))
+                for line in lines
+            ]
+            if (
+                _clean_text(country) == "US"
+                and len(lines) > 1
+                and all(matches)
+                and (not name or name == organization_name)
+            ):
+                for match in matches:
+                    assert match is not None
+                    city = _clean_text(match[2])
+                    if city:
+                        location = f"{city}, {match[1]}, US"
+                        if location not in seen:
+                            seen.add(location)
+                            locations.append(location)
+                continue
             parts = []
             address_fields = ["addressLocality"]
             if not ignore_address_region:
@@ -426,6 +453,17 @@ def _extract_salary(posting: dict) -> dict | None:
     # future schema.org extensions).  Unrecognised tokens resolve to
     # ``None`` so the outer/inner fallback degrades cleanly.
     outer_unit = normalize_salary_unit(base_salary.get("unitText"))
+
+    # Some iCIMS templates put the range directly on MonetaryAmount instead
+    # of nesting it in value. Preserve the published bounds; a missing period
+    # remains unknown rather than guessing year versus hour from the amount.
+    if value is None and any(base_salary.get(key) is not None for key in ("minValue", "maxValue")):
+        return {
+            "currency": currency,
+            "min": base_salary.get("minValue"),
+            "max": base_salary.get("maxValue"),
+            "unit": outer_unit,
+        }
 
     if isinstance(value, dict):
         inner_unit = normalize_salary_unit(value.get("unitText"))
