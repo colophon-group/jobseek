@@ -30,7 +30,7 @@ func TestCapturedAPIPairPublicOriginalFields(t *testing.T) {
 	}
 	expected, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		expected, supported = "d4b66ac8484f49d7a49e05b6f9342716c747129527fcbe8ffe36679ffa18dd60", true
+		expected, supported = lightpandaPinnedDarwinArm64SHA256, true
 	} else if runtime.GOOS != "linux" {
 		supported = false
 	}
