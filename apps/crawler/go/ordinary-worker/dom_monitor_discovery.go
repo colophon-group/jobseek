@@ -343,6 +343,12 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 			return found, err
 		}
 	}
+	if c.ResponseFingerprintType != "" {
+		found, err = fingerprintDOMInventory(ctx, client, profile, config, found, c)
+		if err != nil {
+			return found, err
+		}
+	}
 	if c.ExcludeDetailSelector != "" {
 		found, err = verifyDOMInventoryClassified(ctx, client, profile, config, found, pauseRich, func(body string) (bool, error) { return dom.DetailSelectorKeeps(body, c, false) }, true)
 		if err != nil {

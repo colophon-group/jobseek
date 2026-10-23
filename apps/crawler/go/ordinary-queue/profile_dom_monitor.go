@@ -47,6 +47,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	keys = append(keys, dom.ListingProviderKeys...)
 	keys = append(keys, "my_job_shop")
 	keys = append(keys, "title_matched_url_scan", "require_pdf_text", "require_unexpired_pdf")
+	keys = append(keys, "fingerprint_response")
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
 			if (key == "url_filter" || key == "request_headers" || key == "retry_statuses") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
@@ -100,6 +101,12 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	listing, err := DOMMonitorOptions(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if listing.ResponseFingerprintType != "" {
+		var scraper string
+		if listing.ResponseFingerprintType != "application/pdf" || json.Unmarshal(md["scraper_type"], &scraper) != nil || scraper != "pdf" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
 	}
 	profile := "dom.direct-urls/v1"
 	if monitorWorkerProfile(config) == Browser {

@@ -1,0 +1,69 @@
+{
+  "schema_version": "jobseek.go-http-contract-progress/v1",
+  "date": "2026-10-23",
+  "issue": 10789,
+  "status": "partial implementation; not admitted or deployed",
+  "implementation_base": "0a74dfe73295083712ec2a30986190c2aa3c6b87",
+  "production_ownership_granted": false,
+  "remaining_count_reduced": false,
+  "implementation": [
+    "Native static DOM response fingerprint configuration remains bound to the complete original configuration and requires independently verifying PDF detail readers.",
+    "At most 100 discovered document URLs and four concurrent HEAD operations, with bounded same-origin redirects, original media/validator requirements, publisher policy and sibling cancellation.",
+    "Shared HEAD/GET fingerprint token generation preserves original Python identities and rejects GET header/body drift.",
+    "Full actual configured FIBA monitor compiles without dropping or changing its original controls."
+  ],
+  "validation": {
+    "original_python_fingerprint_oracle_cases": 12,
+    "worker_top_level_tests_passed": 7,
+    "worker_subtests_passed": 38,
+    "worker_fixture_skips": 0,
+    "actual_canonical_and_failure_outcomes": [
+      "complete: two canonical immutable sources and matching first-time detail queues",
+      "invalid validator: no canonical prefix, no disappearance and no detail queues",
+      "publisher reservation on an error response: canonical inventory preserved and reservation durably settled"
+    ],
+    "private_database": "PostgreSQL 18.6 with actual repository migrations; stopped after verification",
+    "private_queue": "real persistence-free Redis instances owned and cleaned by the test fixtures",
+    "native_PDF_decoder": "actual built go-pdf-text command used by retained detail regressions",
+    "platform": "darwin/arm64",
+    "go_version": "go1.27.1",
+    "additional_checks": [
+      "DOM/queue race suites and original configured-registry regression",
+      "DOM, queue and worker vet",
+      "native module tidy and formatting",
+      "original Python oracle generator Ruff"
+    ]
+  },
+  "current_original_source_checks": [
+    {
+      "board_slug": "international-basketball-federation-hq",
+      "observed_at_utc": "2026-10-23T14:27:24.666997+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        200
+      ],
+      "private_capture_sha256": "4bab498b05f1cf4a19c4ebe6fe29d0941abc5f031b61118639ab9e3871311809",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "tesco-careers-sk",
+      "observed_at_utc": "2026-10-23T14:27:25.664851+00:00",
+      "original_success": true,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        301,
+        403
+      ],
+      "private_capture_sha256": "6c39c3b8f971659fd95113473429594b657630063ea4ce1fc6afbfed09b8011c",
+      "qualified_for_admission": false
+    }
+  ],
+  "qualification_limits": [
+    "FIBA original response was HTTP200 but no discovered job links matched its original selector/empty-state contract; captured-response replay raises ValueError. No positive current inventory was claimed.",
+    "Tesco original API traversed HTTP301 then HTTP403 and returned an unverified empty result. That is not positive inventory evidence.",
+    "Linux installed-image execution, final combined-head CI, successful current content/lifecycle qualification of a shared batch and supported production admission remain pending.",
+    "The other HTTP group contracts, sustained freshness, operational consumers and final reversal/retirement remain open.",
+    "Preserve the separately authorized production recovery #10794 and its source-bound repair #10796; no overlapping production mutation was performed."
+  ]
+}

@@ -1,0 +1,138 @@
+[
+  {
+    "name": "complete",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "expected_url": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F&_jobseek_fp=e46dd94d111989a08ca2e4bb",
+    "error": false
+  },
+  {
+    "name": "identity-encoding",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7",
+      "content-encoding": "identity"
+    },
+    "expected_url": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F&_jobseek_fp=e46dd94d111989a08ca2e4bb",
+    "error": false
+  },
+  {
+    "name": "weak",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "W/\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "encoded",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7",
+      "content-encoding": "gzip"
+    },
+    "error": true
+  },
+  {
+    "name": "wrong-type",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "text/html"
+    },
+    "error": true
+  },
+  {
+    "name": "missing-etag",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "missing-date",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "naive-date",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu Oct 22 10:30:00 2026",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "zero",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "0",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "oversized",
+    "source": "https://careers.example.com/vacancy.pdf?lang=en&blank=&encoded=%2F#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "20971521",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "error": true
+  },
+  {
+    "name": "no-query",
+    "source": "https://careers.example.com/vacancy.pdf",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "expected_url": "https://careers.example.com/vacancy.pdf?_jobseek_fp=294e4751df21b9f3f190b5d6",
+    "error": false
+  },
+  {
+    "name": "empty-query",
+    "source": "https://careers.example.com/vacancy.pdf?#section",
+    "headers": {
+      "etag": "\"strong-opaque-validator-001\"",
+      "last-modified": "Thu, 22 Oct 2026 10:30:00 GMT",
+      "content-length": "1024",
+      "content-type": "application/pdf; version=1.7"
+    },
+    "expected_url": "https://careers.example.com/vacancy.pdf?_jobseek_fp=294e4751df21b9f3f190b5d6",
+    "error": false
+  }
+]

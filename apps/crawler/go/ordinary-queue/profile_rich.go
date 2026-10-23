@@ -240,6 +240,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["my_job_shop"] = true
 		allowed["title_matched_url_scan"] = true
 		allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
+		allowed["fingerprint_response"] = true
 		allowed["fetch_url_transform"] = true
 		for _, key := range dom.ListingProviderKeys {
 			allowed[key] = true

@@ -50,6 +50,9 @@ func pdfFingerprintSource(source string) (string, string, error) {
 	if len(fields) > 100 {
 		return "", "", errPDFBinary
 	}
+	if u.RawQuery == "" {
+		u.ForceQuery = false
+	}
 	return u.String(), token, nil
 }
 
@@ -66,34 +69,53 @@ func pdfSameOrigin(a, b *url.URL) bool {
 	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Hostname(), b.Hostname()) && port(a) == port(b)
 }
 
-func pdfVerifyFingerprint(source, token string, r *http.Response, body []byte) error {
+func responseFingerprintToken(source, expectedMedia string, r *http.Response, bodyLength *int64) (string, error) {
+	if len(r.Header.Values("Content-Encoding")) > 1 {
+		return "", errPDFBinary
+	}
+	for _, key := range []string{"Content-Type", "ETag", "Last-Modified", "Content-Length"} {
+		if len(r.Header.Values(key)) != 1 {
+			return "", errPDFBinary
+		}
+	}
 	encoding := strings.TrimSpace(r.Header.Get("Content-Encoding"))
 	if encoding != "" && !strings.EqualFold(encoding, "identity") {
-		return errPDFBinary
+		return "", errPDFBinary
 	}
 	media := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0]))
-	if media != "application/pdf" {
-		return errPDFBinary
+	if media != expectedMedia {
+		return "", errPDFBinary
 	}
 	etag := r.Header.Get("ETag")
 	if len(etag) < 10 || len(etag) > 512 || etag[0] != '"' || etag[len(etag)-1] != '"' || strings.Contains(etag[1:len(etag)-1], "\"") {
-		return errPDFBinary
+		return "", errPDFBinary
 	}
 	for _, c := range etag {
 		if c < 0x20 || c == 0x7f {
-			return errPDFBinary
+			return "", errPDFBinary
 		}
 	}
 	modified, err := http.ParseTime(r.Header.Get("Last-Modified"))
 	if err != nil {
-		return errPDFBinary
+		return "", errPDFBinary
+	}
+	if _, err := time.Parse(time.ANSIC, r.Header.Get("Last-Modified")); err == nil {
+		return "", errPDFBinary // Original parsedate_to_datetime requires a timezone.
 	}
 	length, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
-	if err != nil || length < 1 || length > 20<<20 || length != int64(len(body)) {
-		return errPDFBinary
+	if err != nil || length < 1 || length > 20<<20 || bodyLength != nil && length != *bodyLength {
+		return "", errPDFBinary
 	}
 	payload := strings.Join([]string{source, etag, modified.UTC().Format("2006-01-02T15:04:05+00:00"), strconv.FormatInt(length, 10), media}, "\n")
-	actual := fmt.Sprintf("%x", sha256.Sum256([]byte(payload)))[:24]
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(payload)))[:24], nil
+}
+
+func pdfVerifyFingerprint(source, token string, r *http.Response, body []byte) error {
+	length := int64(len(body))
+	actual, err := responseFingerprintToken(source, "application/pdf", r, &length)
+	if err != nil {
+		return err
+	}
 	if subtle.ConstantTimeCompare([]byte(actual), []byte(token)) != 1 {
 		return errPDFBinary
 	}
