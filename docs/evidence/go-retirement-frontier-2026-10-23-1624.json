@@ -1,0 +1,1618 @@
+{
+  "schema_version": "jobseek.go-retirement-frontier/v1",
+  "b0_boards_tracked_separately": [
+    "algorized-careers",
+    "browser-use-careers",
+    "bunq-careers"
+  ],
+  "operations_issue": {
+    "url": "https://github.com/colophon-group/jobseek/issues/10793",
+    "number": 10793
+  },
+  "parent_issue": 7935,
+  "final_retirement_issue": 7966,
+  "observed_at_utc": "2026-10-23T16:24:11.587743+00:00",
+  "source_revision": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+  "runtime_version": "0.13.1086",
+  "routing_epoch": 374,
+  "enabled_boards": 7901,
+  "ordinary_owned": {
+    "monitors": 7854,
+    "details": 7864
+  },
+  "remaining": {
+    "monitors": 44,
+    "details": 34
+  },
+  "groups": {
+    "browser-monitors": {
+      "counts": {
+        "monitors": 14
+      },
+      "assignments": [
+        {
+          "board_id": "c67e7750-24b9-4542-b0e9-57369e3623ca",
+          "board_slug": "agricultural-bank-of-china-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "019bbf750f0aba03f2e19755c17effd6e15b9ddd5724ed86db41923882e43143",
+          "control_keys": [
+            "actions",
+            "render",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "da5ed2c9-03ef-4f83-90c0-17439dde2393",
+          "board_slug": "banner-health-provider-opportunities",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "d526b9dedf4ce0d53eb1060ce4d892daecbf6e4c47d188f64e9b3b5b9e3b31e8",
+          "control_keys": [
+            "api_url",
+            "browser",
+            "json_path",
+            "method",
+            "scraper_type",
+            "settle",
+            "url_template",
+            "url_template_fields"
+          ]
+        },
+        {
+          "board_id": "27581867-2ac8-4177-ae69-6a6acacb1367",
+          "board_slug": "bnp-paribas-global",
+          "surface": "monitors",
+          "crawler_type": "rss",
+          "scraper_type": "skip",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "ce02f2e29e98afc704b6d5cc211337bd4a603476d41d2ac2a71ba64aa5fff0d8",
+          "control_keys": [
+            "channel",
+            "description_mode",
+            "feed_url",
+            "headless",
+            "pagination",
+            "persistent_context",
+            "preset",
+            "render",
+            "rescrape_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "298f34cc-d2e0-4275-aa0e-58f720ab3cf1",
+          "board_slug": "capgemini-sogeti-us",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "3fc504efe22d0fc44d4f3fd8ba91efd7d4991df95ba0f1075e156add1abb1d2f",
+          "control_keys": [
+            "oracle_adf_job_ids",
+            "render",
+            "scraper_type",
+            "timeout",
+            "url_allowlist",
+            "url_filter",
+            "url_transform",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "3d4a450d-0742-4f48-903c-453068abcb1c",
+          "board_slug": "fressnapf-maxizoo-ireland",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "d29f04f2316b7f16079ad84ce293d2dde19fc3071fd075bd9495302ce1cdd372",
+          "control_keys": [
+            "empty_states",
+            "link_selector",
+            "my_job_shop",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "e18ab72f-67d0-42d9-8839-6777a256e419",
+          "board_slug": "gpa-pandape",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "8a2d5b10302374630b0a8944781f3c5de7aadc60cba61972a4e4f497300ea468",
+          "control_keys": [
+            "actions",
+            "bot_protection",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "c9f6f251-9ab0-45ab-a2fe-df001a1801d6",
+          "board_slug": "hexagon-robotics-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "27fe42062fc008f5a7569c88857defd0a3c2b89f3637113da880db5081041124",
+          "control_keys": [
+            "actions",
+            "render",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "524dedf9-ce2d-410a-aa6b-359d0665190f",
+          "board_slug": "ihg-kimpton-americas",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "skip",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "80e8844e30f0d4b0d359bc73b9ced7c0921562687ec796cea20f537462d9b245",
+          "control_keys": [
+            "api_url",
+            "browser",
+            "fields",
+            "item_filter",
+            "json_path",
+            "method",
+            "pagination",
+            "pagination_convergence",
+            "params",
+            "request_headers",
+            "scraper_type",
+            "settle",
+            "url_template"
+          ]
+        },
+        {
+          "board_id": "8d91cf93-8fab-4f97-b5b6-9b555df4fa2e",
+          "board_slug": "lenovo-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "a194d27eb4b70544dee7c318084f16aa36a910ae6cdf43bacc2f0bce24ca54e7",
+          "control_keys": [
+            "pagination",
+            "render",
+            "scraper_type",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "18c33eb4-6c2c-4011-bbd5-9bfe92883c9b",
+          "board_slug": "ltimindtree-careers-india-europe",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "47340fe38d59beb4986c5573cb73c9ece07b73ea8b3ebb04c9dde1f391cebf26",
+          "control_keys": [
+            "actions",
+            "render",
+            "scraper_type",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "dae62661-ee72-476f-b3cd-bcd3b4b82a7c",
+          "board_slug": "ltimindtree-careers-us-canada",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "dc576a828783394a7a1b9ebb839f5e2fe037c61eb9dd3334c22b6507803617f8",
+          "control_keys": [
+            "actions",
+            "render",
+            "scraper_type",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "b46e794b-4a7a-4373-909f-c8f2d43399e0",
+          "board_slug": "ntt-data-emeal",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "f2a1e4f80fcde270a049b1dcabdf30a1e2b607c8f44388adcaf925d4a02d07be",
+          "control_keys": [
+            "api_url",
+            "browser",
+            "fields",
+            "json_path",
+            "method",
+            "params",
+            "scraper_type",
+            "url_template"
+          ]
+        },
+        {
+          "board_id": "22465ad4-98bc-49bf-be39-982c650b1ca0",
+          "board_slug": "rothschild-and-co-students-tal-stable",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "ea3ec2bf52ce60d638e06e7acbbcf76ab3e68c7fe9a0d9f51349e47c07d3e7d3",
+          "control_keys": [
+            "pagination",
+            "render",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "87d41c75-6bcc-4792-9c1c-61f8c38224b1",
+          "board_slug": "syneos-health-all-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "dcec6b8f3a17da3db2cbefef01bef645158186faa9e98d66c9bd987a4fa59bfd",
+          "control_keys": [
+            "pagination",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter"
+          ]
+        }
+      ],
+      "issue": {
+        "number": 10790,
+        "url": "https://github.com/colophon-group/jobseek/issues/10790"
+      }
+    },
+    "http-contracts": {
+      "counts": {
+        "monitors": 10,
+        "details": 1
+      },
+      "assignments": [
+        {
+          "board_id": "cd12ee29-c75f-4513-881e-666583d72bff",
+          "board_slug": "association-for-prevention-torture-vacancies",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "3428fa121e7b24f7773ff7b0e8a20d84f7ab08901c24e543fd1a991a55a0a90b",
+          "control_keys": [
+            "exclude_detail_selector",
+            "link_selector",
+            "scraper_type"
+          ]
+        },
+        {
+          "board_id": "592d092d-3b23-4f71-8d9d-245591ad24dd",
+          "board_slug": "black-ore-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "ebc2cff58b03968d0757039ad655d50d0352f8013cbd4ab75b90e0afbcbb4394",
+          "control_keys": [
+            "job_link_pattern",
+            "scraper_type",
+            "url"
+          ]
+        },
+        {
+          "board_id": "fecd5e4b-07ba-47ba-95c9-663f85e8b7b9",
+          "board_slug": "flex-ltd-jetcool",
+          "surface": "details",
+          "crawler_type": "workday",
+          "scraper_type": "onlyfy",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "2075994c755f2fc807768900133db7e0ead52909d4ca1f08b453ef6a15317e22",
+          "control_keys": [
+            "language"
+          ]
+        },
+        {
+          "board_id": "c19dae2c-4cfd-4eda-a721-3fd1a096b51b",
+          "board_slug": "implenia-global",
+          "surface": "monitors",
+          "crawler_type": "rss",
+          "scraper_type": "skip",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "47193ca59cd35cf2291562c9d8454aa86b14b2352b0dd8d9d46a76f232a2682c",
+          "control_keys": [
+            "feed_url",
+            "job_filter",
+            "preset",
+            "resolve_job_invite_identity",
+            "scraper_type",
+            "url_allowlist",
+            "url_transform",
+            "variant"
+          ]
+        },
+        {
+          "board_id": "3d15ddd0-d978-4216-9a20-6450dbb99dba",
+          "board_slug": "international-basketball-federation-hq",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "pdf",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "0931ebebd27600ed8489b10909ea7f9e5297ca1b9089f6d45ca9e076e355f540",
+          "control_keys": [
+            "empty_selector",
+            "empty_text",
+            "fingerprint_response",
+            "link_selector",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "221a47ad-bb69-4c1e-a756-19e6e15b4583",
+          "board_slug": "international-gymnastics-federation-jobs",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "pdf",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "a69b6af42c31b15388b734728397ccf7f894f4943ec5bfaa1268c582c7ae575d",
+          "control_keys": [
+            "empty_selector",
+            "empty_text",
+            "link_selector",
+            "render",
+            "require_pdf_text",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "f6f9172e-ec46-43fd-b024-7b03ceccad53",
+          "board_slug": "persistent-systems-careers",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "skip",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "cb2e8228406ffbdecae3cf0c84683559bad982dddaf4e9513be2a379529c959d",
+          "control_keys": [
+            "api_url",
+            "fields",
+            "json_path",
+            "method",
+            "pagination",
+            "params",
+            "render",
+            "request_headers",
+            "scraper_type",
+            "total_path",
+            "url_template"
+          ]
+        },
+        {
+          "board_id": "b8b41b46-edd4-4748-ba5f-d2fb1455d71f",
+          "board_slug": "safran-global",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "ee67763d875a0be7b91af58c2bad9d531e51abfd46daa2945ad241b503885c2b",
+          "control_keys": [
+            "pagination",
+            "render",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "11d246b8-0c71-4d5b-8c76-b0b3b8055c5e",
+          "board_slug": "swiss-confederation-australia",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "pdf",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "9e5cf914148e29b0570b2b456762afe1b5e97a51320b6fce3b5482995e3ec79c",
+          "control_keys": [
+            "link_selector",
+            "render",
+            "request_headers",
+            "require_unexpired_pdf",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "2911621d-0c67-43d0-8741-1c4a70b77f4f",
+          "board_slug": "swiss-confederation-united-states",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "pdf",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "69e7ed532f5dc5fc7b84df6beea5f51abc74b3fd31cb2166715d399cdf8b3bcd",
+          "control_keys": [
+            "link_selector",
+            "render",
+            "request_headers",
+            "require_unexpired_pdf",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "59feed77-c06f-496a-acea-544c0478078c",
+          "board_slug": "tesco-careers-sk",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "skip",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "8ada869b6449f51440f715a71c8cbb86663ab8f0e76544c7acb2411216c55457",
+          "control_keys": [
+            "api_url",
+            "fields",
+            "render",
+            "scraper_type"
+          ]
+        }
+      ],
+      "issue": {
+        "number": 10789,
+        "url": "https://github.com/colophon-group/jobseek/issues/10789"
+      }
+    },
+    "proxy-sessions": {
+      "counts": {
+        "monitors": 16,
+        "details": 24
+      },
+      "assignments": [
+        {
+          "board_id": "543daa54-f6b0-4aee-90b5-21a4d67ecb6d",
+          "board_slug": "alten-belgium",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "e1d7cbd2a1df86721f813e10219d478452964a1267b6f3bc7095ec13d265d593",
+          "control_keys": [
+            "pagination",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "transport_attempts",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "543daa54-f6b0-4aee-90b5-21a4d67ecb6d",
+          "board_slug": "alten-belgium",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "923622f79746b2e4a0418681a95033ef0712ec9f7dc5dffc14420d5add234708",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "scope",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "1c3b87a5-d1ef-44fc-8ee7-53122de70ebf",
+          "board_slug": "alten-finland",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "e4a4d55943b1cd104841ab22acbb920bea169d36f878c6e1db6d422ae34c468f",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "9f7114d0-d7e8-48b4-b900-9be4ea6d1b71",
+          "board_slug": "alten-italy",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "4943f7fe3b2a222b8bc3661aae560571a2e176d6f2267758ab1f8fbcba52ead4",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "def83cfc-cb68-4c6f-8ec2-202585dae045",
+          "board_slug": "alten-netherlands",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "b2ff4019712951ad4c52e7c4bd1407b0cf4bde21ab5aec2ddc1808059a038a8c",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "17019c22-b58c-475f-9ffa-2324bb119069",
+          "board_slug": "alten-portugal",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "d8394c3177b3267f3726a2fcf60ade4e840e8602a8d05078c869c02045ce152e",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "1b408365-9002-4bf9-937f-ac64bb6de74f",
+          "board_slug": "alten-spain",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "80c47bcc62f07925f744c38118ff82870b8cf20aaa2a85da6120777e180d2384",
+          "control_keys": [
+            "actions",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scope",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "79c7ebdb-836a-4830-8147-e82628ac931e",
+          "board_slug": "alten-switzerland",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "e773490963bc5c984758de0ac0d93c2e6e2981654906716d0c0922cf9ad2423d",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "da2ae930-6b30-44e6-915f-972d9f0a7825",
+          "board_slug": "bae-systems-malloy-aeronautics",
+          "surface": "monitors",
+          "crawler_type": "inline",
+          "scraper_type": "skip",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "f4bb465b80dcd2963a4b33d1e74162acc2b5bcc5bb66d2e9e0f946847c826c6f",
+          "control_keys": [
+            "defaults",
+            "preserve_single_location",
+            "proxy",
+            "render",
+            "scraper_type",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "8988cc98-7dba-4e9f-aa4c-96e92d5c0ae2",
+          "board_slug": "beth-israel-lahey-health-exeter",
+          "surface": "monitors",
+          "crawler_type": "rss",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "59664515f0ff596287043b3639582c4b2fc247f964c0d90f861871216c581364",
+          "control_keys": [
+            "channel",
+            "feed_url",
+            "headless",
+            "persistent_context",
+            "preset",
+            "proxy",
+            "render",
+            "scraper_type",
+            "stealth",
+            "transport_attempts",
+            "warmup_url"
+          ]
+        },
+        {
+          "board_id": "370ad33c-012c-4805-a1a0-b71e769e9c5d",
+          "board_slug": "biorce-main",
+          "surface": "details",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "59d1e8fce5db504a49c72d79fdbd63dc8e79c086ca03da25fbd9b78392082a84",
+          "control_keys": [
+            "channel",
+            "fields",
+            "headless",
+            "proxy",
+            "stealth",
+            "transport_attempts"
+          ]
+        },
+        {
+          "board_id": "16ec4a29-b8ac-43bd-97ce-959416ac2639",
+          "board_slug": "bridgestone-careers-australia",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "6a444504f13a7fe2952744f3df7f3c47cc6ede44569b89422276793ee2c23ec6",
+          "control_keys": [
+            "proxy",
+            "render",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "9e8cec63-b6e7-4228-97f6-7bfc49aaeb5d",
+          "board_slug": "bright-horizons-only-about-children-australia",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "e88932b9f83699a351187c42f366793e8c0ef7ede81452d03e2695f5a1fd808e",
+          "control_keys": [
+            "proxy",
+            "render",
+            "resource_policy",
+            "steps",
+            "timeout",
+            "wait",
+            "warmup_url"
+          ]
+        },
+        {
+          "board_id": "bef534f4-7a2e-49d1-a846-91f99e9a6dbd",
+          "board_slug": "bureau-veritas-taiwan",
+          "surface": "details",
+          "crawler_type": "jobbank104",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "aef36b017a974b3d056e3fce6ff72576acacf949da56f3ecf1b02f31645b3318",
+          "control_keys": [
+            "actions",
+            "proxy",
+            "render",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "5f133eed-e9a5-469c-acd0-939aa11ee20a",
+          "board_slug": "bureau-veritas-taiwan-cps",
+          "surface": "details",
+          "crawler_type": "jobbank104",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "80c05be64db5bea717a3df4aeb5aa10b9347381150145cc082124b678f765319",
+          "control_keys": [
+            "actions",
+            "proxy",
+            "render",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "5ad87890-7cf8-41cd-86e6-e13cce475ca2",
+          "board_slug": "centre-for-humanitarian-dialogue-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "7bae19a4e1cdb92bf6f530b043855c4660606250479f1dd5e31ec46f7de94e6f",
+          "control_keys": [
+            "proxy",
+            "render",
+            "scraper_type",
+            "timeout",
+            "transport_attempts",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "5ad87890-7cf8-41cd-86e6-e13cce475ca2",
+          "board_slug": "centre-for-humanitarian-dialogue-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "0e9c63e764801bbefbec4ca1ff2f1269c1937d20afc8fcc37c3dfd69dbf7d525",
+          "control_keys": [
+            "proxy",
+            "render",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "39377cb9-9cc1-41db-9796-418a303a68c1",
+          "board_slug": "cgi-global-njoyn",
+          "surface": "monitors",
+          "crawler_type": "njoyn",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "7e6921557a934d8926e2d1762993b65f3c1b6cf21c20f98c11368cc490a33a45",
+          "control_keys": [
+            "channel",
+            "delist_threshold",
+            "direct_fallback_on_origin_block",
+            "headless",
+            "max_pages",
+            "page_wait_ms",
+            "persistent_context",
+            "proxy",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "39377cb9-9cc1-41db-9796-418a303a68c1",
+          "board_slug": "cgi-global-njoyn",
+          "surface": "details",
+          "crawler_type": "njoyn",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "0e3a1783563dce74acb86e4883dcf1310b08ed6f803fc9bbcd3dffe911b3d97f",
+          "control_keys": [
+            "channel",
+            "direct_fallback_on_origin_block",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "stealth",
+            "timeout",
+            "transport_attempts",
+            "wait",
+            "warmup_url"
+          ]
+        },
+        {
+          "board_id": "1e85a27a-9b38-4bf0-a8ee-4c2df81ec126",
+          "board_slug": "citadel-securities-global",
+          "surface": "details",
+          "crawler_type": "sitemap",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "9988c3380a2688fc29a699203db6ce085d4aafa411257489fabe1b98f0ae6da2",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "63e0ca46-cf5a-4f52-96aa-c1035004a5f8",
+          "board_slug": "deloitte-careers-us",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "6be7d48b2f6bad3e44795c72625a2122528679e2056aedddca3a7b420fa7442b",
+          "control_keys": [
+            "pagination",
+            "proxy",
+            "render",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "36e10c03-bf76-4443-8b8a-26630c43ef82",
+          "board_slug": "edmond-de-rothschild-internships",
+          "surface": "details",
+          "crawler_type": "sitemap",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "266bf45e9fd3abf1c19792f5dd3f1168708de9d083a7a27ce0eb55978abdf4ec",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "46b3c109-05ce-4082-816f-2e10d2f8d7eb",
+          "board_slug": "emirates-group-dnata-au",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "8f8134952ca509a68c5bcc3f83dbae66e6e68e2e753aa977a5104b8b9f74a75e",
+          "control_keys": [
+            "channel",
+            "headless",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "transport_attempts",
+            "url_filter",
+            "url_transform",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "72965c9f-f1ce-422d-8529-0a3cd6125392",
+          "board_slug": "emirates-group-dnata-catering-au",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "df24930418d513aa10bbc1b317db98d6ffcdd353d335e5613ca4f485bfda7b5d",
+          "control_keys": [
+            "channel",
+            "headless",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "transport_attempts",
+            "url_filter",
+            "url_transform",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "947aff7c-c680-40fe-a0aa-26c23425514c",
+          "board_slug": "glasswall-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "9120eb8ea74ac89ac480d8b3863d1c5b5af622ce2e8d4aa1e676e61b4775ceb7",
+          "control_keys": [
+            "proxy",
+            "render",
+            "stealth",
+            "steps",
+            "timeout",
+            "transport_attempts",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "0cc2f804-6bb4-4bc3-820b-6112e1e05256",
+          "board_slug": "indeed-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "c5a3f37b0853b7af08ea4fcce8579c6f50252a230c4d1f31f2b041b4f9e843c5",
+          "control_keys": [
+            "actions",
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "scraper_type",
+            "stealth",
+            "timeout",
+            "url_filter",
+            "url_transform",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "0cc2f804-6bb4-4bc3-820b-6112e1e05256",
+          "board_slug": "indeed-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "bafc84726ea4be3f9214ec5ab7ef8c7d1f75d76a57713cb6b695833c68235980",
+          "control_keys": [
+            "actions",
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "stealth",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "61b8e23c-7545-4137-81b5-58d42f0d92ac",
+          "board_slug": "liebherr-hotel-loewen",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "c67afcc5bf0cecec13db7af4dbc0f4a91fdf6ffc0040d3103f91a771b0a26aa7",
+          "control_keys": [
+            "hotelcareer_profile",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "url_filter"
+          ]
+        },
+        {
+          "board_id": "61b8e23c-7545-4137-81b5-58d42f0d92ac",
+          "board_slug": "liebherr-hotel-loewen",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "bea292c5932824ff34598f28c8d49a747c99c3fa6dec6b9c7646e8ecb1454358",
+          "control_keys": [
+            "proxy",
+            "render"
+          ]
+        },
+        {
+          "board_id": "5cc87a08-887b-4849-8193-5bd79a240e7d",
+          "board_slug": "mcdonalds-canada-restaurants",
+          "surface": "details",
+          "crawler_type": "phenom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "ce96e604855a37b80881dfc9281144702595eb1309c8bbb905a1bd98cc4203f7",
+          "control_keys": [
+            "channel",
+            "persistent_context",
+            "proxy",
+            "render"
+          ]
+        },
+        {
+          "board_id": "1022e46d-75b6-45e3-b077-5e115c63556c",
+          "board_slug": "mcdonalds-it",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "022783bf950bbc7af6bf23c907796ec5850f3df3ddf84f9d47f65c0ec040c8aa",
+          "control_keys": [
+            "api_url",
+            "browser",
+            "channel",
+            "fields",
+            "headless",
+            "method",
+            "persistent_context",
+            "proxy",
+            "scraper_type",
+            "settle",
+            "timeout",
+            "url_field",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "1022e46d-75b6-45e3-b077-5e115c63556c",
+          "board_slug": "mcdonalds-it",
+          "surface": "details",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "8e5c1a6235d10724ec8b5b08b6b072604761261ef73897dc339173d5f1c6abb0",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "9632b87d-370b-4171-9e56-1c3ad0ff5a4d",
+          "board_slug": "mcdonalds-tw",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "205ab0f214a025c9db8722ce0118d52fcb4d1f8d3461e6b10ef61ebdd565fea3",
+          "control_keys": [
+            "actions",
+            "proxy",
+            "render",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "9632b87d-370b-4171-9e56-1c3ad0ff5a4d",
+          "board_slug": "mcdonalds-tw",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "4894b361f31ba5a961509bd8c790bb2206f2f8b4f4a9247a85699d62eaeaff85",
+          "control_keys": [
+            "proxy",
+            "render",
+            "steps"
+          ]
+        },
+        {
+          "board_id": "709cc837-3627-4ac1-8eef-c8b17f044913",
+          "board_slug": "metalysis-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "48e54ae72400dcfd2941667a31916ed289aac11bffd3517966b77791068e4465",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "rescrape_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "709cc837-3627-4ac1-8eef-c8b17f044913",
+          "board_slug": "metalysis-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "29559ef327c3e2e96db08ece15eb4b4df0112b063f873afa3cfd5a5b55f54d14",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "5301ce53-368e-49df-9215-439ac9eeb132",
+          "board_slug": "nationwide-careers",
+          "surface": "details",
+          "crawler_type": "phenom",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "52560d0031b5608113bb66ad7f760489ec718828d98309726ef060fce6578007",
+          "control_keys": [
+            "channel",
+            "persistent_context",
+            "proxy",
+            "render"
+          ]
+        },
+        {
+          "board_id": "aabb7b22-7034-4b7e-b39f-c112793c783c",
+          "board_slug": "skechers-israel-corporate",
+          "surface": "monitors",
+          "crawler_type": "inline",
+          "scraper_type": "skip",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "db5c63c554d1f7f33299a6f9e23f269e7af1c43ab074add8adba7381ce090e37",
+          "control_keys": [
+            "defaults",
+            "proxy",
+            "render",
+            "require_zero_proof",
+            "scraper_type",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "f0200587-3f92-4dab-9742-64e17806c484",
+          "board_slug": "tesla-careers",
+          "surface": "monitors",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "fa5d40d851246c8a07c9f803c7f1220e3953deb7bc5d6ddd670f6edfa6fdc52a",
+          "control_keys": [
+            "api_url",
+            "api_url_match",
+            "browser",
+            "channel",
+            "fields",
+            "headless",
+            "json_path",
+            "method",
+            "persistent_context",
+            "proxy",
+            "rescrape_policy",
+            "scraper_type",
+            "settle",
+            "timeout",
+            "url_template",
+            "wait",
+            "warmup_url"
+          ]
+        },
+        {
+          "board_id": "f0200587-3f92-4dab-9742-64e17806c484",
+          "board_slug": "tesla-careers",
+          "surface": "details",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "341ffcc6a85dd422fd60520d2227662f22c913784fb68dd19d9bb34b6d3fafe8",
+          "control_keys": [
+            "browser",
+            "channel",
+            "enrich",
+            "fields",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "settle",
+            "timeout",
+            "wait",
+            "warmup_url"
+          ]
+        }
+      ],
+      "issue": {
+        "number": 10792,
+        "url": "https://github.com/colophon-group/jobseek/issues/10792"
+      }
+    },
+    "rendered-details": {
+      "counts": {
+        "details": 6
+      },
+      "assignments": [
+        {
+          "board_id": "37546112-0fdd-4e4e-a1d0-f57cb9580d44",
+          "board_slug": "alten-sweden",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "2a733cb34d150a4c31bb5a38fd67e82f24f31bc2726a0b8794b4f599eb9b7dea",
+          "control_keys": [
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "46575c77-91f8-4bdc-9bbf-df06ba5b28c1",
+          "board_slug": "firehawk-aerospace-appone",
+          "surface": "details",
+          "crawler_type": "api_sniffer",
+          "scraper_type": "api_sniffer",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "6ea301055e87ecd2352ef69aeb4e09faabcb231f0657b401e3733df789e6ffcc",
+          "control_keys": [
+            "enrich",
+            "fields"
+          ]
+        },
+        {
+          "board_id": "e646d83b-fe0c-4c65-b346-1177aa1fdd25",
+          "board_slug": "sophia-genetics-careers",
+          "surface": "details",
+          "crawler_type": "sitemap",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "d61aef3e036189b2ea58fc1dc57b01eadea1006e372c99d31c60e13111f3e2c1",
+          "control_keys": [
+            "render",
+            "scope",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "a502ca70-aa02-4b5d-afa5-0ba46e2d96b4",
+          "board_slug": "unhcr-thailand",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "f97b4a622b9692dd74891321ec715bdba2118649fa0c88cff0bcd5a035528512",
+          "control_keys": [
+            "render",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "d71e5290-cd5d-465f-b49d-4fbb7150f6cc",
+          "board_slug": "vumc-physician-careers",
+          "surface": "details",
+          "crawler_type": "nextdata",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "e31cd1b34c0e329d8bf4293a363bd301f1ba1c0e057c7da8e3c64681fcc7f72f",
+          "control_keys": [
+            "render",
+            "resource_policy",
+            "stealth",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "239a5f53-adde-4e6a-a114-1fdcaaec5741",
+          "board_slug": "zenline-ai-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "6a75638899d46e05fe5b5476dddf346499e3709e0431a82e97eb50cf578197ee",
+          "control_keys": [
+            "actions",
+            "render",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        }
+      ],
+      "issue": {
+        "number": 10791,
+        "url": "https://github.com/colophon-group/jobseek/issues/10791"
+      }
+    },
+    "staged-1085": {
+      "counts": {
+        "monitors": 4,
+        "details": 3
+      },
+      "assignments": [
+        {
+          "board_id": "9e8cec63-b6e7-4228-97f6-7bfc49aaeb5d",
+          "board_slug": "bright-horizons-only-about-children-australia",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "15cc1532323a13c4cf5a02d0a39bc0b5e18a038be3eeefa4476569d6b0e3fb67",
+          "control_keys": [
+            "actions",
+            "link_selector",
+            "proxy",
+            "render",
+            "resource_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "f2cb593c-18f8-4393-8228-eb3e6e896532",
+          "board_slug": "groove-quantum-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "b165f8803aa43e9d23603537a22723d8e13f1e5a5638b130898379d257037971",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "rescrape_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "f2cb593c-18f8-4393-8228-eb3e6e896532",
+          "board_slug": "groove-quantum-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "6987adea3a14983c1646d4cc789332295dda35df4801b2fe6a7e03c09f1325a4",
+          "control_keys": [
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "c4566afc-5b93-411f-b572-b99ebda3060d",
+          "board_slug": "orange-quantum-systems-careers",
+          "surface": "monitors",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "89c80802cd45a0f44ef0d2405573dd5daff22262a886453e52becbe955b01c87",
+          "control_keys": [
+            "actions",
+            "channel",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "rescrape_policy",
+            "scraper_type",
+            "timeout",
+            "url_filter",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "c4566afc-5b93-411f-b572-b99ebda3060d",
+          "board_slug": "orange-quantum-systems-careers",
+          "surface": "details",
+          "crawler_type": "dom",
+          "scraper_type": "dom",
+          "browser_required": true,
+          "proxy_configured": true,
+          "config_fingerprint_sha256": "2f8e7adaa69496b89fcec1e69c6e9987047824e572da5c598b4c65a79cc4389e",
+          "control_keys": [
+            "actions",
+            "channel",
+            "defaults",
+            "headless",
+            "persistent_context",
+            "proxy",
+            "render",
+            "steps",
+            "timeout",
+            "wait"
+          ]
+        },
+        {
+          "board_id": "41c935e5-b11e-4dca-9e63-60015f2dbee6",
+          "board_slug": "mandarin-oriental-global",
+          "surface": "monitors",
+          "crawler_type": "sitemap",
+          "scraper_type": "json-ld",
+          "browser_required": false,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "4614484ef118e25865e60a2de347a11cc1a28ac43a3e75e771efd7a03e506d47",
+          "control_keys": [
+            "_confirmed_drop_candidate",
+            "_monitor_config_fingerprint",
+            "recent_discovered_counts",
+            "scraper_config",
+            "scraper_type",
+            "sitemap_url",
+            "suspect_streak",
+            "url_filter"
+          ],
+          "qualification": "new-catalogue-entry; candidate compile and positive content qualification required"
+        },
+        {
+          "board_id": "41c935e5-b11e-4dca-9e63-60015f2dbee6",
+          "board_slug": "mandarin-oriental-global",
+          "surface": "details",
+          "crawler_type": "sitemap",
+          "scraper_type": "json-ld",
+          "browser_required": true,
+          "proxy_configured": false,
+          "config_fingerprint_sha256": "82e95f8f4759425b482243dbe55197139494f4dfc7c9daad1aa9ddb52e36e687",
+          "control_keys": [
+            "render"
+          ],
+          "qualification": "new-catalogue-entry; candidate compile and positive content qualification required"
+        }
+      ],
+      "issue": {
+        "number": 10788,
+        "url": "https://github.com/colophon-group/jobseek/issues/10788"
+      }
+    }
+  },
+  "SQL_Redis_exact_match": true,
+  "retained_membership_exact_match": true,
+  "plan_sha256": "d7501f8ac13a5d43e59bbb6dd133626d5ccf99ed8f005df9526bed2d0f5da969",
+  "projection_sha1": "5e76de9c3dfccdf746922c6aaef2e15b339dab1d",
+  "limits": [
+    "Timestamped read-only authority census; no new production ownership or admission claimed.",
+    "Prior assignment fingerprints retained from 13:42 census; new Mandarin binding fingerprint computed from 16:24 snapshot.",
+    "All positive content, scheduled route and whole cohort deployment checks remain required.",
+    "Mandarin native monitor currently matches all 783 original URLs; its rendered native detail returned HTTP202 while Chromium returned complete HTTP200 content. Neither has been admitted."
+  ]
+}

@@ -7,43 +7,45 @@ is active; [epic #7935](https://github.com/colophon-group/jobseek/issues/7935) i
 the current checklist and [#7966](https://github.com/colophon-group/jobseek/issues/7966)
 is reopened for final retirement. Preserve useful isolated offline Python.
 
-The last verified serving census, before the separate October 23 recovery
-containment, selected **0.13.1084**,
-source `1741d2319db7c3eaa55dc266517fc701e5888ced`, epoch **372**. Ordinary
-ownership is **7,854 monitors / 7,864 details** across **7,900 enabled boards**.
-This is a historical baseline while [#10794](https://github.com/colophon-group/jobseek/issues/10794)
-and [#10796](https://github.com/colophon-group/jobseek/pull/10796) restore the exact
-cohort. Overlapping production mutations and main/VERSION merges remain on hold
-until that recovery explicitly clears. Re-read installed identities, enabled
-boards and cohort receipts after restoration before updating serving counts.
+Recovery [#10794](https://github.com/colophon-group/jobseek/issues/10794) and
+[#10796](https://github.com/colophon-group/jobseek/pull/10796) restored the complete
+cohort and explicitly cleared the hold. Independent readback at **2026-10-23
+16:24:11 UTC** verifies **0.13.1086**, source
+6e1d0ebb3f2294b95e94e26854d5d4fefd282d52, epoch **374**, **7,854 monitors /
+7,864 details** across **7,901 enabled boards**. SQL ownership and the
+original-derived Redis projection match exactly; retained membership is exact.
+No open crawler deployment hold applies at this observation. Recheck state before
+any merge or production change.
 The retained checkpoint uses self-hosted Lightpanda 1.0.1. Stable **1.0.2** was
 released on October 23 and is independently source-qualified in
 [#10798](https://github.com/colophon-group/jobseek/issues/10798) /
 [draft #10799](https://github.com/colophon-group/jobseek/pull/10799).
 Four original visibility cases pass with official 1.0.1 but fail with 1.0.2 on
-macOS; supported Linux physical qualification remains required. Keep the renderer
+macOS and both physical Linux architectures. The original 1.0.1 reference passes all 21 cases. Keep the renderer
 transition separate and unpromoted until compatibility is established.
 
-A fresh read-only SQL census at **2026-10-23 13:42:53 UTC** compared every enabled
-board with the retained active cohort. **43 monitor / 33 detail assignments**
-remain outside ordinary ownership. Three B0 boards (Browser Use, bunq, Algorized)
-remain separately tracked; their monitors and details must survive final lifecycle
-reconciliation. This non-atomic census does not prove current content parity,
-whole scheduled-route coverage or sustained queue conservation.
+The current [sanitized exact inventory](evidence/go-retirement-frontier-2026-10-23-1624.json)
+records **44 monitor / 34 detail assignments** outside ordinary ownership.
+The earlier [13:42 inventory](evidence/go-retirement-frontier-2026-10-23.json)
+recorded 43 / 33 across 7,900 enabled boards and is historical. Newly enabled
+Mandarin Oriental adds one sitemap monitor and one rendered JSON-LD detail;
+new catalogue entries do not acquire native ownership automatically.
+Three B0 boards (Browser Use, bunq, Algorized) remain separately tracked for
+final lifecycle reconciliation. Census and compiler success do not prove
+current content parity, whole scheduled-route coverage or sustained conservation.
 
-The [sanitized exact inventory](evidence/go-retirement-frontier-2026-10-23.json)
-records UUIDs, structural controls, snapshot config fingerprints and issue
-membership. It contains no credentials, raw config values, posting content or
-host addresses. Fingerprints identify this census; they are not ownership grants.
+The sanitized evidence records UUIDs, structural controls, snapshot config
+fingerprints and issue membership without credentials or raw configuration.
+Fingerprints identify the dated census and do not grant ownership.
 
 | Shared batch | Monitors | Details | Issue |
 |---|---:|---:|---|
-| Staged cleanup and native ATS runner | 3 | 2 | [#10788](https://github.com/colophon-group/jobseek/issues/10788) |
+| Native admissions, staged cleanup and ATS runner | 4 | 3 | [#10788](https://github.com/colophon-group/jobseek/issues/10788) |
 | Proxy and persistent sessions | 16 | 24 | [#10792](https://github.com/colophon-group/jobseek/issues/10792) |
 | Nonproxy browser monitors | 14 | 0 | [#10790](https://github.com/colophon-group/jobseek/issues/10790) |
 | HTTP inventories, document policies and static binding | 10 | 1 | [#10789](https://github.com/colophon-group/jobseek/issues/10789) |
 | Nonproxy rendered details | 0 | 6 | [#10791](https://github.com/colophon-group/jobseek/issues/10791) |
-| **Total outside ordinary ownership** | **43** | **33** | |
+| **Total outside ordinary ownership** | **44** | **34** | |
 
 Every assignment occurs in one group. Different assignments on the same board
 can have different blockers. Bright Horizons monitor is staged, while its detail
@@ -85,8 +87,8 @@ preserves resource selection, age thresholds, advisory cleanup and exit codes;
 it never performs cleanup. Python remains an offline parity reference used by
 the separate host-hygiene qualification workflow. This is candidate work,
 not a deployed crawler replacement. The maintenance changes are now included in
-the combined **0.13.1089** candidate; deployment and main merges remain on hold
-until restoration clears. Follow-up fixes bound streamed inventory output and keep the
+the combined **0.13.1089** candidate; deployment and main merges require fresh exact-head gates
+now that the documented recovery has cleared. Follow-up fixes bound streamed inventory output and keep the
 reconciliation ordering proof on the native command.
 
 The first [HTTP contract implementation](https://github.com/colophon-group/jobseek/tree/fix-crawler/native-http-contract-batch)
@@ -107,6 +109,23 @@ original Chromium and native 1.0.1 agree on all four populated fields. Preserve
 VUMC's original lean policy by reusing the existing native DOM resource contract;
 original policy values stay in immutable bindings and unknown policies still fail.
 See [detail evidence](evidence/go-current-detail-bindings-2026-10-23.json).
+
+Mandarin's unchanged sitemap configuration produces **783 identical canonical
+URLs** through the original Python and actual native Go worker transport/parser.
+Its original Chromium JSON-LD scraper returns a complete 5,694-character
+description, while physical native Lightpanda 1.0.1 returns **HTTP202**.
+The monitor is a candidate admission; the detail remains unqualified.
+See [current evidence](evidence/go-mandarin-current-binding-2026-10-23.json).
+The combined candidate proposes **five monitors / four details**, including only
+Mandarin's monitor: conditional floor **7,859 / 7,868**, remaining **39 / 30**.
+These are proposed counts; the current serving floor remains **7,854 / 7,864**.
+
+The first complete CI run found two old test expectations inconsistent with the
+current change: DOM lean/auto details and the corrected Flex/Onlyfy count.
+The expectations now retain DOM full-config policy binding, JSON-LD/unknown-policy
+rejections and the separate current Workday/old-Onlyfy negative cases.
+Required CI must pass again at the final source before delivery.
+
 
 After each admission, preserve the entire enabled/owned floor, replay actual
 scheduled routes, decode every staged assignment, then use the original immutable

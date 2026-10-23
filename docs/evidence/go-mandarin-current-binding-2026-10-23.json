@@ -1,0 +1,36 @@
+{
+  "schema_version": "jobseek.current-catalogue-native-qualification/v1",
+  "date": "2026-10-23",
+  "issue": 10788,
+  "implementation_pr": 10797,
+  "status": "candidate qualification only; production ownership unchanged",
+  "board_slug": "mandarin-oriental-global",
+  "board_id": "41c935e5-b11e-4dca-9e63-60015f2dbee6",
+  "monitor": {
+    "all_canonical_urls_equal": true,
+    "board_id": "41c935e5-b11e-4dca-9e63-60015f2dbee6",
+    "board_slug": "mandarin-oriental-global",
+    "native_count": 783,
+    "observed_at_utc": "2026-10-23T16:37:01.956227Z",
+    "original_configuration_unchanged": true,
+    "original_count": 783,
+    "production_ownership_granted": false,
+    "profile": "sitemap.explicit-urls/v1"
+  },
+  "detail": {
+    "original_HTTP_status": 200,
+    "original_title_present": true,
+    "original_description_characters": 5694,
+    "native_HTTP_status": 202,
+    "native_renderer": "official pinned Lightpanda 1.0.1 macOS arm64",
+    "qualified_for_admission": false,
+    "reason": "Native navigation returned HTTP202; do not turn a challenge/incomplete document into empty content.",
+    "original_configuration_unchanged": true
+  },
+  "capture_sha256": {
+    "original_monitor": "b741d445ad775465de4a5ab5c944b5613640e4abdf609c182362d6d1d607f772",
+    "original_detail": "89a2ce109582eeeb828454372ef08d9933aee5a0fcc08ad56b8b7706632f5d96",
+    "native_detail": "7dc027e1938016d00819dca8b8767a0f367f6a2374efff62e9a6f25d0be051d2",
+    "native_monitor": "2b4332a25a5667b3a74c5c4471cbda3117e92e2d42a4502848b06ade325f75c1"
+  }
+}
