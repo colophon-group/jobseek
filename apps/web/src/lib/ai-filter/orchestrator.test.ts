@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeClassifierInputV1,
@@ -70,9 +70,18 @@ function jevResult(jobs: readonly ReturnType<typeof candidate>[]) {
   };
 }
 
-describe("AI filter segment orchestrator", () => {
-  afterEach(() => vi.restoreAllMocks());
+// Keep retention fixtures valid independently of the machine's calendar.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-21T00:00:00.000Z"));
+});
 
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+
+describe("AI filter segment orchestrator", () => {
   it.each([
     {
       error: new JevClientError("invalid_request", {
