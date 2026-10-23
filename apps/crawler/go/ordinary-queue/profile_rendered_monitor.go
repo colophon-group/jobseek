@@ -73,7 +73,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err := validateConfiguredProxyNavigation(options); err != nil {
 		return fail()
 	}
-	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "title_matched_url_scan"} {
+	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "title_matched_url_scan", "fingerprint_response"} {
 		if raw := md[key]; raw != nil && string(raw) != "null" {
 			return fail()
 		}

@@ -1,0 +1,226 @@
+{
+  "schema_version": "jobseek.go-http-contract-progress/v1",
+  "date": "2026-10-23",
+  "issue": 10789,
+  "status": "partial implementation; not admitted or deployed",
+  "implementation_base": "3b8dd178bdfa1b591aa75d7d1316f700a88005db",
+  "production_ownership_granted": false,
+  "remaining_count_reduced": false,
+  "implementation": [
+    "Native static DOM response fingerprint configuration remains bound to the complete original configuration and requires independently verifying PDF detail readers.",
+    "At most 100 discovered document URLs and four concurrent HEAD operations, with bounded same-origin redirects, original media/validator requirements, publisher policy and sibling cancellation.",
+    "Shared HEAD/GET fingerprint token generation preserves original Python identities and rejects GET header/body drift.",
+    "Full actual configured FIBA monitor compiles without dropping or changing its original controls.",
+    "Legacy empty_selector/empty_text inventories retain the original 2 MiB streaming bound and skip the ordinary 500,000-character preview; actual FIG links begin beyond 837,000 characters.",
+    "World Gymnastics configuration recognizes the proven headerless headquarters layout and explicitly excludes the Solothurn member federation; unknown/both classifications still fail closed."
+  ],
+  "validation": {
+    "original_python_fingerprint_oracle_cases": 12,
+    "worker_top_level_tests_passed": 7,
+    "worker_subtests_passed": 38,
+    "worker_fixture_skips": 0,
+    "actual_canonical_and_failure_outcomes": [
+      "complete: two canonical immutable sources and matching first-time detail queues",
+      "invalid validator: no canonical prefix, no disappearance and no detail queues",
+      "publisher reservation on an error response: canonical inventory preserved and reservation durably settled"
+    ],
+    "private_database": "PostgreSQL 18.6 with actual repository migrations; stopped after verification",
+    "private_queue": "real persistence-free Redis instances owned and cleaned by the test fixtures",
+    "native_PDF_decoder": "actual built go-pdf-text command used by retained detail regressions",
+    "platform": "darwin/arm64",
+    "go_version": "go1.27.1",
+    "additional_checks": [
+      "DOM/queue race suites and original configured-registry regression",
+      "DOM, queue and worker vet",
+      "native module tidy and formatting",
+      "original Python oracle generator Ruff"
+    ],
+    "registry_python_regressions_passed": 78,
+    "configured_native_PDF_regression_subtests": 7,
+    "latest_real_canonical_and_replay_run": {
+      "top_level_tests_passed": 6,
+      "subtests_passed": 32,
+      "fixture_skips": 0,
+      "database": "actual migrated private PostgreSQL 18.6",
+      "queue": "real private Redis",
+      "binary_decoder": "actual built go-pdf-text",
+      "authoritative_tail_scheduler_results": [
+        "complete late inventory writes and queue state preserved",
+        "late explicit zero retains normal empty confirmation",
+        "missing/contradictory marker fails without canonical disappearance",
+        "body above 2 MiB fails without a healthy zero"
+      ],
+      "private_database_stopped_after_run": true
+    },
+    "full_catalogue_preserved": 7901,
+    "changed_boards_relative_to_main": [
+      "bright-horizons-only-about-children-australia",
+      "groove-quantum-careers",
+      "international-gymnastics-federation-jobs",
+      "orange-quantum-systems-careers"
+    ]
+  },
+  "current_original_source_checks": [
+    {
+      "board_slug": "association-for-prevention-torture-vacancies",
+      "observed_at_utc": "2026-10-23T15:00:58.383061+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        404
+      ],
+      "original_error_type": "BoardGoneError",
+      "private_capture_sha256": "9f88bba4dd6246a6e0e966dfe94a69363c7bcd1cedadc50bb6c6cfd1c7822d47",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "black-ore-careers",
+      "observed_at_utc": "2026-10-23T15:00:58.473723+00:00",
+      "original_success": true,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        200
+      ],
+      "original_error_type": null,
+      "private_capture_sha256": "cd93f8fae3afb9bcecb5b24d84c3e105286031c483206c102ee1062f65d36adb",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "international-basketball-federation-hq",
+      "observed_at_utc": "2026-10-23T14:27:24.666997+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        200
+      ],
+      "original_error_type": "ValueError",
+      "private_capture_sha256": "4bab498b05f1cf4a19c4ebe6fe29d0941abc5f031b61118639ab9e3871311809",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "international-gymnastics-federation-jobs",
+      "observed_at_utc": "2026-10-23T15:00:58.610162+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "original_error_type": "ValueError",
+      "private_capture_sha256": "13607502bcdf3ded27a9241f6b785ae67325c34f663d39062c065bd4812784d3",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "persistent-systems-careers",
+      "observed_at_utc": "2026-10-23T14:57:32.730052+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        503,
+        503,
+        503
+      ],
+      "original_error_type": "PaginationFetchError",
+      "private_capture_sha256": "2a35a086d2cabfd1f616d337cabc7e31fcee422fffe9004fb13f8271ccb98dfd",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "swiss-confederation-australia",
+      "observed_at_utc": "2026-10-23T15:01:01.283578+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        302,
+        302,
+        302
+      ],
+      "original_error_type": "PaginationFetchError",
+      "private_capture_sha256": "3941473906aeeff834fb137b253c0a54ef4dfb6f1470ef6e3ace4c0fe602267b",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "swiss-confederation-united-states",
+      "observed_at_utc": "2026-10-23T15:01:03.771492+00:00",
+      "original_success": false,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        302,
+        302,
+        302
+      ],
+      "original_error_type": "PaginationFetchError",
+      "private_capture_sha256": "ce1a52f6b1c5ecfe8d469f650840d6e97511dd2a77d0a2bb84d90c98f026430a",
+      "qualified_for_admission": false
+    },
+    {
+      "board_slug": "tesco-careers-sk",
+      "observed_at_utc": "2026-10-23T14:27:25.664851+00:00",
+      "original_success": true,
+      "original_url_count": 0,
+      "HTTP_statuses": [
+        301,
+        403
+      ],
+      "original_error_type": null,
+      "private_capture_sha256": "6c39c3b8f971659fd95113473429594b657630063ea4ce1fc6afbfed09b8011c",
+      "qualified_for_admission": false
+    }
+  ],
+  "qualification_limits": [
+    "FIBA original response was HTTP200 but no discovered job links matched its original selector/empty-state contract; captured-response replay raises ValueError. No positive current inventory was claimed.",
+    "Tesco original API traversed HTTP301 then HTTP403 and returned an unverified empty result. That is not positive inventory evidence.",
+    "Linux installed-image execution, final combined-head CI, successful current content/lifecycle qualification of a shared batch and supported production admission remain pending.",
+    "The other HTTP group contracts, sustained freshness, operational consumers and final reversal/retirement remain open.",
+    "Preserve the separately authorized production recovery #10794 and its source-bound repair #10796; no overlapping production mutation was performed.",
+    "Additional original source checks: APT returns HTTP404; Black Ore exposes unverified empty output; FIG original configuration cannot classify the new layouts; both Swiss legacy URLs repeatedly return redirects refused by the original public-header path; Persistent API returns HTTP503. These are retained failures/unknowns, not positive inventories.",
+    "Direct sample probes for seven ALTEN details return HTTP403. A Glasswall HTTP200 body is Cloudflare Error 521 support content, so superficially nonempty extracted fields do not qualify it. Other sampled sources had missing fields, unavailable content or a stale HTTP404; no proxy controls were removed.",
+    "PR #10797 targets main so the full required PR workflow runs. Its implementation ancestry includes pending ATS PR #10707; merge that prerequisite first, then refresh the exact main/head before final admission. Draft state and the production restoration hold remain in force."
+  ],
+  "current_candidate_qualification": {
+    "board_slug": "international-gymnastics-federation-jobs",
+    "input_observed_at_utc": "2026-10-23T15:00:58.610162+00:00",
+    "original_requests_captured": 5,
+    "headquarters_inventory_count": 2,
+    "explicit_member_exclusion_count": 2,
+    "captured_original_and_native_inventory_equal": true,
+    "actual_original_and_native_binary_text_equal": 4,
+    "full_original_and_native_nonnull_detail_maps_equal": 2,
+    "complete_description_characters": [
+      6093,
+      6078
+    ],
+    "document_body_sha256": [
+      "891432b9cc3e7f038a0bb05eedaf918b7ed762edcbd777e5b8819b66256f204d",
+      "c9ce028ef54ebad15b3769ff0833b4e7e3e228adc00dba7d6d1c9e3f3ab5f328",
+      "e015e18f8bb14097b1a13e505ee472a86d54203cbde5f563e144aff288e117d3",
+      "b97378501c5efd20fbcb7a034362ab4a8a9b1bf2e19d3d4e83c20cd5e4321e39"
+    ],
+    "validation_origin": "original Python and native readers replayed the same current captured HTTP/PDF responses, without network fallback",
+    "installed_image_and_production_admission": false
+  },
+  "candidate_version": "0.13.1089",
+  "implementation_pr": 10797,
+  "pr_base": "main",
+  "prerequisite_pr": 10707,
+  "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+  "delivery_candidate": {
+    "pr": 10797,
+    "version": "0.13.1089",
+    "components": [
+      10707,
+      10795
+    ],
+    "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+    "serving_renderer_unchanged": "1.0.1",
+    "renderer_1_0_2_transition_separate": [
+      10798,
+      10799
+    ],
+    "current_catalogue_preserved": 7901,
+    "required_final_head_CI": "pending",
+    "production_ownership_changed": false
+  }
+}

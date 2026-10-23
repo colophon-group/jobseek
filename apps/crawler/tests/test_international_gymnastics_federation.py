@@ -26,6 +26,13 @@ Avenue de la Gare 12A I Case postale 630
 T +41 (0)21 321 55 10 I www.worldgymnastics.sport
 """
 
+HEADERLESS_HEADQUARTERS = (
+    "Secretary General\n"
+    "Full-time (100%) | Lausanne | Reporting to the President\n"
+    "Your Mission\n"
+    "World Gymnastics is entering a new chapter.\n"
+)
+
 
 def _csv_row(filename: str, key: str, value: str) -> dict[str, str]:
     with (DATA_DIR / filename).open(newline="", encoding="utf-8") as handle:
@@ -128,9 +135,59 @@ async def test_unclassified_linked_document_fails_closed(monkeypatch) -> None:
                 await dom_discover(board, client)
 
 
+async def test_current_mixed_directory_classifies_every_document(monkeypatch) -> None:
+    board, _ = _board()
+    texts = {
+        1: FIG_HEADER + "Accountant\nFull-time | Lausanne\nYour Mission",
+        2: HEADERLESS_HEADQUARTERS,
+        3: "Luxembourg Gymnastics Federation\nNational Coach",
+        4: "Kunstturner -Vereinigung des Kantons Solothurn\nHead Coach",
+    }
+    html = "".join(
+        f'<div class="highlight"><a class="btn" '
+        f'href="/publicdir/opportunities/files/{key}.pdf">FILE</a></div>'
+        for key in texts
+    )
+    monkeypatch.setattr("pypdf.PdfReader", _fake_reader)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        key = int(request.url.path.rsplit("/", 1)[-1].removesuffix(".pdf"))
+        return httpx.Response(200, content=f"%PDF {texts[key]}".encode())
+
+    with patch(FETCH_PATCH, AsyncMock(return_value=html)):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(board, client)
+
+    base = "https://www.gymnastics.sport/publicdir/opportunities/files"
+    assert result == {f"{base}/1.pdf", f"{base}/2.pdf"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        HEADERLESS_HEADQUARTERS.replace("World Gymnastics is", "Our federation is"),
+        HEADERLESS_HEADQUARTERS.replace("Lausanne", "Another location"),
+        HEADERLESS_HEADQUARTERS + "Luxembourg Gymnastics Federation",
+    ],
+)
+async def test_headerless_ownership_still_refuses_unknown_or_ambiguous_documents(
+    monkeypatch, text: str
+) -> None:
+    from src.core.monitors.dom import _filter_pdf_text_urls, _validated_pdf_text_config
+
+    board, _ = _board()
+    config = _validated_pdf_text_config(board["metadata"]["require_pdf_text"])
+    monkeypatch.setattr("pypdf.PdfReader", _fake_reader)
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, content=f"%PDF {text}".encode()))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ValueError, match="include.*exclude"):
+            await _filter_pdf_text_urls({"https://example.com/role.pdf"}, client, config)
+
+
 @pytest.mark.parametrize(
     ("text", "expected_title"),
     [
+        (HEADERLESS_HEADQUARTERS, "Secretary General"),
         (
             FIG_HEADER
             + "Communications & Media Relations Manager\n"

@@ -1027,6 +1027,12 @@ jobs:
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
 
+      - name: Verify installed native ATS inventory entrypoint offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            docker run --rm --network none --read-only \
+            --entrypoint /usr/local/bin/go-ats-inventory jobseek-crawler-slim-ci:pr --help
+
       - name: Verify installed Go enrichment parity offline
         run: |
           timeout --foreground --signal=TERM --kill-after=5s 90s \
@@ -1759,6 +1765,21 @@ jobs:
       - name: Test native host deployment tools
         working-directory: apps/crawler/go/deploy-tools
         run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+          go build -o "$RUNNER_TEMP/crawler-maintenance-tools" .
+
+      - name: Compare original and native host hygiene commands
+        env:
+          JOBSEEK_NATIVE_HYGIENE_BINARY: ${{ runner.temp }}/crawler-maintenance-tools
+        run: node --test scripts/crawler-host-hygiene.test.mjs
+
+      - name: Verify native ATS inventory and durable candidate queue
+        working-directory: apps/crawler/go/ats-inventory
+        run: |
+          set -euo pipefail
           go test -race ./...
           go vet ./...
           go mod tidy -diff

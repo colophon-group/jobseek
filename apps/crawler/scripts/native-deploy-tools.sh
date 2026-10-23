@@ -40,6 +40,10 @@ run_native_postgresql_preflight() {
     "$NATIVE_DEPLOY_TOOLS" postgresql-preflight
 }
 
+run_native_host_hygiene() {
+  env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin "$NATIVE_DEPLOY_TOOLS" host-hygiene
+}
+
 # The digest-pinned image advertises its supported recovery CLI. Never infer
 # support from the failed incoming release or fall back after a command fails.
 crawler_image_maintenance_backend() {

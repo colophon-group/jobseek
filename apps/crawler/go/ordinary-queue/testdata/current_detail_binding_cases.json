@@ -1,0 +1,14 @@
+[
+  {
+    "board_slug": "flex-ltd-jetcool",
+    "source_url": "https://flextronics.wd1.myworkdayjobs.com/JetCool_Careers/job/USA-MA-Littleton/Engineering-Product-Manager_WD223680-1",
+    "expected_profile": "workday.cxs-detail/v1",
+    "worker": "simple"
+  },
+  {
+    "board_slug": "vumc-physician-careers",
+    "source_url": "https://physiciancareers.app.vumc.org/jobs/39f9e04f-6887-f111-ab0e-6045bd06c602",
+    "expected_profile": "dom.rendered-detail/v1",
+    "worker": "browser"
+  }
+]

@@ -1,0 +1,533 @@
+{
+  "companies_csv": "slug,name,website\nexample,Example GmbH,https://www.example.test\nexample-china,Example China,https://cn.example.test\nbank,Global Bank,https://global.example.org\nother,Other Co,https://other.test\n",
+  "boards_csv": "company_slug,board_slug,board_url,monitor_type,monitor_config\nexample,example-gh,https://boards.greenhouse.io/example,greenhouse,{}\nother,other-wd,https://other.wd2.myworkdayjobs.com/External,workday,{}\nexample,example-wd,https://example.wd3.myworkdayjobs.com/External,workday,\"{\"\"all_sites\"\":false}\"\n",
+  "items": [
+    {
+      "kind": "issue",
+      "number": 200,
+      "state": "closed",
+      "title": "Add company: Independent",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu3dfozsxeotmmv3gk4rfgnaws3temvygk3temvxhi board=132ea35e45ce5783df53cc4f61d9406ea577de4de6952353f4f46fe528c78e92 -->",
+      "url": "https://github.com/example/test/issues/200",
+      "labels": [
+        "source:ats-inventory"
+      ],
+      "created_at": "2026-10-17T01:00:00Z"
+    },
+    {
+      "kind": "pr",
+      "number": 201,
+      "state": "open",
+      "title": "Configure Example",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu3dfozsxeotmmv3gk4rfgnawk6dbnvygyzi board=296851681884836eafd3e99ac6c764c0ff3ca50d6540423fb9d470ba7b0ce730 -->",
+      "url": "https://github.com/example/test/pull/201",
+      "labels": [],
+      "created_at": null
+    }
+  ],
+  "cases": [
+    {
+      "candidate": {
+        "family": "greenhouse",
+        "native_ats": "native:greenhouse",
+        "tenant": "greenhouse:example",
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Aexample",
+        "name": "Example GmbH",
+        "slug": "example",
+        "board_url": "https://job-boards.greenhouse.io/example",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "hard_skip",
+        "candidate": {
+          "family": "greenhouse",
+          "native_ats": "native:greenhouse",
+          "tenant": "greenhouse:example",
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Aexample",
+          "name": "Example GmbH",
+          "slug": "example",
+          "board_url": "https://job-boards.greenhouse.io/example",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [
+          {
+            "code": "existing_ats_tenant",
+            "summary": "The native ATS and exact tenant identity are already configured.",
+            "references": [
+              "board:example-gh (greenhouse, https://boards.greenhouse.io/example)"
+            ]
+          }
+        ],
+        "soft_warnings": [
+          {
+            "code": "similar_company_identity",
+            "summary": "A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.",
+            "references": [
+              "company:example Example GmbH (https://www.example.test)"
+            ]
+          },
+          {
+            "code": "similar_github_title",
+            "summary": "A company-request issue or active PR has a similar title; inspect it manually.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [
+        {
+          "slug": "example-china",
+          "name": "Example China",
+          "website": "https://cn.example.test"
+        },
+        {
+          "slug": "example",
+          "name": "Example GmbH",
+          "website": "https://www.example.test"
+        }
+      ],
+      "title": "Add company: Example GmbH",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztuz3smvsw42dpovzwkothojswk3tin52xgzjfgnawk6dbnvygyzi board=4b77a3187b1f0cca4524fb42eda84dd412a4d35ce8f5c3fd5d82c4e6beeddbd2 -->\n### Company\n\n`Example GmbH` — `https://job-boards.greenhouse.io/example`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:greenhouse:greenhouse%3Aexample`\n- Upstream inventory family: `greenhouse`\n- Jobseek-native ATS identity: `native:greenhouse`\n- Exact tenant: `greenhouse:example`\n- Normalized board URL: `https://job-boards.greenhouse.io/example`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **similar_company_identity**: A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.\n  - `company:example Example GmbH (https://www.example.test)`\n- **similar_github_title**: A company-request issue or active PR has a similar title; inspect it manually.\n  - `pr:201 [open] Configure Example (https://github.com/example/test/pull/201)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "greenhouse",
+        "native_ats": "native:greenhouse",
+        "tenant": "greenhouse:example-china",
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Aexample-china",
+        "name": "Example China",
+        "slug": "example-china",
+        "board_url": "https://boards.greenhouse.io/example-china",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "eligible",
+        "candidate": {
+          "family": "greenhouse",
+          "native_ats": "native:greenhouse",
+          "tenant": "greenhouse:example-china",
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Aexample-china",
+          "name": "Example China",
+          "slug": "example-china",
+          "board_url": "https://boards.greenhouse.io/example-china",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [],
+        "soft_warnings": [
+          {
+            "code": "similar_company_identity",
+            "summary": "A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.",
+            "references": [
+              "company:example-china Example China (https://cn.example.test)"
+            ]
+          },
+          {
+            "code": "similar_github_title",
+            "summary": "A company-request issue or active PR has a similar title; inspect it manually.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [
+        {
+          "slug": "example-china",
+          "name": "Example China",
+          "website": "https://cn.example.test"
+        },
+        {
+          "slug": "example",
+          "name": "Example GmbH",
+          "website": "https://www.example.test"
+        }
+      ],
+      "title": "Add company: Example China",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztuz3smvsw42dpovzwkothojswk3tin52xgzjfgnawk6dbnvygyzjnmnugs3tb board=b262557ce4cd769867f9d2751e5834d71f049366010d8ce3cffb8c50ec3b9ad7 -->\n### Company\n\n`Example China` — `https://boards.greenhouse.io/example-china`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:greenhouse:greenhouse%3Aexample-china`\n- Upstream inventory family: `greenhouse`\n- Jobseek-native ATS identity: `native:greenhouse`\n- Exact tenant: `greenhouse:example-china`\n- Normalized board URL: `https://boards.greenhouse.io/example-china`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **similar_company_identity**: A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.\n  - `company:example-china Example China (https://cn.example.test)`\n- **similar_github_title**: A company-request issue or active PR has a similar title; inspect it manually.\n  - `pr:201 [open] Configure Example (https://github.com/example/test/pull/201)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "workday",
+        "native_ats": "native:workday",
+        "tenant": "workday:other:wd2:europe",
+        "source_key": "ats-scrapers:workday:workday%3Aother%3Awd2%3Aeurope",
+        "name": "Other Europe",
+        "slug": "other-europe",
+        "board_url": "https://other.wd2.myworkdayjobs.com/Europe",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "hard_skip",
+        "candidate": {
+          "family": "workday",
+          "native_ats": "native:workday",
+          "tenant": "workday:other:wd2:europe",
+          "source_key": "ats-scrapers:workday:workday%3Aother%3Awd2%3Aeurope",
+          "name": "Other Europe",
+          "slug": "other-europe",
+          "board_url": "https://other.wd2.myworkdayjobs.com/Europe",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [
+          {
+            "code": "existing_ats_tenant",
+            "summary": "The native ATS and exact tenant identity are already configured.",
+            "references": [
+              "board:other-wd (workday, https://other.wd2.myworkdayjobs.com/External)"
+            ]
+          }
+        ],
+        "soft_warnings": [
+          {
+            "code": "possible_parent_or_region",
+            "summary": "A related parent, subsidiary, or regional company name exists; geography alone is an additional board, not a new company identity.",
+            "references": [
+              "company:other Other Co (https://other.test)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [
+        {
+          "slug": "other",
+          "name": "Other Co",
+          "website": "https://other.test"
+        }
+      ],
+      "title": "Add company: Other Europe",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu53pojvwiylzhj3w64tlmrqxsjjtifxxi2dfoistgqlxmqzckm2bmv2xe33qmu board=781ce04d10a03db6a71705ef4bb1f58dff83346958837e41656948ce0f67469e -->\n### Company\n\n`Other Europe` — `https://other.wd2.myworkdayjobs.com/Europe`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:workday:workday%3Aother%3Awd2%3Aeurope`\n- Upstream inventory family: `workday`\n- Jobseek-native ATS identity: `native:workday`\n- Exact tenant: `workday:other:wd2:europe`\n- Normalized board URL: `https://other.wd2.myworkdayjobs.com/Europe`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **possible_parent_or_region**: A related parent, subsidiary, or regional company name exists; geography alone is an additional board, not a new company identity.\n  - `company:other Other Co (https://other.test)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "workday",
+        "native_ats": "native:workday",
+        "tenant": "workday:example:wd3:europe",
+        "source_key": "ats-scrapers:workday:workday%3Aexample%3Awd3%3Aeurope",
+        "name": "Example Europe",
+        "slug": "example-europe",
+        "board_url": "https://example.wd3.myworkdayjobs.com/Europe",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "eligible",
+        "candidate": {
+          "family": "workday",
+          "native_ats": "native:workday",
+          "tenant": "workday:example:wd3:europe",
+          "source_key": "ats-scrapers:workday:workday%3Aexample%3Awd3%3Aeurope",
+          "name": "Example Europe",
+          "slug": "example-europe",
+          "board_url": "https://example.wd3.myworkdayjobs.com/Europe",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [],
+        "soft_warnings": [
+          {
+            "code": "similar_github_title",
+            "summary": "A company-request issue or active PR has a similar title; inspect it manually.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [
+        {
+          "slug": "example",
+          "name": "Example GmbH",
+          "website": "https://www.example.test"
+        }
+      ],
+      "title": "Add company: Example Europe",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu53pojvwiylzhj3w64tlmrqxsjjtifsxqylnobwgkjjtif3wimzfgnawk5lsn5ygk board=9b0f2cb42a36b470fe6de072113427dbbe4d2a7c41ea9f6846871a2ee4e1b721 -->\n### Company\n\n`Example Europe` — `https://example.wd3.myworkdayjobs.com/Europe`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:workday:workday%3Aexample%3Awd3%3Aeurope`\n- Upstream inventory family: `workday`\n- Jobseek-native ATS identity: `native:workday`\n- Exact tenant: `workday:example:wd3:europe`\n- Normalized board URL: `https://example.wd3.myworkdayjobs.com/Europe`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **similar_github_title**: A company-request issue or active PR has a similar title; inspect it manually.\n  - `pr:201 [open] Configure Example (https://github.com/example/test/pull/201)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "lever",
+        "native_ats": "native:lever",
+        "tenant": "lever:example",
+        "source_key": "ats-scrapers:lever:lever%3Aexample",
+        "name": "Example",
+        "slug": "example",
+        "board_url": "https://jobs.lever.co/example",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "hard_skip",
+        "candidate": {
+          "family": "lever",
+          "native_ats": "native:lever",
+          "tenant": "lever:example",
+          "source_key": "ats-scrapers:lever:lever%3Aexample",
+          "name": "Example",
+          "slug": "example",
+          "board_url": "https://jobs.lever.co/example",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [
+          {
+            "code": "github_source_marker",
+            "summary": "An import issue or active PR has the exact source marker.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          },
+          {
+            "code": "github_board_marker",
+            "summary": "An import issue or active PR has the exact normalized board URL marker.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          }
+        ],
+        "soft_warnings": [
+          {
+            "code": "similar_company_identity",
+            "summary": "A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.",
+            "references": [
+              "company:example Example GmbH (https://www.example.test)"
+            ]
+          },
+          {
+            "code": "possible_parent_or_region",
+            "summary": "A related parent, subsidiary, or regional company name exists; geography alone is an additional board, not a new company identity.",
+            "references": [
+              "company:example-china Example China (https://cn.example.test)"
+            ]
+          },
+          {
+            "code": "similar_github_title",
+            "summary": "A company-request issue or active PR has a similar title; inspect it manually.",
+            "references": [
+              "pr:201 [open] Configure Example (https://github.com/example/test/pull/201)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [
+        {
+          "slug": "example-china",
+          "name": "Example China",
+          "website": "https://cn.example.test"
+        },
+        {
+          "slug": "example",
+          "name": "Example GmbH",
+          "website": "https://www.example.test"
+        }
+      ],
+      "title": "Add company: Example",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu3dfozsxeotmmv3gk4rfgnawk6dbnvygyzi board=296851681884836eafd3e99ac6c764c0ff3ca50d6540423fb9d470ba7b0ce730 -->\n### Company\n\n`Example` — `https://jobs.lever.co/example`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:lever:lever%3Aexample`\n- Upstream inventory family: `lever`\n- Jobseek-native ATS identity: `native:lever`\n- Exact tenant: `lever:example`\n- Normalized board URL: `https://jobs.lever.co/example`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **similar_company_identity**: A company name or slug matches; default to extending that company and create a separate identity only for a verified independent employer.\n  - `company:example Example GmbH (https://www.example.test)`\n- **possible_parent_or_region**: A related parent, subsidiary, or regional company name exists; geography alone is an additional board, not a new company identity.\n  - `company:example-china Example China (https://cn.example.test)`\n- **similar_github_title**: A company-request issue or active PR has a similar title; inspect it manually.\n  - `pr:201 [open] Configure Example (https://github.com/example/test/pull/201)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "lever",
+        "native_ats": "native:lever",
+        "tenant": "lever:independent",
+        "source_key": "ats-scrapers:lever:lever%3Aindependent",
+        "name": "Independent",
+        "slug": "independent",
+        "board_url": "https://jobs.lever.co/independent",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "hard_skip",
+        "candidate": {
+          "family": "lever",
+          "native_ats": "native:lever",
+          "tenant": "lever:independent",
+          "source_key": "ats-scrapers:lever:lever%3Aindependent",
+          "name": "Independent",
+          "slug": "independent",
+          "board_url": "https://jobs.lever.co/independent",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [
+          {
+            "code": "github_source_marker",
+            "summary": "An import issue or active PR has the exact source marker.",
+            "references": [
+              "issue:200 [closed] Add company: Independent (https://github.com/example/test/issues/200)"
+            ]
+          },
+          {
+            "code": "github_board_marker",
+            "summary": "An import issue or active PR has the exact normalized board URL marker.",
+            "references": [
+              "issue:200 [closed] Add company: Independent (https://github.com/example/test/issues/200)"
+            ]
+          },
+          {
+            "code": "ledger_source_key",
+            "summary": "The durable ledger already records this exact source (remote_issue_closed).",
+            "references": [
+              "issue:200 [closed] https://github.com/example/test/issues/200"
+            ]
+          },
+          {
+            "code": "ledger_board_url",
+            "summary": "The durable ledger already records this exact normalized board URL.",
+            "references": [
+              "issue:200 [closed] https://github.com/example/test/issues/200"
+            ]
+          }
+        ],
+        "soft_warnings": [
+          {
+            "code": "similar_github_title",
+            "summary": "A company-request issue or active PR has a similar title; inspect it manually.",
+            "references": [
+              "issue:200 [closed] Add company: Independent (https://github.com/example/test/issues/200)"
+            ]
+          }
+        ]
+      },
+      "related_identities": [],
+      "title": "Add company: Independent",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu3dfozsxeotmmv3gk4rfgnaws3temvygk3temvxhi board=132ea35e45ce5783df53cc4f61d9406ea577de4de6952353f4f46fe528c78e92 -->\n### Company\n\n`Independent` — `https://jobs.lever.co/independent`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:lever:lever%3Aindependent`\n- Upstream inventory family: `lever`\n- Jobseek-native ATS identity: `native:lever`\n- Exact tenant: `lever:independent`\n- Normalized board URL: `https://jobs.lever.co/independent`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- **similar_github_title**: A company-request issue or active PR has a similar title; inspect it manually.\n  - `issue:200 [closed] Add company: Independent (https://github.com/example/test/issues/200)`\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    },
+    {
+      "candidate": {
+        "family": "lever",
+        "native_ats": "native:lever",
+        "tenant": "lever:bad",
+        "source_key": "ats-scrapers:lever:lever%3Abad",
+        "name": "Bad @user `name` [x] *# <text>",
+        "slug": "bad",
+        "board_url": "https://jobs.lever.co/bad",
+        "impact_unknown": false,
+        "active_jobs": 3,
+        "remote_jobs": 1,
+        "location_count": 2,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-17"
+      },
+      "plan": {
+        "decision": "eligible",
+        "candidate": {
+          "family": "lever",
+          "native_ats": "native:lever",
+          "tenant": "lever:bad",
+          "source_key": "ats-scrapers:lever:lever%3Abad",
+          "name": "Bad @user `name` [x] *# <text>",
+          "slug": "bad",
+          "board_url": "https://jobs.lever.co/bad",
+          "impact_unknown": false,
+          "active_jobs": 3,
+          "remote_jobs": 1,
+          "location_count": 2,
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-17"
+        },
+        "hard_skips": [],
+        "soft_warnings": []
+      },
+      "related_identities": [],
+      "title": "Add company: Bad @​user ˋnameˋ ［x］ ∗＃ ‹text›",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztu3dfozsxeotmmv3gk4rfgnaweyle board=50948019bc584a5442739d026b359fc9c2504e2838aaff96a2939fc7b8a79623 -->\n### Company\n\n`Bad @​​user ˋnameˋ [x] *# <text>` — `https://jobs.lever.co/bad`\n\n### Preconfigured board source\n\n- Source key: `ats-scrapers:lever:lever%3Abad`\n- Upstream inventory family: `lever`\n- Jobseek-native ATS identity: `native:lever`\n- Exact tenant: `lever:bad`\n- Normalized board URL: `https://jobs.lever.co/bad`\n- Published active jobs: 3\n- Remote jobs: 1\n- Distinct locations: 2\n- Countries: CH, DE\n\nThe board is inventory evidence only. Use Jobseek-owned monitor and scraper code;\ndo not import, execute, or add a runtime dependency on upstream scraper code.\nThe simplified `ws` path should seed the compatible native monitor, then verify the\ncompany metadata, any additional official boards, live jobs, and normal quality gates.\n\n### Conservative deduplication context\n\n- No soft matches found in the bulk local/GitHub indexes.\n\nSoft matches require an explicit identity decision. Regional portals and operating\ndivisions belong to the existing company by default. Preserve a separate company\nonly when verification establishes an independent legal or employer identity;\nvalid additional ATS sources should otherwise become boards on the existing company.\n\nParent: #6184\n"
+    }
+  ]
+}

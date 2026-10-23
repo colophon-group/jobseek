@@ -88,7 +88,7 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 	// Preserve the existing 500,000-codepoint single-page listing preview.
 	count := 0
 	for offset := range source {
-		if c.RichRows == nil && c.ScriptLinks == nil && c.OnclickSelector == "" && !c.MyJobShop && (c.Proofs == nil || len(c.Proofs.EmptyStates) == 0) && !later && count == 500_000 {
+		if c.RichRows == nil && c.ScriptLinks == nil && c.OnclickSelector == "" && !c.MyJobShop && c.EmptySelector == "" && (c.Proofs == nil || len(c.Proofs.EmptyStates) == 0) && !later && count == 500_000 {
 			source = source[:offset]
 			break
 		}
@@ -339,6 +339,12 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 	}
 	if c.PDFProof != nil {
 		found, err = filterListingPDFInventory(ctx, client, profile, config, found, c.PDFProof, c.Document.Headers, time.Now())
+		if err != nil {
+			return found, err
+		}
+	}
+	if c.ResponseFingerprintType != "" {
+		found, err = fingerprintDOMInventory(ctx, client, profile, config, found, c)
 		if err != nil {
 			return found, err
 		}

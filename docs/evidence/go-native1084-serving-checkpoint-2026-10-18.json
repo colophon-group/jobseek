@@ -1,0 +1,107 @@
+{
+  "schema": "jobseek.native1084.serving-checkpoint/v1",
+  "recorded_at_utc": "2026-10-17T22:32:12.089439+00:00",
+  "goal_complete": false,
+  "source_revision": "1741d2319db7c3eaa55dc266517fc701e5888ced",
+  "qualified_head": "2166baa012da968e92d46256f78c383f0abcf2d4",
+  "crawler_version": "0.13.1084",
+  "epoch": 372,
+  "ordinary_monitors": 7854,
+  "ordinary_details": 7864,
+  "previous_floor": {
+    "monitors": 7850,
+    "details": 7864,
+    "membership_preserved": true
+  },
+  "new_monitor_configs": 4,
+  "new_detail_configs": 0,
+  "current_complete_Linux_successes": {
+    "monitors": 3,
+    "inventory_URLs": 2387,
+    "API_current_inventory_URLs": 2312,
+    "direct_DOM_URLs": 1,
+    "held_DOM_URLs": 74
+  },
+  "inherited_failure_reference": {
+    "monitors": 1,
+    "original_and_native_Linux_HTTP_status": 403,
+    "quarantine_enabled_canonical_jobs_detail_deadline_backoff_and_settlement_preserved": true,
+    "availability_restored": false
+  },
+  "immutable_staged_assignments_decoded": 15718,
+  "all_new_original_config_bindings_attested": true,
+  "original_deployments": {
+    "crawler": 39068018484,
+    "renderer": 39068066562,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:8ab3e1ca33db34653e4c87f6709d030a96866d12c32f9fe2d09b2c7afd653b59",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:884e7bc6cee937f97c312fc83ee835d9a6c10be147543409306327764fa72352"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:e7a43e2cd29fec0b96be38b3eb38a200833435335ebc411123ee1b95a36fb04f",
+  "lightpanda": {
+    "version": "1.0.1",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1",
+    "official_Linux_arm64_sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+    "self_hosted_renderer_engine_identity_verified": true
+  },
+  "independent_serving": {
+    "all_ten_actors_source_images_receipts_SQL_Redis_health_verified": true,
+    "observed_at_utc": "2026-10-17T22:08:15.844030+00:00"
+  },
+  "postactive_full_routes": {
+    "source_revision": "1741d2319db7c3eaa55dc266517fc701e5888ced",
+    "epoch": 372,
+    "census_observed_at": "2026-10-17T22:09:24.242866+00:00",
+    "scheduled_owned_postings": 1746797,
+    "queued_owned_postings": 1746797,
+    "owned_cache_mismatches": 0,
+    "captured_owned_scheduled_minus_queued": 0,
+    "all_actual_owned_routes_checked": true
+  },
+  "captured_queued_ID_sets": {
+    "before_queued_owned": 1745840,
+    "after_queued_owned": 1746797,
+    "intersection": 1745696,
+    "before_only": 144,
+    "after_only": 1101
+  },
+  "before_only_current_dispositions": {
+    "currently_present": 144,
+    "missing": 0,
+    "eligible_unqueued": 0,
+    "unscheduled": 144
+  },
+  "freshness_at_recording": {
+    "observed_at_utc": "2026-10-17T22:22:02.664412+00:00",
+    "owned_scheduled": 1751982,
+    "due": 1702672,
+    "overdue_24h": 1637563,
+    "overdue_48h": 1582101,
+    "oldest_due_at": "2026-03-24T17:31:01.019392+00:00",
+    "source_revision": "1741d2319db7c3eaa55dc266517fc701e5888ced",
+    "epoch": 372,
+    "owned_detail_boards": 7864,
+    "scope": "current source-bound scheduled posting lateness for full admitted cohort; no historical loss or per-provider service guarantee"
+  },
+  "remaining_enabled_frontier_excluding_B0": {
+    "monitors": 43,
+    "details": 33
+  },
+  "resource_measurement": {
+    "current_whole_lane_fixture_success": true,
+    "synthetic": true,
+    "arms": 16,
+    "matched_pairs": 8,
+    "tree_matches_qualified_and_production_source": true,
+    "whole_fleet_resource_or_cost_claim": false
+  },
+  "limits": [
+    "SQL/Redis observations are non-atomic; exact-ID accounting is bounded, not historical or unbounded zero loss.",
+    "The fourth new monitor preserves inherited HTTP403 failure behavior; availability is not restored.",
+    "New-member natural cycles remain subject to their existing schedules.",
+    "Full freshness, operational consumer retirement, broader matched resources/cost and final supported reversal remain open."
+  ]
+}

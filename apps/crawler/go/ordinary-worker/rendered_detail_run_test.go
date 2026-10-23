@@ -100,7 +100,7 @@ func testRenderedDetailPersistence(t *testing.T, largeDocument bool) {
 			parser := `{"render":true,"defaults":{"language":"en"}}`
 			html := nativeJSONLDHTML
 			if scraper == "dom" {
-				parser = `{"render":true,"steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}`
+				parser = `{"render":true,"resource_policy":"lean","steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}`
 				html = nativeDOMHTML
 			}
 			if scraper == "nextdata" || scraper == "embedded" {

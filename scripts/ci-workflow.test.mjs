@@ -2354,12 +2354,24 @@ test("scheduled maintenance always reports host hygiene independently", () => {
   assert.doesNotMatch(crawlerHostHygieneScript, /from datetime import UTC/);
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
-    /docker run --rm[\s\S]*\|\| maintenance_status=\$\?[\s\S]*crawler-host-hygiene\.py" \|\| hygiene_status=\$\?/,
+    /docker run --rm[\s\S]*\|\| maintenance_status=\$\?[\s\S]*run_native_host_hygiene \|\| hygiene_status=\$\?/,
   );
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
     /maintenance_status != 0 \|\| hygiene_status != 0/,
   );
+});
+
+test("scheduled maintenance attests native checks before operating", () => {
+  const workflow = crawlerScheduledMaintenanceWorkflow;
+  assert.match(workflow, /build-deploy-tools\.sh "\$GITHUB_SHA" apps\/crawler\/scripts/);
+  assert.match(workflow, /initialize_native_deploy_tools .* "\$GITHUB_SHA"/);
+  assert.match(workflow, /run_native_postgresql_preflight/);
+  assert.doesNotMatch(workflow, /python3|uv run|crawler-host-hygiene\.py/);
+  assert.ok(workflow.indexOf("initialize_native_deploy_tools") < workflow.indexOf("run_native_postgresql_preflight"));
+  for (const artifact of ["native-deploy-tools.sh", "crawler-deploy-tools-amd64", "crawler-deploy-tools-arm64", "crawler-deploy-tools.source", "crawler-deploy-tools.sha256"]) {
+    assert.ok(workflow.includes(`apps/crawler/scripts/${artifact}`), artifact);
+  }
 });
 
 test("scheduled maintenance one-offs carry exact validated provenance labels", () => {

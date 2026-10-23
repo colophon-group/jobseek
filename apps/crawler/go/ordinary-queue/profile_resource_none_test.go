@@ -68,7 +68,12 @@ func TestRenderedResourceNoneKeepsProfileAndCanonicalFence(t *testing.T) {
 			parser["resource_policy"] = policy
 			b, _ = json.Marshal(metadata)
 			detail["metadata"] = string(b)
-			if _, e := InspectRenderedDetail(jsonldBoardID, detail, original.SourceURL, Browser); e == nil {
+			bound, e := InspectRenderedDetail(jsonldBoardID, detail, original.SourceURL, Browser)
+			if scraper == "dom" && policy != "aggressive" {
+				if e != nil || bound.Profile != original.Profile || bound.EffectiveBoardSHA256 == got.EffectiveBoardSHA256 || bound.DOMConfig["resource_policy"] != policy {
+					t.Fatal("qualified DOM detail policy lost its original binding", policy, e)
+				}
+			} else if e == nil {
 				t.Fatal("unqualified detail resource policy accepted", policy)
 			}
 		}

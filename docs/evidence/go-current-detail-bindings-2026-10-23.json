@@ -1,0 +1,122 @@
+{
+  "schema_version": "jobseek.current-detail-binding-qualification/v1",
+  "date": "2026-10-23",
+  "issues": [
+    10789,
+    10791
+  ],
+  "implementation_pr": 10797,
+  "candidate_version": "0.13.1089",
+  "status": "candidate; no deployment or ownership/count reduction",
+  "qualification": [
+    {
+      "board_slug": "flex-ltd-jetcool",
+      "board_id": "fecd5e4b-07ba-47ba-95c9-663f85e8b7b9",
+      "source_url_sha256": "dec4994184e498df297d598e97ce80b691b48699451517fcf35ae9ae1aeef93c",
+      "original_scraper_type": "onlyfy",
+      "candidate_scraper_type": "workday",
+      "original_scraper_config_sha256": "114a6e8f5c43bea09a4a73b24b44b030440a6f3be212bbe943becdb363f15e29",
+      "candidate_scraper_config_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "monitor_config_changed": false,
+      "canonical_source_changed": false,
+      "ownership_granted": false,
+      "reason": "The board and retained canonical source are Workday, but the configured Onlyfy candidate route returns HTTP404. Select the existing native Workday reader.",
+      "observed_at_utc": "2026-10-23T15:48:41.207304+00:00",
+      "original_onlyfy_HTTP_statuses": [
+        404
+      ],
+      "candidate_workday_HTTP_statuses": [
+        200
+      ],
+      "full_original_workday_native_fields_equal": true,
+      "nonnull_fields": [
+        "date_posted",
+        "description",
+        "employment_type",
+        "locations",
+        "metadata",
+        "title"
+      ],
+      "complete_description_characters": 7149,
+      "private_capture_sha256": "1306505b248041ee7559cbe1840812cfa04212d46b1c1520e1f02c9aca2d21f0",
+      "language_option_removed": "Onlyfy-specific language=en is not a Workday parser option; existing tenant/site/instance/all_sites=false monitor controls remain byte-identical."
+    },
+    {
+      "board_slug": "vumc-physician-careers",
+      "board_id": "d71e5290-cd5d-465f-b49d-4fbb7150f6cc",
+      "source_url_sha256": "50294dc558a20098c9e267c95346a15f64553954a3369f0e3e8a87dc0cbeb025",
+      "original_scraper_type": "dom",
+      "candidate_scraper_type": "dom",
+      "original_scraper_config_sha256": "621bea886605e54e525ffce0cad978504dc02c068b877e9e71730e707471dab8",
+      "candidate_scraper_config_sha256": "259781ec5c8ff14b19f8d60ab794ffc06ed12f01e38fd51e3cab07fb6162e510",
+      "monitor_config_changed": false,
+      "canonical_source_changed": false,
+      "ownership_granted": false,
+      "reason": "Current physical native navigation and every non-null DOM field match original Chromium. Remove the now-unnecessary legacy stealth control; keep extraction, networkidle, timeout and lean resource policy intact.",
+      "observed_at_utc": "2026-10-23T15:37:47.361398+00:00",
+      "original_Chromium_HTTP_statuses": [
+        200
+      ],
+      "native_HTTP_status": 200,
+      "native_engine": "official hash-verified Lightpanda 1.0.1 darwin/arm64",
+      "publisher_policy_check": "existing native policy.Check succeeds on current correlated signals and captured HTML; empty explicit signals indicate no reservation",
+      "full_original_Chromium_native_fields_equal": true,
+      "nonnull_fields": [
+        "description",
+        "employment_type",
+        "locations",
+        "title"
+      ],
+      "complete_description_characters": 2522,
+      "private_capture_sha256": "b733cc8793bacef7bc4b074f06d49cf3f6db9cf5cc903074b00be39ec43cac4a",
+      "shared_contract_extension": "Reuse existing DOM navigation lean/auto resource normalization for DOM details while retaining original policy in immutable configuration and refusing unknown policy values."
+    }
+  ],
+  "validation": {
+    "retained_Python_registry_and_parser_tests_passed": 269,
+    "complete_catalogue_rows": 7901,
+    "census_regenerated_and_checked": true,
+    "source_binding_regressions": "Full current CSV configurations compile on their original canonical sources and correct independent workers; restored wrong provider/stealth configurations and opposite workers remain rejected.",
+    "native_policy_boundaries": "Original none/lean/auto configurations retain distinct full hashes; normalization is a private navigation copy. Unknown policies remain rejected.",
+    "real_PostgreSQL_Redis_detail_settlement": {
+      "top_level_tests_passed": 5,
+      "subtests_passed": 27,
+      "fixture_skips": 0,
+      "database": "actual migrated private PostgreSQL 18.6",
+      "queue": "actual private Redis",
+      "cases": [
+        "ordinary and large complete held DOM/JSON-LD/embedded content persists through browser authority",
+        "lean DOM details retain all fields and deadlines including alternate reads and proxy variants",
+        "publisher policy, gone/empty results and changed canonical state retain their original dispositions",
+        "Workday enrichment, descriptions, canonical deadlines and terminal queue settlement",
+        "empty and fresh-reserved Workday results preserve canonical content"
+      ],
+      "database_stopped_after_run": true
+    }
+  },
+  "remaining": [
+    "fresh final-head Required CI and Crawler Deploy Gate",
+    "installed Linux/image and complete current scheduled-source qualification",
+    "refresh post-recovery serving census and exact stage payload",
+    "supported whole-cohort deployment/admission with full floor and queue conservation",
+    "sustained natural execution/freshness; production interpreter and browser retirement"
+  ],
+  "hold": "#10794/#10796 restoration must explicitly clear before overlapping production or main/VERSION merge.",
+  "delivery_candidate": {
+    "pr": 10797,
+    "version": "0.13.1089",
+    "components": [
+      10707,
+      10795
+    ],
+    "runtime_base": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+    "serving_renderer_unchanged": "1.0.1",
+    "renderer_1_0_2_transition_separate": [
+      10798,
+      10799
+    ],
+    "current_catalogue_preserved": 7901,
+    "required_final_head_CI": "pending",
+    "production_ownership_changed": false
+  }
+}

@@ -8,6 +8,7 @@ on:
       - 'deploy/systemd/jobseek-ats-inventory.*'
       - 'deploy/systemd/jobseek-ats-inventory-network.service'
       - 'apps/crawler/src/ats_inventory/**'
+      - 'apps/crawler/go/ats-inventory/**'
       - 'apps/crawler/src/cli.py'
       - 'apps/crawler/src/shared/constants.py'
       - 'apps/crawler/Dockerfile'

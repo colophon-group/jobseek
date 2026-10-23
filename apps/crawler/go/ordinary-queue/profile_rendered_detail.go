@@ -81,6 +81,14 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 			delete(navigation, key)
 		}
 	}
+	// DOM details use the same physical Lightpanda navigation as DOM
+	// inventories. Its built-in font/media exclusions preserve the existing
+	// lean/auto policy; keep the original option in the immutable binding.
+	if scraper == "dom" {
+		if err := normalizeDOMLightpandaResourceOptions(navigation); err != nil {
+			return fail()
+		}
+	}
 	// The original DOM scraper checks gone redirects before action execution.
 	// Until the action protocol carries that guard, retain these configurations.
 	if pipeline, err := actions.Parse(options["actions"]); err != nil || len(pipeline) > 0 && options["gone_url_pattern"] != nil && options["gone_url_pattern"] != "" {

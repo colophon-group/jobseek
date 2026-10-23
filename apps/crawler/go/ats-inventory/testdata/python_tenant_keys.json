@@ -1,0 +1,5218 @@
+{
+  "rows": [
+    {
+      "family": "adp",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "adp:id/cc"
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "adp:id/cc"
+    },
+    {
+      "family": "adp",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "adp:company name/site"
+    },
+    {
+      "family": "adp",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "adp:company name/site"
+    },
+    {
+      "family": "adp",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "adp",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "ashby",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "ashby",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "ashby",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "ashby",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "ashby",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ashby",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "cornerstone:careers.example.test/company/board"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "cornerstone:careers.example.test/company/board"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "cornerstone",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "cornerstone",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "cornerstone",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "cornerstone",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "dayforce:tenant/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:tenant/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "dayforce:v1/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:v1/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "dayforce:pages/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:pages/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "dayforce:companies/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:companies/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "dayforce:client/careersite"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:client/careersite"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "dayforce:tenant/portal"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:tenant/portal"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "dayforce:social-recruitment/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:social-recruitment/tenant"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "dayforce:hcmui/candidateexperience"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:hcmui/candidateexperience"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "dayforce:tenant/portal"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:tenant/portal"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "dayforce:client/jobboard"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:client/jobboard"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "dayforce:careersection/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:careersection/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "dayforce:job/1"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:job/1"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "dayforce:job/1"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:job/1"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "dayforce:a%2fb/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:a%2fb/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "dayforce:tenant/"
+    },
+    {
+      "family": "dayforce",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "dayforce:tenant/"
+    },
+    {
+      "family": "dayforce",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "dayforce",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "gem",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "gem",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "gem",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "gem",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "gem",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "gem",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "greenhouse",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "greenhouse",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1/tenant"
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1/tenant"
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "herp",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages/tenant"
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages/tenant"
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "hrmos",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "jobvite",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "jobvite",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies/tenant"
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies/tenant"
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "join_com",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "lever",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "lever",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "lever",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "lever",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "lever",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "lever",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "moka",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "moka:tenant/123"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "moka:tenant/123"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "moka",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "moka",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "moka",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "moka",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "moka",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "moka",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "moka",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "oracle",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/override"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/override"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "oracle:tenant.career.softgarden.de/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:tenant.career.softgarden.de/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "oracle:tenant.softgarden.io/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:tenant.softgarden.io/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "oracle:careers.example.test/"
+    },
+    {
+      "family": "oracle",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "oracle",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "oracle",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "oracle",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "pageup:v1"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:v1"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "pageup:pages"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:pages"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "pageup:companies"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:companies"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "pageup:client"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:client"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "pageup:social-recruitment"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:social-recruitment"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "pageup:hcmui"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:hcmui"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "pageup:client"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:client"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "pageup:careersection"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:careersection"
+    },
+    {
+      "family": "pageup",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "pageup:job"
+    },
+    {
+      "family": "pageup",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:job"
+    },
+    {
+      "family": "pageup",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "pageup:job"
+    },
+    {
+      "family": "pageup",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:job"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "pageup:a%2fb"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:a%2fb"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "pageup:tenant"
+    },
+    {
+      "family": "pageup",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "pageup",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "paycom:jobs"
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paycom:jobs"
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "paycom:company"
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paycom:company"
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paycom",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "paylocity",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "paylocity",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "paylocity:00000000-1111-2222-3333-444444444444"
+    },
+    {
+      "family": "rippling",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "rippling",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "rippling",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "rippling",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "rippling",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "rippling",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "rippling",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "rippling",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "rippling",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "smartrecruiters",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "softgarden",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "softgarden:tenant"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "softgarden:tenant"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "softgarden:tenant"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "softgarden:tenant"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "softgarden",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "softgarden",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "softgarden",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "softgarden",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "taleo:careers.example.test/careersection/org"
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "taleo:careers.example.test/careersection/org"
+    },
+    {
+      "family": "taleo",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "taleo",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "ukg:client/board"
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "ukg:client/board"
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "ukg",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "unknown",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "unknown",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.career.softgarden.de"
+    },
+    {
+      "family": "unknown",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "unknown",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:tenant.softgarden.io"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "host:careers.example.test"
+    },
+    {
+      "family": "unknown",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "unknown",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "unknown",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "unknown",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/v1"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/pages"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/companies"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/hcmui"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/client"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/careersection"
+    },
+    {
+      "family": "workable",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "workable",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "workable",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "workable",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:tenant.softgarden.io/job"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/a%2fb"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "hostpath:careers.example.test/tenant"
+    },
+    {
+      "family": "workable",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workable",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://Careers.Example.test./Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/v1"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/v1/Tenant/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/v1"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": null,
+      "key": "workday:careers.example.test/pages"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/pages/Tenant",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/pages"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/companies"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/companies/Tenant/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/companies"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": null,
+      "key": "workday:careers.example.test/client"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/client/CareerSite/Board/home?c=Company",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/client"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant/Portal/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/social-recruitment/Tenant/123/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/social-recruitment"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": null,
+      "key": "workday:careers.example.test/hcmui"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/hcmUI/CandidateExperience/en/sites/Site/jobs?site_number=Override",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/hcmui"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": null,
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant/portal/Company/jobs/17",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": null,
+      "key": "workday:careers.example.test/client"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/client/JobBoard/Board/Opportunity",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/client"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": null,
+      "key": "workday:careers.example.test/careersection"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/careersection/jobs?ORG=Org&cws=1&cid=ID&ccid=CC",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/careersection"
+    },
+    {
+      "family": "workday",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": null,
+      "key": "workday:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "workday",
+      "url": "https://TENANT.career.softgarden.de/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:tenant.career.softgarden.de/job"
+    },
+    {
+      "family": "workday",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": null,
+      "key": "workday:tenant.softgarden.io/job"
+    },
+    {
+      "family": "workday",
+      "url": "https://tenant.softgarden.io/job/1",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:tenant.softgarden.io/job"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": null,
+      "key": "workday:careers.example.test/a%2fb"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/A%2Fb/jobs",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/a%2fb"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": null,
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "https://careers.example.test/Tenant?cid=Company+Name&ccid=Site",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": "workday:careers.example.test/tenant"
+    },
+    {
+      "family": "workday",
+      "url": "invalid",
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": "invalid",
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": null,
+      "ats_id": null,
+      "key": null
+    },
+    {
+      "family": "workday",
+      "url": null,
+      "ats_id": "00000000-1111-2222-3333-444444444444:job",
+      "key": null
+    }
+  ],
+  "identities": [
+    {
+      "value": null,
+      "normalized": null
+    },
+    {
+      "value": "  STRAẞE　東京\u001cName  ",
+      "normalized": "strasse 東京 name"
+    },
+    {
+      "value": true,
+      "normalized": "true"
+    },
+    {
+      "value": false,
+      "normalized": "false"
+    },
+    {
+      "value": 123,
+      "normalized": "123"
+    },
+    {
+      "value": " ",
+      "normalized": null
+    },
+    {
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "normalized": null
+    }
+  ]
+}

@@ -33,6 +33,7 @@ type ListingConfig struct {
 	JoinProofURL                         func(string, string) (string, error)
 	TitleScan                            *TitleScanConfig
 	PDFProof                             *PDFListingProof
+	ResponseFingerprintType              string
 	MyJobShop                            bool
 }
 
@@ -46,6 +47,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	allowed["my_job_shop"] = true
 	allowed["title_matched_url_scan"] = true
 	allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
+	allowed["fingerprint_response"] = true
 	for _, key := range ListingProviderKeys {
 		allowed[key] = true
 	}
@@ -192,7 +194,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		return c, ErrListingProof
 	}
 	c.Document, err = directDocumentOptions(config, endpoint)
-	if c.MyJobShop || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
+	if c.MyJobShop || c.EmptySelector != "" || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0 {
 		c.Document.MaxBodyBytes = 2 << 20
 	}
 	// The listing outer loop owns one shared attempt budget across statuses,
@@ -218,6 +220,17 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		if c.PDFProof != nil && (c.RichRows != nil || c.FetchURL != "") {
 			err = ErrPDFProof
 		}
+	}
+	if err == nil && config["fingerprint_response"] != nil {
+		fingerprint, parseErr := object(config["fingerprint_response"])
+		if parseErr != nil || len(fingerprint) != 1 {
+			return c, errors.New("invalid DOM response fingerprint configuration")
+		}
+		media, ok := fingerprint["content_type"].(string)
+		if !ok || len(media) > 128 || strings.TrimSpace(media) == "" || !strings.Contains(media, "/") || strings.ContainsRune(media, 0) || c.RichRows != nil || c.FetchURL != "" || c.TitleScan != nil || c.ScriptLinks != nil {
+			return c, errors.New("invalid DOM response fingerprint media type or route")
+		}
+		c.ResponseFingerprintType = strings.ToLower(strings.TrimSpace(media))
 	}
 	return c, err
 }

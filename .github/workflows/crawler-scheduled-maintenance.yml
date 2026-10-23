@@ -61,16 +61,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Validate host hygiene check
-        run: python3 -m py_compile scripts/crawler-host-hygiene.py
+      - name: Set up native maintenance toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/deploy-tools/go.mod
+          cache: false
 
-      - name: Copy host hygiene check
+      - name: Build source-bound native maintenance checks
+        run: bash apps/crawler/scripts/build-deploy-tools.sh "$GITHUB_SHA" apps/crawler/scripts
+
+      - name: Copy native maintenance checks
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-host-hygiene.py,apps/crawler/scripts/postgresql-operational-preflight.py
+          source: apps/crawler/scripts/native-deploy-tools.sh,apps/crawler/scripts/crawler-deploy-tools-amd64,apps/crawler/scripts/crawler-deploy-tools-arm64,apps/crawler/scripts/crawler-deploy-tools.source,apps/crawler/scripts/crawler-deploy-tools.sha256
           target: /tmp/jobseek-crawler-maintenance/${{ github.sha }}
           strip_components: 1
 
@@ -119,6 +125,8 @@ jobs:
               echo "Timed out waiting for the crawler mutation lock" >&2
               exit 1
             }
+            source "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/native-deploy-tools.sh"
+            initialize_native_deploy_tools "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts" "$GITHUB_SHA"
             read_exact_env() {
               key="$1"
               mapfile -t matches < <(sed -n "s/^${key}=//p" /home/deploy/.env 2>/dev/null)
@@ -136,7 +144,7 @@ jobs:
               export "$key=$value"
             done
             unset value
-            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
+            run_native_postgresql_preflight
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             image="$(read_exact_env CRAWLER_IMAGE_REF)"
@@ -218,7 +226,6 @@ jobs:
               maintenance_status=1
             else
               operation_budget=7200
-              operation_command=(uv run --no-sync crawler "$TASK")
               if [[ "$TASK" == refresh-typesense ]]; then
                 # The Go exporter owns the scheduled count refresh. The
                 # container is one-shot and uses the same bounded authority
@@ -237,6 +244,9 @@ jobs:
                 # Verification-only dispatch: prove the live taxonomy state
                 # without repeating a posting backfill or reconciliation.
                 operation_command=(go-typesense-exporter --verify-taxonomies)
+              else
+                echo "Unsupported maintenance task" >&2
+                exit 1
               fi
               timeout --foreground --signal=TERM --kill-after=90s "$operation_budget" docker run --rm \
                 --name "$NAME" \
@@ -255,7 +265,7 @@ jobs:
             fi
 
             hygiene_status=0
-            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler-host-hygiene.py" || hygiene_status=$?
+            run_native_host_hygiene || hygiene_status=$?
 
             if (( maintenance_status != 0 )); then
               echo "Maintenance task failed with status ${maintenance_status}" >&2

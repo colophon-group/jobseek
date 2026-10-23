@@ -39,7 +39,7 @@ func domVerificationResponseMatches(p queue.GreenhouseMonitorProfile, config map
 		route := qualifiedLifepointDOMHTTPMonitors[p.EffectiveConfigSHA256]
 		qualifiedChildResource = (lifepointJobsScope{route.host, route.path, "jobs.lifepointhealth.net"}).ResourceMatches(r.endpoint)
 	}
-	return e == nil && (c.RequireJSONLD || c.HasDetailFilters() || c.TitleScan != nil || c.PDFProof != nil || qualifiedChildResource) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
+	return e == nil && (c.RequireJSONLD || c.HasDetailFilters() || c.TitleScan != nil || c.PDFProof != nil || c.ResponseFingerprintType != "" || qualifiedChildResource) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
 }
 
 // The private binding comes from this complete listing's exact candidate set,

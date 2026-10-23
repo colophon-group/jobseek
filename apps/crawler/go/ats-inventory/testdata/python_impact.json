@@ -1,0 +1,516 @@
+[
+  {
+    "case": "strings",
+    "file": "python-impact-strings.parquet",
+    "artifact": {
+      "Family": "greenhouse",
+      "URL": "https://storage.stapply.ai/jobhive/v1/greenhouse/jobs.parquet",
+      "SHA256": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+      "Size": 3253,
+      "Rows": 7
+    },
+    "summary": {
+      "schema_version": 1,
+      "algorithm_version": 3,
+      "family": "greenhouse",
+      "artifact_sha256": "082888263fedcd7d113710ae79775236792f85743859c4d67d4a65a8a95875fc",
+      "artifact_size": 3253,
+      "artifact_rows": 7,
+      "derived_at": "2026-10-17T21:45:00+00:00",
+      "bucket_count": 6,
+      "keyed_jobs": 6,
+      "unkeyed_jobs": 1,
+      "buckets": [
+        {
+          "kind": "direct",
+          "key": "direct",
+          "name_keys": [
+            "different name"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "8840cc577465afc6"
+          ],
+          "country_codes": [
+            "CH"
+          ],
+          "latest_posted_at": "2026-10-06"
+        },
+        {
+          "kind": "name",
+          "key": "unique name",
+          "name_keys": [
+            "unique name"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [
+            "6e3190106a11b8b9"
+          ],
+          "country_codes": [
+            "US"
+          ],
+          "latest_posted_at": "2026-10-04"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:boards.greenhouse.io/absent",
+          "name_keys": [
+            "unmatched"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [
+            "488d56ef5916c908"
+          ],
+          "country_codes": [
+            "IT"
+          ],
+          "latest_posted_at": "2026-10-07"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:boards.greenhouse.io/one",
+          "name_keys": [
+            "strasse 東京"
+          ],
+          "active_jobs": 2,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "a89d61a337a36f42"
+          ],
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-02"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:shared.example.test/j",
+          "name_keys": [
+            "ambiguous"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "ba4afb1378126625"
+          ],
+          "country_codes": [
+            "FR"
+          ],
+          "latest_posted_at": "2026-10-03"
+        },
+        {
+          "kind": "unmatched",
+          "key": "",
+          "name_keys": [],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [],
+          "country_codes": [],
+          "latest_posted_at": null
+        }
+      ]
+    },
+    "family_rows": {
+      "greenhouse": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "one",
+          "url": "https://boards.greenhouse.io/one"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Ambiguous",
+          "slug": "amb1",
+          "url": "https://boards.greenhouse.io/amb1"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Ambiguous",
+          "slug": "amb2",
+          "url": "https://boards.greenhouse.io/amb2"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Unique Name",
+          "slug": "unique/site",
+          "url": "https://boards.greenhouse.io/unique"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Direct Name",
+          "slug": "direct",
+          "url": "https://boards.greenhouse.io/direct"
+        }
+      ],
+      "lever": [
+        {
+          "ats": "lever",
+          "name": "Missing",
+          "slug": "missing",
+          "url": "https://jobs.lever.co/missing"
+        }
+      ]
+    },
+    "companies": [
+      {
+        "ats": "greenhouse",
+        "name": "Straße 東京",
+        "slug": "one",
+        "url": "https://boards.greenhouse.io/one",
+        "impact_unknown": false,
+        "active_jobs": 2,
+        "remote_jobs": 1,
+        "location_count": 1,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-02"
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Ambiguous",
+        "slug": "amb1",
+        "url": "https://boards.greenhouse.io/amb1",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Ambiguous",
+        "slug": "amb2",
+        "url": "https://boards.greenhouse.io/amb2",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Unique Name",
+        "slug": "unique/site",
+        "url": "https://boards.greenhouse.io/unique",
+        "impact_unknown": false,
+        "active_jobs": 1,
+        "remote_jobs": 0,
+        "location_count": 1,
+        "country_codes": [
+          "US"
+        ],
+        "latest_posted_at": "2026-10-04"
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Direct Name",
+        "slug": "direct",
+        "url": "https://boards.greenhouse.io/direct",
+        "impact_unknown": false,
+        "active_jobs": 1,
+        "remote_jobs": 1,
+        "location_count": 1,
+        "country_codes": [
+          "CH"
+        ],
+        "latest_posted_at": "2026-10-06"
+      },
+      {
+        "ats": "lever",
+        "name": "Missing",
+        "slug": "missing",
+        "url": "https://jobs.lever.co/missing",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      }
+    ],
+    "reports": {
+      "greenhouse": {
+        "status": "derived",
+        "companies": 5,
+        "known_companies": 3,
+        "artifact_rows": 7,
+        "buckets": 6,
+        "matched_jobs": 4,
+        "unmatched_jobs": 3
+      },
+      "lever": {
+        "status": "artifact_missing",
+        "companies": 1,
+        "known_companies": 0,
+        "matched_jobs": 0,
+        "unmatched_jobs": 0
+      }
+    }
+  },
+  {
+    "case": "timestamp",
+    "file": "python-impact-timestamp.parquet",
+    "artifact": {
+      "Family": "greenhouse",
+      "URL": "https://storage.stapply.ai/jobhive/v1/greenhouse/jobs.parquet",
+      "SHA256": "0e4a2ef2d64ff8592d6b4df69f729c2e40550f4baebbbe9ab8cffd124783be40",
+      "Size": 3245,
+      "Rows": 7
+    },
+    "summary": {
+      "schema_version": 1,
+      "algorithm_version": 3,
+      "family": "greenhouse",
+      "artifact_sha256": "0e4a2ef2d64ff8592d6b4df69f729c2e40550f4baebbbe9ab8cffd124783be40",
+      "artifact_size": 3245,
+      "artifact_rows": 7,
+      "derived_at": "2026-10-17T21:45:00+00:00",
+      "bucket_count": 6,
+      "keyed_jobs": 6,
+      "unkeyed_jobs": 1,
+      "buckets": [
+        {
+          "kind": "direct",
+          "key": "direct",
+          "name_keys": [
+            "different name"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "8840cc577465afc6"
+          ],
+          "country_codes": [
+            "CH"
+          ],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        },
+        {
+          "kind": "name",
+          "key": "unique name",
+          "name_keys": [
+            "unique name"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [
+            "6e3190106a11b8b9"
+          ],
+          "country_codes": [
+            "US"
+          ],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:boards.greenhouse.io/absent",
+          "name_keys": [
+            "unmatched"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [
+            "488d56ef5916c908"
+          ],
+          "country_codes": [
+            "IT"
+          ],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:boards.greenhouse.io/one",
+          "name_keys": [
+            "strasse 東京"
+          ],
+          "active_jobs": 2,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "a89d61a337a36f42"
+          ],
+          "country_codes": [
+            "CH",
+            "DE"
+          ],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        },
+        {
+          "kind": "tenant",
+          "key": "hostpath:shared.example.test/j",
+          "name_keys": [
+            "ambiguous"
+          ],
+          "active_jobs": 1,
+          "remote_jobs": 1,
+          "location_hashes": [
+            "ba4afb1378126625"
+          ],
+          "country_codes": [
+            "FR"
+          ],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        },
+        {
+          "kind": "unmatched",
+          "key": "",
+          "name_keys": [],
+          "active_jobs": 1,
+          "remote_jobs": 0,
+          "location_hashes": [],
+          "country_codes": [],
+          "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+        }
+      ]
+    },
+    "family_rows": {
+      "greenhouse": [
+        {
+          "ats": "greenhouse",
+          "name": "Straße 東京",
+          "slug": "one",
+          "url": "https://boards.greenhouse.io/one"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Ambiguous",
+          "slug": "amb1",
+          "url": "https://boards.greenhouse.io/amb1"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Ambiguous",
+          "slug": "amb2",
+          "url": "https://boards.greenhouse.io/amb2"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Unique Name",
+          "slug": "unique/site",
+          "url": "https://boards.greenhouse.io/unique"
+        },
+        {
+          "ats": "greenhouse",
+          "name": "Direct Name",
+          "slug": "direct",
+          "url": "https://boards.greenhouse.io/direct"
+        }
+      ],
+      "lever": [
+        {
+          "ats": "lever",
+          "name": "Missing",
+          "slug": "missing",
+          "url": "https://jobs.lever.co/missing"
+        }
+      ]
+    },
+    "companies": [
+      {
+        "ats": "greenhouse",
+        "name": "Straße 東京",
+        "slug": "one",
+        "url": "https://boards.greenhouse.io/one",
+        "impact_unknown": false,
+        "active_jobs": 2,
+        "remote_jobs": 1,
+        "location_count": 1,
+        "country_codes": [
+          "CH",
+          "DE"
+        ],
+        "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Ambiguous",
+        "slug": "amb1",
+        "url": "https://boards.greenhouse.io/amb1",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Ambiguous",
+        "slug": "amb2",
+        "url": "https://boards.greenhouse.io/amb2",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Unique Name",
+        "slug": "unique/site",
+        "url": "https://boards.greenhouse.io/unique",
+        "impact_unknown": false,
+        "active_jobs": 1,
+        "remote_jobs": 0,
+        "location_count": 1,
+        "country_codes": [
+          "US"
+        ],
+        "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+      },
+      {
+        "ats": "greenhouse",
+        "name": "Direct Name",
+        "slug": "direct",
+        "url": "https://boards.greenhouse.io/direct",
+        "impact_unknown": false,
+        "active_jobs": 1,
+        "remote_jobs": 1,
+        "location_count": 1,
+        "country_codes": [
+          "CH"
+        ],
+        "latest_posted_at": "2026-10-01 12:30:00.123456+00:00"
+      },
+      {
+        "ats": "lever",
+        "name": "Missing",
+        "slug": "missing",
+        "url": "https://jobs.lever.co/missing",
+        "impact_unknown": true,
+        "active_jobs": 0,
+        "remote_jobs": 0,
+        "location_count": 0,
+        "country_codes": [],
+        "latest_posted_at": null
+      }
+    ],
+    "reports": {
+      "greenhouse": {
+        "status": "derived",
+        "companies": 5,
+        "known_companies": 3,
+        "artifact_rows": 7,
+        "buckets": 6,
+        "matched_jobs": 4,
+        "unmatched_jobs": 3
+      },
+      "lever": {
+        "status": "artifact_missing",
+        "companies": 1,
+        "known_companies": 0,
+        "matched_jobs": 0,
+        "unmatched_jobs": 0
+      }
+    }
+  }
+]

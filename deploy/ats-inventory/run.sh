@@ -151,6 +151,19 @@ read_exact_release() {
   printf '%s' "${matches[0]}"
 }
 
+# Keep the existing command only for retained pre-native rollback images. A
+# marked native image must run Go successfully; it never falls back to Python.
+select_inventory_command() {
+  local marker
+  marker="$(docker image inspect --format '{{with index .Config.Labels "org.jobseek.crawler.native-ats-inventory"}}{{.}}{{end}}' "$1")" || return 1
+  ats_legacy=0
+  case "$marker" in
+    v1) ats_command=(/usr/local/bin/go-ats-inventory) ;;
+    "") ats_command=(/app/.venv/bin/crawler ats-inventory); ats_legacy=1 ;;
+    *) echo "ERROR: unsupported native ATS inventory image contract" >&2; return 1 ;;
+  esac
+}
+
 prepare_registry_snapshot() {
   local expected_image="$1" expected_revision="$2"
   [[ -d "$REGISTRY_SNAPSHOT_ROOT" && ! -L "$REGISTRY_SNAPSHOT_ROOT" ]] || {
@@ -255,11 +268,15 @@ crawler_revision="$(read_exact_release "$release_file" JOBSEEK_DEPLOY_REVISION)"
   exit 1
 }
 prepare_registry_snapshot "$image" "$crawler_revision"
+select_inventory_command "$image"
 flock -u 8
 
 run_phase() {
   local budget="$1" phase="$2" candidate_mode="$3" use_token="$4"
   local -a docker_extra=() crawler_extra=(--candidate-issues "$candidate_mode")
+  if (( ats_legacy )); then
+    docker_extra+=(--env PYTHONDONTWRITEBYTECODE=1)
+  fi
   if [[ "$use_token" == 1 ]]; then
     docker_extra+=(--mount "type=bind,src=$TOKEN_FILE,dst=/run/credentials/github-token,readonly")
     crawler_extra+=(--github-token-file /run/credentials/github-token)
@@ -282,14 +299,13 @@ run_phase() {
     --mount "type=bind,src=$CACHE_ROOT,dst=/state/cache" \
     --mount "type=bind,src=$REGISTRY_SNAPSHOT,dst=/app/data,readonly" \
     "${docker_extra[@]}" \
-    -e PYTHONDONTWRITEBYTECODE=1 \
     --label jobseek.maintenance.operation=ats-inventory \
     --label "jobseek.maintenance.phase=${phase}" \
     --label jobseek.maintenance.issue=6190 \
     --label "jobseek.maintenance.revision=${revision}" \
     --label jobseek.maintenance.budget-seconds=12600 \
     "$image" \
-    /app/.venv/bin/crawler ats-inventory \
+    "${ats_command[@]}" \
       --cache-dir /state/cache \
       --impact \
       --queue-rollout-cap "$rollout_cap" \

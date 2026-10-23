@@ -30,15 +30,6 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 			continue
 		}
 		t.Run(row[h["board_slug"]], func(t *testing.T) {
-			if row[h["board_slug"]] == "flex-ltd-jetcool" {
-				c := profileConfig()
-				c["board_url"] = row[h["board_url"]]
-				c["metadata"] = `{"scraper_type":"onlyfy","scraper_config":{"language":"en"}}`
-				if _, err := inspectDetailOwnership(profileBoardID, c); err == nil {
-					t.Fatal("Workday board gained Onlyfy ownership")
-				}
-				return
-			}
 			md := map[string]any{}
 			if raw := row[h["monitor_config"]]; raw != "" && json.Unmarshal([]byte(raw), &md) != nil {
 				t.Fatal("monitor config")
@@ -102,7 +93,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 40, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2, "onlyfy": 6, "tupu360": 2, "phuketall": 1}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 40, "jazzhr": 20, "taleo": 5, "jobconvo": 1, "paycor": 2, "recruiterbox": 1, "veryeast": 2, "onlyfy": 5, "tupu360": 2, "phuketall": 1}) {
 		t.Fatal("registry changed", counts)
 	}
 }
