@@ -19,6 +19,11 @@ import (
 //go:embed first_retirement.lua
 var firstRetirementLua string
 
+const firstRetirementReceiptBaseSQL = `SELECT f.task_id::text FROM ordinary_worker_write_fence f
+ WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])`
+const firstRetirementReceiptFirstSQL = firstRetirementReceiptBaseSQL + ` ORDER BY f.task_id LIMIT 256`
+const firstRetirementReceiptNextSQL = firstRetirementReceiptBaseSQL + ` AND f.task_id>$3::uuid ORDER BY f.task_id LIMIT 256`
+
 type firstRetirementMember struct {
 	BoardID      string            `json:"board_id"`
 	Domain       string            `json:"domain"`
@@ -189,9 +194,16 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 	// across these pages; receipts remain unchanged audit evidence.
 	var cursor *string
 	for {
-		rows, err := tx.Query(ctx, `SELECT f.task_id::text FROM ordinary_worker_write_fence f
- WHERE f.task_kind='scrape' AND f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])
- AND ($3::uuid IS NULL OR f.task_id>$3::uuid) ORDER BY f.task_id LIMIT 256`, plan.Epoch(), boards, cursor)
+		// A nullable OR cursor becomes a filter in PostgreSQL's generic plan,
+		// rescanning every earlier receipt for each page. Keep a direct range
+		// predicate after page one so the retained primary key supplies the seek.
+		// Page one has no lower bound and still includes the zero UUID.
+		query, args := firstRetirementReceiptFirstSQL, []any{plan.Epoch(), boards}
+		if cursor != nil {
+			query = firstRetirementReceiptNextSQL
+			args = append(args, *cursor)
+		}
+		rows, err := tx.Query(ctx, query, args...)
 		if err != nil {
 			return nil, err
 		}
