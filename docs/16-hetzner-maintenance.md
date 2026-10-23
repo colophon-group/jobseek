@@ -1827,6 +1827,9 @@ retained ordinary cohort at the new B0 epoch. Independently verify membership,
 queues, every service health endpoint and the public company catalogue.
 
 Canonical restoration observes the fleet's retained attempt history. Its
+receipt pages use a direct UUID range after the first page, so PostgreSQL's
+generic prepared plans seek through the retained primary key rather than
+rescanning earlier history. The first page includes the zero UUID. Its
 administrative snapshot has a fifteen-minute bound inside the existing
 thirty-minute lifecycle; SQL statements retain their ten-second limit and an
 earlier caller deadline still wins. A snapshot deadline leaves the original

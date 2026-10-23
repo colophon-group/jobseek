@@ -2,11 +2,66 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
+
+func TestRealFirstRetirementReceiptGenericPlanSeeksPastPriorPages(t *testing.T) {
+	pool := hostSQLFixture(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = tx.Exec(ctx, "DEALLOCATE jobseek_retirement_receipt_seek")
+		_ = tx.Rollback(ctx)
+	}()
+	if _, err := tx.Exec(ctx, "SET LOCAL plan_cache_mode=force_generic_plan; SET LOCAL enable_seqscan=off"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, "PREPARE jobseek_retirement_receipt_seek(bigint,uuid[],uuid) AS "+firstRetirementReceiptNextSQL); err != nil {
+		t.Fatal(err)
+	}
+	var body []byte
+	if err := tx.QueryRow(ctx, `EXPLAIN (FORMAT JSON) EXECUTE jobseek_retirement_receipt_seek(
+ 1,ARRAY['00000000-0000-0000-0000-000000000001']::uuid[],
+ '00000000-0000-0000-0000-000000000001')`).Scan(&body); err != nil {
+		t.Fatal(err)
+	}
+	var plan any
+	if err := json.Unmarshal(body, &plan); err != nil {
+		t.Fatal(err)
+	}
+	var indexedSeek func(any) bool
+	indexedSeek = func(node any) bool {
+		switch n := node.(type) {
+		case map[string]any:
+			if condition, _ := n["Index Cond"].(string); strings.Contains(condition, "task_id > $3") {
+				return true
+			}
+			for _, child := range n {
+				if indexedSeek(child) {
+					return true
+				}
+			}
+		case []any:
+			for _, child := range n {
+				if indexedSeek(child) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if !indexedSeek(plan) {
+		t.Fatal("retained receipt pagination rescans prior pages under a generic plan", string(body))
+	}
+}
 
 func TestRealFirstDetailRetirementPreservesAllReceiptsAcrossPages(t *testing.T) {
 	p := firstWorkdayDetailFixture(t)
