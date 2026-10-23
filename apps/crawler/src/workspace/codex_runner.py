@@ -1204,42 +1204,50 @@ class GitHubCoordinator:
         return fetch_oldest_open_issue(label=label, skip_open_prs=False)
 
     def list_open_issues(self, label: str) -> list[int]:
-        import json
-
+        """Read the complete oldest-first backlog, without GitHub search limits."""
         from src.workspace import git
 
         result = git._run(  # noqa: SLF001
             [
                 "gh",
-                "issue",
-                "list",
-                *git._gh_repo_flag(),  # noqa: SLF001
-                "--label",
-                label,
-                "--state",
-                "open",
-                "--search",
-                "sort:created-asc",
-                "--limit",
-                "100",
-                "--json",
-                "number",
+                "api",
+                "--paginate",
+                "--slurp",
+                "--method",
+                "GET",
+                f"repos/{git._resolve_repo()}/issues",  # noqa: SLF001
+                "-f",
+                "state=open",
+                "-f",
+                f"labels={label}",
+                "-f",
+                "sort=created",
+                "-f",
+                "direction=asc",
+                "-F",
+                "per_page=100",
             ],
             check=False,
         )
         if result.returncode != 0:
-            raise GitHubStateError(f"could not list open {label!r} issues: {result.stderr}")
+            raise GitHubStateError(f"could not list open {label!r} issues")
         try:
-            issues = json.loads(result.stdout or "[]")
-        except json.JSONDecodeError as exc:
-            raise GitHubStateError(f"could not parse open {label!r} issues: {exc}") from exc
-        if not isinstance(issues, list):
-            raise GitHubStateError(f"unexpected issue list shape for {label!r}")
-        return [
-            number
-            for item in issues
-            if isinstance(item, dict) and isinstance((number := item.get("number")), int)
-        ]
+            pages = json.loads(result.stdout)
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise GitHubStateError(f"could not parse open {label!r} issues") from exc
+        if not isinstance(pages, list) or not pages:
+            raise GitHubStateError(f"unexpected issue pages for {label!r}")
+        issues: dict[int, None] = {}
+        for page in pages:
+            if not isinstance(page, list):
+                raise GitHubStateError(f"unexpected issue page for {label!r}")
+            for item in page:
+                if not isinstance(item, dict) or type(item.get("number")) is not int:
+                    raise GitHubStateError(f"unexpected issue entry for {label!r}")
+                # The REST issues endpoint also returns pull requests.
+                if "pull_request" not in item:
+                    issues[item["number"]] = None
+        return list(issues)
 
     def check_existing_prs(self, issue: int) -> list[dict[str, str]]:
         import json
@@ -1454,40 +1462,12 @@ class GitHubCoordinator:
             check=False,
         )
 
-    def prune_stale_runner_claims(self, label: str, *, older_than_s: int) -> None:
-        import json
-
-        from src.workspace import git
-
-        result = git._run(  # noqa: SLF001
-            [
-                "gh",
-                "issue",
-                "list",
-                *git._gh_repo_flag(),  # noqa: SLF001
-                "--label",
-                label,
-                "--state",
-                "open",
-                "--limit",
-                "100",
-                "--json",
-                "number",
-            ],
-            check=False,
-        )
-        if result.returncode != 0:
-            raise GitHubStateError(f"could not list open {label!r} issues: {result.stderr}")
-        try:
-            issues = json.loads(result.stdout or "[]")
-        except json.JSONDecodeError as exc:
-            raise GitHubStateError(f"could not parse open {label!r} issues: {exc}") from exc
-        if not isinstance(issues, list):
-            raise GitHubStateError(f"unexpected issue list shape for {label!r}")
-        for issue in issues:
-            number = issue.get("number") if isinstance(issue, dict) else None
-            if not isinstance(number, int):
-                continue
+    def prune_stale_runner_claims(
+        self, label: str, *, older_than_s: int, issues: list[int] | None = None
+    ) -> None:
+        # The governor supplies only candidates without a PR. Avoid a separate
+        # full-backlog comments sweep before any candidate can be selected.
+        for number in self.list_open_issues(label) if issues is None else issues:
             for claim in self.list_claims(number):
                 if _is_stale_runner_claim(claim, older_than_s=older_than_s):
                     self.delete_claim(claim.id)
@@ -1841,25 +1821,15 @@ class CompanyResolverGovernor:
         ledger_path = self.config.ledger_path or self.config.root / "state/ledger.sqlite"
         self.ledger = ledger or RunnerLedger(ledger_path)
         self.github = github or GitHubCoordinator()
+        self._admission_reason = "no admitted issue"
 
     def admit_one(self) -> Admission | None:
+        self._admission_reason = "no admitted issue"
         if not self.github.check_auth():
-            return None
-        try:
-            self.github.prune_stale_runner_claims(
-                self.config.label,
-                older_than_s=self.config.lease_timeout_s,
-            )
-        except GitHubStateError:
-            return None
-        try:
-            issues = self.github.list_open_issues(self.config.label)
-        except (AttributeError, GitHubStateError):
-            # Compatibility for small test/dry-run coordinators and older
-            # integrators.  Production uses the full candidate list so one
-            # backed-off issue never blocks the queue behind it.
-            issue = self.github.fetch_oldest_open_issue(self.config.label)
-            issues = [issue] if issue is not None else []
+            raise GitHubStateError("GitHub authentication failed")
+        # An API failure must remain visible, never fall back to a truncated
+        # oldest-issue lookup and report an apparently empty queue.
+        issues = self.github.list_open_issues(self.config.label)
         issue = self._select_candidate(issues)
         if issue is None:
             return None
@@ -1914,25 +1884,61 @@ class CompanyResolverGovernor:
         now = int(time.time())
         last_retryable_issue = self.ledger.last_retryable_issue(active_slot=self.config.active_slot)
         deferred_issue = None
+        counts = dict(backoff=0, linked_pr=0, active_claim=0, github_error=0)
+        inspected = 0
+        selected = None
         for issue in issues:
+            inspected += 1
             retry_after = self.ledger.retry_after_for_issue(issue)
             if retry_after is not None and retry_after > now:
+                counts["backoff"] += 1
                 continue
             try:
                 pr_class = classify_issue_prs(self.github.check_existing_prs(issue))
                 if pr_class != "none":
+                    counts["linked_pr"] += 1
                     continue
-                if self.github.list_claims(issue):
-                    continue
+                claims = self.github.list_claims(issue)
+                if claims:
+                    self.github.prune_stale_runner_claims(
+                        self.config.label,
+                        older_than_s=self.config.lease_timeout_s,
+                        issues=[issue],
+                    )
+                    # Re-read after cleanup; manual/recent claims still block.
+                    if self.github.list_claims(issue):
+                        counts["active_claim"] += 1
+                        continue
             except GitHubStateError:
-                # Unknown GitHub state is unsafe for this candidate, but does
-                # not prevent us from considering a later independent issue.
+                counts["github_error"] += 1
                 continue
             if issue == last_retryable_issue:
                 deferred_issue = issue
                 continue
-            return issue
-        return deferred_issue
+            selected = issue
+            break
+        if selected is None:
+            selected = deferred_issue
+        print(
+            json.dumps(
+                dict(
+                    event="codex_candidate_selection",
+                    candidates=len(issues),
+                    inspected=inspected,
+                    selected_issue=selected,
+                    **counts,
+                ),
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+        if selected is None:
+            if counts["github_error"]:
+                raise GitHubStateError("candidate eligibility could not be verified")
+            self._admission_reason = (
+                "no eligible company requests" if issues else "no open company requests"
+            )
+        return selected
 
     def run_once(self) -> RunResult:
         self._retry_failed_trace_exports()
@@ -1940,9 +1946,12 @@ class CompanyResolverGovernor:
         if not decision.should_run:
             return RunResult(run_id="", issue=None, state="skipped", error=decision.reason)
 
-        admission = self.admit_one()
+        try:
+            admission = self.admit_one()
+        except GitHubStateError as exc:
+            return RunResult(run_id="", issue=None, state="failed", error=str(exc))
         if admission is None:
-            return RunResult(run_id="", issue=None, state="skipped", error="no admitted issue")
+            return RunResult(run_id="", issue=None, state="skipped", error=self._admission_reason)
         if self.config.dry_run:
             self.github.delete_claim(admission.claim_comment_id)
             self.ledger.finish(admission.run_id, "skipped", error="dry run")
