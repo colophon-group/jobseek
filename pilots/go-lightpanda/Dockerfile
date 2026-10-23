@@ -44,7 +44,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
     -tags densitybench -trimpath -ldflags="-s -w" \
     -o /out/go-lightpanda-density .
 
-FROM mirror.gcr.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
+FROM docker.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
 
 FROM docker.io/library/debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
@@ -77,6 +77,8 @@ ENV LIGHTPANDA_BIN=/usr/local/bin/lightpanda
 FROM pilot-base AS integration-test
 
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
+WORKDIR /integration-fixtures
+COPY --chown=10001:10001 --chmod=0444 testdata/python_wait_states.json ./testdata/python_wait_states.json
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
     -test.run '^(TestLightpandaIntegration|TestLightpandaHeapLimitIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaSingleDetailCaptureIntegration|TestLightpandaAPIRootArraySessionIntegration|TestLightpandaRotatingAPISessionIntegration|TestLightpandaNativeBrowserProviderSessionIntegration|TestLightpandaDocumentActionsIntegration|TestLargeDocumentPhysicalWireKeepsCompleteHTMLAndLegacyLimit|TestLightpandaDocumentInteractionsIntegration|TestLightpandaOriginalWaitStateFixtures|TestLightpandaNavigationReadinessIntegration|TestLightpandaDOMAutoResourceIntegration|TestLightpandaDOMSessionRendersRootFetchesRawTailAndRetainsCookies|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration|TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation|TestPhysicalLightpandaConfiguredProxyHTTPSRejectsUntrustedOrigin|TestPinnedProxyChildExecPortIsolation)$' \
