@@ -244,7 +244,12 @@ func coldCanonicalSnapshotTransaction(ctx context.Context, pool *pgxpool.Pool, f
 	if scope, ok := ctx.Value(hostColdSQLKey{}).(*HostColdSQL); !ok || scope == nil {
 		return ErrAuthorityLost
 	}
-	return coldTransitionTransactionWithin(ctx, pool, 2*time.Minute, fn)
+	// Retained receipt history grows with useful fleet execution. A two-minute
+	// snapshot expires during supported retirement before any projection effect,
+	// leaving the complete writer fleet contained. Keep the original barriers
+	// and short per-statement timeout, but budget the same fifteen minutes as
+	// the full-fleet administrative projection. The caller's deadline still wins.
+	return coldTransitionTransactionWithin(ctx, pool, 15*time.Minute, fn)
 }
 
 func coldTransitionTransactionWithin(ctx context.Context, pool *pgxpool.Pool, budget time.Duration, fn func(context.Context, pgx.Tx) error) error {
