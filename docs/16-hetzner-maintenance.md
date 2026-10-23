@@ -1810,6 +1810,34 @@ check every HTTP endpoint and restart policy, and only then remove the pending
 ordinary receipt. Save measured cold-admission time and full restoration evidence.
 Leave the partial index in place for later activation and supported retirement.
 
+### Catalogue publication with native ownership
+
+The standalone CSV publisher refuses an ordinary ownership receipt, including
+a retained `pending` or `retiring` receipt. Reconcile that receipt through the
+original supported lifecycle; never remove it to unblock a company addition.
+Before publication, retain the exact active monitor/detail cohort, its SQL and
+Redis ownership identity, the B0 receipt, immutable runtime identity, and queue
+baseline. Coordinate other production changes for the complete recovery window.
+
+Use the original ordinary retirement and B0 rollback drivers, preserving their
+source/image/receipt checks, all-writer quiescence, mutation locks and full
+restoration checks. Publish the complete current-main CSV tree through
+`Sync CSV data`, then reactivate the same B0 cohort and stage/activate the full
+retained ordinary cohort at the new B0 epoch. Independently verify membership,
+queues, every service health endpoint and the public company catalogue.
+
+Canonical restoration observes the fleet's retained attempt history. Its
+receipt pages use a direct UUID range after the first page, so PostgreSQL's
+generic prepared plans seek through the retained primary key rather than
+rescanning earlier history. The first page includes the zero UUID. Its
+administrative snapshot has a fifteen-minute bound inside the existing
+thirty-minute lifecycle; SQL statements retain their ten-second limit and an
+earlier caller deadline still wins. A snapshot deadline leaves the original
+receipt and writer containment intact. Use `recover-pending` with the original
+driver, optionally selecting an explicitly reviewed source-bound immutable
+compatibility admin image. The compatibility admin may retire the outgoing
+owner; it cannot activate a different runtime or bypass its retained identity.
+
 ### Production Maintenance Provenance
 
 Do not run ad-hoc crawler one-offs or pause writer services with bare
