@@ -4460,6 +4460,7 @@ mambu,mambu-pinpoint,https://mambu.pinpointhq.com,pinpoint,"{""slug"": ""mambu""
 mammoth,mammoth-pinpoint,https://mammoth.pinpointhq.com,pinpoint,"{""slug"": ""mammoth""}",skip,
 mammoth-brands,mammoth-brands-greenhouse,https://job-boards.greenhouse.io/mammothbrands,greenhouse,"{""token"": ""mammothbrands""}",skip,
 man-group,man-group-greenhouse,https://job-boards.greenhouse.io/mangroup,greenhouse,"{""token"": ""mangroup""}",skip,
+mandarin-oriental,mandarin-oriental-global,https://careers.mandarinoriental.com/jobs/search,sitemap,"{""sitemap_url"": ""https://careers.mandarinoriental.com/sitemap.xml"", ""url_filter"": ""/jobs/""}",json-ld,"{""render"": true}"
 manna-drone-delivery,manna-drone-delivery-main,https://apply.workable.com/manna-1/,workable,"{""token"": ""manna-1""}",workable,
 manomano,manomano-careers,https://careers.manomano.jobs/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.manomano.jobs/jobs.rss""}",skip,
 manor,manor-careers,https://live.solique.ch/manor/de/,sitemap,"{""sitemap_url"": ""https://live.solique.ch/sitemap.xml"", ""url_filter"": ""/manor/job/details/[0-9]+/?$""}",json-ld,
