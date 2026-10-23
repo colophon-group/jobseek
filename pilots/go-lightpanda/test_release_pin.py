@@ -20,7 +20,7 @@ class ReleasePinTest(unittest.TestCase):
             f"ARG LIGHTPANDA_IMAGE={image['repository']}@{image['index_digest']}\n",
             dockerfile,
         )
-        self.assertIn("FROM mirror.gcr.io/${LIGHTPANDA_IMAGE} AS lightpanda-source", dockerfile)
+        self.assertIn("FROM docker.io/${LIGHTPANDA_IMAGE} AS lightpanda-source", dockerfile)
         self.assertIn(
             f"COPY --from=lightpanda-source {image['binary_path']} /usr/local/bin/lightpanda",
             dockerfile,
@@ -33,6 +33,11 @@ class ReleasePinTest(unittest.TestCase):
             for field in ("image_manifest_digest", "image_binary_layer_digest"):
                 self.assertRegex(asset[field], r"^sha256:[0-9a-f]{64}$")
         self.assertIn("sha256sum --check --strict", dockerfile)
+        self.assertIn("WORKDIR /integration-fixtures", dockerfile)
+        self.assertIn(
+            "testdata/python_wait_states.json ./testdata/python_wait_states.json", dockerfile
+        )
+        self.assertIn("|TestLightpandaOriginalWaitStateFixtures|", dockerfile)
         verification = release["verification_assets"]
         self.assertEqual(set(verification), {"darwin/arm64"})
         macos = verification["darwin/arm64"]

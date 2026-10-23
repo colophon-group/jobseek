@@ -70,6 +70,11 @@
       "discriminating_geometry": "Same display:contents text ranges have width=5,height=5 under verified 1.0.1, width=0,height=5 under verified 1.0.2; computed styles and input HTML are the same. Existing native visibility correctly refuses zero-width ranges.",
       "supported_Linux_architecture_verification": "pending; added original wait-state suite to mandatory physical image qualification",
       "promotion_allowed": false
+    },
+    "initial_Linux_CI_build_obstacles": {
+      "amd64": "Newly selected original wait-state suite reached the physical image, but the existing image did not package its JSON reference. Added the exact frozen fixture to the integration-only stage.",
+      "arm64": "mirror.gcr.io returned a missing new ARM64 platform manifest. The source-qualified official Docker Hub registry contains it; use docker.io with the same immutable index and verified binary hashes.",
+      "supported_Linux_compatibility_result": "not established by those failed builds; rerun full physical jobs on the corrected head"
     }
   },
   "contracts_to_revalidate": [
