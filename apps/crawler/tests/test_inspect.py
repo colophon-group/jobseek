@@ -1973,9 +1973,9 @@ class TestSophiaGeneticsRateLimitConfig:
 
 
 class TestGrooveQuantumSiteGroundConfig:
-    """Groove Quantum must bypass SiteGround's crawler-IP challenge (#4224)."""
+    """Retain complete content on the qualified direct rendered route."""
 
-    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+    def test_monitor_and_scraper_use_direct_rendering(self):
         import json
 
         from src.core.scrapers.dom import parse_html
@@ -1993,10 +1993,9 @@ class TestGrooveQuantumSiteGroundConfig:
         scraper_config = json.loads(row["scraper_config"])
         for config in (monitor_config, scraper_config):
             assert config["render"] is True
-            assert config["proxy"] is True
-            assert config["persistent_context"] is True
-            assert config["channel"] == "chrome"
-            assert config["headless"] is False
+            assert not any(
+                key in config for key in ("proxy", "persistent_context", "channel", "headless")
+            )
 
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["url_filter"] == "/job/"
@@ -2046,9 +2045,9 @@ class TestMetalysisSiteGroundConfig:
 
 
 class TestOrangeQuantumSystemsSiteGroundConfig:
-    """OrangeQS must bypass SiteGround and retain complete job content (#4444)."""
+    """Retain complete content and actions on the qualified direct route."""
 
-    def test_proxy_backed_real_browser_and_dom_extraction(self):
+    def test_direct_rendering_and_dom_extraction(self):
         import json
 
         from src.core.scrapers.dom import parse_html
@@ -2070,10 +2069,9 @@ class TestOrangeQuantumSystemsSiteGroundConfig:
         scraper_config = json.loads(row["scraper_config"])
         for config in (monitor_config, scraper_config):
             assert config["render"] is True
-            assert config["proxy"] is True
-            assert config["persistent_context"] is True
-            assert config["channel"] == "chrome"
-            assert config["headless"] is False
+            assert not any(
+                key in config for key in ("proxy", "persistent_context", "channel", "headless")
+            )
 
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["url_filter"] == r"/career/[^/?#]+/?$"

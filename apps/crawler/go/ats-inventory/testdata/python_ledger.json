@@ -1,0 +1,142 @@
+{
+  "items": [
+    {
+      "kind": "issue",
+      "number": 102,
+      "state": "closed",
+      "title": "Add company: two",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztuz3smvsw42dpovzwkothojswk3tin52xgzjfgnaxi53p board=10f03af69c5bc8b71426f1ce3ad4a944e487566b08c503ce767754e6a6540cd4 -->",
+      "url": "https://github.com/example/test/issues/102",
+      "labels": [
+        "source:ats-inventory"
+      ],
+      "created_at": "2026-10-17T01:00:00Z"
+    },
+    {
+      "kind": "pr",
+      "number": 103,
+      "state": "open",
+      "title": "Add company: three",
+      "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztuz3smvsw42dpovzwkothojswk3tin52xgzjfgnaxi2dsmvsq board=f32aedc2f43689c4069fb71282f05465ca257c33b6741d1e3747c96d8dd9dc45 -->",
+      "url": "https://github.com/example/test/pull/103",
+      "labels": [
+        "source:ats-inventory"
+      ],
+      "created_at": "2026-10-17T01:00:00Z"
+    }
+  ],
+  "reconciliation": {
+    "remote_markers": 1,
+    "recovered_sources": 1,
+    "missing_remote_sources": [
+      "ats-scrapers:greenhouse:greenhouse%3Aone"
+    ]
+  },
+  "after_reconcile": {
+    "sources": {
+      "ats-scrapers:greenhouse:greenhouse%3Aone": {
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Aone",
+        "normalized_url": "https://boards.greenhouse.io/one",
+        "state": "remote_missing",
+        "references": []
+      },
+      "ats-scrapers:greenhouse:greenhouse%3Atwo": {
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Atwo",
+        "normalized_url": null,
+        "state": "remote_issue_closed",
+        "references": [
+          "issue:102 [closed] https://github.com/example/test/issues/102"
+        ]
+      }
+    },
+    "url_records": {
+      "10f03af69c5bc8b71426f1ce3ad4a944e487566b08c503ce767754e6a6540cd4": [
+        {
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Atwo",
+          "normalized_url": null,
+          "state": "remote_issue_closed",
+          "references": [
+            "issue:102 [closed] https://github.com/example/test/issues/102"
+          ]
+        }
+      ],
+      "f194bff159fac5fc1b7b83c7035b628bc8bcd3d673836bd4dade8f1204ebacf1": [
+        {
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Aone",
+          "normalized_url": "https://boards.greenhouse.io/one",
+          "state": "remote_missing",
+          "references": []
+        }
+      ]
+    },
+    "created_today": 2
+  },
+  "candidate": {
+    "family": "greenhouse",
+    "native_ats": "native:greenhouse",
+    "tenant": "greenhouse:two",
+    "source_key": "ats-scrapers:greenhouse:greenhouse%3Atwo",
+    "name": "two",
+    "slug": "two",
+    "board_url": "https://boards.greenhouse.io/two",
+    "impact_unknown": false,
+    "active_jobs": 2,
+    "remote_jobs": 1,
+    "location_count": 1,
+    "country_codes": [
+      "CH"
+    ],
+    "latest_posted_at": null
+  },
+  "record_item": {
+    "kind": "issue",
+    "number": 102,
+    "state": "closed",
+    "title": "Add company: two",
+    "body": "<!-- ats-inventory-candidate:v1 source=mf2hglltmnzgc4dfojztuz3smvsw42dpovzwkothojswk3tin52xgzjfgnaxi53p board=10f03af69c5bc8b71426f1ce3ad4a944e487566b08c503ce767754e6a6540cd4 -->",
+    "url": "https://github.com/example/test/issues/102",
+    "labels": [
+      "source:ats-inventory"
+    ],
+    "created_at": "2026-10-17T01:00:00Z"
+  },
+  "after_record": {
+    "sources": {
+      "ats-scrapers:greenhouse:greenhouse%3Aone": {
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Aone",
+        "normalized_url": "https://boards.greenhouse.io/one",
+        "state": "remote_missing",
+        "references": []
+      },
+      "ats-scrapers:greenhouse:greenhouse%3Atwo": {
+        "source_key": "ats-scrapers:greenhouse:greenhouse%3Atwo",
+        "normalized_url": "https://boards.greenhouse.io/two",
+        "state": "remote_issue_closed",
+        "references": [
+          "issue:102 [closed] https://github.com/example/test/issues/102"
+        ]
+      }
+    },
+    "url_records": {
+      "10f03af69c5bc8b71426f1ce3ad4a944e487566b08c503ce767754e6a6540cd4": [
+        {
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Atwo",
+          "normalized_url": "https://boards.greenhouse.io/two",
+          "state": "remote_issue_closed",
+          "references": [
+            "issue:102 [closed] https://github.com/example/test/issues/102"
+          ]
+        }
+      ],
+      "f194bff159fac5fc1b7b83c7035b628bc8bcd3d673836bd4dade8f1204ebacf1": [
+        {
+          "source_key": "ats-scrapers:greenhouse:greenhouse%3Aone",
+          "normalized_url": "https://boards.greenhouse.io/one",
+          "state": "remote_missing",
+          "references": []
+        }
+      ]
+    },
+    "created_today": 2
+  }
+}
