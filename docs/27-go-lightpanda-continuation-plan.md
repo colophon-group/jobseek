@@ -68,9 +68,10 @@ Typesense credentials and independent hygiene accounting remain. The native audi
 preserves resource selection, age thresholds, advisory cleanup and exit codes;
 it never performs cleanup. Python remains an offline parity reference used by
 the separate host-hygiene qualification workflow. This is candidate work,
-not a deployed crawler replacement. Its original candidate version overlaps the
-recovery release; assign its final next version only after the recovery hold
-clears. Local follow-up fixes bound streamed inventory output and keep the
+not a deployed crawler replacement. Candidate **0.13.1088** follows recovery
+**0.13.1086** and the ATS candidate **0.13.1087**. Both candidates now include the
+recovery main revision; deployment and main merges remain on hold until
+restoration clears. Follow-up fixes bound streamed inventory output and keep the
 reconciliation ordering proof on the native command.
 
 The first [HTTP contract implementation](https://github.com/colophon-group/jobseek/tree/fix-crawler/native-http-contract-batch)
