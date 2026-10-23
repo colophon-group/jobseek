@@ -31,9 +31,20 @@ is pending. The enabled frontier, excluding three B0 boards, is **43 monitors /
 
 ## Deliver the next substantial batch
 
-The combined **0.13.1085** implementation ports the full ATS inventory command to
+The combined **0.13.1087** candidate ports the full ATS inventory command to
 Go and proposes **three monitor / two detail** configuration admissions together.
 It preserves the full 7,854/7,864 serving floor and targets **7,857 / 7,866**.
+
+The October 23 refresh preserves the full 7,901-board main catalogue, including
+Mandarin Oriental, and all three original qualified configuration replacements.
+It regenerates the deterministic census rather than choosing either side of a
+generated-file conflict. Original 0.13.1085 qualification remains historical
+evidence; exact refreshed-head CI and fresh serving admission remain required.
+Release 0.13.1086 is reserved by the separate source-bound retirement recovery
+in [#10796](https://github.com/colophon-group/jobseek/pull/10796). Preserve its
+production recovery operation [#10794](https://github.com/colophon-group/jobseek/issues/10794):
+no deployment or ownership mutation is part of this catalogue refresh. Incorporate
+the reviewed recovery change and revalidate current main before rollout.
 
 The new command carries over the existing 47-family registry, source validation,
 last-known-good caches, projected Parquet impact calculation, conservative
