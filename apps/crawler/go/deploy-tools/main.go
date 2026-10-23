@@ -13,6 +13,12 @@ import (
 var sourceRevision = "unbuilt"
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "reconciliation-state" {
+		if status := runReconciliationState(args[1:], os.Stdout, os.Stderr); status != 0 {
+			return commandStatus(status)
+		}
+		return nil
+	}
 	if len(args) > 0 && args[0] == "host-hygiene" {
 		if status := runHostHygiene(args[1:], os.Stdout, os.Stderr); status != 0 {
 			return commandStatus(status)
@@ -116,6 +122,9 @@ func run(args []string) error {
 }
 
 func main() {
+	if filepath.Base(os.Args[0]) == "jobseek-reconciliation-state" && !(len(os.Args) == 2 && os.Args[1] == "--build-info") {
+		os.Exit(runReconciliationState(os.Args[1:], os.Stdout, os.Stderr))
+	}
 	if err := run(os.Args[1:]); err != nil {
 		var status commandStatus
 		if errors.As(err, &status) {

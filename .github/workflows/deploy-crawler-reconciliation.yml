@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'deploy/reconciliation/**'
+      - 'apps/crawler/go/deploy-tools/**'
+      - 'apps/crawler/scripts/build-deploy-tools.sh'
+      - 'apps/crawler/scripts/native-deploy-tools.sh'
       - 'deploy/systemd/jobseek-crawler-reconciliation.*'
       - '.github/workflows/deploy-crawler-reconciliation.yml'
   workflow_dispatch:
@@ -25,13 +28,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up native deployment toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/deploy-tools/go.mod
+          cache: false
+
+      - name: Verify and build source-bound native reconciliation state
+        run: |
+          set -euo pipefail
+          GOWORK=off go -C apps/crawler/go/deploy-tools test -race ./...
+          GOWORK=off go -C apps/crawler/go/deploy-tools vet ./...
+          bash apps/crawler/scripts/build-deploy-tools.sh "$GITHUB_SHA" apps/crawler/scripts
+
       - name: Validate reconciliation deployment artifacts
         id: contract
         run: |
           set -euo pipefail
           bash -n deploy/reconciliation/run.sh
           bash -n deploy/reconciliation/install-host.sh
-          python3 -m py_compile deploy/reconciliation/state.py
           test -s deploy/systemd/jobseek-crawler-reconciliation.service
           test -s deploy/systemd/jobseek-crawler-reconciliation.timer
           printf 'wrapper_sha256=%s\n' \
@@ -44,7 +59,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: deploy/reconciliation,deploy/systemd/jobseek-crawler-reconciliation.service,deploy/systemd/jobseek-crawler-reconciliation.timer
+          source: deploy/reconciliation,deploy/systemd/jobseek-crawler-reconciliation.service,deploy/systemd/jobseek-crawler-reconciliation.timer,apps/crawler/scripts/native-deploy-tools.sh,apps/crawler/scripts/crawler-deploy-tools-amd64,apps/crawler/scripts/crawler-deploy-tools-arm64,apps/crawler/scripts/crawler-deploy-tools.source,apps/crawler/scripts/crawler-deploy-tools.sha256
           target: /opt/jobseek-reconciliation
           overwrite: true
 

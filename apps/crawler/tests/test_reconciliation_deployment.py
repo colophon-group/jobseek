@@ -17,7 +17,7 @@ from src.cli import _await_task_or_shutdown, parse_args
 ROOT = Path(__file__).resolve().parents[3]
 RUNNER = ROOT / "deploy/reconciliation/run.sh"
 INSTALLER = ROOT / "deploy/reconciliation/install-host.sh"
-STATE = ROOT / "deploy/reconciliation/state.py"
+STATE = ROOT / "apps/crawler/tests/fixtures/reconciliation_state_reference.py"
 SERVICE = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.service"
 TIMER = ROOT / "deploy/systemd/jobseek-crawler-reconciliation.timer"
 WORKFLOW = ROOT / ".github/workflows/deploy-crawler-reconciliation.yml"
@@ -248,6 +248,23 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     assert "TIMER_WAS_ACTIVE" in installer
     assert "systemctl disable --now jobseek-crawler-reconciliation.timer" in installer
     assert "restore_previous" in installer
+    assert (
+        'initialize_native_deploy_tools "$REPO_ROOT/apps/crawler/scripts" "$DEPLOY_SHA"'
+        in installer
+    )
+    assert '"$NATIVE_DEPLOY_TOOLS"' in installer
+    assert "installed native reconciliation state source differs" in installer
+    assert "state.py" not in installer
+    assert "Set up native deployment toolchain" in workflow
+    assert "build-deploy-tools.sh" in workflow
+    for artifact in (
+        "crawler-deploy-tools-amd64",
+        "crawler-deploy-tools-arm64",
+        "crawler-deploy-tools.source",
+        "crawler-deploy-tools.sha256",
+    ):
+        assert artifact in workflow
+    assert "python3" not in workflow
     assert 'if [[ "$path" == "$STATE_ROOT/"* ]]' in installer
     assert 'install -o root -g "$group"' in installer
     assert "systemd-analyze verify" in installer
