@@ -103,6 +103,49 @@ class TestJsonLdExtractor:
 
         assert parse_html(html).locations == ["US"]
 
+    def test_recovers_icims_placeholder_title_and_retains_structured_fields(self):
+        html = (
+            Path(__file__).parents[1] / "go/jsonld-detail/testdata/icims_unavailable_title.html"
+        ).read_text()
+
+        content = parse_html(html)
+
+        assert content.title == "Barista"
+        assert content.locations == ["SALT LAKE CITY, UT, US"]
+        assert content.employment_type == "PART_TIME"
+        assert content.date_posted == "2026-10-07T06:00:00.000Z"
+        assert content.extras == {"valid_through": "2027-10-07T06:00:00.000Z"}
+        assert "<h2>Responsibilities</h2>" in content.description
+        assert "Current Food Handlers work permit" in content.description
+
+    @pytest.mark.parametrize(
+        "heading, expected",
+        [
+            ('<h1 class="other iCIMS_Header"><span>R&amp;D</span> Nurse</h1>', "R&D Nurse"),
+            ('<h1 class="iCIMS_Header"> unavailable </h1>', None),
+            ('<h1 class="iCIMS_Header"> </h1>', None),
+            ('<h1 class="iCIMS_Header">One</h1><h1 class="iCIMS_Header">Two</h1>', None),
+            ('<h1 class="iCIMS_Header_extra">Not a job heading</h1>', None),
+            ("<h1>Careers</h1>", None),
+            ("", None),
+        ],
+    )
+    def test_icims_placeholder_requires_one_usable_provider_heading(self, heading, expected):
+        html = (
+            '<title>Careers - Acme</title><script type="application/ld+json">'
+            '{"@type":"JobPosting","title":" UNAVAILABLE ",'
+            '"hiringOrganization":{"name":"Acme"}}</script>' + heading
+        )
+
+        assert parse_html(html).title == expected
+
+    def test_keeps_valid_structured_title_over_icims_heading(self):
+        html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Clinical Nurse"}</script>
+        <h1 class="iCIMS_Header">Other heading</h1>"""
+
+        assert parse_html(html).title == "Clinical Nurse"
+
     def test_ignores_non_jsonld_scripts(self):
         html = """<html><head>
         <script type="text/javascript">var x = 1;</script>

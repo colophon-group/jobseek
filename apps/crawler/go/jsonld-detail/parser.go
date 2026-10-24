@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/andybalholm/cascadia"
 	"golang.org/x/net/html"
 )
 
@@ -510,6 +511,33 @@ func documentBlocks(body []byte) ([]any, map[string]string, string) {
 	return blocks, meta, pageTitle
 }
 
+func icimsHeadingTitle(body []byte) any {
+	tree, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return nil
+	}
+	headings := cascadia.QueryAll(tree, cascadia.MustCompile("h1.iCIMS_Header"))
+	if len(headings) != 1 {
+		return nil
+	}
+	var parts []string
+	var collect func(*html.Node)
+	collect = func(node *html.Node) {
+		if node.Type == html.TextNode {
+			parts = append(parts, node.Data)
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			collect(child)
+		}
+	}
+	collect(headings[0])
+	title := clean(strings.Join(parts, " "))
+	if strings.EqualFold(text(title), "unavailable") {
+		return nil
+	}
+	return title
+}
+
 func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, error) {
 	blocks, meta, pageTitle := documentBlocks(body)
 	result := emptyContent()
@@ -534,7 +562,11 @@ func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, e
 		if ignoreLoc {
 			result["locations"] = nil
 		}
-		if !pyTruthy(result["title"]) {
+		// Match Python's narrow recovery for iCIMS placeholder titles while
+		// retaining all other structured fields and rejecting ambiguous headings.
+		if strings.EqualFold(text(result["title"]), "unavailable") {
+			result["title"] = icimsHeadingTitle(body)
+		} else if !pyTruthy(result["title"]) {
 			title := text(clean(pageTitle))
 			org := text(clean(get(get(p, "hiringOrganization"), "name")))
 			if title != "" && org != "" {
