@@ -1435,6 +1435,7 @@ job51 — 51job employer microsites
   Board URLs must use an exact unfiltered employer listing form:
     https://{tenant}.51job.com/C01job_list.html
     https://campus.51job.com/{tenant}/job.html
+    https://campus.51job.com/{tenant}/about1.html
 
   Shared campus microsites usually keep ctmid in an external script, so set
   the public tenant ID explicitly for those boards.
