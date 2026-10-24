@@ -35,6 +35,7 @@ _API_ORIGIN = "https://coapi.51job.com"
 _PUBLIC_SIGNING_KEY = "tuD&#mheJQBlgy&Sm300l8xK^X4NzFYBcrN8@YLCret$fv1AZbtujg*KN^$YnUkh"
 _SIGNING_KEY_INDEX = 1
 _BOARD_PATH_RE = re.compile(r"/(?:[A-Za-z0-9_-]{1,64}job_list|[A-Za-z0-9_-]{1,64}/job)\.html")
+_CAMPUS_ABOUT_BOARD_PATH_RE = re.compile(r"/[A-Za-z0-9_-]{1,64}/about1\.html")
 _CTMID_RE = re.compile(r"\bctmid\s*:\s*['\"]?(\d{1,12})")
 _JOB_ID_RE = re.compile(r"^[0-9]{1,20}$")
 _DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
@@ -65,7 +66,12 @@ def _board_origin(url: str) -> str | None:
         or parsed.username is not None
         or parsed.password is not None
         or port not in {None, 443}
-        or _BOARD_PATH_RE.fullmatch(parsed.path) is None
+        or (
+            _BOARD_PATH_RE.fullmatch(parsed.path) is None
+            and not (
+                host == "campus.51job.com" and _CAMPUS_ABOUT_BOARD_PATH_RE.fullmatch(parsed.path)
+            )
+        )
         or parsed.query
         or parsed.fragment
     ):
