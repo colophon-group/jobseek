@@ -1,4 +1,4 @@
-ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a
+ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:5d1d724c476957d8c2f8393a51fd089477523b0e5aa9c783c48688785d934fb9
 ARG GO_IMAGE=docker.io/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56
 FROM ${GO_IMAGE} AS go-source
 
@@ -44,20 +44,20 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
     -tags densitybench -trimpath -ldflags="-s -w" \
     -o /out/go-lightpanda-density .
 
-FROM mirror.gcr.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
+FROM docker.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
 
 FROM docker.io/library/debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
-LABEL org.jobseek.lightpanda.release="1.0.1"
+LABEL org.jobseek.lightpanda.release="1.0.2"
 COPY lightpanda-release.json /usr/local/share/jobseek/lightpanda-release.json
 # Copy only the binary. The upstream image's entrypoint, user, libraries and
 # network configuration never become the Jobseek runtime.
-COPY --from=lightpanda-source /bin/lightpanda /usr/local/bin/lightpanda
+COPY --from=lightpanda-source /usr/bin/lightpanda /usr/local/bin/lightpanda
 
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-        amd64) lightpanda_sha=551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd ;; \
-        arm64) lightpanda_sha=392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c ;; \
+        amd64) lightpanda_sha=ae7d01d261efb9e480e18ce3424533332883863bcf70b12a4321b5733f37e19e ;; \
+        arm64) lightpanda_sha=ac546dfc43c533430da92b75ab36f2a29da7d6324d5d38baf606ef2e0d849345 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && echo "${lightpanda_sha}  /usr/local/bin/lightpanda" \
@@ -77,9 +77,11 @@ ENV LIGHTPANDA_BIN=/usr/local/bin/lightpanda
 FROM pilot-base AS integration-test
 
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
+WORKDIR /integration-fixtures
+COPY --chown=10001:10001 --chmod=0444 testdata/python_wait_states.json ./testdata/python_wait_states.json
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
-    -test.run '^(TestLightpandaIntegration|TestLightpandaHeapLimitIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaSingleDetailCaptureIntegration|TestLightpandaAPIRootArraySessionIntegration|TestLightpandaRotatingAPISessionIntegration|TestLightpandaNativeBrowserProviderSessionIntegration|TestLightpandaDocumentActionsIntegration|TestLargeDocumentPhysicalWireKeepsCompleteHTMLAndLegacyLimit|TestLightpandaDocumentInteractionsIntegration|TestLightpandaNavigationReadinessIntegration|TestLightpandaDOMAutoResourceIntegration|TestLightpandaDOMSessionRendersRootFetchesRawTailAndRetainsCookies|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration|TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation|TestPhysicalLightpandaConfiguredProxyHTTPSRejectsUntrustedOrigin|TestPinnedProxyChildExecPortIsolation)$' \
+    -test.run '^(TestLightpandaIntegration|TestLightpandaHeapLimitIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaSingleDetailCaptureIntegration|TestLightpandaAPIRootArraySessionIntegration|TestLightpandaRotatingAPISessionIntegration|TestLightpandaNativeBrowserProviderSessionIntegration|TestLightpandaDocumentActionsIntegration|TestLargeDocumentPhysicalWireKeepsCompleteHTMLAndLegacyLimit|TestLightpandaDocumentInteractionsIntegration|TestLightpandaOriginalWaitStateFixtures|TestLightpandaNavigationReadinessIntegration|TestLightpandaDOMAutoResourceIntegration|TestLightpandaDOMSessionRendersRootFetchesRawTailAndRetainsCookies|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration|TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation|TestPhysicalLightpandaConfiguredProxyHTTPSRejectsUntrustedOrigin|TestPinnedProxyChildExecPortIsolation)$' \
     -test.count=1 -test.v
 
 FROM pilot-base AS runtime
