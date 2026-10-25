@@ -120,6 +120,57 @@ def test_config_tester_commands_bind_board_and_configuration():
     assert "--board fixture --as fixture" in command
 
 
+def test_parallel_reflection_writes_lessons_before_terminal_next(tmp_path, monkeypatch):
+    from src.workspace.state import Workspace, save_workspace
+    from src.workspace.workflow import (
+        WorkflowState,
+        _load_wf_from_disk,
+        _save_wf_to_disk,
+        render_parallel_prompt,
+    )
+
+    rendered = render_parallel_prompt(
+        "orchestrator",
+        {
+            "slug": "fixture",
+            "issue": "42",
+            "company_name": "Fixture",
+            "website": "https://example.org",
+            "ats_inventory_seed": {},
+            "track_a_prompt": "",
+            "track_b_prompt": "",
+            "track_c_prompt": "",
+            "config_tester_raw": "",
+            "config_comparison_raw": "",
+        },
+    )
+    final_steps = rendered.split("### Advance through final steps", 1)[1]
+    terminal_next = final_steps.index("ws task next --notes")
+    assert final_steps.index("ws task learn") < terminal_next
+    assert final_steps.index("ws task casestudy") < terminal_next
+    assert terminal_next < final_steps.index("ws task complete")
+    assert "already moves the workflow to the reflect step" in final_steps
+
+    # Submit leaves the cursor at reflect. The next command finalizes; it is
+    # not an opportunity to write more KB content afterward.
+    monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+    save_workspace(Workspace(slug="fixture"))
+    _save_wf_to_disk("fixture", WorkflowState(current_step="reflect"))
+    monkeypatch.setattr(task, "resolve_slug", lambda _: "fixture")
+    finalized = []
+
+    def finalize(slug):
+        workflow = _load_wf_from_disk(slug)
+        assert workflow.current_step == "reflect"
+        assert workflow.reflections[-1]["notes"] == "Lessons recorded"
+        finalized.append(slug)
+
+    monkeypatch.setattr(task, "_finalize_workflow", finalize)
+    result = CliRunner().invoke(task.task_next, ["--notes", "Lessons recorded"])
+    assert result.exit_code == 0, result.output
+    assert finalized == ["fixture"]
+
+
 @pytest.mark.parametrize(
     "change", ["none", "head", "base", "draft", "hold", "checks", "load", "review", "blocked"]
 )

@@ -203,13 +203,8 @@ ws submit {{ slug }} [--summary "..."]
 
 ### Advance through final steps
 
-After submit succeeds, advance to the reflect step:
-
-```bash
-ws task next --notes "<difficulties, key decisions, or 'none'>"
-```
-
-During reflection, contribute to the knowledge base:
+Successful `ws submit` already moves the workflow to the reflect step.
+Before finalizing, contribute to the knowledge base:
 
 - **Non-obvious problem solved?** Record it so future agents can find it:
   `ws task learn --step <step> --symptom "..." --solution "..." --tags "..."`
@@ -217,14 +212,20 @@ During reflection, contribute to the knowledge base:
   `ws task casestudy --company {{ slug }} --monitor <type> --scraper <type> --tags "..." --summary "..."`
 - Nothing noteworthy? Skip this — only record genuinely reusable lessons.
 
-Then complete the workflow:
+After recording any lessons or case studies, record the final reflection and
+complete the workflow:
 
 ```bash
+ws task next --notes "<difficulties, key decisions, or 'none'>"
 ws task complete
 ```
 
-**Do NOT call `ws task complete` directly after `ws submit`.** The sequence
-is: `ws submit` → `ws task next` (enters reflect) → `ws task complete`.
+`ws task next` from reflect finalizes the workflow and marks the PR ready.
+The following `ws task complete` verifies that completed outcome idempotently.
+Record all KB entries and case studies **before** either finalization command;
+changing the working tree afterward invalidates the exact ready journal.
+The sequence is: `ws submit` → optional learning/case studies →
+`ws task next` (finalizes reflect) → `ws task complete`.
 
 ## If something goes wrong
 
