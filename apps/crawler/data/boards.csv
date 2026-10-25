@@ -7800,6 +7800,8 @@ xocean,xocean-linkedin,https://www.linkedin.com/jobs/xocean-jobs-worldwide?f_C=1
 xometry,xometry-greenhouse,https://job-boards.greenhouse.io/xometry,greenhouse,"{""token"": ""xometry""}",skip,
 xometry-europe,xometry-europe-greenhouse,https://job-boards.greenhouse.io/xometryeurope,greenhouse,"{""token"": ""xometryeurope""}",skip,
 xpeng,xpeng-greenhouse,https://job-boards.greenhouse.io/xpengmotors,greenhouse,"{""token"": ""xpengmotors""}",skip,
+xpo,xpo-careers,https://jobs.xpo.com/,rss,"{""preset"": ""successfactors""}",skip,
+xpo,xpo-europe,https://jobs.europe.xpo.com/,rss,"{""preset"": ""successfactors""}",skip,
 xtx-markets,xtx-markets-greenhouse,https://job-boards.greenhouse.io/xtxmarketstechnologies,greenhouse,"{""token"": ""xtxmarketstechnologies""}",skip,
 xund,xund-careers,https://job-boards.eu.greenhouse.io/xund,greenhouse,"{""token"": ""xund""}",skip,
 y-soft,y-soft-greenhouse,https://job-boards.greenhouse.io/ysoftcorporation,greenhouse,"{""token"": ""ysoftcorporation""}",skip,
