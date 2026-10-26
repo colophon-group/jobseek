@@ -31,7 +31,23 @@ func EightfoldMonitorOptions(config map[string]string) (api.EightfoldOptions, er
 }
 
 func providerBatchEnrichment(config map[string]string) ([]string, error) {
-	return monitorEnrichmentFields(config, map[string]bool{"description": true})
+	allowed := map[string]bool{"description": true}
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return nil, err
+	}
+	var scraper string
+	if json.Unmarshal(md["scraper_type"], &scraper) == nil {
+		if scraper == "eightfold" {
+			allowed["employment_type"] = true
+		}
+		if scraper == "mokahr" {
+			for _, field := range []string{"locations", "employment_type", "date_posted", "base_salary"} {
+				allowed[field] = true
+			}
+		}
+	}
+	return monitorEnrichmentFields(config, allowed)
 }
 
 func inspectProviderBatchMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {

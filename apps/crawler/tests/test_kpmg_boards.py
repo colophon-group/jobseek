@@ -18,9 +18,7 @@ def test_kpmg_metadata_is_complete() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1987"
 
-    with (DATA_DIR / "company_descriptions.csv").open(
-        newline="", encoding="utf-8"
-    ) as handle:
+    with (DATA_DIR / "company_descriptions.csv").open(newline="", encoding="utf-8") as handle:
         descriptions = next(row for row in csv.DictReader(handle) if row["slug"] == "kpmg")
 
     assert all(descriptions[locale] for locale in ("en", "de", "fr", "it"))
