@@ -1,0 +1,70 @@
+{
+  "observed_at_utc": "2026-10-26T22:49:02.919198+00:00",
+  "change_kind": "three-row data-only canonical browser configuration replacements",
+  "base_source": "1051a83bd70d3b236320202a008dfd7257fb9f5f",
+  "sources": [
+    "citadel-securities-global",
+    "edmond-de-rothschild-internships",
+    "cgi-global-njoyn"
+  ],
+  "navigation": "Explicit direct verified-TLS navigation using existing rendered JSONLD path; remove legacy channel/headless/persistent/stealth/warmup controls, set proxy=false, remove CGI origin-block fallback because direct navigation is selected. Preserve original waits/timeouts and all parsing/default/enrichment settings.",
+  "physical_engines": [
+    "official1.0.1",
+    "official1.1.0-nightly.11106+659958a24"
+  ],
+  "actual_posting_samples_per_source": 3,
+  "positive_document_comparisons": 18,
+  "fields": [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "language",
+    "metadata",
+    "extras"
+  ],
+  "original_reference": "Unchanged original browser-neutral JSONLD parser on actual native held documents, followed by original scrape extras enrichment. Original Chromium fetching failed/challenged; no original-positive Chromium transport claim.",
+  "Go_reference": "Actual candidate rendered profile, held-document JSONLD parser and existing PrepareScrapedValues; all compared fields match at the equivalent original scrape-preparation boundary.",
+  "raw_stage_difference": "One Edmond sample has qualifications extras. Original scrape_one appends them to description, while Go appends the same236characters in its existing shared preparation. Comparing equivalent prepared values matches exactly; no parser or preparation change.",
+  "original_failures_retained": [
+    "Citadel, Edmond: original browser navigation HTTP failures",
+    "CGI: original browser challenge",
+    "Indeed403 native probe excluded; no configuration change"
+  ],
+  "captures": [
+    {
+      "name": "legacy-jsonld-inputs1.private.json",
+      "sha256": "d838c4e05868ec499ceda71320ddbb5d4e61479653a1304a2eae96e8a9e6cdf1",
+      "bytes": 9337
+    },
+    {
+      "name": "normal-jsonld-candidate-inputs3.private.json",
+      "sha256": "d93b8f8f10f08b513be160ccbe87804d16222da096f8fd92b844efb800b1654e",
+      "bytes": 4424
+    },
+    {
+      "name": "normal-jsonld-101-physical2.private.json",
+      "sha256": "a9dea3fab7a16292a5c40947e5121035ebab5cd1be146f51abe4d436ae30122e",
+      "bytes": 1550568
+    },
+    {
+      "name": "normal-jsonld-nightly-physical2.private.json",
+      "sha256": "40d7b0f77c1655839cb6d484fdaf796dd049504172b860c082b4ed4149d4d77a",
+      "bytes": 1556471
+    },
+    {
+      "name": "normal-jsonld-original-parser3.private.json",
+      "sha256": "7bfa068418b07cab9bd3df47824b7ffe05b595ba62e9c7f94d04601db3acfee2",
+      "bytes": 50408
+    },
+    {
+      "name": "normal-jsonld-go-prepared-field-parity5.json",
+      "sha256": "e4c8fee3a5f3e79f1fff6e9165ed684a5efd68f414977f2488e760597b969b66",
+      "bytes": 1592
+    }
+  ],
+  "scope": "Candidate only; three configuration rows and deterministic census. No runtime or writer changes, no new ownership or freshness claim. Keep original monitors/detail lanes. Final-head checks, compatible completed1098 runtime, original CSV publication, actual resulting configurations/cache/all scheduled URLs, full staged ownership proof and natural execution remain mandatory."
+}
