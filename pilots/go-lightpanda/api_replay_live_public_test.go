@@ -27,7 +27,7 @@ func TestLightpandaLiveAPIPublicOriginalFields(t *testing.T) {
 	}
 	expected, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
-		expected, supported = "d4b66ac8484f49d7a49e05b6f9342716c747129527fcbe8ffe36679ffa18dd60", true
+		expected, supported = lightpandaPinnedDarwinArm64SHA256, true
 	} else if runtime.GOOS != "linux" {
 		supported = false
 	}
@@ -86,7 +86,7 @@ func TestLightpandaLiveAPIPublicOriginalFields(t *testing.T) {
 					t.Fatal("private inventory capture failed")
 				}
 			}
-			t.Logf("platform=%s/%s release=1.0.1 jobs=%d all_original_fields_match=true child_cleanup_proved=true", runtime.GOOS, runtime.GOARCH, len(inventory.Jobs))
+			t.Logf("platform=%s/%s release=1.1.0-nightly.11106+659958a24 jobs=%d all_original_fields_match=true child_cleanup_proved=true", runtime.GOOS, runtime.GOARCH, len(inventory.Jobs))
 		})
 	}
 }

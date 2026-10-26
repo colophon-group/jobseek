@@ -1,36 +1,48 @@
 {
   "schema_version": 2,
   "repository": "https://github.com/lightpanda-io/browser",
-  "tag": "1.0.1",
-  "verified_at": "2026-10-15",
-  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.1",
-  "published_at": "2026-10-15T14:55:37Z",
-  "note": "Builds copy only the binary from the official multi-architecture OCI image by immutable index digest and verify its architecture-specific SHA-256. OCI index, platform manifests, binary layers and extracted executables were independently hashed and matched to official 1.0.1 release assets. No mutable tag or GitHub asset URL is resolved during builds. OCI deletion fails closed; retain promoted Jobseek image digests for reversal.",
+  "tag": "nightly",
+  "verified_at": "2026-10-26",
+  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+  "published_at": "2024-07-16T10:45:32Z",
+  "note": "Official nightly snapshot 1.1.0-nightly.11106+659958a24; its upstream Range geometry change passes all21 unchanged original wait-state fixtures on macOS. The stable1.0.2 four-case failure remains historical evidence. The nightly Git tag can advance independently; source_revision identifies the executable build, not the later observed tag target. Builds use only this immutable OCI index and verify architecture-specific executable hashes against independently verified official asset IDs. No mutable tag or GitHub URL is resolved during builds. Keep promoted Jobseek image digests for reversal. Linux physical/protocol and public-source qualification remain mandatory before promotion.",
   "image": {
     "repository": "lightpanda/browser",
-    "index_digest": "sha256:e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a",
-    "binary_path": "/bin/lightpanda"
+    "index_digest": "sha256:51b2dc6d5494e1f69c18f0055d3d396bcb8359a6e5a1ea161a19360f78ccb44a",
+    "binary_path": "/usr/bin/lightpanda"
   },
   "assets": {
     "amd64": {
-      "id": 644204069,
+      "id": 676812894,
       "name": "lightpanda-x86_64-linux",
-      "updated_at": "2026-10-15T14:56:50Z",
-      "size": 75670856,
-      "sha256": "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd",
-      "image_manifest_digest": "sha256:c427b144613fbf099868c5ab54be509741c8535def6a40fd0b62360658e279d1",
-      "image_created_at": "2026-10-15T15:00:06.209832385Z",
-      "image_binary_layer_digest": "sha256:0c9051cbefbe85d57582f37af5e827cd5eff2f830812e7ec0778db47d27b03d4"
+      "updated_at": "2026-10-26T02:53:16Z",
+      "size": 76637512,
+      "sha256": "2fdeb516c807ac91f39813af0e704233846106374ba36aa9d538568c4fc74b36",
+      "image_manifest_digest": "sha256:15db88901975a37108870ce95b83d69ed485264c939df51795b1354089690e9d",
+      "image_created_at": "2026-10-26T02:57:15.489047055Z",
+      "image_binary_layer_digest": "sha256:3687910c939e2cdcdefbd492ee90a17225e96e5ad7bb099bff05ccecf7992b43"
     },
     "arm64": {
-      "id": 644211243,
+      "id": 676818297,
       "name": "lightpanda-aarch64-linux",
-      "updated_at": "2026-10-15T14:59:08Z",
-      "size": 73240632,
-      "sha256": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
-      "image_manifest_digest": "sha256:7032e32e127fb82bcd912bed2995a33336262abe65679e30eca278aeff7c1a62",
-      "image_created_at": "2026-10-15T15:00:07.313221802Z",
-      "image_binary_layer_digest": "sha256:ee5403f42c396e8158dc13acf66340752609d3b5026699d4413df51b4f7726df"
+      "updated_at": "2026-10-26T02:56:22Z",
+      "size": 73961528,
+      "sha256": "0417bab177fc1e4b4c2984a56a183ea92068f2373fab7cb4628132f9bdd288fa",
+      "image_manifest_digest": "sha256:9e1ad33114a0b40a800a5da55600a193919efcbbe7f2cce1eda5fd0513340ad4",
+      "image_created_at": "2026-10-26T02:57:17.661581823Z",
+      "image_binary_layer_digest": "sha256:c5e1978a74e7a07da27e7f0d5a34b386e8c969c7052edd114bf768fc88d35ddb"
     }
-  }
+  },
+  "verification_assets": {
+    "darwin/arm64": {
+      "id": 676813797,
+      "name": "lightpanda-aarch64-macos",
+      "updated_at": "2026-10-26T02:53:50Z",
+      "size": 93367112,
+      "sha256": "76134a94d4297dbffda6ca4ab191d50915e58c38884d937a3f3d89e20018717d"
+    }
+  },
+  "build_version": "1.1.0-nightly.11106+659958a24",
+  "source_revision": "659958a24c0ddb40a577bd528fcb4c6e1c504419",
+  "snapshot_updated_at": "2026-10-26T02:56:25Z"
 }

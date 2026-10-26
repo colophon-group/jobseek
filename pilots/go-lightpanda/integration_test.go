@@ -17,15 +17,17 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
 
+const lightpandaPinnedDarwinArm64SHA256 = "76134a94d4297dbffda6ca4ab191d50915e58c38884d937a3f3d89e20018717d"
+
 var lightpandaPinnedSHA256 = map[string]string{
-	"amd64": "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd",
-	"arm64": "392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c",
+	"amd64": "2fdeb516c807ac91f39813af0e704233846106374ba36aa9d538568c4fc74b36",
+	"arm64": "0417bab177fc1e4b4c2984a56a183ea92068f2373fab7cb4628132f9bdd288fa",
 }
 
 func TestLightpandaIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11106+659958a24 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -116,7 +118,7 @@ func TestLightpandaIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11106+659958a24 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -181,7 +183,7 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.0.1 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11106+659958a24 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {

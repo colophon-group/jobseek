@@ -1,0 +1,84 @@
+{
+  "observed_at_utc": "2026-10-26T22:13:51.674507+00:00",
+  "official_snapshot": {
+    "tag": "nightly",
+    "build_version": "1.1.0-nightly.11106+659958a24",
+    "source_revision": "659958a24c0ddb40a577bd528fcb4c6e1c504419",
+    "nightly_ref_observed": "8ec22ca6b889d372088722d30ff5e1916730390b",
+    "assets": [
+      {
+        "id": 676818297,
+        "name": "lightpanda-aarch64-linux",
+        "updated_at": "2026-10-26T02:56:22Z",
+        "size": 73961528,
+        "sha256": "0417bab177fc1e4b4c2984a56a183ea92068f2373fab7cb4628132f9bdd288fa"
+      },
+      {
+        "id": 676813797,
+        "name": "lightpanda-aarch64-macos",
+        "updated_at": "2026-10-26T02:53:50Z",
+        "size": 93367112,
+        "sha256": "76134a94d4297dbffda6ca4ab191d50915e58c38884d937a3f3d89e20018717d"
+      },
+      {
+        "id": 676812894,
+        "name": "lightpanda-x86_64-linux",
+        "updated_at": "2026-10-26T02:53:16Z",
+        "size": 76637512,
+        "sha256": "2fdeb516c807ac91f39813af0e704233846106374ba36aa9d538568c4fc74b36"
+      }
+    ]
+  },
+  "immutable_image_verification": {
+    "observed_at_utc": "2026-10-26T22:10:08.578333+00:00",
+    "immutable_index": "sha256:51b2dc6d5494e1f69c18f0055d3d396bcb8359a6e5a1ea161a19360f78ccb44a",
+    "platforms": [
+      {
+        "architecture": "amd64",
+        "manifest_digest": "sha256:15db88901975a37108870ce95b83d69ed485264c939df51795b1354089690e9d",
+        "created_at": "2026-10-26T02:57:15.489047055Z",
+        "labels": {},
+        "entrypoint": [
+          "/usr/bin/tini",
+          "--"
+        ],
+        "binary_path": "/usr/bin/lightpanda",
+        "binary_sha256": "2fdeb516c807ac91f39813af0e704233846106374ba36aa9d538568c4fc74b36",
+        "binary_bytes": 76637512,
+        "binary_layer_digest": "sha256:3687910c939e2cdcdefbd492ee90a17225e96e5ad7bb099bff05ccecf7992b43"
+      },
+      {
+        "architecture": "arm64",
+        "manifest_digest": "sha256:9e1ad33114a0b40a800a5da55600a193919efcbbe7f2cce1eda5fd0513340ad4",
+        "created_at": "2026-10-26T02:57:17.661581823Z",
+        "labels": {},
+        "entrypoint": [
+          "/usr/bin/tini",
+          "--"
+        ],
+        "binary_path": "/usr/bin/lightpanda",
+        "binary_sha256": "0417bab177fc1e4b4c2984a56a183ea92068f2373fab7cb4628132f9bdd288fa",
+        "binary_bytes": 73961528,
+        "binary_layer_digest": "sha256:c5e1978a74e7a07da27e7f0d5a34b386e8c969c7052edd114bf768fc88d35ddb"
+      }
+    ],
+    "note": "Every OCI index/platform/config/layer/extracted binary digest independently verified; extracted Linux executables match official nightly asset digests. No Docker socket or mutable image reference used for builds."
+  },
+  "original_wait_state_fixture_count": 21,
+  "all_original_wait_states_pass_macos": true,
+  "wait_controller_and_expectations_unchanged": true,
+  "broader_local_physical": {
+    "runner_returncode": 1,
+    "passed_cases": 51,
+    "platform_skips": 13,
+    "limitation": "Configured-proxy physical fixtures fail before readiness on macOS because the existing restricted proxy child is Linux-only. No skips or expectations changed. Required physical amd64/arm64 CI decides platform/protocol qualification."
+  },
+  "local_hermetic_race_vet_module_and_source_pin_checks": "pass",
+  "public_nightly_fields": "Capture of28positive details across10sources and Miniso10URL source underway; no matching claim yet.",
+  "upstream_geometry_change": {
+    "commit": "2dad2f08d40881145001a97aa15eba7bb664e0b7",
+    "date": "2026-10-25",
+    "url": "https://github.com/lightpanda-io/browser/commit/2dad2f08d40881145001a97aa15eba7bb664e0b7"
+  },
+  "scope": "Candidate only. Stable1.0.2 failures retained. Official nightly binary1.1.0-nightly.11106+659958a24 is pinned by immutable OCI index, platform manifests/layers, executable SHA and official asset IDs. The later observed nightly Git ref differs from the executable source; never derive source identity from the mutable ref. No production renderer or crawler changed. Both Linux physical suites, final-head RequiredCI/Gate, current source/hold/operator guard, original constrained renderer workflow and independent host serving acceptance are required before promotion. Preserve rollback image digests."
+}
