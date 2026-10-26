@@ -1,0 +1,288 @@
+[
+  {
+    "name": "absent-complete",
+    "metadata": {
+      "api_url": "https://example.com/api?company=example",
+      "method": "POST",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_template": "https://example.com/jobs/{id}",
+      "fields": {
+        "title": "title"
+      },
+      "pagination": {
+        "style": "offset",
+        "location": "body",
+        "increment": 9,
+        "param_name": "offset",
+        "start_value": 0,
+        "max_pages": 3
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      }
+    ],
+    "responses": [
+      {
+        "total": 1,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/jobs/one",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "absent-incomplete",
+    "metadata": {
+      "api_url": "https://example.com/api?company=example",
+      "method": "POST",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_template": "https://example.com/jobs/{id}",
+      "fields": {
+        "title": "title"
+      },
+      "pagination": {
+        "style": "offset",
+        "location": "body",
+        "increment": 9,
+        "param_name": "offset",
+        "start_value": 0,
+        "max_pages": 3
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      }
+    ],
+    "responses": [
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      },
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      },
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/jobs/one",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "name": "empty-string-complete",
+    "metadata": {
+      "api_url": "https://example.com/api?company=example",
+      "method": "POST",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_template": "https://example.com/jobs/{id}",
+      "fields": {
+        "title": "title"
+      },
+      "pagination": {
+        "style": "offset",
+        "location": "body",
+        "increment": 9,
+        "param_name": "offset",
+        "start_value": 0,
+        "max_pages": 3
+      },
+      "post_data": ""
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      }
+    ],
+    "responses": [
+      {
+        "total": 1,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/jobs/one",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "empty-string-incomplete",
+    "metadata": {
+      "api_url": "https://example.com/api?company=example",
+      "method": "POST",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_template": "https://example.com/jobs/{id}",
+      "fields": {
+        "title": "title"
+      },
+      "pagination": {
+        "style": "offset",
+        "location": "body",
+        "increment": 9,
+        "param_name": "offset",
+        "start_value": 0,
+        "max_pages": 3
+      },
+      "post_data": ""
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/api?company=example",
+        "body": ""
+      }
+    ],
+    "responses": [
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      },
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      },
+      {
+        "total": 20,
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer"
+          }
+        ]
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/jobs/one",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "truncated": true
+  }
+]

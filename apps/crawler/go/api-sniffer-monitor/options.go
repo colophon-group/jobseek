@@ -466,7 +466,10 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 				return o, ErrOptions
 			}
 		}
-		if pg.Location == "body" {
+		// The original paginator leaves an absent POST body absent. Some
+		// endpoints return their complete inventory without a body; pagination
+		// still retains the existing total, deduplication and truncation proof.
+		if pg.Location == "body" && o.Body != "" {
 			if _, err := setBodyParam(o.Body, pg.Param, 0); err != nil {
 				return o, ErrOptions
 			}

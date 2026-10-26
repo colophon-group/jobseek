@@ -1,0 +1,144 @@
+{
+  "observed_at_utc": "2026-10-26T22:02:27.673876+00:00",
+  "candidate_version": "0.13.1098",
+  "candidate_PR": 10918,
+  "families": [
+    "exact qualified DOM legacy controls",
+    "absent POST-body API pagination compatibility",
+    "rendered MyJobShop annotation"
+  ],
+  "original_positive_detail_sources": 8,
+  "original_positive_details": 22,
+  "official_engines": [
+    "1.0.1",
+    "1.0.2"
+  ],
+  "all_available_fields_match": true,
+  "source_guards": [
+    {
+      "digest": "0ff92fedff84d362463b42e14fbef686101e479d4a1207eb473328abb114d635",
+      "host": "www.alten.be",
+      "samples": 3,
+      "source": "alten-belgium"
+    },
+    {
+      "digest": "6098bafc7a62677d713378f1bc6340aec62193d44310ad9734eed3b9d9154951",
+      "host": "www.alten.it",
+      "samples": 3,
+      "source": "alten-italy"
+    },
+    {
+      "digest": "b33d5ca058fa34a665a80d101b30325e5a37791c021dae98e2c99b758c60848b",
+      "host": "www.alten.nl",
+      "samples": 3,
+      "source": "alten-netherlands"
+    },
+    {
+      "digest": "4d3d026a387035153d7a7398025da7dceaa22806dd6f3e8c43d19b5ef11b5281",
+      "host": "www.alten.pt",
+      "samples": 3,
+      "source": "alten-portugal"
+    },
+    {
+      "digest": "87126eb2caa7161d15ef399c541abf22fd3199247cf4be85cadbb356f8b56df9",
+      "host": "www.alten.ch",
+      "samples": 3,
+      "source": "alten-switzerland"
+    },
+    {
+      "digest": "21eb5da49bafd59b3814b98b1d22f5e342867701319dc26a9ab5e140d8d86710",
+      "host": "careers.oac.edu.au",
+      "samples": 3,
+      "source": "bright-horizons-only-about-children-australia"
+    },
+    {
+      "digest": "cdf9ca5e9c0183dd978dfdbb75b4fe6176b52ad2113440f9faa5e74da8f4da26",
+      "host": "careers.glasswall.com",
+      "samples": 3,
+      "source": "glasswall-careers"
+    },
+    {
+      "digest": "0d2111c8d5d0f405738c10c5c44959841e9352479343e81a94c2b3e7586d9024",
+      "host": "www.unhcr.org",
+      "samples": 1,
+      "source": "unhcr-thailand"
+    }
+  ],
+  "direct_TLS_scope": "Physical source comparisons use direct normally verified TLS; original configured proxy requirements remain in profile and ownership. These captures do not grant provider account access or prove positive configured-proxy content.",
+  "original_absent_body_fixture_cases": 4,
+  "real_postgres_redis": {
+    "returncode": 0,
+    "completed_at_utc": "2026-10-26T21:58:38.606178+00:00",
+    "actual_migrations_applied": true,
+    "loopback_only": true,
+    "scope": "Actual migrated PostgreSQL/Redis rendered MyJobShop complete and explicitly empty inventory, missing-marker/publisher/incomplete failure authority, separate URL-only detail queues, existing rendered detail canonical settlement and existing static full-body MyJobShop contract."
+  },
+  "actual_catalogue_SDK": {
+    "actual_enabled_boards": 8136,
+    "all_detail_SDK_eligible": 8119,
+    "all_monitor_SDK_eligible": 8114,
+    "candidate": "uncommitted1098",
+    "data_source": "d8eaa5dadfa0ef759cf375b1694bc4797975ce2f",
+    "effective_detail_cache_mismatches": 0,
+    "effective_monitor_cache_mismatches": 0,
+    "missing_caches": 0,
+    "new_current_company_sources": 2,
+    "observed_at_utc": "2026-10-26T22:00:47Z",
+    "provisional_details": 8111,
+    "provisional_monitors": 8094,
+    "qualified_added_legacy_details": 8,
+    "runtime_source": "39167aa830ea6499650e18714c97e84d5e9d9c1b",
+    "scope": "Actual enabled SQL/cache identities. Eight legacy-control details have22 positive original samples matching both engines; two newly published company rows use existing generic implementations. SDK admission only; new1097 locale CSV must be published before final capture/ownership binding. Unqualified other SDK candidates are excluded. No ownership or freshness authority granted."
+  },
+  "serving_runtime": {
+    "source": "39167aa830ea6499650e18714c97e84d5e9d9c1b",
+    "version": "0.13.1096",
+    "data_source": "d8eaa5dadfa0ef759cf375b1694bc4797975ce2f",
+    "native_owners": "cold",
+    "epoch": 375,
+    "original_deployment_run": 40404486955,
+    "ATS_native_accepted_workflow": 40407317067,
+    "ATS_five_Go_host_helpers_independently_verified": true
+  },
+  "excluded": [
+    "ALTEN Spain: one location mismatch",
+    "Sophia Genetics: HTTP202",
+    "original ALTEN Finland and Sweden HTTP failures",
+    "Bureau Veritas and HD Centre missing descriptions",
+    "Persistent Systems: original HTTP503",
+    "Fressnapf: unproved physical navigation"
+  ],
+  "captures": [
+    {
+      "name": "positive-original-details1.private.json",
+      "sha256": "bb512964ecca1fb6d74b6312076de8e5e01bc1771125e62ba7b31e1a16b38972",
+      "bytes": 162002
+    },
+    {
+      "name": "physical101-details2.private.json",
+      "sha256": "53edfe9338fbdf84f110ecc888314fe5d482c9183ca62b5a01c22616f7ce597b",
+      "bytes": 4905841
+    },
+    {
+      "name": "physical102-details2.private.json",
+      "sha256": "e3c65424c8b7cfdd61d26b86b210248fcd950e4a72166208e41a9d2f5c351927",
+      "bytes": 4908531
+    },
+    {
+      "name": "field-diagnostic101-1.json",
+      "sha256": "e0e483fa45d2e0570611c87deaa3bcfc5ca87380b4afb7ae86e999bd06d7ae7b",
+      "bytes": 1780
+    },
+    {
+      "name": "field-diagnostic102-1.json",
+      "sha256": "e0e483fa45d2e0570611c87deaa3bcfc5ca87380b4afb7ae86e999bd06d7ae7b",
+      "bytes": 1780
+    },
+    {
+      "name": "qualified-control-digests1.json",
+      "sha256": "d5aef5d50f96f6435e64604cb195bcf8d152cf4ff28b7ea5ebffcdf773a0f9b8",
+      "bytes": 1158
+    }
+  ],
+  "scope": "Combined candidate with previous1097 changes; final-head CI, full rollout, actual published configuration/all added routes/ownership, configured transport success, exact-ID conservation, sustained freshness, latest1.0.2 unchanged visibility gate, whole-lane resources/cost, final cold reversal and Python retirement remain required. No new native ownership is serving."
+}

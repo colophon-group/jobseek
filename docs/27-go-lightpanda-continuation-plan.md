@@ -2,13 +2,14 @@
 
 ## Current delivery and next batch — October 26, 2026
 
-Production is healthy on **0.13.1094**, source
-`c0cb42cd3eb632f945abae4578988df987d57ce9`, through
-[PR #10907](https://github.com/colophon-group/jobseek/pull/10907) and the original
-full deployment workflow. Independent readback at **19:30 UTC** verifies seven
-healthy retained services, six HTTP200 endpoints, exact immutable images and
-release/data identities, and a byte-identical runtime/committed environment.
-The actual enabled catalogue is **8,134 boards**. Native owners remain cold;
+Production is healthy on **0.13.1096**, source
+`39167aa830ea6499650e18714c97e84d5e9d9c1b`, through
+[PR #10916](https://github.com/colophon-group/jobseek/pull/10916) and the original
+full deployment workflow **40404486955**, including promotion. Independent
+readback verifies seven healthy retained services, six HTTP200 endpoints, exact
+immutable images and a byte-identical runtime/committed environment. A subsequent
+company publication advanced data to `d8eaa5dadfa0ef759cf375b1694bc4797975ce2f`;
+the refreshed actual SQL/cache capture contains **8,136 boards**. Native owners remain cold;
 the last observed epoch is **375**. The earlier **0.13.1093** recovery source
 `f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d` restored service through
 [PR #10906](https://github.com/colophon-group/jobseek/pull/10906).
@@ -25,23 +26,25 @@ hand edit of SQL, Redis, ownership receipts or environment was used.
 inventory host helpers into the existing Go binary: bounded logs, registry
 snapshots, GitHub App tokens, status publication and network acceptance. Its
 first host installation stopped before replacement because `/run` is mounted
-`noexec`; the existing timer and helpers remain in place. The next candidate
-preflights its root-owned binary in the protected executable `/usr/local/libexec`
-filesystem and cleans up the temporary file, preserving `/run` hardening.
-The original host rollout and actual native timer acceptance remain required.
+`noexec`. The repaired installer preflights its root-owned binary in protected
+executable `/usr/local/libexec`, preserving `/run` hardening. Original workflow
+**40407317067** succeeded against independently healthy 1096. Independent readback
+confirms native capability, root/0755 binary, all five Go wrapper delegates,
+successful report-only acceptance, cleared acceptance pin, and active/enabled timer.
 
 [PR #10908](https://github.com/colophon-group/jobseek/pull/10908) merged as
 `151ddbf4331548910dec0efd72faec5387a50372`, version **0.13.1095**, with both required
-checks green. The original crawler and ATS host workflows are running; this
-checkpoint does not yet claim their independent serving or native timer
-acceptance. The release admits API-sniffer metadata selection, Oracle
+checks green. Its crawler rollout stopped before quiescence on the original WAL
+archive gate; 1096 subsequently passed that gate and deployed the accumulated
+changes. The earlier ATS workflow timed out waiting for 1095; the successful
+current-release dispatch above supersedes it. The release admits API-sniffer metadata selection, Oracle
 title/metadata delegation, and RSS location/employment/date delegation. The
 shared detail writer preserves Python's metadata availability check without
 adding canonical column writes. All 18 frozen preparation cases and the real
 selected-writer/queue/publisher tests pass. Its new-catalogue SDK result is
 **230 monitors / 232 details** across the existing 37 families.
 
-The next **0.13.1096** shared batch handles **three** additional monitor
+The deployed **0.13.1096** shared batch handles **three** additional monitor
 configurations together:
 
 - Workday applies the existing canonical URL transform after CXS discovery,
@@ -96,7 +99,7 @@ Continue in this order:
    Deploy Gate and fresh draft/base/hold/operator checks; use the original full
    rollout and independently verify the final source. Avoid unnecessary native
    activation/retirement cycles between runtime rollouts.
-2. Use the captured actual 8,134-board SQL/cache configurations and all actual
+2. Use the refreshed actual 8,136-board SQL/cache configurations and all actual
    scheduled URLs to qualify the complete cohort, including new identities.
    Reconcile the exact **3,269,016** prior unique queued IDs and **757** preexisting
    scheduled-but-unqueued routes; matching totals do not establish conservation.
@@ -114,17 +117,13 @@ See [recovery and candidate evidence](evidence/go-native1093-recovery-and-enrich
 
 ## Rendered continuation candidate — October 26, 2026
 
-**0.13.1096** is [PR #10916](https://github.com/colophon-group/jobseek/pull/10916),
-head `c3d7c45d9f75caf14ed4cb953b94f6484b2ad0e2`. Required CI and Crawler Deploy
-Gate passed. The earlier 1095 full workflow stopped before quiescence because
-PostgreSQL recorded a one-minute asynchronous WAL push timeout at **20:24 UTC**.
-Independent readback confirms retained **1094** is healthy and native owners
-remain cold. Archiving is succeeding again. Preserve the original operational
-preflight's full hour without new archive failures; do not reset counters or
-bypass telemetry. ATS installation still awaits the expected full crawler
-release. Recheck current source, holds and readiness before any merge or rollout.
+**0.13.1096** is deployed from [PR #10916](https://github.com/colophon-group/jobseek/pull/10916).
+The original WAL operational preflight passed after its natural one-hour window;
+no counter reset or telemetry bypass was used. Recheck current source, holds and
+readiness before any subsequent merge or rollout.
 
-The next **0.13.1097** shared candidate closes the remaining three new-catalogue
+The combined **0.13.1098** candidate in
+[PR #10918](https://github.com/colophon-group/jobseek/pull/10918) closes the remaining three new-catalogue
 assignments:
 
 - Miniso's exact browser expression projects the first JSON-LD ItemList and
@@ -157,6 +156,43 @@ whole-lane resource/cost evidence and final cold reversal. General 1.0.2 promoti
 still requires the four retained visibility regressions to pass unchanged.
 
 See [rendered candidate evidence](evidence/go-native1097-rendered-catalogue-candidate-2026-10-26.json).
+
+## Retained variants in the same rollout — October 26, 2026
+
+The combined candidate additionally qualifies **eight exact original DOM detail
+configurations**: ALTEN Belgium, Italy, Netherlands, Portugal and Switzerland;
+Only About Children Australia; Glasswall; and UNHCR Thailand. **22 positive
+original details match every available field with official Lightpanda 1.0.1 and
+1.0.2**. UNHCR has one active posting, so its evidence contains that one sample.
+Full original configuration hashes and HTTPS hosts scope these admissions;
+legacy options remain in ownership hashes and configured proxy requirements
+remain enforced. The public physical comparisons use direct verified TLS;
+configured proxy availability and natural execution remain separate gates.
+
+The same batch preserves the original absent-body API paginator wire request
+without inventing a POST body. Four frozen original Python references match
+method, URL, body, complete inventory and truncation; a missing body still cannot
+bootstrap token refresh. The rendered DOM path accepts the original `my_job_shop`
+annotation while retaining link and explicit-empty proofs. Real PostgreSQL/Redis
+tests cover complete/empty publication, missing-marker/publisher/incomplete
+failure authority and independent detail queues. Existing rendered-detail and
+static full-body contracts pass alongside them.
+
+The complete refreshed **8,136-board** SQL/cache check proposes **8,094 monitors /
+8,111 details**, with zero missing caches or effective binding differences. It
+preserves the prior floor, adds the eight qualified details and the two newly
+published Vinfen rows using existing generic implementations. Other newly
+SDK-eligible profiles remain outside this cohort. Persistent Systems currently
+returns original HTTP503 failures; Fressnapf's physical navigation is unproved;
+ALTEN Spain has a location mismatch; Sophia Genetics returns HTTP202. Preserve
+those failures and existing enabled configurations.
+
+Both batches share final-head CI and one complete rollout. Recapture the actual
+published Ericsson locale controls, every added scheduled route and the full
+ownership payload before activation. Then finish exact-ID conservation, natural
+freshness, latest-engine compatibility, resource/cost proof, cold reversal and
+production Python retirement. See
+[retained-batch evidence](evidence/go-native1098-retained-variants-candidate-2026-10-26.json).
 
 ## Historical publication blockers — before recovered 0.13.1093
 
