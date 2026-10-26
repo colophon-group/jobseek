@@ -59,6 +59,14 @@ func TalentBrewOptionsFromMetadata(boardURL, metadata string) (TalentBrewOptions
 				return o, ErrOptions
 			}
 			o.Ajax = b
+		// CSV sync keeps a previously discovered sitemap across provider changes.
+		// It is retained metadata, never a TalentBrew request target.
+		case "sitemap_url":
+			if v != nil {
+				if _, ok := v.(string); !ok {
+					return o, ErrOptions
+				}
+			}
 		case "scraper_type", "scraper_config", "suspect_streak", "recent_discovered_counts", "_confirmed_drop_candidate", "_monitor_config_fingerprint", "delist_threshold", "drop_threshold", "blast_radius_floor":
 		default:
 			return o, ErrOptions

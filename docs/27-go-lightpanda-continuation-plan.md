@@ -1,5 +1,50 @@
 # Go and Lightpanda migration delivery plan
 
+## Current publication recovery — October 26, 2026
+
+Production remains on **0.13.1086**, source `6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`,
+epoch **374**. The supported deployment refuses to replace an active native
+owner; the failed 0.13.1089 and 0.13.1091 deployment attempts do not establish
+new serving authority. Retire ordinary ownership, roll back B0, and clear only
+the reviewed selectors through their original drivers before dispatching the
+exact checked source. Keep all source/image/receipt guards and mutation locks.
+
+The [source reconciliation evidence](evidence/go-retirement-source-reconciliation-2026-10-26.json)
+records a complete streamed observation of the outgoing cohort: **1,923,012
+scheduled detail routes**, **3,264,449 non-atomic queue memberships**, and **zero
+queued-posting cache mismatches**. The original 0.13.1089 five-monitor/four-detail
+proposal passes the Go SDK against every captured route. **750 scheduled postings
+across five boards remain unqueued**, with all five cached route fields absent;
+an exact-ID follow-up confirms that this predates the next handoff. Retain those
+IDs privately and prove dispositions independently; neither a matching total
+nor the SDK check proves queue conservation or freshness.
+
+Current main `b32ee29695f8ddabec0243ee167a97e3f521641c` contains **8,134 catalogue
+rows**: 234 additions, ten changed existing configurations and the reviewed
+replacement of `ericsson-pinpoint` by Ericsson's Eightfold and China sources.
+Those rows are not yet a production census. Reconcile publication against the
+retained cohort, including the four additional existing-board reconfigurations,
+and qualify new rows before claiming native ownership. The retained cohort plus
+the five-monitor/four-detail batch, less the replaced board, proposes **7,858
+monitors / 7,867 details**; read back actual identities after publication.
+
+Full prepared metadata exposes three compatibility failures missed by static
+CSV-only fixtures: Becton Dickinson's TalentBrew monitor and Nokia's Oracle HCM
+monitor/detail retain the old discovered `sitemap_url` through SQL sync. The
+0.13.1092 fix accepts and binds that retained string without using it as a request
+target, while preserving rejection of unknown options. Nokia also selects
+`job_location_type` enrichment; admit that field through the existing Oracle
+parser and shared enrichment writer, with canonical settlement tests. Its detail
+configuration must retain the matching tenant/site overrides for already scheduled
+vanity URLs. Validate full SQL/cache
+metadata and actual scheduled URLs again on the final source, then stage and
+activate the complete cohort through the supported cold lifecycle.
+
+Lightpanda **1.0.2** remains the latest stable upstream release at this checkpoint.
+Resolve its retained visibility failures before promotion; the full migration
+goal, final Python retirement, whole-lane resource/freshness evidence and cold
+reversal remain open. Do not count this publication recovery as full delivery.
+
 ## Active full replacement — October 23, 2026
 
 The owner resumed complete production replacement and retirement. The Codex goal

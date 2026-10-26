@@ -1,0 +1,79 @@
+{
+  "format": "jobseek.go-retirement-source-reconciliation/v1",
+  "observed_at_utc": "2026-10-26T16:30:07.912344+00:00",
+  "outgoing": {
+    "revision": "6e1d0ebb3f2294b95e94e26854d5d4fefd282d52",
+    "version": "0.13.1086",
+    "epoch": 374,
+    "monitors": 7854,
+    "details": 7864,
+    "enabled_boards": 7901
+  },
+  "incoming": {
+    "base_revision": "b32ee29695f8ddabec0243ee167a97e3f521641c",
+    "version": "0.13.1092",
+    "catalogue_rows": 8134,
+    "catalogue_additions": 234,
+    "existing_changed_configurations": 10,
+    "approved_replaced_boards": [
+      "ericsson-pinpoint"
+    ],
+    "runtime_and_registry_sha256": {
+      "apps/crawler/go/api-sniffer-monitor/talentbrew.go": "85620264c14513a6b4578920099c7bbc96436c102999ad99d4eafbc25a519803",
+      "apps/crawler/go/ordinary-queue/profile_rich.go": "b23673890179b796576c35a0acb06ee481e4a9e78a6843b48490896ddf2b338f",
+      "apps/crawler/go/ordinary-queue/profile_oracle.go": "2be2d63ea1c7e1170c66c895661c41e501b6584b55a5dccb5b8a9f2a43efe52a",
+      "apps/crawler/data/boards.csv": "4a5df5e5bb576653b2906028dca338c0b8072f98217df059cd8591d96a827c1c"
+    }
+  },
+  "qualification": {
+    "source_revision": "qualification worktree based on b32ee29695f8ddabec0243ee167a97e3f521641c; runtime/config blobs bound below",
+    "monitors": 7858,
+    "details": 7867,
+    "new_monitors": 5,
+    "new_details": 4,
+    "actual_retained_scheduled_routes": 1923012,
+    "queue_memberships_observed_nonatomic": 3264449,
+    "gap_dispositions_pending": 750,
+    "approved_replaced_board_scheduled_routes": 0,
+    "completed_at_utc": "2026-10-26T16:27:53Z"
+  },
+  "regressions": {
+    "failed_before_fix": [
+      "TalentBrew retained sitemap rejected",
+      "Oracle HCM retained sitemap rejected",
+      "Oracle HCM workplace enrichment rejected",
+      "Nokia existing vanity URL missing detail tenant/site"
+    ],
+    "module_race_and_vet": [
+      "api-sniffer-monitor",
+      "ordinary-queue"
+    ],
+    "private_canonical_Oracle_direct_and_proxy": {
+      "passed": true,
+      "actual_migrations": true,
+      "selected_cases": 36,
+      "loopback_only": true,
+      "server_stopped": true,
+      "semantics": "Selected description/employment persist; unselected locations/workplace remain retained; publisher/failure and canonical queue settlement preserved."
+    }
+  },
+  "existing_queue_gaps": {
+    "ids": 750,
+    "boards": 5,
+    "all_five_cached_route_fields_absent": true,
+    "exact_read_only_disposition": "Active scheduled enabled postings still unqueued before handoff; unresolved.",
+    "no_freshness_or_conservation_completion_claim": true
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.2",
+    "released_at_utc": "2026-10-23T09:01:02Z",
+    "promotion_pending": "Four original display:contents text-range visibility cases fail on official 1.0.2; draft10799 remains unpromoted."
+  },
+  "limitations": [
+    "Historical non-atomic source-bound snapshot; a fresh baseline and exact-ID dispositions are required at actual cold handoff.",
+    "New catalogue rows have not automatically acquired ordinary ownership.",
+    "Full deployment, current staged-plan/queue/source identities, service health and native ATS runner acceptance remain required.",
+    "Full migration, production Python retirement, whole-lane resources/freshness and cold reversal remain open."
+  ],
+  "production_mutations": 0
+}

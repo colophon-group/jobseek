@@ -142,7 +142,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "talentbrew":
-		for _, key := range []string{"max_pages", "page_max_chars", "ajax_page_size", "page_size", "records_per_page", "ajax", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"sitemap_url", "max_pages", "page_max_chars", "ajax_page_size", "page_size", "records_per_page", "ajax", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "dayforce":
@@ -266,7 +266,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range oracle.ConfigKeys {
 			allowed[key] = true
 		}
-		for _, key := range []string{"proxy", "url_allowlist", "url_transform", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"sitemap_url", "proxy", "url_allowlist", "url_transform", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "api_sniffer":
@@ -286,6 +286,17 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["defaults"], allowed["rescrape_policy"] = true, true
 	}
 	md, err := profileMetadataFields(config["metadata"], allowed)
+	// SQL sync preserves discovered sitemap metadata when these providers
+	// replace a sitemap monitor. Keep it in the immutable configuration hash;
+	// their request builders continue to use only the selected API/listing.
+	if err == nil && (config["crawler_type"] == "talentbrew" || config["crawler_type"] == "oracle_hcm") {
+		if raw, present := md["sitemap_url"]; present && string(raw) != "null" {
+			var retained string
+			if json.Unmarshal(raw, &retained) != nil {
+				return nil, ErrUnsupportedProfile
+			}
+		}
+	}
 	if err == nil && sharedServiceAnnotationProvider(config["crawler_type"]) {
 		err = validateSharedServiceAnnotations(md)
 	}
