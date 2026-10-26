@@ -1855,6 +1855,7 @@ core-power,core-power-bamboohr,https://corepowerenergy.bamboohr.com/careers,api_
 coreflow,coreflow-ashby,https://jobs.ashbyhq.com/coreflow,ashby,"{""token"": ""coreflow""}",skip,
 coreweave,coreweave-greenhouse,https://job-boards.greenhouse.io/coreweave,greenhouse,"{""token"": ""coreweave""}",skip,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",skip,
+cornerstone-building-brands,cornerstone-building-brands-careers,https://careers.smartrecruiters.com/cornerstonebuildingbrandscareers,smartrecruiters,,smartrecruiters,
 corning,corning-careers,https://corningjobs.corning.com/,rss,"{""preset"": ""successfactors""}",skip,
 corporate-synergies,corporate-synergies-greenhouse,https://job-boards.greenhouse.io/corpsyn,greenhouse,"{""token"": ""corpsyn""}",skip,
 corpower-ocean,corpower-ocean-careers,https://careers.corpoweroceanjobs.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.corpoweroceanjobs.com/jobs.rss""}",skip,
