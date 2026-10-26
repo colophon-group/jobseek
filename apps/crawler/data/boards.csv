@@ -4651,6 +4651,7 @@ mechanize,mechanize-ashby,https://jobs.ashbyhq.com/mechanize,ashby,"{""token"": 
 medal,medal-ashby,https://jobs.ashbyhq.com/medal,ashby,"{""token"": ""medal""}",skip,
 medecins-sans-frontieres-doctors-without-borders-field,medecins-sans-frontieres-doctors-without-borders-field-greenhouse,https://job-boards.greenhouse.io/workoverseas,greenhouse,"{""token"": ""workoverseas""}",skip,
 medecins-sans-frontieres-doctors-without-borders-united-states,medecins-sans-frontieres-doctors-without-borders-united-states-greenhouse,https://job-boards.greenhouse.io/msfcareers,greenhouse,"{""token"": ""msfcareers""}",skip,
+medelite,medelite-careers,https://job-boards.greenhouse.io/medelitellc,greenhouse,,skip,
 medeloop,medeloop-greenhouse,https://job-boards.greenhouse.io/medeloop,greenhouse,"{""token"": ""medeloop""}",skip,
 medely,medely-ashby,https://jobs.ashbyhq.com/medely,ashby,"{""token"": ""medely""}",skip,
 medflex-gmbh,medflex-gmbh-join,https://join.com/companies/medflexde,join,"{""slug"": ""medflexde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
