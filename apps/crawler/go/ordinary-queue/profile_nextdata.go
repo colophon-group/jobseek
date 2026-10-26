@@ -62,6 +62,7 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	browserSource := source == "browser"
 	yum := false
 	florida := false
+	itemList := false
 	if browserSource {
 		var expression string
 		if json.Unmarshal(md["browser_expression"], &expression) != nil {
@@ -69,7 +70,8 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		}
 		florida = expression == apisniffer.FloridaCourtsBrowserExpression
 		yum = expression == apisniffer.YumChinaBrowserExpression && config["board_url"] == apisniffer.YumChinaBoardURL
-		if !florida && !yum {
+		itemList = expression == apisniffer.ItemListBrowserExpression
+		if !florida && !yum && !itemList {
 			return fail()
 		}
 	}
@@ -137,6 +139,13 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 			return fail()
 		}
 		o.BrowserDocumentTransform = "yum-china-http"
+		o.Strict = true
+	}
+	if itemList {
+		if o.ExpectedTitle != "" || o.Path != "jobs" || len(o.Fields) != 0 {
+			return fail()
+		}
+		o.BrowserDocumentTransform = "itemlist-talent-pool"
 		o.Strict = true
 	}
 	return o, options, nil

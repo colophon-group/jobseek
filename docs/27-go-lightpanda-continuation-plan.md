@@ -112,6 +112,52 @@ Continue in this order:
 
 See [recovery and candidate evidence](evidence/go-native1093-recovery-and-enrichment-candidate-2026-10-26.json).
 
+## Rendered continuation candidate — October 26, 2026
+
+**0.13.1096** is [PR #10916](https://github.com/colophon-group/jobseek/pull/10916),
+head `c3d7c45d9f75caf14ed4cb953b94f6484b2ad0e2`. Required CI and Crawler Deploy
+Gate passed. The earlier 1095 full workflow stopped before quiescence because
+PostgreSQL recorded a one-minute asynchronous WAL push timeout at **20:24 UTC**.
+Independent readback confirms retained **1094** is healthy and native owners
+remain cold. Archiving is succeeding again. Preserve the original operational
+preflight's full hour without new archive failures; do not reset counters or
+bypass telemetry. ATS installation still awaits the expected full crawler
+release. Recheck current source, holds and readiness before any merge or rollout.
+
+The next **0.13.1097** shared candidate closes the remaining three new-catalogue
+assignments:
+
+- Miniso's exact browser expression projects the first JSON-LD ItemList and
+  filters talent pools through the existing held-document URL-only path. All
+  **18** original offline Chromium expression/stream cases match. Missing or
+  malformed data fails before inventory publication. Its complete positive
+  original **10-URL** reference matches physical Lightpanda. Later original
+  Chromium attempts also failed before JSON-LD appeared; retain that variability
+  and require natural serving freshness after activation.
+- Nextdata/embedded details delegate the selected fields already supported by the
+  shared writer. Real PostgreSQL/Redis tests cover all eight selected Nextdata
+  fields, canonical preservation and settlement. Ericsson China's CSV adds an
+  optional click of the site's Chinese-language control and a required section
+  wait before the original extraction. This preserves the original three public
+  title/description/location/employment results across browser localization.
+- R.R. Donnelley India's exact original configuration joins the existing qualified
+  rendered-control map after **three** positive original/native public field
+  comparisons. The original legacy option remains in the immutable ownership
+  hash. Other configurations still require their own qualification.
+
+The **10 Miniso URLs plus six public detail samples** succeed with official
+Lightpanda **1.0.1 and 1.0.2**. The actual SQL/cache SDK check now admits all
+**234 new monitors and 234 new details**, proposing **8,092 monitors / 8,101
+details**, with zero binding mismatches. The CSV locale repair has its own
+registry/action test and regenerated census. These are candidate checks; recapture
+actual published metadata and every newly owned scheduled route before staging.
+The older **39-monitor / 30-detail** frontier and three separately tracked B0
+boards remain, together with exact queue conservation, natural freshness,
+whole-lane resource/cost evidence and final cold reversal. General 1.0.2 promotion
+still requires the four retained visibility regressions to pass unchanged.
+
+See [rendered candidate evidence](evidence/go-native1097-rendered-catalogue-candidate-2026-10-26.json).
+
 ## Historical publication blockers — before recovered 0.13.1093
 
 Before the recovered release, production remained on **0.13.1086**, source `6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`,

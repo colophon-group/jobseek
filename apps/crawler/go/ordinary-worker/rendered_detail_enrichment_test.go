@@ -7,6 +7,7 @@ import (
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -15,7 +16,7 @@ func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 	for _, scraper := range []string{"dom", "json-ld", "nextdata", "api_sniffer"} {
 		fields := []string{"title", "description", "locations", "employment_type"}
 		if scraper == "nextdata" {
-			fields = []string{"description", "employment_type"}
+			fields = []string{"title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary", "metadata"}
 		}
 		for _, field := range fields {
 			t.Run(scraper+"/"+field, func(t *testing.T) {
@@ -35,7 +36,7 @@ func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 				}
 				if scraper == "nextdata" {
 					options["path"] = "job"
-					options["fields"] = map[string]any{"title": "title", "description": "description", "locations": "locations", "employment_type": "employment", "responsibilities": "responsibilities"}
+					options["fields"] = map[string]any{"title": "title", "description": "description", "locations": "locations", "employment_type": "employment", "responsibilities": "responsibilities", "job_location_type": "mode", "date_posted": "posted", "base_salary": "salary", "metadata.team": "team"}
 				}
 				body, _ := json.Marshal(config)
 				f, authority, claim := independentDetailOwnedFixture(t, string(body), "", queue.Browser)
@@ -54,7 +55,7 @@ func TestRealRenderedSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 						html = nativeDOMHTML
 					}
 					if scraper == "nextdata" {
-						html = nativeEmbeddedHTML
+						html = strings.Replace(nativeEmbeddedHTML, `{"job":{`, `{"job":{"mode":"onsite","posted":"2026-10-01","salary":{"currency":"CHF","value":100000},"team":"Research",`, 1)
 					}
 					if scraper == "api_sniffer" {
 						return map[string]any{"title": "Senior Software Engineer", "description": "<p>Salary CHF 100000 per year.</p>", "locations": []any{"Zurich"}, "employment_type": "FULL_TIME"}, nil, nil

@@ -111,3 +111,22 @@ func TestNextdataRefusesUnfinishedAuthorityAndInvalidOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestItemListBrowserProjectionBindsStrictHeldDocument(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["monitor_needs_browser"] = "nextdata", "1"
+	md := map[string]any{"source": "browser", "browser_expression": apisniffer.ItemListBrowserExpression, "path": "jobs", "url_template": "{url}", "render": true, "scraper_type": "dom"}
+	body, _ := json.Marshal(md)
+	c["metadata"] = string(body)
+	p, err := InspectRichMonitor(profileBoardID, c)
+	o, _, e := RenderedNextdataMonitorOptions(c)
+	if err != nil || e != nil || p.Profile != "nextdata.rendered-urls/v1" || !o.Strict || o.BrowserDocumentTransform != "itemlist-talent-pool" {
+		t.Fatal("strict source projection not admitted", err, e)
+	}
+	md["browser_expression"] = apisniffer.ItemListBrowserExpression + "; other()"
+	body, _ = json.Marshal(md)
+	c["metadata"] = string(body)
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("unqualified expression admitted")
+	}
+}

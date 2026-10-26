@@ -13,6 +13,7 @@ import (
 // Lightpanda navigation; legacy engine settings remain in the ownership hash.
 // This is not general support for stealth, TLS exceptions or warmup navigation.
 var renderedDOMControlSources = map[string]string{
+	"bede99ae62e708ea2e6d775ee9fba8652b0cb3b6fbb7a01e8b26369a25cb27fd": "rrd.zohorecruit.in",
 	"4cfcc148aaa51c19e1a7329376dbbc7b005ed1d332f9bdbaf4dc24108a390ced": "ukraine.arcelormittal.com",
 	"307e4384fba791cc5bb76903dd1c215f91a44eab2b00833bc0a2e4b971c758a4": "swibeco.zohorecruit.eu",
 	"8c79a43fcb715f4106c4caf126b189489330464a051d8b16ac54987f88e3f0d6": "careers.hrblock.com.au",

@@ -1,0 +1,262 @@
+{
+  "expression": "({jobs:Array.from(document.scripts).filter(s=>s.type===\"application/ld+json\").map(s=>JSON.parse(s.textContent)).find(x=>x[\"@type\"]===\"ItemList\").itemListElement.filter(j=>!/pool de talentos/i.test(j.name))})",
+  "metadata": {
+    "source": "browser",
+    "browser_expression": "({jobs:Array.from(document.scripts).filter(s=>s.type===\"application/ld+json\").map(s=>JSON.parse(s.textContent)).find(x=>x[\"@type\"]===\"ItemList\").itemListElement.filter(j=>!/pool de talentos/i.test(j.name))})",
+    "path": "jobs",
+    "url_template": "{url}"
+  },
+  "cases": [
+    {
+      "name": "one-job",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "talent-pool-filter",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"POOL DE TALENTOS\"}, {\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "explicit-empty",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": []}</script>",
+      "browser_result": {
+        "jobs": []
+      },
+      "error": false,
+      "chunks": [
+        []
+      ]
+    },
+    {
+      "name": "first-list",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": []}</script><script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": {
+        "jobs": []
+      },
+      "error": false,
+      "chunks": [
+        []
+      ]
+    },
+    {
+      "name": "organization-first",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"Organization\"}</script><script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "template-ignored",
+      "html": "<template><script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": []}</script></template><script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "case-sensitive-script-type",
+      "html": "<script type=\"Application/LD+JSON\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "first-valid-before-null",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script><script type=\"application/ld+json\">null</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "null-before-valid",
+      "html": "<script type=\"application/ld+json\">null</script><script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "later-malformed-script",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}]}</script><script type=\"application/ld+json\">bad</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "missing-list",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"Organization\"}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "missing-elements",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\"}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "null-row",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\"}, null]}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "missing-name",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "array-type",
+      "html": "<script type=\"application/ld+json\">{\"@type\": [\"ItemList\"], \"itemListElement\": []}</script>",
+      "browser_result": null,
+      "error": true,
+      "chunks": []
+    },
+    {
+      "name": "number-rounding",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Engineer\", \"id\": 9007199254740993}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Engineer",
+            "id": 9007199254740992
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "unicode-name",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"Ingeniería — 工程师\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "Ingeniería — 工程师"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    },
+    {
+      "name": "non-unicode-regex-casefold",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"ItemList\", \"itemListElement\": [{\"url\": \"https://example.com/jobs/one\", \"name\": \"pool de talentoſ\"}]}</script>",
+      "browser_result": {
+        "jobs": [
+          {
+            "url": "https://example.com/jobs/one",
+            "name": "pool de talentoſ"
+          }
+        ]
+      },
+      "error": false,
+      "chunks": [
+        [
+          {
+            "url": "https://example.com/jobs/one"
+          }
+        ]
+      ]
+    }
+  ]
+}

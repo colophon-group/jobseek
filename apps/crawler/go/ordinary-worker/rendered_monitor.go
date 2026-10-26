@@ -294,6 +294,8 @@ func parseHeldNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorP
 	}
 	if o.BrowserDocumentTransform == "florida-courts" {
 		result.document, result.err = apisniffer.ParseFloridaCourtsBrowserDocument(source)
+	} else if o.BrowserDocumentTransform == "itemlist-talent-pool" {
+		result.document, result.err = apisniffer.ParseItemListBrowserDocument(source)
 	} else {
 		result.document, result.err = apisniffer.ParseEmbeddedMonitorDocument(source, o.Source)
 	}
