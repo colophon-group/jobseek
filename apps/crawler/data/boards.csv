@@ -5225,6 +5225,7 @@ ogt,ogt-greenhouse,https://job-boards.greenhouse.io/ogt,greenhouse,"{""token"": 
 oh-io,oh-io-greenhouse,https://job-boards.greenhouse.io/ohio,greenhouse,"{""token"": ""ohio""}",skip,
 ohalo,ohalo-greenhouse,https://job-boards.greenhouse.io/ohalogenetics,greenhouse,"{""token"": ""ohalogenetics""}",skip,
 ohpen,ohpen-careers,https://ohpen.jobs.personio.com/,personio,"{""slug"": ""ohpen""}",skip,
+ohsu,ohsu-careers-all,https://careersat-ohsu.icims.com/,icims,"{""host"": ""careersat-ohsu.icims.com"", ""job_hosts"": [""externalcareers-ohsu.icims.com"", ""facultycareers-ohsu.icims.com"", ""nursingcareers-ohsu.icims.com"", ""postdoctoral-ohsu.icims.com""]}",embedded,"{""pattern"": ""<script[^>]*type=\""application/ld\\+json\""[^>]*>\\s*"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""(jobLocation[].address || [jobLocation.address])[].join(', ', [addressLocality, addressRegion, addressCountry.name || addressCountry] | [?type(@) == 'string'])""}}"
 oklo,oklo-greenhouse,https://job-boards.greenhouse.io/oklo,greenhouse,"{""token"": ""oklo""}",skip,
 okta,okta-greenhouse,https://job-boards.greenhouse.io/okta,greenhouse,"{""token"": ""okta""}",skip,
 okx,okx-greenhouse,https://job-boards.greenhouse.io/okx,greenhouse,"{""token"": ""okx""}",skip,
