@@ -14,15 +14,18 @@ import (
 func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *testing.T) {
 	for _, proxy := range []bool{false, true} {
 		t.Run(fmt.Sprintf("proxy=%v", proxy), func(t *testing.T) {
-			for _, mode := range []string{"description", "description_and_employment", "configured_fields", "empty_backfill", "empty_payload", "404", "header_reserved", "copy_id", "copy_id_blank_description"} {
+			for _, mode := range []string{"description", "description_and_employment", "configured_fields", "configured_fields_and_workplace", "empty_backfill", "empty_payload", "404", "header_reserved", "copy_id", "copy_id_blank_description"} {
 				t.Run(mode, func(t *testing.T) {
 					fields := `["description"]`
-					if mode == "description_and_employment" {
+					if mode == "description_and_employment" || mode == "configured_fields_and_workplace" {
 						fields = `["description","employment_type"]`
 					}
 					metadata := `{"scraper_type":"oracle_hcm","selector":"a.job","render":true,"scraper_config":{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","enrich":` + fields + `}}`
-					if mode == "configured_fields" {
+					if mode == "configured_fields" || mode == "configured_fields_and_workplace" {
 						metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","enrich":["description"],"fields":{"title":"Title","locations":"PrimaryLocation","date_posted":"ExternalPostedStartDate","description":["ExternalDescriptionStr","ExternalQualificationsStr","ExternalResponsibilitiesStr"],"valid_through":"ExternalPostedEndDate","employment_type":"JobSchedule","job_location_type":{"map":{"ORA_HYBRID":"hybrid","ORA_REMOTE":"remote","ORA_ON_SITE":"onsite"},"path":"WorkplaceTypeCode"}}}}`
+					}
+					if mode == "configured_fields_and_workplace" {
+						metadata = strings.Replace(metadata, `"enrich":["description"]`, `"enrich":["description","employment_type","job_location_type"]`, 1)
 					}
 					jobID := "123"
 					if strings.HasPrefix(mode, "copy_id") {
@@ -34,7 +37,7 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 					}
 					f, a, claim := independentDetailOwnedFixture(t, metadata, source)
 					ctx := context.Background()
-					if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET titles=ARRAY['Monitor title'],employment_type='part_time',location_ids=ARRAY[2] WHERE id=$1::uuid", f.original); err != nil {
+					if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET titles=ARRAY['Monitor title'],employment_type='part_time',location_ids=ARRAY[2],location_types=ARRAY['onsite'] WHERE id=$1::uuid", f.original); err != nil {
 						t.Fatal(err)
 					}
 					if mode == "empty_backfill" {
@@ -98,8 +101,16 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 						wantTitle = "Senior Software Engineer"
 						wantEmployment = "full_time"
 					}
-					if mode == "description_and_employment" {
+					if mode == "description_and_employment" || mode == "configured_fields_and_workplace" {
 						wantEmployment = "full_time"
+					}
+					if mode == "configured_fields_and_workplace" {
+						// The original enrichment writer resolves workplace type only with
+						// selected/backfilled locations, even when the raw field is present.
+						var workplace []string
+						if err := f.pg.QueryRow(ctx, "SELECT location_types FROM job_posting WHERE id=$1::uuid", f.original).Scan(&workplace); err != nil || fmt.Sprint(workplace) != "[onsite]" {
+							t.Fatal("Oracle enrichment replaced unselected canonical locations", err)
+						}
 					}
 					wantFailures := 0
 					if wantStatus == "failed" {
@@ -119,7 +130,7 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 						if err := f.pg.QueryRow(ctx, "SELECT d.html,d.r2_uploaded,p.location_ids FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.id=$1::uuid", f.original).Scan(&html, &uploaded, &locations); err != nil || !strings.Contains(html, "Salary CHF") || uploaded || fmt.Sprint(locations) != "[2]" {
 							t.Fatal("Oracle body staging/backfill differs", err)
 						}
-						if mode == "configured_fields" && (!strings.Contains(html, "Qualifications") || !strings.Contains(html, "Responsibilities")) {
+						if (mode == "configured_fields" || mode == "configured_fields_and_workplace") && (!strings.Contains(html, "Qualifications") || !strings.Contains(html, "Responsibilities")) {
 							t.Fatal("configured Oracle description omitted provider sections")
 						}
 					} else if f.r.Exists(ctx, "scrape:"+f.original).Val() != 1 {

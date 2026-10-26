@@ -19,7 +19,7 @@ func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t
 				t.Run(mode, func(t *testing.T) {
 					metadata := `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{}}`
 					if strings.HasPrefix(mode, "complete_enrich") {
-						metadata = `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{"enrich":["description","employment_type"]}}`
+						metadata = `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{"enrich":["description","employment_type","job_location_type"]}}`
 					}
 					if proxy {
 						metadata = oracleProxyFixtureMetadata(t, metadata, true)

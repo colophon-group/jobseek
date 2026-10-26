@@ -123,3 +123,24 @@ func TestTalentBrewOversizedValidCounterCannotLoseInventoryProof(t *testing.T) {
 		t.Fatal("oversized total silently lost", err)
 	}
 }
+
+func TestTalentBrewIgnoresRetainedSitemapWithoutChangingResources(t *testing.T) {
+	base, err := TalentBrewOptionsFromMetadata("https://example.com/search-jobs", `{}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, metadata := range []string{`{"sitemap_url":"https://old.example/sitemap.xml"}`, `{"sitemap_url":null}`} {
+		got, err := TalentBrewOptionsFromMetadata(base.BoardURL, metadata)
+		if err != nil || !reflect.DeepEqual(got, base) {
+			t.Fatal("retained sitemap changed TalentBrew options", err)
+		}
+		if got.ResourceMatches("https://old.example/sitemap.xml") {
+			t.Fatal("retained sitemap granted request authority")
+		}
+	}
+	for _, metadata := range []string{`{"sitemap_url":123}`, `{"sitemap_url":{}}`, `{"sitemap_url":"https://old.example/sitemap.xml","unported":true}`} {
+		if _, err := TalentBrewOptionsFromMetadata(base.BoardURL, metadata); err == nil {
+			t.Fatal("invalid metadata accepted")
+		}
+	}
+}
