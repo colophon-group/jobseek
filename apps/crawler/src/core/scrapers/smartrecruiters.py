@@ -81,9 +81,9 @@ def _parse_salary(posting: dict) -> dict | None:
     comp = posting.get("compensation")
     if not comp:
         return None
-    salary = comp.get("salary")
-    if not salary:
-        return None
+    # Tenants publish either compensation.salary or the same fields directly
+    # under compensation. Preserve the nested form's precedence when present.
+    salary = comp.get("salary") or comp
     sal_min = salary.get("min")
     sal_max = salary.get("max")
     if sal_min is None and sal_max is None:

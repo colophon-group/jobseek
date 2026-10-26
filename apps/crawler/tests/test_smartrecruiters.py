@@ -517,6 +517,31 @@ class TestBuildLocation:
 
 
 class TestParseSalary:
+    @pytest.mark.parametrize(
+        ("compensation", "expected"),
+        [
+            (
+                {"min": 17.5, "currency": "USD", "period": "HOURLY"},
+                {"min": 17.5, "max": None, "currency": "USD", "unit": "hour"},
+            ),
+            (
+                {"min": 130000, "max": 150000, "currency": "USD", "period": "YEARLY"},
+                {"min": 130000, "max": 150000, "currency": "USD", "unit": "year"},
+            ),
+            (
+                {"max": 0, "currency": "EUR", "period": "MONTHLY"},
+                {"min": None, "max": 0, "currency": "EUR", "unit": "month"},
+            ),
+            ({"currency": "USD", "period": "HOURLY"}, None),
+            (
+                {"min": 17.5, "salary": {"min": 20, "currency": "USD", "period": "hourly"}},
+                {"min": 20, "max": None, "currency": "USD", "unit": "hour"},
+            ),
+        ],
+    )
+    def test_direct_compensation(self, compensation, expected):
+        assert _parse_detail({"compensation": compensation}).base_salary == expected
+
     def test_basic_salary(self):
         posting = {
             "compensation": {
