@@ -109,23 +109,43 @@ func repairWorkerRouteTarget(ctx context.Context, conn *pgx.Conn, client *redis.
 	} else if config.Type != "api_sniffer" || config.Config["api_url"] != target.APIURL {
 		return result, errors.New("unsupported forward worker route")
 	}
-	rows, err := conn.Query(ctx, `SELECT job_posting.id::text,source_url,board_id::text,description_r2_hash,next_scrape_at,scraper_needs_browser FROM job_posting JOIN job_board ON job_board.id=job_posting.board_id WHERE job_posting.board_id=$1::uuid AND job_posting.is_active AND next_scrape_at IS NOT NULL ORDER BY job_posting.id LIMIT 10001`, board)
+	rows, err := conn.Query(ctx, `SELECT job_posting.id::text,source_url,board_id::text,description_r2_hash,next_scrape_at,scraper_needs_browser FROM job_posting JOIN job_board ON job_board.id=job_posting.board_id WHERE job_posting.board_id=$1::uuid AND job_posting.is_active AND next_scrape_at IS NOT NULL ORDER BY job_posting.id`, board)
 	if err != nil {
 		return result, errors.New("worker route schedule query failed")
 	}
-	schedules, err := pgx.CollectRows(rows, pgx.RowToStructByPos[capacitySchedule])
-	if err != nil || len(schedules) > 10000 {
-		return result, errors.New("worker route schedule inventory exceeds bound or is invalid")
-	}
-	result.Selected = len(schedules)
+	defer rows.Close()
+	// A legitimate provider can exceed 10,000 schedules. Bound the actual
+	// atomic Redis payload instead of truncating its canonical inventory.
+	// Validate every streamed row before the first Redis effect.
+	const maxWorkerRoutePayloadBytes = 64 << 20
 	args := []any{board, target.Domain, result.Worker, strconv.FormatFloat(float64(time.Now().UnixNano())/1e9, 'f', -1, 64)}
-	for _, s := range schedules {
+	payloadBytes := 0
+	for _, value := range args {
+		payloadBytes += len(value.(string))
+	}
+	for rows.Next() {
+		var s capacitySchedule
+		if err := rows.Scan(&s.ID, &s.URL, &s.Board, &s.Hash, &s.Due, &s.Browser); err != nil {
+			return result, fmt.Errorf("worker route %s: schedule inventory read failed", target.Slug)
+		}
 		domain, score, cfg, err := capacityScheduleValues(s)
 		if err != nil || domain != target.Domain || !target.SourcePattern.MatchString(s.URL) || s.Browser != browser {
-			return result, errors.New("worker route canonical posting identity mismatch")
+			return result, fmt.Errorf("worker route %s: canonical posting identity mismatch", target.Slug)
 		}
-		args = append(args, s.ID, s.URL, cfg["description_r2_hash"], strconv.FormatFloat(score, 'f', -1, 64), strconv.FormatBool(s.Hash == nil), workerRoutePreviousURL(target, s.URL))
+		values := []string{s.ID, s.URL, cfg["description_r2_hash"], strconv.FormatFloat(score, 'f', -1, 64), strconv.FormatBool(s.Hash == nil), workerRoutePreviousURL(target, s.URL)}
+		for _, value := range values {
+			payloadBytes += len(value)
+			if payloadBytes > maxWorkerRoutePayloadBytes {
+				return result, fmt.Errorf("worker route %s: atomic payload exceeds byte budget", target.Slug)
+			}
+			args = append(args, value)
+		}
+		result.Selected++
 	}
+	if rows.Err() != nil {
+		return result, fmt.Errorf("worker route %s: schedule inventory read failed", target.Slug)
+	}
+	rows.Close()
 	// Wrap the unchanged original enqueue implementation so both ready indexes
 	// retain their rate-limit and rotation semantics after lane normalization.
 	readyBlock := strings.SplitN(deadletterEnqueueLua, "-- Always recompute ready membership.", 2)[1]

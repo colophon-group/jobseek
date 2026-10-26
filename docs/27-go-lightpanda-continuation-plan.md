@@ -1,5 +1,35 @@
 # Go and Lightpanda migration delivery plan
 
+## Contained deployment recovery — October 26, 2026
+
+[PR #10904](https://github.com/colophon-group/jobseek/pull/10904) merged as
+`00a9e85992245921115028d24b31b631393b5cf5` after exact-head Required CI and
+Crawler Deploy Gate success. Original ordinary retirement, B0 rollback and
+selector clearing succeeded; independent readback verified native owners cold,
+epoch **375**, and the complete retained serving stack before deployment.
+
+The full deployment and its rollback both hit the route-repair inventory ceiling:
+Bajaj now has **10,025** scheduled postings, exceeding the fixed 10,000 limit.
+The rollback contract deliberately kept all crawler writers/exporter stopped
+when that step could not finish. The last verified source remains **0.13.1086** /
+`6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`; do not claim 0.13.1092 is serving or
+restart individual services. Typesense remains available to frontend reads.
+
+The **0.13.1093** recovery removes that row-count ceiling. Stream the complete
+canonical inventory into a byte-bounded atomic payload, validate every SQL row
+and retain the existing whole-inventory Lua preflight before any queue effect.
+Real private PostgreSQL/Redis regressions cover 10,025 routes, forward and
+rollback lanes, retained hashes/deadlines, and invalid final SQL/Redis records
+with zero earlier effects. Finish required checks and use the original full
+source/image-bound deployment/recovery workflow; independently verify the whole
+serving stack and actual catalogue before B0/ordinary reactivation.
+
+Renderer source reconciliation separately stopped on live cgroup memory
+attestation. The original installer contained its exact predecessor. Its Docker
+configuration still records the required 1 GiB memory/no-swap limits; retry via
+the original supported cold-predecessor path, preserving every verifier. A cold
+or unverified renderer does not qualify browser production ownership.
+
 ## Current publication recovery — October 26, 2026
 
 Production remains on **0.13.1086**, source `6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`,

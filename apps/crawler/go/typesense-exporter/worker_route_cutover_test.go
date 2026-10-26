@@ -237,3 +237,75 @@ func TestWorkerRoutePreviousURLIsMigration0031Only(t *testing.T) {
 		t.Fatal("accepted another board")
 	}
 }
+
+func TestWorkerRouteCutoverLargeInventoryValidatesAllRowsAndReverses(t *testing.T) {
+	ctx, conn, _ := registryTestDatabase(t)
+	c := capacityRedisFixture(t, ctx)
+	target := workerRouteTargets[0]
+	const count = 10025
+	due := time.Date(2026, 10, 26, 8, 30, 1, 125000000, time.UTC)
+	metadata, _ := json.Marshal(map[string]any{"scraper_type": "api_sniffer", "scraper_config": map[string]any{"api_url": target.APIURL}})
+	var board, company string
+	if err := conn.QueryRow(ctx, `INSERT INTO job_board(company_id,board_slug,board_url,scraper_needs_browser,metadata) VALUES(gen_random_uuid(),$1,$2,false,$3::jsonb) RETURNING id::text,company_id::text`, target.Slug, target.BoardURL, string(metadata)).Scan(&board, &company); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,next_scrape_at,description_r2_hash) SELECT ('10000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,$1::uuid,$2::uuid,'https://'||$3||'/job/detail/JR'||n::text,$4,123 FROM generate_series(1,$5::integer) n`, company, board, target.Domain, due, count); err != nil {
+		t.Fatal(err)
+	}
+	last := fmt.Sprintf("10000000-0000-0000-0000-%012d", count)
+	url := fmt.Sprintf("https://%s/job/detail/JR%d", target.Domain, count)
+	// A bad final SQL row must refuse before any Redis effect, including all
+	// valid earlier rows that exceeded the old 10,000-row ceiling.
+	if _, err := conn.Exec(ctx, `UPDATE job_posting SET source_url='https://unrelated.example/job/1' WHERE id=$1::uuid`, last); err != nil {
+		t.Fatal(err)
+	}
+	before := workerRouteSnapshot(t, c, ctx)
+	if _, err := repairWorkerRouteTarget(ctx, conn, c, target); err == nil || !strings.Contains(err.Error(), "canonical posting identity mismatch") {
+		t.Fatal("late invalid canonical source did not reject complete inventory", err)
+	}
+	if workerRouteSnapshot(t, c, ctx) != before {
+		t.Fatal("late canonical failure mutated an earlier route")
+	}
+	if _, err := conn.Exec(ctx, `UPDATE job_posting SET source_url=$2 WHERE id=$1::uuid`, last, url); err != nil {
+		t.Fatal(err)
+	}
+	// The unchanged Lua preflight must also refuse a bad final cached step
+	// without enqueuing any of the 10,024 earlier valid SQL rows.
+	c.HSet(ctx, "scrape:"+last, "board_id", board, "source_url", url, "domain", target.Domain, "scrape_step", "1", "description_r2_hash", "456", "retained", "original")
+	before = workerRouteSnapshot(t, c, ctx)
+	if _, err := repairWorkerRouteTarget(ctx, conn, c, target); err == nil {
+		t.Fatal("late invalid Redis fallback step admitted")
+	}
+	if workerRouteSnapshot(t, c, ctx) != before {
+		t.Fatal("late Redis preflight failure mutated an earlier route")
+	}
+	c.HSet(ctx, "scrape:"+last, "scrape_step", "0")
+	got, err := repairWorkerRouteTarget(ctx, conn, c, target)
+	if err != nil || got.Selected != count || got.Repaired != count || got.Worker != "simple" {
+		t.Fatal("complete large forward inventory failed", got, err)
+	}
+	if c.ZCard(ctx, "scrapes_simple:"+target.Domain).Val() != count || c.ZCard(ctx, "scrapes_browser:"+target.Domain).Val() != 0 {
+		t.Fatal("forward inventory truncated or wrong lane retained")
+	}
+	if c.HGet(ctx, "scrape:"+last, "description_r2_hash").Val() != "456" || c.HGet(ctx, "scrape:"+last, "retained").Val() != "original" {
+		t.Fatal("large inventory replaced retained cache lifecycle fields")
+	}
+	if score, err := c.ZScore(ctx, "scrapes_simple:"+target.Domain, last).Result(); err != nil || score != float64(due.UnixMicro())/1e6 {
+		t.Fatal("canonical recurring deadline changed", err)
+	}
+	metadata, _ = json.Marshal(map[string]any{"scraper_type": target.LegacyType, "scraper_config": map[string]any{"render": true}})
+	if _, err := conn.Exec(ctx, `UPDATE job_board SET scraper_needs_browser=true,metadata=$2::jsonb WHERE id=$1::uuid`, board, string(metadata)); err != nil {
+		t.Fatal(err)
+	}
+	got, err = repairWorkerRouteTarget(ctx, conn, c, target)
+	if err != nil || got.Selected != count || got.Repaired != count || got.Worker != "browser" {
+		t.Fatal("complete large rollback inventory failed", got, err)
+	}
+	if c.ZCard(ctx, "scrapes_browser:"+target.Domain).Val() != count || c.ZCard(ctx, "scrapes_simple:"+target.Domain).Val() != 0 {
+		t.Fatal("large rollback truncated or left mixed lanes")
+	}
+	var actual int
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND next_scrape_at=$2 AND is_active`, board, due).Scan(&actual); err != nil || actual != count {
+		t.Fatal("route repair modified canonical schedules", err)
+	}
+}
