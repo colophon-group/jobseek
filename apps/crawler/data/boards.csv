@@ -626,6 +626,8 @@ ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/as
 ascension,ascension-careers,https://jobs.ascension.org/,phenom,,json-ld,
 ascent,ascent-careers,https://ascenthealthservices.career.softgarden.de/,softgarden,"{""slug"": ""ascenthealthservices""}",json-ld,
 ascento,ascento-careers,https://ascento-ag.breezy.hr/,breezy,"{""slug"": ""ascento-ag""}",json-ld,
+asda,asda-careers,https://asda.wd103.myworkdayjobs.com/asdajobs,workday,"{""company"": ""asda"", ""wd_instance"": ""wd103"", ""site"": ""AsdaJobs"", ""all_sites"": false}",workday,
+asda,asda-careers-ipl,https://careers.ipl-ltd.com/vacancies/vacancy-search-results.aspx,sitemap,"{""sitemap_url"": ""https://careers.ipl-ltd.com/sitemap.xml"", ""url_filter"": ""/vacancies/[0-9]+/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""id=fullWidthContainer_fcVacancyDetails_VacV_AllLocations_pnlReadonly"", ""field"": ""locations"", ""regex"": ""^(?:(?:Forza|Kober|IPL)\\s+-\\s+)?(.+)$"", ""from"": 0}, {""tag"": ""h2"", ""text"": ""About The Role"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply"", ""from"": 0}]}"
 asg,asg-greenhouse,https://job-boards.greenhouse.io/asgjobs,greenhouse,"{""token"": ""asgjobs""}",skip,
 ashby,ashby-careers,https://jobs.ashbyhq.com/ashby,ashby,,skip,
 asian-paints,asian-paints-careers,https://careers.asianpaints.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.asianpaints.com/googlefeed.xml""}",skip,
