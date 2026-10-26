@@ -258,8 +258,19 @@ async function smokeNavigationServerActions(
   browser: Browser,
   route: string,
   expectedActions: number,
+  blockBrowserSearch = false,
 ) {
   const page = await browser.newPage();
+  if (blockBrowserSearch) {
+    // Reproduce #10820's filtered initialization failure without depending on
+    // a particular client network, DNS resolver, or scoped-key cache entry.
+    // The page must try the real same-origin recovery action exactly once.
+    await page.route("**/api/typesense-key", (route) => route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Browser search unavailable" }),
+    }));
+  }
   const navigationActions: string[] = [];
   page.on("request", (request) => {
     if (request.method() !== "POST") return;
@@ -496,8 +507,17 @@ async function main() {
     }
     await smokeExploreBeforeHydration(browser);
     for (const [route, expectedActions] of navigationActionRoutes) {
-      await smokeNavigationServerActions(browser, route, expectedActions);
+      // Secretless/direct-disabled builds also exercise the one bounded
+      // page-data recovery after parsing a semantic query.
+      const recoveryActions = route.includes("?q=") && (
+        !hasServerTypesenseConfiguration() ||
+        process.env.NEXT_PUBLIC_TYPESENSE_DIRECT !== "1"
+      ) ? 1 : 0;
+      await smokeNavigationServerActions(browser, route, expectedActions + recoveryActions);
     }
+    await smokeNavigationServerActions(
+      browser, "/en/explore?loc=india&salcur=EUR", 1, true,
+    );
     await smokeSpaExploreNavigation(browser);
     for (const route of routes) {
       await smoke(browser, route);

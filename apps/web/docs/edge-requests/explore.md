@@ -61,11 +61,16 @@ the production build.
 
 Filtered URLs and job-language-hinted viewers initialize through browser-direct
 Typesense after hydration. Signed-in preferences reuse `fetchAppBootstrap()`
-from the shared app layout; Explore does not issue a second page-data action.
+from the shared app layout. A failed browser transport, scoped-key fetch, or
+result read makes one `fetchExplorePageData()` recovery request with the same
+URL filters, including salary currency and the public language override.
+Healthy browser reads do not issue this action. Invalid numeric ranges and
+unresolved explicit slugs remain unavailable without a recovery request.
 The queryless result tree remains in raw HTML for crawlers and anonymous,
 unfiltered visitors. Filtered and viewer-hinted browsers see the skeleton from
-first paint. A failed scoped read keeps the URL-derived filters and an
-explicit unavailable state—it never restores the broader queryless snapshot.
+first paint. If both the browser read and server recovery fail, the page keeps
+the URL-derived filters and an explicit unavailable state. It never restores
+the broader queryless snapshot.
 On the unfiltered page, a fresher direct result is offered with “Show latest
 results” so cards do not silently reorder during reading.
 
@@ -74,7 +79,7 @@ results” so cards do not silently reorder during reading.
 | Operation | Preferred path | Server Action fallback / mutation |
 |-----------|----------------|-----------------------------------|
 | Default inventory check | Browser-direct Typesense | None |
-| Filter-bearing initial mount | Browser-direct Typesense; narrow semantic parser for free text | None for result data |
+| Filter-bearing initial mount | Browser-direct Typesense; narrow semantic parser for free text | One filtered page-data action after a browser read failure |
 | Search/filter change | Browser-direct Typesense runner | Search Server Action when direct access is unavailable or request exceeds the public bound |
 | Load more companies/postings | Browser-direct where supported | Bounded read action |
 | Posting detail | Cached posting-detail read | `getPostingDetail()` |

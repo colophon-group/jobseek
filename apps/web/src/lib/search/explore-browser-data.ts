@@ -1,4 +1,4 @@
-import type { ExploreData } from "@/lib/actions/explore-page-data";
+import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { resolveCompanySemanticFilters } from "@/lib/actions/company-filter-state";
 import type { CurrencyRate } from "@/lib/actions/search";
 import { resolveJobLanguages } from "@/lib/job-languages";
@@ -14,6 +14,7 @@ import {
   resolveCompanyFilterStateDirect,
 } from "@/lib/search/typesense-browser-filter-state";
 import type { ParsedSearchFilters } from "@/lib/services/search-input";
+import { searchFilterParamsToObject } from "@/lib/search/query-params";
 
 const PAGE_SIZE = 10;
 const MAX_RANGE_PARAM_LENGTH = 64;
@@ -98,7 +99,8 @@ function unavailableData(params: {
  * Initialize a preference- or filter-bearing Explore shell from the browser.
  * Explicit taxonomy slugs and results use the scoped Typesense key. Semantic
  * free text retains the narrow canonical parser action because it needs
- * request geolocation; it never fetches the result set server-side.
+ * request geolocation. Failed browser reads recover through one server action
+ * with the same URL filters; healthy mounts stay entirely browser-direct.
  */
 export async function loadExploreBrowserData(params: {
   initialData: ExploreData;
@@ -146,6 +148,29 @@ export async function loadExploreBrowserData(params: {
     directAttempted: true,
   });
 
+  const recover = async (
+    parsed = offline.parsed,
+    geo?: { userLat?: number; userLng?: number },
+  ): Promise<ExploreBrowserDataResult> => {
+    try {
+      const searchParams = searchFilterParamsToObject(params.searchParams);
+      // lang is a public result override outside the toolbar filter keys.
+      const language = params.searchParams.get("lang");
+      if (language !== null) searchParams.lang = language;
+      const data = await fetchExplorePageData({ searchParams, locale: params.locale });
+      if (!data.result.degraded) {
+        return { data, unavailable: false, directAttempted: true };
+      }
+    } catch (error) {
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "explore_server_recovery" },
+        error,
+      );
+    }
+    return unavailable(parsed, geo);
+  };
+
   if (!salary.valid || !experience.valid) return unavailable();
 
   let parsed: ParsedSearchFilters;
@@ -189,7 +214,7 @@ export async function loadExploreBrowserData(params: {
         { service: "typesense", operation: "browser_explore_filter_state" },
         error,
       );
-      return unavailable();
+      return recover();
     }
     if (!filterState.complete) return unavailable(filterState.parsed);
     parsed = filterState.parsed;
@@ -237,7 +262,7 @@ export async function loadExploreBrowserData(params: {
           params.isLoggedIn,
         )
       : await tryListTopCompaniesDirect(searchInput, params.isLoggedIn);
-  if (!result) return unavailable(parsed, { userLat, userLng });
+  if (!result) return recover(parsed, { userLat, userLng });
 
   return {
     data: {
