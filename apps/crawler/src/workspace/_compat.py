@@ -767,6 +767,8 @@ def auto_scraper_type(
     Returns None when manual scraper selection is needed.
     """
     rich_rows = (config or {}).get("rich_rows")
+    if monitor_type == "dom" and (config or {}).get("tupu360_listing") is True:
+        return ("tupu360", {"enrich": ["description"], "listing_enrichment": True})
     if (
         monitor_type == "dom"
         and isinstance(rich_rows, dict)
@@ -1293,6 +1295,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "dom"
             and (
                 bool((config or {}).get("rich_rows"))
+                or (config or {}).get("tupu360_listing") is True
                 or (
                     isinstance((config or {}).get("script_json_links"), dict)
                     and bool(

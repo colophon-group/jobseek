@@ -160,6 +160,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "link_selector",
             "lg_portal",
             "lucca_board",
+            "tupu360_listing",
             "my_job_shop",
             "oracle_adf_job_ids",
             "onclick_selector",

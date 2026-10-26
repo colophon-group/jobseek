@@ -5401,6 +5401,15 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if not html:
         return None
 
+    from src.core.monitors import tupu360_listing
+
+    if tupu360_listing.is_listing_url(url):
+        try:
+            total, _ = tupu360_listing.parse_page(html, url)
+        except ValueError:
+            return None
+        return {"tupu360_listing": True, "urls": total}
+
     if _MY_JOB_SHOP_BOOTSTRAP_MARKER in html:
         # Provider pages place a large inline design-system stylesheet before
         # their SSR job-link payload. The generic 500k probe preview ends in
@@ -5531,6 +5540,10 @@ async def _dom_discover_once(
         raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
+    if metadata.get("tupu360_listing") is True:
+        from src.core.monitors.tupu360_listing import discover
+
+        return await discover(board_url, client)
     transport_attempts = _validated_transport_attempts(
         metadata.get("transport_attempts"), owner="DOM monitor"
     )

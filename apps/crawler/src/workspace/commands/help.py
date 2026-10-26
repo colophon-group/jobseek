@@ -2110,6 +2110,14 @@ dom — Link or Listing-Row Extraction (fallback)
     server-rendered cards, while the auto-configured DOM scraper enriches the
     complete description from stable detail-page test IDs.
 
+  Tupu360 employer boards:
+    Unfiltered ``https://<host>.tupu360.com/<site>/position/index`` roots
+    auto-select ``{"tupu360_listing": true}``. Static offset pages preserve
+    titles, locations, dates and recruitment types, and must reconcile with
+    the unchanged advertised total. The ``tupu360`` scraper enriches only
+    descriptions with ``{"enrich": ["description"], "listing_enrichment": true}``.
+    Filtered roots are not accepted by this preset.
+
   Discovery:   Extracts links matching link_selector when configured, or strict
                window.location row actions matching onclick_selector. Otherwise
                extracts all <a href> links and filters for URLs containing
