@@ -12,6 +12,8 @@ import json
 import re
 from html.parser import HTMLParser
 
+from selectolax.lexbor import LexborHTMLParser
+
 from src.core.enum_normalize import normalize_salary_unit
 from src.core.job_content import JobContent
 
@@ -584,6 +586,15 @@ def _parse_posting(
     )
 
 
+def _icims_heading_title(html: str) -> str | None:
+    """Recover a placeholder title only from one provider-specific job heading."""
+    headings = LexborHTMLParser(html).css("h1.iCIMS_Header")
+    if len(headings) != 1:
+        return None
+    title = _clean_text(headings[0].text(separator=" ", strip=True))
+    return title if title and title.casefold() != "unavailable" else None
+
+
 def parse_html(html: str, config: dict | None = None) -> JobContent:
     """Extract structured job data from pre-fetched HTML."""
     extractor = _JsonLdExtractor()
@@ -613,7 +624,12 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
                     content.extras = None
             if ignore_locations:
                 content.locations = None
-            if not content.title and extractor.page_title:
+            # iCIMS can publish the literal placeholder while its visible job
+            # heading still has the role title. Keep the remaining JSON-LD
+            # fields, and leave title missing if the heading is ambiguous.
+            if content.title and content.title.casefold() == "unavailable":
+                content.title = _icims_heading_title(html)
+            elif not content.title and extractor.page_title:
                 organization = posting.get("hiringOrganization")
                 organization_name = (
                     _clean_text(organization.get("name"))
