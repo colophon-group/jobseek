@@ -72,7 +72,7 @@ func TestLinkedInTaleoPracticeMatchCurrentRegistryBindings(t *testing.T) {
 		})
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 37, "taleo": 4, "practicematch": 4}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 38, "taleo": 4, "practicematch": 4}) {
 		t.Fatal("registry changed", counts)
 	}
 }

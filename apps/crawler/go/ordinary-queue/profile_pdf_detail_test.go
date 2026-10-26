@@ -61,7 +61,7 @@ func TestPDFCurrentRegistryIndependentDetailsAndEnrichment(t *testing.T) {
 		}
 		count++
 	}
-	if count != 51 || enriched != 8 {
+	if count != 52 || enriched != 8 {
 		t.Fatal(count, enriched)
 	}
 }

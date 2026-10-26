@@ -82,7 +82,7 @@ func TestRemainingHTTPCanonicalRegistryAndDetails(t *testing.T) {
 		})
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"johdi": 2, "jobdiva": 2, "headhunter": 2}) {
+	if !reflect.DeepEqual(counts, map[string]int{"johdi": 2, "jobdiva": 3, "headhunter": 2}) {
 		t.Fatal("registry coverage changed", counts)
 	}
 }
