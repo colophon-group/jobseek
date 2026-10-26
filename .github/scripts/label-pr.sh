@@ -18,9 +18,10 @@ set -euo pipefail
 
 SCRIPTS_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
-# Only classify add-company/* branches; other branches need task-specific authorization.
+# Classify company additions and reconfigurations by their actual changed files.
+# Source changes on fix-crawler/* still receive review-code and cannot auto-merge.
 BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-if [[ "$BRANCH" != add-company/* ]]; then
+if [[ "$BRANCH" != add-company/* && "$BRANCH" != fix-crawler/* ]]; then
   echo "Skipping label-pr for non-company branch: $BRANCH"
   echo "labels=" >> "$GITHUB_OUTPUT"
   exit 0
@@ -36,7 +37,7 @@ URL_RE='^https?://'
 # --- Check changed files ---
 
 if [[ -n "${EXPECTED_HEAD:-}" && -n "${EXPECTED_BASE:-}" ]]; then
-  FILES=$(git diff --name-only "$EXPECTED_BASE...$EXPECTED_HEAD")
+  FILES=$(git diff --name-only --no-renames "$EXPECTED_BASE...$EXPECTED_HEAD")
 else
   FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
 fi
@@ -79,6 +80,7 @@ fi
 # remove/add pair as new made unrelated historical monitor types affect the
 # current PR's decision (#5764).
 CSV_ADDITIONS=$(printf '%s\n' "$DIFF" | python3 "$SCRIPTS_DIR/label_pr_csv_diff.py")
+AFFECTED_SLUGS=$(printf '%s\n' "$DIFF" | python3 "$SCRIPTS_DIR/label_pr_csv_diff.py" --company-slugs)
 ADDED_LINES=$(grep -c '.' <<< "$CSV_ADDITIONS" || true)
 
 # Dynamic limit: 1 company + 1 description + N boards + 1 margin.
@@ -102,6 +104,12 @@ MAX_ADDED_LINES=$((BOARD_ROWS + 3))
 echo "Net added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES, $BOARD_ROWS boards)"
 
 DIFF_OK=true
+
+if [[ "$BRANCH" == fix-crawler/* ]] && ! printf '%s\n' "$DIFF" | \
+    python3 "$SCRIPTS_DIR/label_pr_csv_diff.py" --check-reconfiguration; then
+  echo "::warning::Reconfiguration exceeds single-company configuration scope"
+  DIFF_OK=false
+fi
 
 if [ "$ADDED_LINES" -gt "$MAX_ADDED_LINES" ]; then
   echo "::warning::Too many added lines ($ADDED_LINES > $MAX_ADDED_LINES)"
@@ -187,10 +195,10 @@ done <<< "$CSV_ADDITIONS"
 
 INCOMPLETE=false
 
-COMPLETENESS=$(python3 - "$PR" "$REPO" <<'PYEOF'
+COMPLETENESS=$(python3 - "$PR" "$REPO" "$AFFECTED_SLUGS" <<'PYEOF'
 import csv, io, json, os, subprocess, sys
 
-pr, repo = sys.argv[1], sys.argv[2]
+pr, repo, affected_slugs = sys.argv[1:]
 
 branch = os.environ.get("EXPECTED_HEAD") or subprocess.check_output(
     ["gh", "pr", "view", pr, "--repo", repo, "--json", "headRefName", "-q", ".headRefName"],
@@ -220,24 +228,17 @@ main_companies = parse_csv(get_raw(os.environ.get("EXPECTED_BASE", "main"), "app
 main_slugs = {r["slug"] for r in main_companies}
 new_slugs = {r["slug"] for r in pr_companies if r["slug"] not in main_slugs}
 
-if not new_slugs:
-    print("ok")
-    sys.exit(0)
-
 issues = []
-for slug in sorted(new_slugs):
+for slug in sorted(new_slugs | set(affected_slugs.splitlines())):
     co = next((r for r in pr_companies if r["slug"] == slug), None)
     if not co:
+        issues.append(f"{slug}: missing company identity")
         continue
 
-    if not co.get("name", "").strip():
-        issues.append(f"{slug}: missing name")
-    if not co.get("website", "").strip():
-        issues.append(f"{slug}: missing website")
-    if not co.get("logo_url", "").strip():
-        issues.append(f"{slug}: missing logo_url")
-    if not co.get("icon_url", "").strip():
-        issues.append(f"{slug}: missing icon_url")
+    if slug in new_slugs:
+        for field in ("name", "website", "logo_url", "icon_url"):
+            if not co.get(field, "").strip():
+                issues.append(f"{slug}: missing {field}")
 
     boards = [r for r in pr_boards if r.get("company_slug") == slug]
     if not boards:
@@ -273,16 +274,22 @@ STATS_FOUND=false
 JOBS=0
 MONITOR_TIME=0
 
-COMMENTS=$(gh api "repos/$REPO/issues/$PR/comments" --jq '.[].body')
+COMMENTS=$(gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" --jq '.[].body')
 STATS_LINE=$(echo "$COMMENTS" | grep '<!-- crawl-stats' | tail -1 || true)
 
 if [ -n "$STATS_LINE" ]; then
   JSON=$(echo "$STATS_LINE" | sed 's/.*<!-- crawl-stats //;s/ -->.*//')
   echo "Crawl stats: $JSON"
 
-  JOBS=$(echo "$JSON" | jq -r '.jobs // 0')
-  MONITOR_TIME=$(echo "$JSON" | jq -r '.monitor_time // 0')
-  STATS_FOUND=true
+  if jq -e 'type == "object"
+      and (.jobs | type == "number" and . >= 0 and floor == .)
+      and (.monitor_time | type == "number" and . >= 0)' >/dev/null <<< "$JSON"; then
+    JOBS=$(jq -r '.jobs' <<< "$JSON")
+    MONITOR_TIME=$(jq -r '.monitor_time' <<< "$JSON")
+    STATS_FOUND=true
+  else
+    echo "::warning::Invalid crawl-stats; separate merge authorization is required"
+  fi
 else
   echo "::warning::No crawl-stats comment found"
 fi
@@ -291,12 +298,12 @@ fi
 
 LABELS=""
 
-if [ "$INCOMPLETE" = "true" ]; then
-  LABELS="incomplete"
-elif [ "$CONFIG_ONLY" != "true" ]; then
+if [ "$CONFIG_ONLY" != "true" ]; then
   LABELS="review-code"
 elif [ "$DIFF_OK" != "true" ]; then
   LABELS="review-code"
+elif [ "$INCOMPLETE" = "true" ]; then
+  LABELS="incomplete"
 elif [ "$STATS_FOUND" != "true" ]; then
   LABELS="review-size"
 elif [ "$JOBS" -ge 500 ] 2>/dev/null; then
@@ -307,7 +314,7 @@ fi
 
 # review-load is independent — based on monitor crawl time
 if [ "$STATS_FOUND" = "true" ]; then
-  SLOW=$(echo "$MONITOR_TIME > 60" | bc -l 2>/dev/null || echo 0)
+  SLOW=$(jq -nr --argjson duration "$MONITOR_TIME" '$duration > 60 | if . then 1 else 0 end')
   if [ "$SLOW" = "1" ]; then
     LABELS="$LABELS,review-load"
   fi

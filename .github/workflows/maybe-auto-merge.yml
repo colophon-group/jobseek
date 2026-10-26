@@ -5,7 +5,7 @@ on:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_run:
-    workflows: ["CI", "CodeQL"]
+    workflows: ["CI", "CodeQL", "Crawler Deploy Gate"]
     types: [completed]
   schedule:
     - cron: "*/15 * * * *"
@@ -33,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.workflow_sha }}
           fetch-depth: 0
 
       - name: Capture trusted scripts
@@ -57,45 +58,7 @@ jobs:
           INPUT_PR: ${{ github.event.inputs.pr || '' }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          set -euo pipefail
-
-          prs_file="$RUNNER_TEMP/company-prs.txt"
-          : > "$prs_file"
-          owner="${REPO%%/*}"
-          default_branch="${DEFAULT_BRANCH:-main}"
-
-          select_open_company_prs() {
-            gh pr list --repo "$REPO" --state open --limit 100 \
-              --json number,isDraft,headRefName,headRepositoryOwner \
-              --jq ".[] | select(.isDraft == false and .headRepositoryOwner.login == \"$owner\" and (.headRefName | startswith(\"add-company/\"))) | .number"
-          }
-
-          if [[ "$EVENT_NAME" == "pull_request_target" ]]; then
-            jq -r '.pull_request.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
-          elif [[ "$EVENT_NAME" == "workflow_run" ]]; then
-            branch=$(jq -r '.workflow_run.head_branch // ""' "$GITHUB_EVENT_PATH")
-            head_repo=$(jq -r '.workflow_run.head_repository.full_name // ""' "$GITHUB_EVENT_PATH")
-
-            if [[ "$head_repo" == "$REPO" && "$branch" == "$default_branch" ]]; then
-              select_open_company_prs >> "$prs_file"
-            else
-              jq -r '.workflow_run.pull_requests[]?.number' "$GITHUB_EVENT_PATH" >> "$prs_file"
-              if [[ ! -s "$prs_file" && "$head_repo" == "$REPO" && "$branch" == add-company/* ]]; then
-                gh pr list --repo "$REPO" --state open --head "$branch" \
-                  --json number --jq '.[].number' >> "$prs_file"
-              fi
-            fi
-          elif [[ -n "$INPUT_PR" ]]; then
-            echo "$INPUT_PR" >> "$prs_file"
-          else
-            select_open_company_prs >> "$prs_file"
-          fi
-
-          sort -nu "$prs_file" > "$RUNNER_TEMP/company-prs.sorted.txt"
-          count=$(wc -l < "$RUNNER_TEMP/company-prs.sorted.txt" | tr -d ' ')
-          echo "count=$count" >> "$GITHUB_OUTPUT"
-          echo "file=$RUNNER_TEMP/company-prs.sorted.txt" >> "$GITHUB_OUTPUT"
-          cat "$RUNNER_TEMP/company-prs.sorted.txt"
+          .github/scripts/select-company-prs.sh
 
       - name: Label, rebase, and merge
         if: steps.prs.outputs.count != '0'
@@ -105,9 +68,16 @@ jobs:
           TRUSTED_SCRIPTS_DIR: ${{ runner.temp }}/trusted-scripts
         run: |
           set -euo pipefail
+          failed=0
           while IFS= read -r pr; do
             [[ -z "$pr" ]] && continue
             echo "::group::Process PR #$pr"
-            PR="$pr" "$TRUSTED_SCRIPTS_DIR/maybe-auto-merge-pr.sh"
+            if PR="$pr" "$TRUSTED_SCRIPTS_DIR/maybe-auto-merge-pr.sh"; then
+              :
+            else
+              echo "::warning::PR #$pr failed; continuing the company queue"
+              failed=1
+            fi
             echo "::endgroup::"
           done < "${{ steps.prs.outputs.file }}"
+          exit "$failed"

@@ -1,6 +1,6 @@
 # Auto-Merge Rules
 
-PRs that add company configs qualify for automatic merge based on estimated crawl cost. Other changes need
+PRs that add or reconfigure company configs qualify for automatic merge based on estimated crawl cost. Other changes need
 explicit task/operator merge authorization; approving reviews are not required.
 
 ## Policy
@@ -42,23 +42,27 @@ The agent gets estimates from the test crawl via `ws run monitor`, which reports
 
 The `maybe-auto-merge.yml` workflow:
 
-1. Wakes on company PR changes, CI/CodeQL completion, a 15 minute schedule,
-   and manual dispatch. CI/CodeQL completion on `main` sweeps all eligible
-   open same-repo `add-company/*` PRs, so branches made stale by other merges
-   do not wait for operator action.
-2. Labels internal non-draft `add-company/*` PRs from trusted scripts
+1. Wakes on company PR changes, CI/CodeQL/Crawler Deploy Gate completion,
+   a 15 minute schedule, and manual dispatch. Every automatic wake sweeps all
+   pages of open same-repo company PRs, recovering replaced pending events.
+2. Classifies internal non-draft `add-company/*` and `fix-crawler/*` PRs from
+   trusted scripts. Config-only reconfigurations of one company use the same
+   job-count and crawl-time thresholds as additions. Company deletion/renaming,
+   changes to multiple companies, and source changes need separate authorization.
 3. Skips PRs with pending image files so `upload-company-images.yml` can handle
    the R2 upload path
 4. Rebases CSV conflicts when possible and merges via GitHub API
-5. Exits cleanly when checks are still pending; the next workflow wake retries
-   without operator action
+5. Resolves the current target branch tip on every state check, rather than
+   treating GitHub's cached PR base OID as the current `main` tip
+6. Exits cleanly when checks are still pending; the next workflow wake retries
+   without operator action. One conflicting PR does not stop the rest of the queue
 
 ```yaml
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_run:
-    workflows: ["CI", "CodeQL"]
+    workflows: ["CI", "CodeQL", "Crawler Deploy Gate"]
     types: [completed]
   schedule:
     - cron: "*/15 * * * *"
@@ -89,13 +93,19 @@ Fork PRs are outside the company auto-merger and need separate merge authorizati
 
 ## Safety Rails
 
-- Auto-merge only applies to CSV file changes in `apps/crawler/data/`
+- Auto-merge requires allowed company configuration files (company/board/description
+  CSVs and the existing image, census, trace, KB and VERSION companion files).
+  A `fix-crawler/*` name alone never grants merge authority.
+- Reconfigurations must retain the company identity and at least one configured board.
 - CI must pass (CSV validation, no broken references)
 - CodeQL is advisory: its analysis and alerts are available for review but are
   not required branch checks and do not block merge. Data/docs-only PRs may
   skip it. Required checks are `Required CI` and `Crawler Deploy Gate`; the
   checked-in ruleset matches this policy. Making CodeQL blocking would require
   an explicit alert threshold, an always-reported gate and a ruleset change.
+- `UNSTABLE` merge state can reflect skipped or advisory checks and is accepted
+  only after every required check passes. Blocked, conflicting and unknown merge
+  states still stop the merge.
 - The `auto-merge` label can only be applied by the agent or maintainers
 - No mandatory approving review count is enforced, including for source changes.
 - Auto-merge validates the exact head/base snapshot, all required checks, draft

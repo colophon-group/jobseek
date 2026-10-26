@@ -82,6 +82,12 @@ workflow at the specified step. Start-at options:
 Use `ws task back --to <step> --reason "..."` within a reconfig run if you
 discover deeper breakage than expected.
 
+Reconfiguration workspaces publish on `fix-crawler/<slug>`. The company PR
+classifier inspects the diff: configuration-only changes to one company receive
+`auto-merge`, `review-size`, or `review-load` under the same thresholds as new
+companies. Source changes receive `review-code` and require separate merge
+authorization. See [auto-merge rules](./05-auto-merge.md).
+
 ## Verification and Iteration
 
 Agents should not blindly trust the first test crawl result. The workflow includes verification loops to catch incomplete configurations early.

@@ -142,9 +142,30 @@ def test_parallel_completion_keeps_kb_edits_before_ready_journaling():
 
 
 @pytest.mark.parametrize(
-    "change", ["none", "head", "base", "draft", "hold", "checks", "load", "review", "blocked"]
+    "change",
+    [
+        "none",
+        "head",
+        "base",
+        "draft",
+        "hold",
+        "checks",
+        "load",
+        "review",
+        "blocked",
+        "unstable",
+        "dirty",
+        "unknown",
+        "stale_base",
+        "pending",
+        "removed_label",
+        "operator_load",
+        "operator_size",
+        "operator_code",
+    ],
 )
-def test_auto_merge_lease_rechecks_final_state_and_binds_head(tmp_path, change):
+@pytest.mark.parametrize("branch", ["add-company/test", "fix-crawler/test"])
+def test_auto_merge_lease_rechecks_final_state_and_binds_head(tmp_path, change, branch):
     import os
     import subprocess
 
@@ -166,22 +187,31 @@ if "headRepositoryOwner" in " ".join(args):
     counter = root / "count"
     count = int(counter.read_text()) + 1 if counter.exists() else 1
     counter.write_text(str(count))
-    result = dict(state="OPEN", isDraft=False, headRefName="add-company/test",
+    result = dict(state="OPEN", isDraft=False, headRefName=os.environ["BRANCH"],
                   headRefOid="a"*40, baseRefOid="b"*40, baseRefName="main",
                   reviewDecision="", mergeStateStatus="CLEAN",
-                  headRepositoryOwner={"login":"owner"}, labels=[])
+                  headRepositoryOwner={"login":"owner"}, labels=[{"name":"auto-merge"}])
+    if change == "stale_base": result["baseRefOid"] = "d"*40
+    if change == "unstable": result["mergeStateStatus"] = "UNSTABLE"
     if count >= 3:
         if change == "head": result["headRefOid"] = "c"*40
         if change == "base": result["baseRefOid"] = "c"*40
         if change == "draft": result["isDraft"] = True
         if change == "review": result["reviewDecision"] = "CHANGES_REQUESTED"
-        if change == "blocked": result["mergeStateStatus"] = "BLOCKED"
+        if change in {"blocked", "dirty", "unknown"}:
+            result["mergeStateStatus"] = change.upper()
         if change == "hold": result["labels"] = [{"name":"do-not-merge"}]
+        if change == "removed_label": result["labels"] = []
+        if change.startswith("operator_"):
+            result["labels"].append({"name":"review-" + change.removeprefix("operator_")})
     print(json.dumps(result))
-elif "statusCheckRollup" in args: print("SUCCESS")
+elif "statusCheckRollup" in args: print("PENDING" if change == "pending" else "SUCCESS")
 elif args[:2] == ["pr", "checks"]: print("false" if change == "checks" else "true")
 elif args[:2] == ["pr", "merge"]:
     assert "--match-head-commit" in args and args[-1] == "a"*40
+elif args[0] == "api" and "/git/ref/heads/main" in " ".join(args):
+    count = int((root / "count").read_text())
+    print(("c" if change == "base" and count >= 3 else "b") * 40)
 elif args[0] == "api": print("apps/crawler/data/boards.csv")
 else: sys.exit(4)
 """,
@@ -221,6 +251,7 @@ fi
         "TRUSTED_SCRIPTS_DIR": str(tmp_path),
         "FIXTURE_ROOT": str(tmp_path),
         "CHANGE": change,
+        "BRANCH": branch,
     }
     result = subprocess.run(
         ["bash", str(ROOT / ".github/scripts/maybe-auto-merge-pr.sh")],
@@ -232,7 +263,7 @@ fi
     )
     assert result.returncode == 0, result.stderr
     calls = (tmp_path / "calls").read_text()
-    assert ("pr merge" in calls) == (change == "none"), calls
+    assert ("pr merge" in calls) == (change in {"none", "unstable", "stale_base"}), calls
 
 
 def test_changed_board_url_invalidates_inflight_results(tmp_path, monkeypatch):
