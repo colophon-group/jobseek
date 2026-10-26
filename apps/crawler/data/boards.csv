@@ -6386,6 +6386,7 @@ shopify,shopify-careers,https://www.shopify.com/careers,sitemap,"{""sitemap_url"
 shopmy,shopmy-greenhouse,https://job-boards.greenhouse.io/shopmy,greenhouse,"{""token"": ""shopmy""}",skip,
 showami,showami-careers,https://showami.breezy.hr/,breezy,,json-ld,
 showpad,showpad-greenhouse,https://job-boards.greenhouse.io/showpad,greenhouse,"{""token"": ""showpad""}",skip,
+sia,sia-careers,https://careers.smartrecruiters.com/sia,smartrecruiters,,smartrecruiters,
 sib-solutions,sib-solutions-academic-search,https://www.academicsearch.se/lediga-jobb/,dom,"{""render"": false, ""url_filter"": ""^https?://(?:www\\.)?academicsearch\\.se/job/sib-solutions-[^/?#]+/?(?:[?#].*)?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title"", ""regex"": ""[\u2013-]\\s*(.+)$""}, {""text"": ""Our team is based in Lund"", ""field"": ""locations"", ""regex"": ""based in (Lund)""}, {""text"": ""Required Skills and Experience:""}, {""tag"": ""li"", ""field"": ""qualifications"", ""stop"": ""Desirable Skills and Experience:""}, {""text"": ""About the role"", ""field"": ""description"", ""stop"": ""Tj\u00e4nstetitel"", ""html"": true, ""from"": 0}]}"
 sib-solutions,sib-solutions-careers,https://sibsolutions.com/about-us/job-openings/,dom,"{""render"": false, ""url_filter"": ""^https?://[^#?]+/(?:jobs?|careers?|positions?|vacancies?|job-openings?)/[^#?]+(?:[?#].*)?$""}",json-ld,
 sicpa,sicpa-jobs,https://jobs.sicpa.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.sicpa.com/googlefeed.xml""}",skip,
