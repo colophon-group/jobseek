@@ -309,6 +309,9 @@ func joinPythonURL(base, reference string) (string, bool) {
 }
 
 func discoverDOMInventory(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+	if queue.Tupu360Monitor(config) {
+		return discoverTupu360Inventory(ctx, client, profile, config, pauseRich)
+	}
 	c, err := queue.DOMMonitorOptions(config)
 	if err != nil || profile.Endpoint != config["board_url"] {
 		return RichDiscovery{}, queue.ErrConfiguration

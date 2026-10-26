@@ -244,3 +244,20 @@ func TestInventoryTruncationAndCancellationCannotBecomeComplete(t *testing.T) {
 		t.Fatalf("cancelled inventory: %v", err)
 	}
 }
+
+func TestInventoryRobotsXMLSitemapPreservesPublishedSiteSpelling(t *testing.T) {
+	c := InventoryConfig{Site: Site{"example", "wd5", "external"}, AllSites: true}
+	get := func(context.Context, string) (string, error) {
+		return "Sitemap: https://example.wd5.myworkdayjobs.com/External/siteMap.xml\n", nil
+	}
+	post := func(_ context.Context, endpoint string, _ []byte) ([]byte, error) {
+		if endpoint != "https://example.wd5.myworkdayjobs.com/wday/cxs/example/External/jobs" {
+			t.Fatal("robots site spelling lost")
+		}
+		return page(1, "/job/Engineer_R100"), nil
+	}
+	got, err := DiscoverInventory(context.Background(), c, get, post)
+	if err != nil || len(got.URLs) != 1 || got.URLs[0] != "https://example.wd5.myworkdayjobs.com/External/job/Engineer_R100" {
+		t.Fatal("canonical published site changed", err)
+	}
+}

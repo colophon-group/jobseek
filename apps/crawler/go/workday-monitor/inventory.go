@@ -187,7 +187,7 @@ func DiscoverInventory(ctx context.Context, c InventoryConfig, get RobotsGetter,
 				continue
 			}
 			parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-			if u.Hostname() == c.Site.Company+"."+c.Site.Instance+".myworkdayjobs.com" && len(parts) == 2 && parts[1] == "siteMap" && siteToken.MatchString(parts[0]) && !seen[parts[0]] {
+			if u.Hostname() == c.Site.Company+"."+c.Site.Instance+".myworkdayjobs.com" && len(parts) == 2 && (parts[1] == "siteMap" || parts[1] == "siteMap.xml") && siteToken.MatchString(parts[0]) && !seen[parts[0]] {
 				sites = append(sites, parts[0])
 				seen[parts[0]] = true
 			}

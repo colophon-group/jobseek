@@ -16,6 +16,9 @@ import (
 // retain their configured simple/browser queue and canonical posting owner.
 // This profile grants no detail claims, even when their scraper is Workday.
 func inspectWorkdayMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
 	if config["scraper_needs_browser"] != "0" && config["scraper_needs_browser"] != "1" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -52,6 +55,12 @@ func inspectWorkdayMonitor(boardID string, config map[string]string, md map[stri
 		return GreenhouseMonitorProfile{}, err
 	}
 	stable, err := stableGreenhouseConfig(config, md)
+	if _, transformed := md["url_transform"]; transformed {
+		// These newly admitted policies include nested detail mappings. SQL jsonb
+		// and Redis key order must agree semantically, while retained Workday
+		// profiles without a transform keep their existing ownership hashes.
+		stable, err = stableJSONLDConfig(config, md)
+	}
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}

@@ -115,6 +115,12 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			return nil, err
 		}
 	}
+	if profile.Provider == "lever" {
+		enrich, err = leverMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if SecondaryProvider(profile.Provider) {
 		enrich, err = secondaryMonitorEnrichment(claim.task.Config)
 		if err != nil {
@@ -250,7 +256,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" && profile.Provider != "rss" && !DOMMonitorUsesRichRows(profile.Profile) {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" && profile.Provider != "rss" && profile.Provider != "lever" && !DOMMonitorUsesRichRows(profile.Profile) {
 			return nil, ErrConfiguration
 		}
 	}
@@ -386,7 +392,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					}
 					if !hybridByURL[row.url] {
 						fields := content.Fields
-						if SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || profile.Provider == "rss" || DOMMonitorUsesRichRows(profile.Profile) {
+						if SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || profile.Provider == "rss" || profile.Provider == "lever" || DOMMonitorUsesRichRows(profile.Profile) {
 							for _, field := range enrich {
 								if field == "description" {
 									fields.Locales = nil
@@ -416,7 +422,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
-					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || profile.Provider == "rss" || DOMMonitorUsesRichRows(profile.Profile)) && delegatedDescription && row.action != "new" {
+					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || profile.Provider == "rss" || profile.Provider == "lever" || DOMMonitorUsesRichRows(profile.Profile)) && delegatedDescription && row.action != "new" {
 						// Same locale-only availability fallback as the legacy rich
 						// monitor: a scraped locale remains byte-authoritative.
 						d := content.Description

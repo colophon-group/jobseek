@@ -30,16 +30,46 @@ preflights its root-owned binary in the protected executable `/usr/local/libexec
 filesystem and cleans up the temporary file, preserving `/run` hardening.
 The original host rollout and actual native timer acceptance remain required.
 
-The next shared batch admits the existing API-sniffer metadata selection,
-Oracle title/metadata delegation, and RSS location/employment/date delegation.
-The shared detail writer preserves Python's metadata availability check without
-adding canonical column writes. All **18** frozen Python preparation cases pass,
-including four metadata cases. Real migrated PostgreSQL/Redis tests cover
-selected canonical writes, monitor description authority, proxy/publisher
-failures, scheduling and claim settlement with no skips. Detached eligibility
-for the **234** new rows improves to **230 monitors / 232 details** across the
-existing 37 families; six rows still need compatibility work. These are candidate
-configuration results, not serving ownership or full content-parity claims.
+[PR #10908](https://github.com/colophon-group/jobseek/pull/10908) merged as
+`151ddbf4331548910dec0efd72faec5387a50372`, version **0.13.1095**, with both required
+checks green. The original crawler and ATS host workflows are running; this
+checkpoint does not yet claim their independent serving or native timer
+acceptance. The release admits API-sniffer metadata selection, Oracle
+title/metadata delegation, and RSS location/employment/date delegation. The
+shared detail writer preserves Python's metadata availability check without
+adding canonical column writes. All 18 frozen preparation cases and the real
+selected-writer/queue/publisher tests pass. Its new-catalogue SDK result is
+**230 monitors / 232 details** across the existing 37 families.
+
+The next **0.13.1096** shared batch handles **three** additional monitor
+configurations together:
+
+- Workday applies the existing canonical URL transform after CXS discovery,
+  preserving independent detail scheduling. Robots discovery accepts the original
+  `siteMap.xml` spelling and retains the published site's case.
+- Lever schedules explicit description/date enrichment through the existing
+  selected-field detail writer. Listing refreshes preserve scraped descriptions;
+  discovery retains structured salary emitted by the existing parser.
+- Tupu360 uses the retained direct rich-row writer with a strict static parser.
+  Its authoritative count, constant total, card fields, unique IDs and pagination
+  must all validate before any inventory is published. Later failures and publisher
+  reservations retain no partial inventory or absence authority.
+
+All **16** original Python Tupu360 parser cases match. Fresh original-wrapper
+public captures and sealed Go replay match every returned URL and available
+field: **92 Tupu360 postings / one request**, **538 transformed Workday URLs /
+28 requests**, and **54 Lever postings / one request**. Real migrated
+PostgreSQL/Redis tests cover separate detail queues, new/touched/relisted
+content authority, four-miss absence, later-page failures and reservations.
+The complete actual 8,134-board SQL/cache SDK check now admits **233 monitors /
+232 details** among the 234 new rows, proposing **8,091 monitors / 8,099 details**
+with zero binding mismatches. Three new-catalogue assignments remain:
+Miniso Argentina monitor, Ericsson China detail and R.R. Donnelley India detail.
+These candidate checks grant no staging or serving authority. The retained old
+frontier, full route proof, freshness, resource evidence and final reversal also
+remain required.
+
+See [the three-family qualification evidence](evidence/go-native1096-workday-lever-tupu360-candidate-2026-10-26.json).
 
 The complete recovered-source observation and SDK replay cover **1,957,037
 actual scheduled URLs** for a provisional **8,088-monitor / 8,099-detail** cohort,

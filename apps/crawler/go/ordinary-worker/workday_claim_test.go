@@ -111,3 +111,38 @@ func TestRealOwnedWorkdayMonitorPublisherReservationBeforeStatusAndInventory(t *
 		})
 	}
 }
+
+func TestRealOwnedWorkdayCanonicalTransformPreservesListAuthorityAndDetailQueue(t *testing.T) {
+	metadata := `{"all_sites":false,"scraper_type":"embedded","scraper_config":{"variable":"job","fields":{"title":"title"}},"url_transform":{"find":"^https://fixture[.]wd1[.]myworkdayjobs[.]com/Careers/job/City/(Engineer_R[0-9]+)$","replace":"https://careers.example.net/role/\\1"}}`
+	f := privateRichPipelineFixture(t, "workday", metadata)
+	ctx := context.Background()
+	claim, circuits := claimFixture(t, f)
+	calls := 0
+	client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Method != "POST" || r.Host != "fixture.wd1.myworkdayjobs.com" || r.URL.Path != "/wday/cxs/fixture/Careers/jobs" {
+			t.Error("canonical identity rewrite redirected list authority")
+		}
+		fmt.Fprint(w, `{"total":1,"jobPostings":[{"externalPath":"/job/City/Engineer_R100"}]}`)
+	}))
+	r, err := RunGreenhouseClaim(ctx, f.a, claim, client, &pipelinePreparer{}, circuits)
+	if err != nil || r == nil || !r.Settled || r.Batches.Inserted != 1 || calls != 1 {
+		t.Fatal("rewritten URL inventory did not settle", err)
+	}
+	want := "https://careers.example.net/role/Engineer_R100"
+	var id string
+	var due time.Time
+	if err := f.pg.QueryRow(ctx, "SELECT id::text,next_scrape_at FROM job_posting WHERE board_id=$1::uuid AND source_url=$2", f.board, want).Scan(&id, &due); err != nil {
+		t.Fatal(err)
+	}
+	cached := f.r.HGetAll(ctx, "scrape:"+id).Val()
+	score, scoreErr := f.r.ZScore(ctx, "ft_scrapes_simple:careers.example.net", id).Result()
+	if scoreErr != nil || score != 0 || cached["source_url"] != want || cached["domain"] != "careers.example.net" || cached["board_id"] != f.board {
+		t.Fatal("rewritten canonical route lost independent detail scheduling")
+	}
+	var rawCount int
+	if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND source_url LIKE '%myworkdayjobs.com%'", f.board).Scan(&rawCount); err != nil || rawCount != 0 {
+		t.Fatal("raw upstream URL created a second identity", err)
+	}
+	assertRichDeadlineAndLease(t, f, "workday")
+}

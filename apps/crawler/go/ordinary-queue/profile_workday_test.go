@@ -54,3 +54,28 @@ func TestWorkdayPythonDelistThresholdAndDropSettingSemantics(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkdayCanonicalURLTransformDoesNotChangeFetchAuthority(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "workday", "https://fixture.wd1.myworkdayjobs.com/Careers"
+	c["metadata"] = `{"url_transform":{"find":"/Engineer_R([0-9]+)$","replace":"/role/\\1"},"scraper_type":"embedded","scraper_config":{"variable":"job","fields":{"title":"title"}}}`
+	p, err := InspectRichMonitor(profileBoardID, c)
+	rules, ruleErr := FeedMonitorURLRules(c)
+	if err != nil || ruleErr != nil || p.Endpoint != "https://fixture.wd1.myworkdayjobs.com/wday/cxs/fixture/Careers/jobs" || rules.Rewrite("https://fixture.wd1.myworkdayjobs.com/Careers/job/Engineer_R123") != "https://fixture.wd1.myworkdayjobs.com/Careers/job/role/123" {
+		t.Fatal("canonical rewrite changed request authority or replacement semantics", err, ruleErr)
+	}
+	c["metadata"] = `{"scraper_config":{"fields":{"title":"title"},"variable":"job"},"scraper_type":"embedded","url_transform":{"replace":"/role/\\1","find":"/Engineer_R([0-9]+)$"}}`
+	reordered, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || reordered.EffectiveConfigSHA256 != p.EffectiveConfigSHA256 {
+		t.Fatal("nested SQL/cache key order changed transformed Workday authority", err)
+	}
+	c["metadata"] = `{"url_transform":{"find":"/Engineer_R([0-9]+)$","replace":"/changed/\\1"},"scraper_type":"embedded"}`
+	changed, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || changed.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
+		t.Fatal("URL transform escaped immutable binding", err)
+	}
+	c["metadata"] = `{"url_transform":{"find":"[","replace":"bad"}}`
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("invalid transform admitted before fetch")
+	}
+}

@@ -1,0 +1,102 @@
+{
+  "observed_at_utc": "2026-10-26T20:27:32.251897+00:00",
+  "candidate_version": "0.13.1096",
+  "candidate_branch": "fix-crawler/native-catalogue-url-and-listing",
+  "base_head": "b04061dd28927d79dd10a7b636b8d47bb4bca315",
+  "merged_base_source": "151ddbf4331548910dec0efd72faec5387a50372",
+  "serving_at_last_independent_observation": {
+    "version": "0.13.1094",
+    "source": "c0cb42cd3eb632f945abae4578988df987d57ce9",
+    "native_monitors": 0,
+    "native_details": 0,
+    "epoch": 375
+  },
+  "new_families": [
+    "Workday canonical URL transforms and original robots XML sitemap spelling",
+    "Lever selected description/date enrichment and retained structured salary",
+    "Tupu360 strict static rich listing"
+  ],
+  "public_original_replay": {
+    "complete": true,
+    "truncated": false,
+    "providers": [
+      {
+        "provider": "dom",
+        "status": "complete",
+        "postings": 92,
+        "requests": 1,
+        "truncated": false,
+        "captured_at_utc": "2026-10-26T20:22:01.165937+00:00",
+        "private_capture_sha256": "12b18fc2689aba54e8640ebb50a3cc1779c91894217ac2922f66c4d7490e21d0"
+      },
+      {
+        "provider": "workday",
+        "status": "complete",
+        "postings": 538,
+        "requests": 28,
+        "truncated": false,
+        "captured_at_utc": "2026-10-26T20:22:05.672887+00:00",
+        "private_capture_sha256": "5dc018f9bdbd70fab2d2fc625729a11b224e087184975d37bca8bcc24212939f"
+      },
+      {
+        "provider": "lever",
+        "status": "complete",
+        "postings": 54,
+        "requests": 1,
+        "truncated": false,
+        "captured_at_utc": "2026-10-26T20:22:29.535814+00:00",
+        "private_capture_sha256": "475dadc93d7e1efbf4cda816215a0104599f3a9253d35ed7d884f520de8e01ff"
+      }
+    ]
+  },
+  "original_tupu360_parser_cases": 16,
+  "actual_catalogue_SDK": {
+    "actual_enabled_boards": 8134,
+    "candidate_head": "uncommitted1096-Workday-Lever-Tupu360",
+    "captured_source_revision": "f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d",
+    "detail_cache_effective_binding_mismatches": 0,
+    "missing_board_caches": 0,
+    "monitor_cache_effective_binding_mismatches": 0,
+    "new_boards": 234,
+    "new_detail_SDK_eligible": 232,
+    "new_monitor_SDK_eligible": 233,
+    "new_unsupported": [
+      {
+        "detail_supported": false,
+        "monitor_supported": true,
+        "slug": "ericsson-china-all"
+      },
+      {
+        "detail_supported": true,
+        "monitor_supported": false,
+        "slug": "miniso-careers-ar"
+      },
+      {
+        "detail_supported": false,
+        "monitor_supported": true,
+        "slug": "rr-donnelley-india"
+      }
+    ],
+    "observed_at_utc": "2026-10-26T20:19:46Z",
+    "provisional_detail_count": 8099,
+    "provisional_monitor_count": 8091,
+    "retained_detail_count": 7867,
+    "retained_monitor_count": 7858,
+    "scope": "Actual SQL identities and complete canonical/cache configurations. SDK readiness only; no public content parity, all scheduled-route coverage, staging or production authority granted."
+  },
+  "real_migrated_postgres_redis": {
+    "passed": true,
+    "server_stopped": true,
+    "cases": "Workday URL transforms/four-miss/publisher; Lever new/touched/relisted selected description/date and later failure/reservation; Tupu360 complete and later total/malformed/reserved/404 inventories"
+  },
+  "scope": "Candidate qualification only. Original 1095 runtime and ATS rollout acceptance, final-head CI/hold/authority, full staged inspection and actual serving ownership remain required. Preserve exact old queue IDs and gaps; do not infer conservation or freshness from SDK or replay counts.",
+  "local_checks": {
+    "api_parser_module": "full race/vet/tidy passed",
+    "ordinary_queue_module": "full race/vet/tidy passed",
+    "workday_module": "full race/vet/tidy passed",
+    "ordinary_worker_vet_and_tidy": "passed",
+    "ordinary_worker_full_race": "with repository PDF helper, only three retained .doc success cases fail because antiword is absent on this macOS host; required Linux CI installs antiword and must pass",
+    "new_real_database_tests": "all passed with no selected skips",
+    "public_original_replay": "all 684 returned records and 30 original requests matched"
+  }
+}

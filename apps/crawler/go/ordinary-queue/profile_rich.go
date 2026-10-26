@@ -221,6 +221,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "workday":
+		allowed["url_transform"] = true
 		for _, key := range []string{"company", "wd_instance", "site", "all_sites", "sites", "search_text", "split_facet", "facet_union", "tenant", "board", "board_id", "employer", "site_id", "instance", "job_board", "board_slug", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
@@ -237,7 +238,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		// Retain them in the full ownership hash without selecting another URL
 		// or applying an additional link filter.
 		allowed["url"], allowed["job_link_pattern"] = true, true
-		allowed["my_job_shop"] = true
+		allowed["my_job_shop"], allowed["tupu360_listing"] = true, true
 		allowed["title_matched_url_scan"] = true
 		allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
 		allowed["fingerprint_response"] = true
@@ -434,6 +435,20 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 			noEnrichmentDetail = true
 		}
 	}
+	// Explicit Lever enrichment schedules the independent detail assignment.
+	// Keep list requests sealed to the existing Lever API and bind all original
+	// scraper options rather than passing them through the skip validator.
+	leverEnrichment := false
+	if config["crawler_type"] == "lever" {
+		var scraper string
+		if json.Unmarshal(md["scraper_type"], &scraper) == nil && scraper == "api_sniffer" {
+			fields, err := leverMonitorEnrichment(config)
+			if err != nil || len(fields) == 0 {
+				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+			}
+			leverEnrichment = true
+		}
+	}
 	validation := cloneConfig(config)
 	validation["crawler_type"] = "greenhouse"
 	validationMD := make(map[string]json.RawMessage)
@@ -442,10 +457,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 			validationMD[key] = value
 		}
 	}
-	if noEnrichmentDetail {
-		// Original rich processing drops detail schedules unless enrichment is
-		// explicitly requested. Retained JSON-LD options remain bound but are
-		// not executed by these rich monitors.
+	if noEnrichmentDetail || leverEnrichment {
+		// Detail assignments are independently validated and executed. Keep
+		// the complete original options in the immutable binding below.
 		validationMD["scraper_type"] = json.RawMessage(`"skip"`)
 		validationMD["scraper_config"] = json.RawMessage("null")
 		validation["scraper_needs_browser"] = "0"
@@ -488,7 +502,7 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		}
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if noEnrichmentDetail {
+	if noEnrichmentDetail || leverEnrichment {
 		stable, err = stableJSONLDConfig(config, md)
 	}
 	if err != nil {
@@ -523,8 +537,14 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	case "pinpoint":
 		profile.Endpoint, profile.Profile = tenantEndpoint, "pinpoint.slug-skip/v1"
 	}
-	if noEnrichmentDetail {
+	if noEnrichmentDetail || leverEnrichment {
 		profile.Profile = strings.Replace(profile.Profile, "-skip/v1", "-items/v1", 1)
 	}
 	return profile, nil
+}
+
+// Lever's selected description/date scraper remains independently scheduled;
+// the listing owns all other fields and provides a fallback for new rows.
+func leverMonitorEnrichment(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"description": true, "date_posted": true})
 }

@@ -245,7 +245,7 @@ func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue
 			if err != nil {
 				return RichDiscovery{}, &DiscoveryError{Kind: "invalid_inventory"}
 			}
-			result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Description: job.Description, Locations: job.Locations, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType})
+			result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Description: job.Description, Locations: job.Locations, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, BaseSalary: job.BaseSalary})
 		}
 		if count < lever.BatchSize {
 			return result, nil
