@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -348,9 +349,16 @@ func writeInventoryCompleteReport(output io.Writer, report map[string]any) error
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	e := runATSInventory(ctx, os.Args[1:], newInventoryHTTPClient(), os.Stdout)
+	var e error
+	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "host-") {
+		// Preserve the original short-lived helpers' default signal termination,
+		// including a bounded logger blocked while waiting for pipe input.
+		e = runATSHost(context.Background(), os.Args[1:], os.Stdin, os.Stdout)
+	} else {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		e = runATSInventory(ctx, os.Args[1:], newInventoryHTTPClient(), os.Stdout)
+	}
 	if errors.Is(e, flag.ErrHelp) {
 		fmt.Println("go-ats-inventory: validate data-only inventory; --impact; --candidate-issues off|plan|report|dry-run|refill; --support-issues off|plan|create; --cache-dir PATH. Registry defaults to /app/data; use --companies-file and --boards-file for checkout tools.")
 		return

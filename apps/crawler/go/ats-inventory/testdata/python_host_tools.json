@@ -1,0 +1,312 @@
+{
+  "source_reference": "abd8dd801fe07525bf2fa502b39355b5f4c36e3e",
+  "original_source_sha256": {
+    "status.py": "9b531fc403756f7bf9f2e53f452a49d8713d3ea9925100beed58d3de40569e91",
+    "bounded-tee.py": "53bc157e8205f51fbddbb97ded0cb5a3866b336898bc98b9893449f91996dc37",
+    "network-probe.py": "898883e66ea88dccfe8454cb516a1e66671302f9fad3e03d03625a8f0da0f1b4"
+  },
+  "statuses": [
+    {
+      "name": "success",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"data_only\": true, \"rows\": 10, \"candidate_issues\": {}}}\n",
+      "started": 100,
+      "finished": 120,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 120,
+        "last_attempt_started_unixtime": 100,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 1,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 120,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {
+          "data_only": true,
+          "rows": 10,
+          "candidate_issues": {}
+        },
+        "last_success_report": {
+          "data_only": true,
+          "rows": 10,
+          "candidate_issues": {}
+        }
+      }
+    },
+    {
+      "name": "failure",
+      "code": 1,
+      "log": "failed before report\n",
+      "started": 130,
+      "finished": 150,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 150,
+        "last_attempt_started_unixtime": 130,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 120,
+        "return_code": 1,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": null,
+        "last_success_report": {
+          "candidate_issues": {},
+          "data_only": true,
+          "rows": 10
+        }
+      }
+    },
+    {
+      "name": "failed-complete",
+      "code": 1,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"data_only\": true}}\n",
+      "started": 160,
+      "finished": 180,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 180,
+        "last_attempt_started_unixtime": 160,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 120,
+        "return_code": 1,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": null,
+        "last_success_report": {
+          "candidate_issues": {},
+          "data_only": true,
+          "rows": 10
+        }
+      }
+    },
+    {
+      "name": "limited",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"candidate_issues\": {\"status\": \"rate_limited\"}}}\n",
+      "started": 190,
+      "finished": 210,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 210,
+        "last_attempt_started_unixtime": 190,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 1,
+        "last_success_unixtime": 120,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {
+          "candidate_issues": {
+            "status": "rate_limited"
+          }
+        },
+        "last_success_report": {
+          "candidate_issues": {},
+          "data_only": true,
+          "rows": 10
+        }
+      }
+    },
+    {
+      "name": "preflight-limited",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"candidate_issues\": {\"status\": \"rate_limited_preflight\"}}}\n",
+      "started": 220,
+      "finished": 240,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 240,
+        "last_attempt_started_unixtime": 220,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 1,
+        "last_success_unixtime": 120,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {
+          "candidate_issues": {
+            "status": "rate_limited_preflight"
+          }
+        },
+        "last_success_report": {
+          "candidate_issues": {},
+          "data_only": true,
+          "rows": 10
+        }
+      }
+    },
+    {
+      "name": "empty-success",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {}}\n",
+      "started": 250,
+      "finished": 270,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 270,
+        "last_attempt_started_unixtime": 250,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 1,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 270,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {},
+        "last_success_report": {}
+      }
+    },
+    {
+      "name": "limited-after-empty",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"candidate_issues\": {\"status\": \"rate_limited\"}}}\n",
+      "started": 280,
+      "finished": 300,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 300,
+        "last_attempt_started_unixtime": 280,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 1,
+        "last_success_unixtime": 270,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {
+          "candidate_issues": {
+            "status": "rate_limited"
+          }
+        },
+        "last_success_report": {}
+      }
+    },
+    {
+      "name": "failure-after-empty",
+      "code": 1,
+      "log": "failed before report\n",
+      "started": 310,
+      "finished": 330,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 330,
+        "last_attempt_started_unixtime": 310,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 0,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 270,
+        "return_code": 1,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": null,
+        "last_success_report": {
+          "candidate_issues": {
+            "status": "rate_limited"
+          }
+        }
+      }
+    },
+    {
+      "name": "success-after-failure",
+      "code": 0,
+      "log": "{\"event\": \"ats_inventory.complete\", \"report\": {\"data_only\": true, \"rows\": 17}}\n",
+      "started": 340,
+      "finished": 360,
+      "expected": {
+        "schema": 1,
+        "last_attempt_unixtime": 360,
+        "last_attempt_started_unixtime": 340,
+        "last_attempt_duration_seconds": 20,
+        "last_attempt_success": 1,
+        "last_attempt_degraded": 0,
+        "last_success_unixtime": 360,
+        "return_code": 0,
+        "requested_mode": "report",
+        "effective_mode": "report",
+        "rollout_cap": 1,
+        "report": {
+          "data_only": true,
+          "rows": 17
+        },
+        "last_success_report": {
+          "data_only": true,
+          "rows": 17
+        }
+      }
+    }
+  ],
+  "tails": [
+    {
+      "input_b64": "c2hvcnQK",
+      "output_b64": "c2hvcnQK",
+      "limit": 1024
+    },
+    {
+      "input_b64": "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+      "output_b64": "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+      "limit": 1024
+    },
+    {
+      "input_b64": "Cnh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==",
+      "output_b64": "eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4",
+      "limit": 1024
+    },
+    {
+      "input_b64": "b2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKZmluYWwgcmVwb3J0Cg==",
+      "output_b64": "b2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKb2xkIGxpbmUKZmluYWwgcmVwb3J0Cg==",
+      "limit": 1024
+    },
+    {
+      "input_b64": "w6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpCmxhc3QK",
+      "output_b64": "bGFzdAo=",
+      "limit": 1024
+    }
+  ],
+  "network_endpoints": {
+    "required": [
+      {
+        "label": "github-api",
+        "host": "api.github.com",
+        "port": 443
+      },
+      {
+        "label": "inventory-source",
+        "host": "storage.stapply.ai",
+        "port": 443
+      }
+    ],
+    "blocked": [
+      {
+        "label": "crawler-host",
+        "host": "172.20.0.1",
+        "port": 22
+      },
+      {
+        "label": "production-postgresql-1",
+        "host": "10.0.0.2",
+        "port": 5433
+      },
+      {
+        "label": "production-postgresql-2",
+        "host": "10.0.0.9",
+        "port": 5433
+      }
+    ]
+  }
+}

@@ -290,6 +290,7 @@ COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bi
 # Native sync and parked Umantis recovery are part of the immutable image contract.
 LABEL org.jobseek.crawler.native-maintenance="v1"
 LABEL org.jobseek.crawler.native-ats-inventory="v1"
+LABEL org.jobseek.crawler.native-ats-host-tools="v1"
 COPY --from=go-ats-inventory-build /out/go-ats-inventory /usr/local/bin/go-ats-inventory
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint

@@ -18,7 +18,9 @@ APP_ID_FILE="${JOBSEEK_GITHUB_APP_ID_FILE:-}"
 INSTALLATION_ID_FILE="${JOBSEEK_GITHUB_APP_INSTALLATION_ID_FILE:-}"
 PRIVATE_KEY_FILE="${JOBSEEK_GITHUB_APP_PRIVATE_KEY_FILE:-}"
 WRAPPER_SHA256="$(sha256sum "$REPO_ROOT/deploy/ats-inventory/run.sh" | awk '{print $1}')"
+HOST_BINARY_CANDIDATE=""
 FILES=(
+  /usr/local/libexec/jobseek-ats-inventory-host
   /usr/local/sbin/jobseek-ats-inventory
   /usr/local/sbin/jobseek-ats-inventory-control
   /usr/local/sbin/jobseek-ats-inventory-bounded-tee
@@ -27,6 +29,7 @@ FILES=(
   /usr/local/sbin/jobseek-ats-inventory-status
   /usr/local/sbin/jobseek-ats-inventory-network
   /usr/local/libexec/jobseek-ats-inventory-network-probe
+  /usr/local/libexec/jobseek-ats-inventory-network-probe-legacy.py
   /etc/systemd/system/jobseek-ats-inventory-network.service
   /etc/systemd/system/jobseek-ats-inventory.service
   /etc/systemd/system/jobseek-ats-inventory.timer
@@ -123,6 +126,7 @@ cleanup() {
   trap - EXIT HUP INT TERM
   if (( status != 0 && ROLLBACK_ARMED )); then restore_previous; fi
   rm -rf -- "$ROLLBACK"
+  [[ -z "$HOST_BINARY_CANDIDATE" ]] || rm -f -- "$HOST_BINARY_CANDIDATE"
   exit "$status"
 }
 trap cleanup EXIT
@@ -159,8 +163,7 @@ open_shared_crawler_lock() {
     # Create as deploy from the first inode-visible instant. Creating as root
     # and chowning afterwards leaves a race where the crawler deploy cannot
     # open its shared lock after a reboot.
-    runuser -u deploy -- python3 -c \
-      'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
+    runuser -u deploy -- "$HOST_BINARY_CANDIDATE" host-create-lock \
       "$CRAWLER_LOCK" 2>/dev/null || true
   fi
   [[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || {
@@ -179,6 +182,20 @@ open_shared_crawler_lock() {
 # Serialize the exact committed-release check and the short host-surface
 # replacement with crawler deploys. The long report-only acceptance is pinned
 # below, so the mutation lock can be released before network work begins.
+[[ "$(docker image inspect --format '{{with index .Config.Labels "org.jobseek.crawler.native-ats-host-tools"}}{{.}}{{end}}' "$EXPECTED_CRAWLER_REF")" == v1 ]] || {
+  echo "ERROR: crawler image lacks native ATS host tools" >&2
+  exit 1
+}
+HOST_BINARY_CANDIDATE="$(mktemp /run/jobseek-ats-inventory-host.XXXXXX)"
+docker run --rm --network none --read-only --cap-drop ALL \
+  --security-opt no-new-privileges --memory 96m --cpus 0.25 --pids-limit 32 \
+  --entrypoint /bin/cat "$EXPECTED_CRAWLER_REF" /usr/local/bin/go-ats-inventory \
+  >"$HOST_BINARY_CANDIDATE"
+chmod 0755 "$HOST_BINARY_CANDIDATE"
+[[ "$(runuser -u deploy -- "$HOST_BINARY_CANDIDATE" host-capabilities)" == jobseek.ats-host-tools/v1 ]] || {
+  echo "ERROR: native ATS host tools capability preflight failed" >&2
+  exit 1
+}
 open_shared_crawler_lock
 flock -w 300 8 || { echo "ERROR: timed out waiting for crawler mutation lock" >&2; exit 1; }
 [[ -f "$DEPLOY_SUCCESS" && ! -L "$DEPLOY_SUCCESS" ]] || {
@@ -212,23 +229,30 @@ install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/registry-snapshots"
 rm -rf -- "$STATE_ROOT/acceptance-cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/acceptance-cache"
 install -d -o root -g deploy -m 0750 "$CONFIG_ROOT"
+install -d -o root -g root -m 0755 /usr/local/libexec
+install -o root -g root -m 0755 "$HOST_BINARY_CANDIDATE" \
+  /usr/local/libexec/jobseek-ats-inventory-host
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/run.sh" \
   /usr/local/sbin/jobseek-ats-inventory
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/control.sh" \
   /usr/local/sbin/jobseek-ats-inventory-control
-install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/bounded-tee.py" \
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/bounded-tee.sh" \
   /usr/local/sbin/jobseek-ats-inventory-bounded-tee
-install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/registry-snapshot.py" \
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/registry-snapshot.sh" \
   /usr/local/sbin/jobseek-ats-inventory-registry-snapshot
-install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-token.py" \
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-token.sh" \
   /usr/local/sbin/jobseek-ats-inventory-github-token
-install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.py" \
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.sh" \
   /usr/local/sbin/jobseek-ats-inventory-status
 install -d -o root -g root -m 0755 /usr/local/libexec
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network.sh" \
   /usr/local/sbin/jobseek-ats-inventory-network
-install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network-probe.py" \
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network-probe.sh" \
   /usr/local/libexec/jobseek-ats-inventory-network-probe
+# The old image has no native host subcommands. Retain its exact probe only
+# for the explicit old-image reversal path until the recovery window closes.
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network-probe.py" \
+  /usr/local/libexec/jobseek-ats-inventory-network-probe-legacy.py
 install -o root -g root -m 0644 \
   "$REPO_ROOT/deploy/systemd/jobseek-ats-inventory-network.service" \
   /etc/systemd/system/jobseek-ats-inventory-network.service
@@ -284,23 +308,8 @@ if systemctl is-failed --quiet jobseek-ats-inventory.service; then
   echo "ERROR: ATS inventory acceptance service failed" >&2
   exit 1
 fi
-python3 - "$acceptance_started" "$DEPLOY_SHA" "$WRAPPER_SHA256" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-started = int(sys.argv[1])
-expected_revision = sys.argv[2]
-expected_wrapper = sys.argv[3]
-state = Path("/var/lib/jobseek-ats-inventory")
-payload = json.loads((state / "status/current.json").read_text())
-assert payload["last_attempt_started_unixtime"] >= started
-assert payload["last_attempt_success"] == 1
-assert payload["effective_mode"] == "report"
-assert payload["report"]["data_only"] is True
-assert (state / "deployed-sha").read_text().strip() == expected_revision
-assert (state / "wrapper-sha256").read_text().strip() == expected_wrapper
-PY
+/usr/local/libexec/jobseek-ats-inventory-host host-acceptance \
+  "$acceptance_started" "$DEPLOY_SHA" "$WRAPPER_SHA256" "$STATE_ROOT"
 
 rm -f "$ACCEPTANCE_PIN"
 rm -rf -- "$STATE_ROOT/acceptance-cache"

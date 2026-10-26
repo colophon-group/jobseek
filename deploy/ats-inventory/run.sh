@@ -56,7 +56,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in awk date docker flock grep id mktemp openssl python3 rm sed sha256sum stat tail timeout tr; do
+for command in awk date docker flock grep id mktemp rm sed sha256sum stat tail timeout tr; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required command ${command} is unavailable" >&2
     exit 1

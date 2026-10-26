@@ -14,11 +14,29 @@ DEPLOY_SUCCESS=/home/deploy/.crawler-active-release/success.env
 ENV_FILE=/home/deploy/.env
 CRAWLER_LOCK=/run/lock/jobseek-crawler-mutation.lock
 PROBE=/usr/local/libexec/jobseek-ats-inventory-network-probe
+LEGACY_PROBE=/usr/local/libexec/jobseek-ats-inventory-network-probe-legacy.py
 PROBE_CONTAINER=jobseek-ats-inventory-network-probe
 ATTESTATION=/run/lock/jobseek-ats-inventory-network.verified
 ENDPOINTS=""
 ATTESTATION_TEMP=""
 IPT=(iptables --wait 30)
+
+select_probe_command() {
+  host_marker="$(docker image inspect --format '{{with index .Config.Labels "org.jobseek.crawler.native-ats-host-tools"}}{{.}}{{end}}' "$1")" || return 1
+  probe_mounts=(--mount "type=bind,src=$ENDPOINTS,dst=/run/probe/endpoints.json,readonly")
+  case "$host_marker" in
+    v1) probe_command=(/usr/local/bin/go-ats-inventory host-network-probe verify /run/probe/endpoints.json) ;;
+    "")
+      [[ -f "$LEGACY_PROBE" && ! -L "$LEGACY_PROBE" ]] || {
+        echo "ERROR: retained-image network probe is unavailable" >&2
+        return 1
+      }
+      probe_mounts+=(--mount "type=bind,src=$LEGACY_PROBE,dst=/run/probe/network-probe.py,readonly")
+      probe_command=(/app/.venv/bin/python /run/probe/network-probe.py verify /run/probe/endpoints.json)
+      ;;
+    *) echo "ERROR: unsupported ATS host tools image contract" >&2; return 1 ;;
+  esac
+}
 
 cleanup() {
   docker rm -f "$PROBE_CONTAINER" >/dev/null 2>&1 || true
@@ -30,7 +48,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in date docker flock iptables mktemp python3 runuser stat; do
+for command in date docker flock iptables mktemp runuser stat; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required network command ${command} is unavailable" >&2
     exit 1
@@ -39,8 +57,7 @@ done
 
 open_shared_crawler_lock() {
   if [[ ! -e "$CRAWLER_LOCK" ]]; then
-    runuser -u deploy -- python3 -c \
-      'import os,sys; fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); os.close(fd)' \
+    runuser -u deploy -- /usr/local/libexec/jobseek-ats-inventory-host host-create-lock \
       "$CRAWLER_LOCK" 2>/dev/null || true
   fi
   [[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || return 1
@@ -144,6 +161,9 @@ mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' "$release_file" 2>/d
 }
 flock -u 8
 
+image="${image_refs[0]}"
+select_probe_command "$image"
+
 remove_firewall
 "${IPT[@]}" -N "$EGRESS_CHAIN"
 "${IPT[@]}" -N "$INPUT_CHAIN"
@@ -172,8 +192,6 @@ done
 "${IPT[@]}" -I DOCKER-USER 1 -i "$BRIDGE" -j "$EGRESS_CHAIN"
 "${IPT[@]}" -I INPUT 1 -i "$BRIDGE" -j "$INPUT_CHAIN"
 
-image="${image_refs[0]}"
-docker image inspect "$image" >/dev/null
 docker run --rm \
   --name "$PROBE_CONTAINER" \
   --network "$NETWORK" \
@@ -185,10 +203,10 @@ docker run --rm \
   --memory 96m \
   --cpus 0.25 \
   --pids-limit 32 \
-  --mount "type=bind,src=$PROBE,dst=/run/probe/network-probe.py,readonly" \
-  --mount "type=bind,src=$ENDPOINTS,dst=/run/probe/endpoints.json,readonly" \
+  "${probe_mounts[@]}" \
+  --entrypoint "${probe_command[0]}" \
   "$image" \
-  /app/.venv/bin/python /run/probe/network-probe.py verify /run/probe/endpoints.json
+  "${probe_command[@]:1}"
 
 network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
 [[ "$network_id" =~ ^[0-9a-f]{64}$ ]] || {
