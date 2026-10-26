@@ -86,7 +86,7 @@ func TestFourthProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["paycom"] != 16 || counts["rippling"] != 10 {
+	if counts["paycom"] != 21 || counts["rippling"] != 10 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)

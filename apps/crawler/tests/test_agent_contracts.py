@@ -120,6 +120,27 @@ def test_config_tester_commands_bind_board_and_configuration():
     assert "--board fixture --as fixture" in command
 
 
+def test_parallel_completion_keeps_kb_edits_before_ready_journaling():
+    source = ROOT / "apps/crawler/src/workspace/steps/parallel/orchestrator.md"
+    env = Environment(undefined=StrictUndefined)
+    from jinja2 import meta
+
+    values = {
+        name: "fixture" for name in meta.find_undeclared_variables(env.parse(source.read_text()))
+    }
+    values["ats_inventory_seed"] = None
+    rendered = env.from_string(source.read_text()).render(**values)
+    final_steps = rendered.split("### Advance through final steps", 1)[1].split(
+        "## If something goes wrong", 1
+    )[0]
+    # submit already enters reflect; next at that point publishes readiness.
+    # The executable instructions must finish all KB edits before that boundary.
+    assert final_steps.index("ws task learn") < final_steps.index("\nws task complete\n")
+    assert final_steps.index("ws task casestudy") < final_steps.index("\nws task complete\n")
+    assert "\nws task next" not in final_steps
+    assert "already advances the workflow to `reflect`" in final_steps
+
+
 @pytest.mark.parametrize(
     "change", ["none", "head", "base", "draft", "hold", "checks", "load", "review", "blocked"]
 )

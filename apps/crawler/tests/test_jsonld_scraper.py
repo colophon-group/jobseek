@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import ANY, AsyncMock, call, patch
 
@@ -35,6 +36,89 @@ class _OriginBlock(RuntimeError):
 
 
 class TestJsonLdExtractor:
+    @pytest.mark.parametrize(
+        ("fixture", "locations", "minimum", "maximum"),
+        [
+            ("enfra_icims_hourly.html", ["Newark, NJ, US"], 17.43, 23.31),
+            (
+                "enfra_icims_multilocation.html",
+                ["Denver, CO, US", "Tucson, AZ, US", "Salt Lake City, UT, US", "Tempe, AZ, US"],
+                88380,
+                117970,
+            ),
+        ],
+    )
+    def test_enfra_icims_locations_and_flat_salary(self, fixture, locations, minimum, maximum):
+        content = parse_html(
+            (FIXTURES.parent.parent / "go/jsonld-detail/testdata" / fixture).read_text()
+        )
+        assert content.locations == locations
+        assert content.base_salary == {
+            "currency": "USD",
+            "min": minimum,
+            "max": maximum,
+            "unit": None,
+        }
+        assert "Responsibilities" in content.description
+        assert "Qualifications" in content.description
+
+    @pytest.mark.parametrize(
+        ("locality", "country"),
+        [
+            ("Denver\nTucson", "US"),
+            ("CO-Denver\nNot a coded location", "US"),
+            ("CO-Denver\nUS-AZ-Tucson", "CA"),
+            ("CO-Denver", "US"),
+            ("CO-Denver\nUS-AZ-   ", "US"),
+        ],
+    )
+    def test_does_not_split_unrecognized_multiline_localities(self, locality, country):
+        posting = {
+            "@type": "JobPosting",
+            "jobLocation": {"address": {"addressLocality": locality, "addressCountry": country}},
+        }
+        content = parse_html(
+            '<script type="application/ld+json">' + json.dumps(posting) + "</script>"
+        )
+        assert content.locations == [f"{' '.join(locality.split())}, {country}"]
+
+    @pytest.mark.parametrize(
+        ("name", "expected"), [(None, "Denver, CO, US"), ("Field office", "Field office")]
+    )
+    def test_deduplicates_coded_locations_and_preserves_place_name(self, name, expected):
+        posting = {
+            "@type": "JobPosting",
+            "jobLocation": {
+                "name": name,
+                "address": {"addressLocality": "CO-Denver\r\nUS-CO-Denver", "addressCountry": "US"},
+            },
+        }
+        content = parse_html(
+            '<script type="application/ld+json">' + json.dumps(posting) + "</script>"
+        )
+        assert content.locations == [expected]
+
+    @pytest.mark.parametrize(
+        ("salary", "expected"),
+        [
+            (
+                {"currency": "USD", "minValue": 0, "unitText": "HOUR"},
+                {"currency": "USD", "min": 0, "max": None, "unit": "hour"},
+            ),
+            (
+                {"minValue": 10, "value": {"minValue": 20}},
+                {"currency": None, "min": 20, "max": None, "unit": None},
+            ),
+            ({"currency": "USD"}, None),
+        ],
+    )
+    def test_flat_salary_preserves_unit_and_zero_and_prefers_nested_value(self, salary, expected):
+        posting = {"@type": "JobPosting", "baseSalary": salary}
+        content = parse_html(
+            '<script type="application/ld+json">' + json.dumps(posting) + "</script>"
+        )
+        assert content.base_salary == expected
+
     def test_extracts_single_block(self):
         html = """<html><head>
         <script type="application/ld+json">{"@type": "JobPosting", "title": "Engineer"}</script>
@@ -102,6 +186,49 @@ class TestJsonLdExtractor:
         </script></head></html>"""
 
         assert parse_html(html).locations == ["US"]
+
+    def test_recovers_icims_placeholder_title_and_retains_structured_fields(self):
+        html = (
+            Path(__file__).parents[1] / "go/jsonld-detail/testdata/icims_unavailable_title.html"
+        ).read_text()
+
+        content = parse_html(html)
+
+        assert content.title == "Barista"
+        assert content.locations == ["SALT LAKE CITY, UT, US"]
+        assert content.employment_type == "PART_TIME"
+        assert content.date_posted == "2026-10-07T06:00:00.000Z"
+        assert content.extras == {"valid_through": "2027-10-07T06:00:00.000Z"}
+        assert "<h2>Responsibilities</h2>" in content.description
+        assert "Current Food Handlers work permit" in content.description
+
+    @pytest.mark.parametrize(
+        "heading, expected",
+        [
+            ('<h1 class="other iCIMS_Header"><span>R&amp;D</span> Nurse</h1>', "R&D Nurse"),
+            ('<h1 class="iCIMS_Header"> unavailable </h1>', None),
+            ('<h1 class="iCIMS_Header"> </h1>', None),
+            ('<h1 class="iCIMS_Header">One</h1><h1 class="iCIMS_Header">Two</h1>', None),
+            ('<h1 class="iCIMS_Header_extra">Not a job heading</h1>', None),
+            ("<h1>Careers</h1>", None),
+            ("", None),
+        ],
+    )
+    def test_icims_placeholder_requires_one_usable_provider_heading(self, heading, expected):
+        html = (
+            '<title>Careers - Acme</title><script type="application/ld+json">'
+            '{"@type":"JobPosting","title":" UNAVAILABLE ",'
+            '"hiringOrganization":{"name":"Acme"}}</script>' + heading
+        )
+
+        assert parse_html(html).title == expected
+
+    def test_keeps_valid_structured_title_over_icims_heading(self):
+        html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Clinical Nurse"}</script>
+        <h1 class="iCIMS_Header">Other heading</h1>"""
+
+        assert parse_html(html).title == "Clinical Nurse"
 
     def test_ignores_non_jsonld_scripts(self):
         html = """<html><head>

@@ -80,7 +80,7 @@ func TestSixthProvidersCurrentRegistryCoverage(t *testing.T) {
 		}
 		counts[provider]++
 	}
-	if counts["manatal"] != 5 || counts["hrmos"] != 6 || counts["recruiterbox"] != 6 || counts["jobs_ch"] != 15 {
+	if counts["manatal"] != 6 || counts["hrmos"] != 7 || counts["recruiterbox"] != 7 || counts["jobs_ch"] != 15 {
 		t.Fatal("registry coverage changed", counts)
 	}
 	t.Logf("configuration eligibility only: %v", counts)

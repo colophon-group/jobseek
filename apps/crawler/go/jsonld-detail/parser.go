@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/andybalholm/cascadia"
 	"golang.org/x/net/html"
 )
 
@@ -21,6 +22,7 @@ type Request struct {
 var tagsRE = regexp.MustCompile(`<[^>]+>`)
 var commaRE = regexp.MustCompile(`(?s)("datePosted"\s*:\s*"(?:\\.|[^"\\])*")(\s*)("hiringOrganization"\s*:)`)
 var descriptionEntitiesRE = regexp.MustCompile(`(?i)&amp;#(?:(?:x0*(?:9|a|d))|(?:0*(?:9|10|13)));`)
+var codedLocalityRE = regexp.MustCompile(`^([A-Z]{2})-(\S.*)$`)
 
 func clean(v any) any {
 	s, ok := v.(string)
@@ -209,6 +211,32 @@ func locations(p any, ignoreRegion bool) any {
 		case string:
 			address = text(clean(a))
 		case orderedObject:
+			country := a.values["addressCountry"]
+			if _, ok := country.(orderedObject); ok {
+				country = get(country, "name")
+			}
+			// Match the complete iCIMS multiline locality before splitting it.
+			lines := strings.Split(strings.ReplaceAll(trim(text(a.values["addressLocality"])), "\r\n", "\n"), "\n")
+			coded := []string{}
+			if text(clean(country)) == "US" && len(lines) > 1 && (name == "" || name == org) {
+				for _, line := range lines {
+					match := codedLocalityRE.FindStringSubmatch(strings.TrimPrefix(trim(line), "US-"))
+					if match == nil || text(clean(match[2])) == "" {
+						coded = nil
+						break
+					}
+					coded = append(coded, text(clean(match[2]))+", "+match[1]+", US")
+				}
+			}
+			if len(coded) > 0 {
+				for _, location := range coded {
+					if !seen[location] {
+						out = append(out, location)
+						seen[location] = true
+					}
+				}
+				continue
+			}
 			fields := []string{"addressLocality"}
 			if !ignoreRegion {
 				fields = append(fields, "addressRegion")
@@ -332,6 +360,10 @@ func salary(p any) any {
 	}
 	outer := salaryUnit(b.values["unitText"])
 	value := b.values["value"]
+	// iCIMS also publishes flat MonetaryAmount ranges without value.
+	if value == nil && (b.values["minValue"] != nil || b.values["maxValue"] != nil) {
+		return map[string]any{"currency": b.values["currency"], "min": b.values["minValue"], "max": b.values["maxValue"], "unit": outer}
+	}
 	switch v := value.(type) {
 	case orderedObject:
 		unit := salaryUnit(v.values["unitText"])
@@ -510,6 +542,33 @@ func documentBlocks(body []byte) ([]any, map[string]string, string) {
 	return blocks, meta, pageTitle
 }
 
+func icimsHeadingTitle(body []byte) any {
+	tree, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return nil
+	}
+	headings := cascadia.QueryAll(tree, cascadia.MustCompile("h1.iCIMS_Header"))
+	if len(headings) != 1 {
+		return nil
+	}
+	var parts []string
+	var collect func(*html.Node)
+	collect = func(node *html.Node) {
+		if node.Type == html.TextNode {
+			parts = append(parts, node.Data)
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			collect(child)
+		}
+	}
+	collect(headings[0])
+	title := clean(strings.Join(parts, " "))
+	if strings.EqualFold(text(title), "unavailable") {
+		return nil
+	}
+	return title
+}
+
 func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, error) {
 	blocks, meta, pageTitle := documentBlocks(body)
 	result := emptyContent()
@@ -534,7 +593,11 @@ func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, e
 		if ignoreLoc {
 			result["locations"] = nil
 		}
-		if !pyTruthy(result["title"]) {
+		// Match Python's narrow recovery for iCIMS placeholder titles while
+		// retaining all other structured fields and rejecting ambiguous headings.
+		if strings.EqualFold(text(result["title"]), "unavailable") {
+			result["title"] = icimsHeadingTitle(body)
+		} else if !pyTruthy(result["title"]) {
 			title := text(clean(pageTitle))
 			org := text(clean(get(get(p, "hiringOrganization"), "name")))
 			if title != "" && org != "" {

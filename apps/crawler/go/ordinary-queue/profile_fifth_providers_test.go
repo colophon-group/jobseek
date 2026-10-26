@@ -92,7 +92,7 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["adp"] != 14 || counts["cornerstone"] != 12 || counts["paylocity"] != 4 || counts["paylocity_proxy"] != 5 {
+	if counts["adp"] != 14 || counts["cornerstone"] != 14 || counts["paylocity"] != 5 || counts["paylocity_proxy"] != 6 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)
@@ -200,7 +200,7 @@ func TestPaylocityDetailsKeepIndependentProxyConfiguration(t *testing.T) {
 		}
 		direct++
 	}
-	if direct != 5 || proxy != 3 {
+	if direct != 7 || proxy != 3 {
 		t.Fatal("Paylocity transport assignments changed", direct, proxy)
 	}
 }

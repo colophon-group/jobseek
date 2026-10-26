@@ -1,5 +1,290 @@
 [
   {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_enfra_icims_locations_and_flat_salary[enfra_icims_hourly.html-locations0-17.43-23.31]",
+    "request": {
+      "url": "",
+      "html": "<!doctype html><html><head>\n<script type=\"application/ld+json\">{\"validThrough\":\"2027-09-22T04:00:00.000Z\",\"employmentType\":\"INTERN\",\"@type\":\"JobPosting\",\"baseSalary\":{\"minValue\":17.43,\"maxValue\":23.31,\"@type\":\"MonetaryAmount\",\"currency\":\"USD\"},\"salaryCurrency\":\"USD\",\"description\":\"<h2>About Us<\\/h2>\\n<p>At ENFRA, we blend a rich history with a forward-looking vision. With over 100 years of experience, we are a pillar of stability in the energy infrastructure industry and a leader in innovative energy solutions. Our commitment to leveraging emerging technologies ensures that we remain at the forefront of the Energy-as-a-Service sector.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>We believe in growth\\u2014not just for our business, but for our people. Our team members have the opportunity to advance their careers in a supportive environment that values continuous learning and development. We embrace innovation and encourage creative problem solving to tackle the energy infrastructure and energy challenges of tomorrow.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>Inclusion is at the heart of our culture. We strive to create a workplace where every voice is heard and valued, fostering a collaborative environment where diverse perspectives drive our success.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>Join us to be part of a legacy of excellence and a future of groundbreaking advancements. At ENFRA, stability, innovation, and growth are more than just values\\u2014they are the pillars of our continued success.<\\/p>\\n<h2>Overview<\\/h2>\\n<p>The Technical Intern provides support to technical employees working in an organizational function related to the Intern's area of study. Performs basic engineering tasks.<\\/p>\\n<h2>Responsibilities<\\/h2>\\n<ul>\\n <li>Learns organizational processes and procedures.<\\/li>\\n <li>Contributes to assigned projects<\\/li>\\n <li>May assist with the development and maintenance of documentation or records.<\\/li>\\n <li>Assists with record and filing systems, drafting techniques, standards and data resource duties.<\\/li>\\n <li>Organizes and stores maps, detailed design drawings, graphs, structural drawings and related engineering records.<\\/li>\\n <li>Collects and codes data from sources for input procedures.<\\/li>\\n <li>Reviews existing records for necessary revisions and prepares data.<\\/li>\\n<\\/ul>\\n<h2>Qualifications<\\/h2>\\n<h4>Required Education, Experience, and Qualifications<\\/h4>\\n<ul>\\n <li>Performs work under direct supervision.<\\/li>\\n <li>Handles basic issues and problems, and refers more complex issues to higher-level staff.<\\/li>\\n <li>Possesses beginning to working knowledge of subject matter.<\\/li>\\n <li>Typically requires the incumbent to be pursuing an undergraduate degree in a technical area of study at a college or university.<\\/li>\\n <li>Ability to work as part of a team.<\\/li>\\n <li>Oral and written communication skills.<\\/li>\\n <li>Attentiveness.<\\/li>\\n <li>Ability to understand and follow directions.<\\/li>\\n<\\/ul>\\n<h4>Preferred Education, Experience, and Qualifications<\\/h4>\\n<ul>\\n <li>N/A<\\/li>\\n<\\/ul>\\n<h4>Travel Requirements<\\/h4>\\n<ul>\\n <li>0-5% of the time will be spent traveling to the job site(s)/office locations.<\\/li>\\n<\\/ul>\\n<h4>Physical Activities<\\/h4>\\n<ul>\\n <li>Remaining in a stationary position, often standing or sitting for prolonged periods<\\/li>\\n <li>Repeating motions that may include the wrists, hands and/or fingers<\\/li>\\n <li>Assessing the accuracy, neatness, and thoroughness of the work assigned<\\/li>\\n <li>Climbing stairs.<\\/li>\\n<\\/ul>\\n<h4>Environmental Conditions<\\/h4>\\n<ul>\\n <li>Quiet environment<\\/li>\\n <li>Low temperature<\\/li>\\n<\\/ul>\\n<h4>Physical Demands<\\/h4>\\n<ul>\\n <li>Light work that includes adjusting and/or moving objects up to 20 pounds<\\/li>\\n<\\/ul>\\n<h2>Pay Range<\\/h2>USD $17.43 - USD $23.31 /Hr.\\n<h2><\\/h2>\\n<p>ENFRA is proud to be an Equal Opportunity Employer of Minorities, Women, Protected Veterans, and Individuals with Disabilities, and participates in the e-Verify program. All qualified applicants will receive consideration for employment without regard to race, creed, color, religion, sex, age, sexual orientation, gender identity, national origin, veteran status, disability, or any other classification protected by law.<\\/p>\",\"directApply\":true,\"title\":\"Pre-Engineering Mechanical Intern\",\"@context\":\"http://schema.org\",\"url\":\"https://careers-enfra.icims.com/jobs/11233/pre-engineering-mechanical-intern/job\",\"hiringOrganization\":{\"@type\":\"Organization\",\"name\":\"ENFRA LLC\",\"sameAs\":\"https://enfrasolutions.com/\"},\"jobLocation\":[{\"address\":{\"addressCountry\":\"US\",\"streetAddress\":\"One Gateway Center\",\"@type\":\"PostalAddress\",\"postalCode\":\"07102\",\"addressLocality\":\"Newark\",\"addressRegion\":\"NJ\",\"postOfficeBoxNumber\":\"UNAVAILABLE\"},\"@type\":\"Place\"}],\"datePosted\":\"2026-09-22T04:00:00.000Z\",\"occupationalCategory\":\"Early Careers\"}</script>\n</head><body></body></html>\n",
+      "config": {}
+    },
+    "expected": {
+      "title": "Pre-Engineering Mechanical Intern",
+      "description": "<h2>About Us</h2>\n<p>At ENFRA, we blend a rich history with a forward-looking vision. With over 100 years of experience, we are a pillar of stability in the energy infrastructure industry and a leader in innovative energy solutions. Our commitment to leveraging emerging technologies ensures that we remain at the forefront of the Energy-as-a-Service sector.</p>\n<p>&nbsp;</p>\n<p>We believe in growth—not just for our business, but for our people. Our team members have the opportunity to advance their careers in a supportive environment that values continuous learning and development. We embrace innovation and encourage creative problem solving to tackle the energy infrastructure and energy challenges of tomorrow.</p>\n<p>&nbsp;</p>\n<p>Inclusion is at the heart of our culture. We strive to create a workplace where every voice is heard and valued, fostering a collaborative environment where diverse perspectives drive our success.</p>\n<p>&nbsp;</p>\n<p>Join us to be part of a legacy of excellence and a future of groundbreaking advancements. At ENFRA, stability, innovation, and growth are more than just values—they are the pillars of our continued success.</p>\n<h2>Overview</h2>\n<p>The Technical Intern provides support to technical employees working in an organizational function related to the Intern's area of study. Performs basic engineering tasks.</p>\n<h2>Responsibilities</h2>\n<ul>\n <li>Learns organizational processes and procedures.</li>\n <li>Contributes to assigned projects</li>\n <li>May assist with the development and maintenance of documentation or records.</li>\n <li>Assists with record and filing systems, drafting techniques, standards and data resource duties.</li>\n <li>Organizes and stores maps, detailed design drawings, graphs, structural drawings and related engineering records.</li>\n <li>Collects and codes data from sources for input procedures.</li>\n <li>Reviews existing records for necessary revisions and prepares data.</li>\n</ul>\n<h2>Qualifications</h2>\n<h4>Required Education, Experience, and Qualifications</h4>\n<ul>\n <li>Performs work under direct supervision.</li>\n <li>Handles basic issues and problems, and refers more complex issues to higher-level staff.</li>\n <li>Possesses beginning to working knowledge of subject matter.</li>\n <li>Typically requires the incumbent to be pursuing an undergraduate degree in a technical area of study at a college or university.</li>\n <li>Ability to work as part of a team.</li>\n <li>Oral and written communication skills.</li>\n <li>Attentiveness.</li>\n <li>Ability to understand and follow directions.</li>\n</ul>\n<h4>Preferred Education, Experience, and Qualifications</h4>\n<ul>\n <li>N/A</li>\n</ul>\n<h4>Travel Requirements</h4>\n<ul>\n <li>0-5% of the time will be spent traveling to the job site(s)/office locations.</li>\n</ul>\n<h4>Physical Activities</h4>\n<ul>\n <li>Remaining in a stationary position, often standing or sitting for prolonged periods</li>\n <li>Repeating motions that may include the wrists, hands and/or fingers</li>\n <li>Assessing the accuracy, neatness, and thoroughness of the work assigned</li>\n <li>Climbing stairs.</li>\n</ul>\n<h4>Environmental Conditions</h4>\n<ul>\n <li>Quiet environment</li>\n <li>Low temperature</li>\n</ul>\n<h4>Physical Demands</h4>\n<ul>\n <li>Light work that includes adjusting and/or moving objects up to 20 pounds</li>\n</ul>\n<h2>Pay Range</h2>USD $17.43 - USD $23.31 /Hr.\n<h2></h2>\n<p>ENFRA is proud to be an Equal Opportunity Employer of Minorities, Women, Protected Veterans, and Individuals with Disabilities, and participates in the e-Verify program. All qualified applicants will receive consideration for employment without regard to race, creed, color, religion, sex, age, sexual orientation, gender identity, national origin, veteran status, disability, or any other classification protected by law.</p>",
+      "locations": [
+        "Newark, NJ, US"
+      ],
+      "employment_type": "INTERN",
+      "job_location_type": null,
+      "date_posted": "2026-09-22T04:00:00.000Z",
+      "base_salary": {
+        "currency": "USD",
+        "min": 17.43,
+        "max": 23.31,
+        "unit": null
+      },
+      "language": null,
+      "extras": {
+        "valid_through": "2027-09-22T04:00:00.000Z"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_enfra_icims_locations_and_flat_salary[enfra_icims_multilocation.html-locations1-88380-117970]",
+    "request": {
+      "url": "",
+      "html": "<!doctype html><html><head>\n<script type=\"application/ld+json\">{\"validThrough\":\"2027-10-15T04:00:00.000Z\",\"employmentType\":\"FULL_TIME\",\"@type\":\"JobPosting\",\"baseSalary\":{\"minValue\":88380,\"maxValue\":117970,\"@type\":\"MonetaryAmount\",\"currency\":\"USD\"},\"salaryCurrency\":\"USD\",\"description\":\"<h2>About Us<\\/h2>\\n<p>At ENFRA, we blend a rich history with a forward-looking vision. With over 100 years of experience, we are a pillar of stability in the energy infrastructure industry and a leader in innovative energy solutions. Our commitment to leveraging emerging technologies ensures that we remain at the forefront of the Energy-as-a-Service sector.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>We believe in growth\\u2014not just for our business, but for our people. Our team members have the opportunity to advance their careers in a supportive environment that values continuous learning and development. We embrace innovation and encourage creative problem solving to tackle the energy infrastructure and energy challenges of tomorrow.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>Inclusion is at the heart of our culture. We strive to create a workplace where every voice is heard and valued, fostering a collaborative environment where diverse perspectives drive our success.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>Join us to be part of a legacy of excellence and a future of groundbreaking advancements. At ENFRA, stability, innovation, and growth are more than just values\\u2014they are the pillars of our continued success.<\\/p>\\n<h2>Overview<\\/h2>\\n<p><strong>Purpose and Essential Duties:<\\/strong>This role serves as a technical resource supporting Energy-as-a-Service (EaaS) projects, with a primary focus on HVAC system optimization, operational performance, and verification of energy savings outcomes. Projects are typically complex, multi-building and multi-campus portfolios within higher education and healthcare environments, involving substantial mechanical infrastructure and advanced, integrated control strategies.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>The position works closely with engineering and commissioning teams to evaluate existing BAS architecture, troubleshoot system performance issues, and deploy advanced HVAC sequences of operation across air and hydronic systems. Responsibilities include performing site assessments, analyzing trend data, developing and modifying DDC logic, validating sequence implementation, and supporting functional testing and ongoing optimization activities.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>The Controls Analyst is expected to possess advanced knowledge of HVAC systems, BAS platforms, networked controls, and energy conservation measures, with a strong emphasis on high-performance building operations. The role requires the ability to translate engineering intent into effective control logic, lead complex troubleshooting efforts, and implement programming approaches that support scalable and repeatable energy savings outcomes.<\\/p>\\n<p>&nbsp;<\\/p>\\n<p>Successful candidates demonstrate strong analytical and problem-solving skills, deep experience with retro-commissioning and HVAC optimization, and the ability to collaborate across multidisciplinary project teams while maintaining a focus on quality, execution, and driving measurable operational performance improvements.<\\/p>\\n<h2>Responsibilities<\\/h2>\\n<p><strong>Specific responsibilities include:<\\/strong><\\/p>\\n<ul>\\n <li>Strong understanding of DDC controls<\\/li>\\n <li>Develop and implement energy conservation measures including but not limited to room ventilation schedules per ASHRAE guidelines with project delivery team<\\/li>\\n <li>Leads surveys, documentation review, and due diligence activities to determine facility conditions and develop applicable energy conservation measures<\\/li>\\n <li>Participate in retro-commissioning and commissioning efforts on assigned projects<\\/li>\\n <li>Troubleshoot, optimize, and modify building automation system programming to implement energy conservation measures within existing sequences<\\/li>\\n <li>Interact directly with the project team to ensure high quality, functional and optimized systems are delivered<\\/li>\\n <li>Utilize test instrumentation to troubleshoot, verify, and optimize building system operation<\\/li>\\n <li>Maintain awareness of energy performance for assigned scopes through the duration of the project<\\/li>\\n <li>Collaborate with the project team to ensure performance targets are met and maintained<\\/li>\\n <li>Drive corrective actions when scope or performance gaps are identified<\\/li>\\n <li>Ensure issues are properly identified and communicated to project team<\\/li>\\n <li>Assist with the resolution of issues by proposing and tracking implementation of solutions to the project team<\\/li>\\n <li>Proactively address and escalate as required, constraints to achieving project outcomes and scope completion<\\/li>\\n <li>Familiarity with building automation systems software<\\/li>\\n <li>Strong communication and coordination ski<\\/li>\\n<\\/ul>\\n<h2>Qualifications<\\/h2>\\n<p><strong>Required Education, Experience, and Qualifications:<\\/strong><\\/p>\\n<ul>\\n <li>Bachelor\\u2019s degree in engineering, construction management or related field or 4 years of experience in lieu of degree<\\/li>\\n <li>5+ years of experience in HVAC controls, design, energy management, or other relevant fields<\\/li>\\n <li>Proficient with Microsoft Office Suite (Word, Excel, PowerPoint)<\\/li>\\n <li>Strong scope management and scheduling skills<\\/li>\\n <li>Ability to interact with owners, owner\\u2019s representatives, contractors, engineers and architects in a professional manner while effectively driving project outcome<\\/li>\\n <li>Strong knowledge of commercial MEP equipment design and operations<\\/li>\\n<\\/ul>\\n<p>&nbsp;<\\/p>\\n<p><strong>Preferred Education, Experience, and Qualifications:<\\/strong><\\/p>\\n<ul>\\n <li>Commissioning Certification from ACG, BCxA, ASHRAE<\\/li>\\n <li>Registered Engineering Intern (EI) certification or Professional Engineer (PE) Licensure<\\/li>\\n <li>Certified Energy Manager (CEM)<\\/li>\\n <li>Proficient with Bluebeam Studio and Revu software<\\/li>\\n <li>Strong technical background in the development, review, and refinement of HVAC sequences of operation, with direct experience implementing control logic across platforms such as Siemens, JCI, Niagara, Schneider Electric, Alerton, ALC, and Honeywell<\\/li>\\n<\\/ul>\\n<p>&nbsp;<\\/p>\\n<p><strong>Travel Requirements:<\\/strong><\\/p>\\n<ul>\\n <li>30% -40% of time will be spent traveling to job site(s)/office location.<\\/li>\\n<\\/ul>\\n<p>&nbsp;<\\/p>\\n<p><strong>Physical/Work Environment Requirements:<\\/strong><\\/p>\\n<ul>\\n <li>Combination of an office environment and site survey environment.<\\/li>\\n <li>Exposure to external weather, loud noises, and poorly accessible spaces.<\\/li>\\n <li>Confined spaces within a facility.<\\/li>\\n <li>Ascend and descend ladders.<\\/li>\\n<\\/ul>\\n<p>#LI-VC1<\\/p>\\n<h2>Pay Range<\\/h2>USD $88,380.00 - USD $117,970.00 /Yr.\\n<h2><\\/h2>\\n<p>ENFRA is proud to be an Equal Opportunity Employer of Minorities, Women, Protected Veterans, and Individuals with Disabilities, and participates in the e-Verify program. All qualified applicants will receive consideration for employment without regard to race, creed, color, religion, sex, age, sexual orientation, gender identity, national origin, veteran status, disability, or any other classification protected by law.<\\/p>\",\"directApply\":true,\"title\":\"HVAC Controls Analyst III\",\"@context\":\"http://schema.org\",\"url\":\"https://careers-enfra.icims.com/jobs/11545/hvac-controls-analyst-iii/job\",\"hiringOrganization\":{\"@type\":\"Organization\",\"name\":\"ENFRA LLC\",\"sameAs\":\"https://enfrasolutions.com/\"},\"jobLocation\":[{\"address\":{\"addressCountry\":\"US\",\"streetAddress\":\"1415 Park Avenue West\",\"@type\":\"PostalAddress\",\"postalCode\":\"80205\",\"addressLocality\":\"CO-Denver\\nUS-AZ-Tucson\\nUS-UT-Salt Lake City\\nUS-AZ-Tempe\",\"addressRegion\":\"UNAVAILABLE\",\"postOfficeBoxNumber\":\"UNAVAILABLE\"},\"@type\":\"Place\"}],\"datePosted\":\"2026-10-15T04:00:00.000Z\",\"occupationalCategory\":\"Controls\"}</script>\n</head><body></body></html>\n",
+      "config": {}
+    },
+    "expected": {
+      "title": "HVAC Controls Analyst III",
+      "description": "<h2>About Us</h2>\n<p>At ENFRA, we blend a rich history with a forward-looking vision. With over 100 years of experience, we are a pillar of stability in the energy infrastructure industry and a leader in innovative energy solutions. Our commitment to leveraging emerging technologies ensures that we remain at the forefront of the Energy-as-a-Service sector.</p>\n<p>&nbsp;</p>\n<p>We believe in growth—not just for our business, but for our people. Our team members have the opportunity to advance their careers in a supportive environment that values continuous learning and development. We embrace innovation and encourage creative problem solving to tackle the energy infrastructure and energy challenges of tomorrow.</p>\n<p>&nbsp;</p>\n<p>Inclusion is at the heart of our culture. We strive to create a workplace where every voice is heard and valued, fostering a collaborative environment where diverse perspectives drive our success.</p>\n<p>&nbsp;</p>\n<p>Join us to be part of a legacy of excellence and a future of groundbreaking advancements. At ENFRA, stability, innovation, and growth are more than just values—they are the pillars of our continued success.</p>\n<h2>Overview</h2>\n<p><strong>Purpose and Essential Duties:</strong>This role serves as a technical resource supporting Energy-as-a-Service (EaaS) projects, with a primary focus on HVAC system optimization, operational performance, and verification of energy savings outcomes. Projects are typically complex, multi-building and multi-campus portfolios within higher education and healthcare environments, involving substantial mechanical infrastructure and advanced, integrated control strategies.</p>\n<p>&nbsp;</p>\n<p>The position works closely with engineering and commissioning teams to evaluate existing BAS architecture, troubleshoot system performance issues, and deploy advanced HVAC sequences of operation across air and hydronic systems. Responsibilities include performing site assessments, analyzing trend data, developing and modifying DDC logic, validating sequence implementation, and supporting functional testing and ongoing optimization activities.</p>\n<p>&nbsp;</p>\n<p>The Controls Analyst is expected to possess advanced knowledge of HVAC systems, BAS platforms, networked controls, and energy conservation measures, with a strong emphasis on high-performance building operations. The role requires the ability to translate engineering intent into effective control logic, lead complex troubleshooting efforts, and implement programming approaches that support scalable and repeatable energy savings outcomes.</p>\n<p>&nbsp;</p>\n<p>Successful candidates demonstrate strong analytical and problem-solving skills, deep experience with retro-commissioning and HVAC optimization, and the ability to collaborate across multidisciplinary project teams while maintaining a focus on quality, execution, and driving measurable operational performance improvements.</p>\n<h2>Responsibilities</h2>\n<p><strong>Specific responsibilities include:</strong></p>\n<ul>\n <li>Strong understanding of DDC controls</li>\n <li>Develop and implement energy conservation measures including but not limited to room ventilation schedules per ASHRAE guidelines with project delivery team</li>\n <li>Leads surveys, documentation review, and due diligence activities to determine facility conditions and develop applicable energy conservation measures</li>\n <li>Participate in retro-commissioning and commissioning efforts on assigned projects</li>\n <li>Troubleshoot, optimize, and modify building automation system programming to implement energy conservation measures within existing sequences</li>\n <li>Interact directly with the project team to ensure high quality, functional and optimized systems are delivered</li>\n <li>Utilize test instrumentation to troubleshoot, verify, and optimize building system operation</li>\n <li>Maintain awareness of energy performance for assigned scopes through the duration of the project</li>\n <li>Collaborate with the project team to ensure performance targets are met and maintained</li>\n <li>Drive corrective actions when scope or performance gaps are identified</li>\n <li>Ensure issues are properly identified and communicated to project team</li>\n <li>Assist with the resolution of issues by proposing and tracking implementation of solutions to the project team</li>\n <li>Proactively address and escalate as required, constraints to achieving project outcomes and scope completion</li>\n <li>Familiarity with building automation systems software</li>\n <li>Strong communication and coordination ski</li>\n</ul>\n<h2>Qualifications</h2>\n<p><strong>Required Education, Experience, and Qualifications:</strong></p>\n<ul>\n <li>Bachelor’s degree in engineering, construction management or related field or 4 years of experience in lieu of degree</li>\n <li>5+ years of experience in HVAC controls, design, energy management, or other relevant fields</li>\n <li>Proficient with Microsoft Office Suite (Word, Excel, PowerPoint)</li>\n <li>Strong scope management and scheduling skills</li>\n <li>Ability to interact with owners, owner’s representatives, contractors, engineers and architects in a professional manner while effectively driving project outcome</li>\n <li>Strong knowledge of commercial MEP equipment design and operations</li>\n</ul>\n<p>&nbsp;</p>\n<p><strong>Preferred Education, Experience, and Qualifications:</strong></p>\n<ul>\n <li>Commissioning Certification from ACG, BCxA, ASHRAE</li>\n <li>Registered Engineering Intern (EI) certification or Professional Engineer (PE) Licensure</li>\n <li>Certified Energy Manager (CEM)</li>\n <li>Proficient with Bluebeam Studio and Revu software</li>\n <li>Strong technical background in the development, review, and refinement of HVAC sequences of operation, with direct experience implementing control logic across platforms such as Siemens, JCI, Niagara, Schneider Electric, Alerton, ALC, and Honeywell</li>\n</ul>\n<p>&nbsp;</p>\n<p><strong>Travel Requirements:</strong></p>\n<ul>\n <li>30% -40% of time will be spent traveling to job site(s)/office location.</li>\n</ul>\n<p>&nbsp;</p>\n<p><strong>Physical/Work Environment Requirements:</strong></p>\n<ul>\n <li>Combination of an office environment and site survey environment.</li>\n <li>Exposure to external weather, loud noises, and poorly accessible spaces.</li>\n <li>Confined spaces within a facility.</li>\n <li>Ascend and descend ladders.</li>\n</ul>\n<p>#LI-VC1</p>\n<h2>Pay Range</h2>USD $88,380.00 - USD $117,970.00 /Yr.\n<h2></h2>\n<p>ENFRA is proud to be an Equal Opportunity Employer of Minorities, Women, Protected Veterans, and Individuals with Disabilities, and participates in the e-Verify program. All qualified applicants will receive consideration for employment without regard to race, creed, color, religion, sex, age, sexual orientation, gender identity, national origin, veteran status, disability, or any other classification protected by law.</p>",
+      "locations": [
+        "Denver, CO, US",
+        "Tucson, AZ, US",
+        "Salt Lake City, UT, US",
+        "Tempe, AZ, US"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": null,
+      "date_posted": "2026-10-15T04:00:00.000Z",
+      "base_salary": {
+        "currency": "USD",
+        "min": 88380,
+        "max": 117970,
+        "unit": null
+      },
+      "language": null,
+      "extras": {
+        "valid_through": "2027-10-15T04:00:00.000Z"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_does_not_split_unrecognized_multiline_localities[Denver\\nTucson-US]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"address\": {\"addressLocality\": \"Denver\\nTucson\", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "Denver Tucson, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_does_not_split_unrecognized_multiline_localities[CO-Denver\\nNot a coded location-US]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"address\": {\"addressLocality\": \"CO-Denver\\nNot a coded location\", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "CO-Denver Not a coded location, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_does_not_split_unrecognized_multiline_localities[CO-Denver\\nUS-AZ-Tucson-CA]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"address\": {\"addressLocality\": \"CO-Denver\\nUS-AZ-Tucson\", \"addressCountry\": \"CA\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "CO-Denver US-AZ-Tucson, CA"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_does_not_split_unrecognized_multiline_localities[CO-Denver-US]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"address\": {\"addressLocality\": \"CO-Denver\", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "CO-Denver, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_does_not_split_unrecognized_multiline_localities[CO-Denver\\nUS-AZ-   -US]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"address\": {\"addressLocality\": \"CO-Denver\\nUS-AZ-   \", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "CO-Denver US-AZ-, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_deduplicates_coded_locations_and_preserves_place_name[None-Denver, CO, US]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"name\": null, \"address\": {\"addressLocality\": \"CO-Denver\\r\\nUS-CO-Denver\", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "Denver, CO, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_deduplicates_coded_locations_and_preserves_place_name[Field office-Field office]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"jobLocation\": {\"name\": \"Field office\", \"address\": {\"addressLocality\": \"CO-Denver\\r\\nUS-CO-Denver\", \"addressCountry\": \"US\"}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": [
+        "Field office"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_flat_salary_preserves_unit_and_zero_and_prefers_nested_value[salary0-expected0]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"baseSalary\": {\"currency\": \"USD\", \"minValue\": 0, \"unitText\": \"HOUR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "USD",
+        "min": 0,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_flat_salary_preserves_unit_and_zero_and_prefers_nested_value[salary1-expected1]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"baseSalary\": {\"minValue\": 10, \"value\": {\"minValue\": 20}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": null,
+        "min": 20,
+        "max": null,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_flat_salary_preserves_unit_and_zero_and_prefers_nested_value[salary2-None]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"baseSalary\": {\"currency\": \"USD\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
     "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_extracts_vagas_style_javascript_cdata_block",
     "request": {
       "url": "",
@@ -58,6 +343,190 @@
       "locations": [
         "US"
       ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_recovers_icims_placeholder_title_and_retains_structured_fields",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n<script type=\"application/ld+json\">{\"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"University of Utah Health\", \"sameAs\": \"http://healthcare.utah.edu/\"}, \"validThrough\": \"2027-10-07T06:00:00.000Z\", \"jobLocation\": [{\"address\": {\"addressCountry\": \"US\", \"streetAddress\": \"50 NORTH MEDICAL DRIVE\", \"@type\": \"PostalAddress\", \"postalCode\": \"UNAVAILABLE\", \"addressLocality\": \"SALT LAKE CITY\", \"addressRegion\": \"UT\", \"postOfficeBoxNumber\": \"UNAVAILABLE\"}, \"@type\": \"Place\"}], \"employmentType\": \"PART_TIME\", \"@type\": \"JobPosting\", \"description\": \"<h2>Overview</h2>\\n<p><em>As a patient-focused organization, University of Utah Health exists to enhance the health and well-being of people through patient care, research and education. Success in this mission requires a culture of collaboration, excellence, leadership, and respect. University of Utah Health seeks staff that are committed to the values of compassion, collaboration, innovation, responsibility, integrity, quality and trust that are integral to our mission. EO/AA</em></p>\\n<p>The position is responsible for creating the Starbucks Beverage experience working in a high volume, fast paced unit serving professional clientele. This position is not responsible for providing patient care.</p>\\n<p>Corporate Overview: The University of Utah is a Level 1 Trauma Center and is nationally ranked and recognized for our academic research, quality standards and overall patient experience. Our five hospitals and eleven clinics provide excellence in our comprehensive services, medical advancement, and overall patient outcomes.</p>\\n<p>&nbsp;</p>\\n<p><strong>Hurry and apply today!</strong> Submit your application online, along with an <strong>updated resume.</strong></p>\\n<p>&nbsp;</p>\\n<p><strong>University of Utah Health Careers - Apply HERE for Jobs</strong></p>\\n<p>&nbsp;</p>\\n<p>To be considered for this role, applicants must:</p>\\n<ul>\\n <li><p>Please upload your most recent, updated resume that demonstrates a solid background in the qualifications required for this position.</p></li>\\n <li><p>Include <strong>complete work history and relevant experience</strong></p></li>\\n <li><p>Ensure their experience clearly reflects the <strong>required qualifications</strong></p></li>\\n <li><p>Be able to meet the <strong>schedule, hours, and work location listed for this position</strong></p></li>\\n</ul>\\n<p><strong>Why join University of Utah Health?</strong></p>\\n<ul>\\n <li><p>Competitive pay</p></li>\\n <li><p><strong>Healthcare benefits starting on day one</strong></p></li>\\n <li><p><strong>401(k) retirement plan</strong></p></li>\\n <li><p>A work environment that values <strong>dedication, learning, and work-life balance</strong></p><p><strong>Benefits Overview: https://employment.utah.edu/benefits/</strong></p><p><strong>Parking Information: https://commuterservices.utah.edu/</strong></p></li>\\n</ul>\\n<p><strong>Join our team and grow your career with us. </strong>Learn more about upcoming opportunities and events at <strong>uofuhealth.org/jobfairs</strong>.</p>\\n<h3>What Happens Next</h3>\\n<p><strong>Your application will be under review. </strong>If selected to move forward, your resume may be shared with hiring managers for further consideration. A text or email is sent to you once your resume has been shared with the hiring manager for review. Please continue to check your email for updates from HR regarding your application status.&nbsp;</p>\\n<p>Upon selection, candidates must complete all required pre-employment requirements, including reference checks, a background check, drug screening, and required immunizations.</p>\\n<p>&nbsp;</p>\\n<h2>Responsibilities</h2>\\n<h3>Essential Functions</h3>\\n<ul>\\n <li>Serves as a representative of both the organization and Starbucks Corporation, providing the best beverage experience possible.</li>\\n <li>Ensures that beverages are made to Starbucks standards and recipes, and according to the customer's request.</li>\\n <li>Processes cash, credit card payments or phone pay and gives accurate change, as necessary.</li>\\n <li>Adheres to strict guidelines for product date tagging, rotating, and cleaning of work area.</li>\\n <li>Appropriately displays and sells bottled beverages, sandwiches and snacks.</li>\\n <li>Restocks and cleans work area.</li>\\n</ul>\\n<h3>Knowledge / Skills / Abilities</h3>\\n<ul>\\n <li>Ability to perform the essential functions of the job as outlined above.</li>\\n</ul>\\n<ul>\\n <li>Ability to certify as a Starbucks Barista in the allotted training time and demonstrate to the trainer proper writing and calling back of drinks to the customer.</li>\\n</ul>\\n<ul>\\n <li>Demonstrated basic math and cash register skills.</li>\\n</ul>\\n<ul>\\n <li>Demonstrated communication and human relations skills.</li>\\n</ul>\\n<ul>\\n <li>Ability to appropriately handle issues associated with the operation including customer service, cash handling, and stocking of supplies, with minimal direct supervision.</li>\\n</ul>\\n<ul>\\n <li>Ability to perform and/or coordinate the activities of others to ensure proper functioning when operating under conditions of staff shortages.</li>\\n</ul>\\n<h2>Qualifications</h2>\\n<h4>Required</h4>\\n<ul>\\n <li>This is an entry level position.</li>\\n <li>Current Food Handlers work permit within one month of hire.</li>\\n <li>Successful completion of Barista training within one month of hire.</li>\\n</ul>\\n<h3>Licenses Required</h3>\\n<ul>\\n <li><strong>One of the following</strong>\\n  <ul>\\n   <li>Current Food Protection Manager certification, accredited by ANSI.</li>\\n  </ul>\\n  <ul>\\n   <li>Current Utah Food Handler Permit.</li>\\n  </ul></li>\\n</ul>\\n<p><em>* Additional license requirements as determined by the hiring department.</em></p>\\n<h2>Qualifications (Preferred)</h2>\\n<h3>Working Conditions and Physical Demands</h3>\\n<p><em>Employee must be able to meet the following requirements with or without an accommodation.</em></p>\\n<ul>\\n <li>This position involves intermediate working conditions in a healthcare setting that may exert up to 50 pounds and may consistently require lifting, carrying, pushing, pulling, or otherwise moving patients or objects, such as medical equipment, while providing patient care. This position may be subject to chemical and equipment hazards and is standing and walking for sustained periods of time.</li>\\n</ul>\\n<h2>Physical Requirements</h2>Carrying, Climbing, Color Determination, Crawling, Far Vision, Lifting, Listening, Manual Dexterity, Near Vision, Pulling and/or Pushing, Reaching, Speaking, Standing, Stooping and Crouching, Tasting or Smelling, Walking\", \"directApply\": true, \"datePosted\": \"2026-10-07T06:00:00.000Z\", \"title\": \"UNAVAILABLE\", \"occupationalCategory\": \"Food/Nutrition\", \"@context\": \"http://schema.org\", \"url\": \"https://careers-uuhc.icims.com/jobs/86466/barista/job\"}</script>\n</head><body>\n<h1 class=\"iCIMS_Header\">\nBarista</h1>\n</body></html>\n",
+      "config": {}
+    },
+    "expected": {
+      "title": "Barista",
+      "description": "<h2>Overview</h2>\n<p><em>As a patient-focused organization, University of Utah Health exists to enhance the health and well-being of people through patient care, research and education. Success in this mission requires a culture of collaboration, excellence, leadership, and respect. University of Utah Health seeks staff that are committed to the values of compassion, collaboration, innovation, responsibility, integrity, quality and trust that are integral to our mission. EO/AA</em></p>\n<p>The position is responsible for creating the Starbucks Beverage experience working in a high volume, fast paced unit serving professional clientele. This position is not responsible for providing patient care.</p>\n<p>Corporate Overview: The University of Utah is a Level 1 Trauma Center and is nationally ranked and recognized for our academic research, quality standards and overall patient experience. Our five hospitals and eleven clinics provide excellence in our comprehensive services, medical advancement, and overall patient outcomes.</p>\n<p>&nbsp;</p>\n<p><strong>Hurry and apply today!</strong> Submit your application online, along with an <strong>updated resume.</strong></p>\n<p>&nbsp;</p>\n<p><strong>University of Utah Health Careers - Apply HERE for Jobs</strong></p>\n<p>&nbsp;</p>\n<p>To be considered for this role, applicants must:</p>\n<ul>\n <li><p>Please upload your most recent, updated resume that demonstrates a solid background in the qualifications required for this position.</p></li>\n <li><p>Include <strong>complete work history and relevant experience</strong></p></li>\n <li><p>Ensure their experience clearly reflects the <strong>required qualifications</strong></p></li>\n <li><p>Be able to meet the <strong>schedule, hours, and work location listed for this position</strong></p></li>\n</ul>\n<p><strong>Why join University of Utah Health?</strong></p>\n<ul>\n <li><p>Competitive pay</p></li>\n <li><p><strong>Healthcare benefits starting on day one</strong></p></li>\n <li><p><strong>401(k) retirement plan</strong></p></li>\n <li><p>A work environment that values <strong>dedication, learning, and work-life balance</strong></p><p><strong>Benefits Overview: https://employment.utah.edu/benefits/</strong></p><p><strong>Parking Information: https://commuterservices.utah.edu/</strong></p></li>\n</ul>\n<p><strong>Join our team and grow your career with us. </strong>Learn more about upcoming opportunities and events at <strong>uofuhealth.org/jobfairs</strong>.</p>\n<h3>What Happens Next</h3>\n<p><strong>Your application will be under review. </strong>If selected to move forward, your resume may be shared with hiring managers for further consideration. A text or email is sent to you once your resume has been shared with the hiring manager for review. Please continue to check your email for updates from HR regarding your application status.&nbsp;</p>\n<p>Upon selection, candidates must complete all required pre-employment requirements, including reference checks, a background check, drug screening, and required immunizations.</p>\n<p>&nbsp;</p>\n<h2>Responsibilities</h2>\n<h3>Essential Functions</h3>\n<ul>\n <li>Serves as a representative of both the organization and Starbucks Corporation, providing the best beverage experience possible.</li>\n <li>Ensures that beverages are made to Starbucks standards and recipes, and according to the customer's request.</li>\n <li>Processes cash, credit card payments or phone pay and gives accurate change, as necessary.</li>\n <li>Adheres to strict guidelines for product date tagging, rotating, and cleaning of work area.</li>\n <li>Appropriately displays and sells bottled beverages, sandwiches and snacks.</li>\n <li>Restocks and cleans work area.</li>\n</ul>\n<h3>Knowledge / Skills / Abilities</h3>\n<ul>\n <li>Ability to perform the essential functions of the job as outlined above.</li>\n</ul>\n<ul>\n <li>Ability to certify as a Starbucks Barista in the allotted training time and demonstrate to the trainer proper writing and calling back of drinks to the customer.</li>\n</ul>\n<ul>\n <li>Demonstrated basic math and cash register skills.</li>\n</ul>\n<ul>\n <li>Demonstrated communication and human relations skills.</li>\n</ul>\n<ul>\n <li>Ability to appropriately handle issues associated with the operation including customer service, cash handling, and stocking of supplies, with minimal direct supervision.</li>\n</ul>\n<ul>\n <li>Ability to perform and/or coordinate the activities of others to ensure proper functioning when operating under conditions of staff shortages.</li>\n</ul>\n<h2>Qualifications</h2>\n<h4>Required</h4>\n<ul>\n <li>This is an entry level position.</li>\n <li>Current Food Handlers work permit within one month of hire.</li>\n <li>Successful completion of Barista training within one month of hire.</li>\n</ul>\n<h3>Licenses Required</h3>\n<ul>\n <li><strong>One of the following</strong>\n  <ul>\n   <li>Current Food Protection Manager certification, accredited by ANSI.</li>\n  </ul>\n  <ul>\n   <li>Current Utah Food Handler Permit.</li>\n  </ul></li>\n</ul>\n<p><em>* Additional license requirements as determined by the hiring department.</em></p>\n<h2>Qualifications (Preferred)</h2>\n<h3>Working Conditions and Physical Demands</h3>\n<p><em>Employee must be able to meet the following requirements with or without an accommodation.</em></p>\n<ul>\n <li>This position involves intermediate working conditions in a healthcare setting that may exert up to 50 pounds and may consistently require lifting, carrying, pushing, pulling, or otherwise moving patients or objects, such as medical equipment, while providing patient care. This position may be subject to chemical and equipment hazards and is standing and walking for sustained periods of time.</li>\n</ul>\n<h2>Physical Requirements</h2>Carrying, Climbing, Color Determination, Crawling, Far Vision, Lifting, Listening, Manual Dexterity, Near Vision, Pulling and/or Pushing, Reaching, Speaking, Standing, Stooping and Crouching, Tasting or Smelling, Walking",
+      "locations": [
+        "SALT LAKE CITY, UT, US"
+      ],
+      "employment_type": "PART_TIME",
+      "job_location_type": null,
+      "date_posted": "2026-10-07T06:00:00.000Z",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2027-10-07T06:00:00.000Z"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1 class=\"other iCIMS_Header\"><span>R&amp;D</span> Nurse</h1>-R&D Nurse]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1 class=\"other iCIMS_Header\"><span>R&amp;D</span> Nurse</h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": "R&D Nurse",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1 class=\"iCIMS_Header\"> unavailable </h1>-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1 class=\"iCIMS_Header\"> unavailable </h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1 class=\"iCIMS_Header\"> </h1>-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1 class=\"iCIMS_Header\"> </h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1 class=\"iCIMS_Header\">One</h1><h1 class=\"iCIMS_Header\">Two</h1>-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1 class=\"iCIMS_Header\">One</h1><h1 class=\"iCIMS_Header\">Two</h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1 class=\"iCIMS_Header_extra\">Not a job heading</h1>-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1 class=\"iCIMS_Header_extra\">Not a job heading</h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[<h1>Careers</h1>-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script><h1>Careers</h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_icims_placeholder_requires_one_usable_provider_heading[-None]",
+    "request": {
+      "url": "",
+      "html": "<title>Careers - Acme</title><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\" UNAVAILABLE \",\"hiringOrganization\":{\"name\":\"Acme\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_keeps_valid_structured_title_over_icims_heading",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Clinical Nurse\"}</script>\n        <h1 class=\"iCIMS_Header\">Other heading</h1>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Clinical Nurse",
+      "description": null,
+      "locations": null,
       "employment_type": null,
       "job_location_type": null,
       "date_posted": null,

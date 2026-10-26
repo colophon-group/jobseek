@@ -127,7 +127,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || identityRepairCount != 1 || rotatingPathCount != 1 || myJobShopCount != 1 || supported["api_sniffer"] != 35 || supported["dom"] != 23 || retained["api_sniffer"] != 1 || retained["dom"] != 0 {
+	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || identityRepairCount != 1 || rotatingPathCount != 1 || myJobShopCount != 1 || supported["api_sniffer"] != 37 || supported["dom"] != 24 || retained["api_sniffer"] != 1 || retained["dom"] != 0 {
 		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)

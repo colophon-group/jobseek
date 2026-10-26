@@ -116,6 +116,7 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
         "business-angels-switzerland-careers-linkedin",
         "fongit-careers",
         "fondation-fit-careers",
+        "ford-careers-china-linkedin",
         "gesda-careers-linkedin",
         "mindmaze-careers-linkedin",
         "opi-careers",
