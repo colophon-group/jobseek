@@ -7772,6 +7772,9 @@ volocopter,volocopter-hibob,https://volocopter.careers.hibob.com/,api_sniffer,"{
 volta-medical,volta-medical-careers,https://jobs.eu.lever.co/volta-medical,lever,"{""token"": ""volta-medical"", ""region"": ""eu""}",json-ld,
 volumental,volumental-jobs,https://jobs.volumental.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.volumental.com/jobs.rss""}",skip,
 vonage,vonage-greenhouse,https://job-boards.greenhouse.io/vonage,greenhouse,"{""token"": ""vonage""}",skip,
+vonovia,vonovia-careers,https://jobs.vonovia.de/,rss,"{""preset"": ""successfactors""}",skip,
+vonovia,vonovia-careers-at,https://karriere.buwog.at/jobs,dom,"{""render"": false, ""link_selector"": ""a[href*=\""job_id=\""]"", ""url_filter"": ""^https://karriere\\.buwog\\.at/jobs\\?job_id=[0-9]+$""}",json-ld,
+vonovia,vonovia-careers-se,https://victoriahem.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://victoriahem.teamtailor.com/jobs.rss"", ""job_filter"": {""exclude"": ""(?i)intressanm\u00e4lan""}}",json-ld,"{""enrich"": [""locations"", ""employment_type"", ""date_posted""]}"
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
 vorto,vorto-ashby,https://jobs.ashbyhq.com/vorto,ashby,"{""token"": ""vorto""}",skip,
 vow,vow-ashby,https://jobs.ashbyhq.com/vow,ashby,"{""token"": ""vow""}",skip,
