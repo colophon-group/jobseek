@@ -1,16 +1,17 @@
 # Go and Lightpanda migration delivery plan
 
-## Recovered production and next batch — October 26, 2026
+## Current delivery and next batch — October 26, 2026
 
-Production is recovered on **0.13.1093**, source
-`f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d`, through
-[PR #10906](https://github.com/colophon-group/jobseek/pull/10906) and the original
-full deployment workflow. Independent readback at **18:48 UTC** verifies seven
+Production is healthy on **0.13.1094**, source
+`c0cb42cd3eb632f945abae4578988df987d57ce9`, through
+[PR #10907](https://github.com/colophon-group/jobseek/pull/10907) and the original
+full deployment workflow. Independent readback at **19:30 UTC** verifies seven
 healthy retained services, six HTTP200 endpoints, exact immutable images and
 release/data identities, and a byte-identical runtime/committed environment.
-The actual enabled catalogue is **8,134 boards**. Both native receipts and Redis
-ownership projections are absent; SQL has zero active ordinary plans, epoch
-**375**. Current native ownership is **zero**, pending the supported activation.
+The actual enabled catalogue is **8,134 boards**. Native owners remain cold;
+the last observed epoch is **375**. The earlier **0.13.1093** recovery source
+`f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d` restored service through
+[PR #10906](https://github.com/colophon-group/jobseek/pull/10906).
 
 The deployment and its rollback had stopped all writers when Bajaj's **10,025**
 schedules exceeded the old 10,000-row repair ceiling. The recovered helper
@@ -23,8 +24,11 @@ hand edit of SQL, Redis, ownership receipts or environment was used.
 [PR #10907](https://github.com/colophon-group/jobseek/pull/10907) moves five ATS
 inventory host helpers into the existing Go binary: bounded logs, registry
 snapshots, GitHub App tokens, status publication and network acceptance. Its
-normal path uses Go, retaining the explicit old-image reversal probe. Exact
-image installation and native timer acceptance remain required after CI.
+first host installation stopped before replacement because `/run` is mounted
+`noexec`; the existing timer and helpers remain in place. The next candidate
+preflights its root-owned binary in the protected executable `/usr/local/libexec`
+filesystem and cleans up the temporary file, preserving `/run` hardening.
+The original host rollout and actual native timer acceptance remain required.
 
 The next shared batch admits the existing API-sniffer metadata selection,
 Oracle title/metadata delegation, and RSS location/employment/date delegation.
@@ -36,6 +40,19 @@ failures, scheduling and claim settlement with no skips. Detached eligibility
 for the **234** new rows improves to **230 monitors / 232 details** across the
 existing 37 families; six rows still need compatibility work. These are candidate
 configuration results, not serving ownership or full content-parity claims.
+
+The complete recovered-source observation and SDK replay cover **1,957,037
+actual scheduled URLs** for a provisional **8,088-monitor / 8,099-detail** cohort,
+with zero cached identity mismatches. All actual fallback steps and intervals
+validate. **Ten** legacy lane duplicates are recorded for the existing original
+cold-activation normalizer; require strict canonical lane proof afterward.
+The newer non-atomic queue observation contains **3,298,544 unique IDs**. All
+**2,402** IDs absent from the older 3,269,016-ID scan have exact current
+canonical dispositions: 1,157 inactive, 686 no longer scheduled, and 559 already
+queued or inflight again. Of 17 observed gaps, nine remain active and unqueued;
+all nine are in the previously captured 757-gap set. Preserve these exact private
+IDs and complete their original cold-lifecycle dispositions. This does not yet
+establish postactivation conservation, freshness or public content parity.
 
 The original renderer retry recovered source `00a9e859` with verified **1 GiB /
 no swap** limits. Lightpanda **1.0.2** remains the latest stable release. Its four
