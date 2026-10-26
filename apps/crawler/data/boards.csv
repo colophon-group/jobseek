@@ -4805,6 +4805,7 @@ mobilelink,mobilelink-careers,https://www.paycomonline.net/v4/ats/web.php/portal
 mobileye,mobileye-lever,https://jobs.eu.lever.co/mobileye,lever,"{""token"": ""mobileye"", ""region"": ""eu""}",skip,
 mobilityware,mobilityware-greenhouse,https://job-boards.greenhouse.io/mobilityware,greenhouse,"{""token"": ""mobilityware""}",skip,
 mochi-health,mochi-health-greenhouse,https://job-boards.greenhouse.io/mochihealth,greenhouse,"{""token"": ""mochihealth""}",skip,
+mod-pizza,mod-pizza-careers,https://jobs.modpizza.com/,rss,"{""preset"": ""successfactors""}",skip,
 modal,modal-careers,https://jobs.ashbyhq.com/modal,ashby,,skip,
 modern-animal,modern-animal-greenhouse,https://job-boards.greenhouse.io/modernanimal,greenhouse,"{""token"": ""modernanimal""}",skip,
 modern-health,modern-health-greenhouse,https://job-boards.greenhouse.io/modernhealth,greenhouse,"{""token"": ""modernhealth""}",skip,
