@@ -38,9 +38,10 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if md["prospective_board"] != nil && string(md["prospective_board"]) != "null" {
 		return fail() // Original CareerCenter proof supports static rich rows only.
 	}
-	if md["my_job_shop"] != nil && string(md["my_job_shop"]) != "false" && string(md["my_job_shop"]) != "null" {
-		return fail() // Its complete fallback-body contract is static-only.
-	}
+	// my_job_shop selects the bounded full-body HTTP reader in the original
+	// static route. Rendered discovery uses the held document and the same
+	// links/empty-state parser regardless of that annotation. The listing
+	// parser below still validates its type and the immutable binding keeps it.
 	options := map[string]any{}
 	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "bot_protection", "transport_attempts", "encoding"} {
 		if raw, ok := md[key]; ok {

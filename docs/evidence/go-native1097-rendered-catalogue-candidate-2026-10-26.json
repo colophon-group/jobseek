@@ -1,0 +1,97 @@
+{
+  "observed_at_utc": "2026-10-26T21:22:50.292756+00:00",
+  "candidate_version": "0.13.1097",
+  "candidate_branch": "fix-crawler/native-rendered-frontier",
+  "parent_PR": 10916,
+  "parent_head": "c3d7c45d9f75caf14ed4cb953b94f6484b2ad0e2",
+  "families": [
+    "Miniso held JSON-LD ItemList URL projection",
+    "Selected Nextdata/embedded detail fields and explicit Ericsson locale readiness",
+    "Exact qualified R.R. Donnelley India rendered controls"
+  ],
+  "original_offline_ItemList_cases": 18,
+  "real_postgres_redis": {
+    "returncode": 0,
+    "completed_at_utc": "2026-10-26T20:48:15.079476+00:00",
+    "actual_migrations_applied": true,
+    "loopback_only": true,
+    "scope": "Actual migrated PostgreSQL/Redis rendered ItemList complete URL-only publication, independent detail queues, missing/malformed/late-null/publisher failures, direct embedded persistence and every selected rendered Nextdata field."
+  },
+  "SDK": {
+    "actual_enabled_boards": 8134,
+    "candidate_head": "uncommitted1097-ItemList-Embedded-selected-fields",
+    "captured_source_revision": "f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d",
+    "detail_cache_effective_binding_mismatches": 0,
+    "missing_board_caches": 0,
+    "monitor_cache_effective_binding_mismatches": 0,
+    "new_boards": 234,
+    "new_detail_SDK_eligible": 234,
+    "new_monitor_SDK_eligible": 234,
+    "new_unsupported": [],
+    "observed_at_utc": "2026-10-26T21:18:23Z",
+    "provisional_detail_count": 8101,
+    "provisional_monitor_count": 8092,
+    "retained_detail_count": 7867,
+    "retained_monitor_count": 7858,
+    "scope": "Actual SQL identities and complete canonical/cache configurations. SDK readiness only; no public content parity, all scheduled-route coverage, staging or production authority granted."
+  },
+  "public_evidence": {
+    "original_Miniso_complete_urls": 10,
+    "original_Ericsson_positive_details": 3,
+    "original_RRD_positive_details": 3,
+    "official_physical_engines": [
+      "1.0.1",
+      "1.0.2"
+    ],
+    "all_positive_available_fields_matched_102": true,
+    "original_Miniso_later_failures": 2,
+    "captures": [
+      {
+        "name": "miniso-original.private.json",
+        "sha256": "00a07cc973b1653be57789d08b5f69a49c042cecc3d5c0cacca5c7c6e526cdf9",
+        "bytes": 82506
+      },
+      {
+        "name": "ericsson-china-all-original-details1.private.json",
+        "sha256": "d0617832950b73295cd3e8be9155632085231784b24a7c08ad12227ea990441f",
+        "bytes": 11817
+      },
+      {
+        "name": "rr-donnelley-india-original-details4.private.json",
+        "sha256": "a55d2d4bdbb9da7856c6f6a67c63fcad23dba33a5de96a98b69c0c9647a392e5",
+        "bytes": 10726
+      },
+      {
+        "name": "miniso-lightpanda102-1.private.json",
+        "sha256": "990910eedd778ddad8b686c4e03e4b62f4f618b2f859693bde029ffd6b184933",
+        "bytes": 180377
+      },
+      {
+        "name": "ericsson-lightpanda102-details6.private.json",
+        "sha256": "b7f1cc9f19f6b00ed2b2eedfe3611a8920d1a3de424e9d29a2c455eac6a009ae",
+        "bytes": 104642
+      },
+      {
+        "name": "rrd-lightpanda102-details1.private.json",
+        "sha256": "2c0e3086701f62ad073575d586b9f529b0736d8634e928976cb10be4b3c0ea7b",
+        "bytes": 5684159
+      },
+      {
+        "name": "miniso-lightpanda101-1.private.json",
+        "sha256": "5809c458b27fb000cfec93162e14861bc546b1402fb8dfca97512b0b3430b8ff",
+        "bytes": 180377
+      },
+      {
+        "name": "ericsson-lightpanda101-details1.private.json",
+        "sha256": "b360f1b46112d020b6f5c83b52d7bd750724dc3d5242b793c2bf5cfee74a3721",
+        "bytes": 104642
+      },
+      {
+        "name": "rrd-lightpanda101-details1.private.json",
+        "sha256": "b63cba96399085177086458956c22139c165d5df4fa6360c9ba26a7db1cbbfbc",
+        "bytes": 5684159
+      }
+    ]
+  },
+  "scope": "Candidate evidence only. Current source1094 is still serving with native owners cold;1096 required checks green but operational WAL gate still applies. Final-head CI, actual published metadata/routes, installed staging and serving ownership, exact queue dispositions, natural freshness/resources, final reversal, older frontier and Python retirement remain required. General1.0.2 promotion retains four failing original visibility cases; these positive samples do not waive that gate."
+}

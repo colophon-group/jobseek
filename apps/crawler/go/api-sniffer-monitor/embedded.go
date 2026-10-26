@@ -54,7 +54,8 @@ func ValidateEmbeddedDetail(config map[string]any, nextdata bool) error {
 				seen := map[string]bool{}
 				for _, f := range list {
 					name, ok := f.(string)
-					if !ok || (name != "description" && name != "employment_type") || seen[name] {
+					allowed := map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true, "metadata": true}
+					if !ok || !allowed[name] || seen[name] {
 						return ErrEmbedded
 					}
 					seen[name] = true

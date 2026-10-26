@@ -152,11 +152,13 @@ func requestAt(o Options, p *Pagination, value int) (Request, error) {
 		param = s
 	}
 	if p.Location == "body" {
-		s, err := setBodyParam(r.Body, p.Param, param)
-		if err != nil {
-			return r, err
+		if r.Body != "" {
+			s, err := setBodyParam(r.Body, p.Param, param)
+			if err != nil {
+				return r, err
+			}
+			r.Body = s
 		}
-		r.Body = s
 	} else {
 		u, err := url.Parse(r.URL)
 		if err != nil {
