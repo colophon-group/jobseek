@@ -1575,6 +1575,18 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
             decoded,
             client,
         )
+    except PaginationFetchError as exc:
+        # Production static monitors wrap HTTP statuses in their retry error.
+        # Match direct HTTP probe policy without masking successful-response
+        # extraction/empty-body failures as network warnings.
+        status = exc.last_status
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "warn" if status is not None and status >= 400 and status != 404 else "fail",
+            f"static fetch failed: {exc}",
+        )
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code
         return ProbeResult(
