@@ -8,8 +8,12 @@ const mocks = vi.hoisted(() => ({
   semanticFilters: vi.fn(),
   directList: vi.fn(),
   directSearch: vi.fn(),
+  serverPage: vi.fn(),
 }));
 
+vi.mock("@/lib/actions/explore-page-data", () => ({
+  fetchExplorePageData: mocks.serverPage,
+}));
 vi.mock("@/lib/search/typesense-browser-filter-state", () => ({
   parseCompanyFilterStateOffline: mocks.parseOffline,
   resolveCompanyFilterStateDirect: mocks.resolveFilters,
@@ -71,6 +75,10 @@ beforeEach(() => {
   mocks.directList.mockResolvedValue({ companies: [], totalCompanies: 0 });
   mocks.directSearch.mockReset();
   mocks.directSearch.mockResolvedValue({ companies: [], totalCompanies: 0 });
+  mocks.serverPage.mockReset();
+  mocks.serverPage.mockResolvedValue(makeData({
+    result: { companies: [], totalCompanies: 0, degraded: true },
+  }));
 });
 
 describe("loadExploreBrowserData", () => {
@@ -124,6 +132,7 @@ describe("loadExploreBrowserData", () => {
       true,
     );
     expect(mocks.directSearch).not.toHaveBeenCalled();
+    expect(mocks.serverPage).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       unavailable: false,
       directAttempted: true,
@@ -204,7 +213,7 @@ describe("loadExploreBrowserData", () => {
     );
   });
 
-  it("fails closed when direct search is unavailable", async () => {
+  it("fails closed when both direct and server search are unavailable", async () => {
     mocks.semanticFilters.mockResolvedValue({
       parsed: { ...emptyParsed, keywords: ["python"] },
       userLat: undefined,
@@ -230,6 +239,60 @@ describe("loadExploreBrowserData", () => {
       degraded: true,
     });
     expect(result.data.parsed.keywords).toEqual(["python"]);
+    expect(mocks.serverPage).toHaveBeenCalledOnce();
+  });
+
+  it.each(["taxonomy", "listing", "keywords"])(
+    "recovers a failed browser %s read through one filtered server action",
+    async (failure) => {
+      const searchParams = new URLSearchParams(
+        "loc=india&sal=100000-&salcur=EUR&lang=fr,it&utm_source=ignored&show=ignored",
+      );
+      if (failure === "taxonomy") {
+        mocks.resolveFilters.mockRejectedValue(new TypeError("Failed to fetch"));
+      } else if (failure === "listing") {
+        mocks.directList.mockResolvedValue(null);
+      } else {
+        searchParams.set("q", "python");
+        mocks.directSearch.mockResolvedValue(null);
+      }
+      const recovered = makeData({
+        result: { companies: [{ company: { id: "filtered" } } as never], totalCompanies: 1 },
+        displayCurrency: "INR",
+        salaryCurrencyParam: "EUR",
+        languages: ["fr", "it"],
+      });
+      mocks.serverPage.mockResolvedValue(recovered);
+
+      const result = await loadExploreBrowserData({
+        initialData: makeData(), searchParams, locale: "en",
+        displayCurrency: "INR", jobLanguages: [], rates: [], isLoggedIn: true,
+      });
+
+      expect(mocks.serverPage).toHaveBeenCalledExactlyOnceWith({
+        searchParams: {
+          loc: "india", sal: "100000-", salcur: "EUR", lang: "fr,it",
+          ...(failure === "keywords" ? { q: "python" } : {}),
+        },
+        locale: "en",
+      });
+      expect(result).toEqual({ data: recovered, unavailable: false, directAttempted: true });
+    },
+  );
+
+  it("keeps the requested filters unavailable when the recovery action rejects", async () => {
+    const parsed = { ...emptyParsed, unresolvedExplicitSlugs: { loc: ["india"] } };
+    mocks.parseOffline.mockReturnValue({ parsed, complete: false });
+    mocks.resolveFilters.mockRejectedValue(new TypeError("Failed to fetch"));
+    mocks.serverPage.mockRejectedValue(new Error("Server unavailable"));
+    const result = await loadExploreBrowserData({
+      initialData: makeData(), searchParams: new URLSearchParams("loc=india&salcur=EUR"),
+      locale: "en", displayCurrency: "INR", jobLanguages: [], rates: [], isLoggedIn: true,
+    });
+    expect(mocks.serverPage).toHaveBeenCalledOnce();
+    expect(result.unavailable).toBe(true);
+    expect(result.data.result).toEqual({ companies: [], totalCompanies: 0, degraded: true });
+    expect(result.data.parsed.unresolvedExplicitSlugs).toEqual({ loc: ["india"] });
   });
 
   it("does not broaden unresolved explicit slugs", async () => {
@@ -252,6 +315,7 @@ describe("loadExploreBrowserData", () => {
     expect(mocks.directList).not.toHaveBeenCalled();
     expect(mocks.directSearch).not.toHaveBeenCalled();
     expect(result.unavailable).toBe(true);
+    expect(mocks.serverPage).not.toHaveBeenCalled();
     expect(result.data.parsed.unresolvedExplicitSlugs).toEqual({
       loc: ["missing-place"],
     });
@@ -271,5 +335,6 @@ describe("loadExploreBrowserData", () => {
     expect(mocks.resolveFilters).not.toHaveBeenCalled();
     expect(mocks.directList).not.toHaveBeenCalled();
     expect(result.unavailable).toBe(true);
+    expect(mocks.serverPage).not.toHaveBeenCalled();
   });
 });
