@@ -2839,6 +2839,8 @@ fondation-fit,fondation-fit-careers,https://www.linkedin.com/company/fondation-i
 fongit,fongit-careers,https://www.linkedin.com/jobs/search/?f_C=2869033,linkedin,"{""company_id"": ""2869033"", ""company_slug"": ""fongit"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 fora-financial,fora-financial-greenhouse,https://job-boards.greenhouse.io/forafinancial,greenhouse,"{""token"": ""forafinancial""}",skip,
 forbes,forbes-greenhouse,https://job-boards.greenhouse.io/forbes,greenhouse,"{""token"": ""forbes""}",skip,
+ford,ford-careers-china-campus,https://app.mokahr.com/campus-recruitment/ford/43706,mokahr,"{""org_id"": ""ford"", ""site_id"": 43706}",mokahr,"{""enrich"": [""description""]}"
+ford,ford-careers-china-linkedin,https://cn.linkedin.com/company/fordchina/jobs,linkedin,"{""company_id"": ""13328925"", ""company_slug"": ""fordchina"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 ford,ford-oracle-hcm,https://efds.fa.em5.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 ford,ford-talentbrew,https://www.careers.ford.com/search-jobs,sitemap,"{""sitemap_url"": ""https://www.careers.ford.com/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 forerunner,forerunner-ashby,https://jobs.ashbyhq.com/forerunner,ashby,"{""token"": ""forerunner""}",skip,
