@@ -2632,6 +2632,7 @@ expressvpn,expressvpn-greenhouse,https://job-boards.greenhouse.io/expressvpn,gre
 extend,extend-ashby,https://jobs.ashbyhq.com/extend,ashby,"{""token"": ""extend""}",skip,
 extend,extend-greenhouse,https://job-boards.greenhouse.io/extend,greenhouse,"{""token"": ""extend""}",skip,
 extenteam-client-roles,extenteam-client-roles-greenhouse,https://job-boards.greenhouse.io/extenteam,greenhouse,"{""token"": ""extenteam""}",skip,
+extra-space-storage,extra-space-storage-careers,https://extraspace.wd5.myworkdayjobs.com/ESS_External,workday,,workday,
 extrahop,extrahop-greenhouse,https://job-boards.greenhouse.io/extrahopnetworks,greenhouse,"{""token"": ""extrahopnetworks""}",skip,
 exxonmobil,exxonmobil-contingent,https://exxonmobil.raiserecruiting.com/,dom,"{""render"": true}",json-ld,"{""render"": true}"
 exxonmobil,exxonmobil-main,https://jobs.exxonmobil.com/,rss,"{""preset"": ""successfactors""}",skip,
