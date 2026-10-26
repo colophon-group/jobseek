@@ -21,6 +21,7 @@ type Request struct {
 var tagsRE = regexp.MustCompile(`<[^>]+>`)
 var commaRE = regexp.MustCompile(`(?s)("datePosted"\s*:\s*"(?:\\.|[^"\\])*")(\s*)("hiringOrganization"\s*:)`)
 var descriptionEntitiesRE = regexp.MustCompile(`(?i)&amp;#(?:(?:x0*(?:9|a|d))|(?:0*(?:9|10|13)));`)
+var codedLocalityRE = regexp.MustCompile(`^([A-Z]{2})-(\S.*)$`)
 
 func clean(v any) any {
 	s, ok := v.(string)
@@ -209,6 +210,32 @@ func locations(p any, ignoreRegion bool) any {
 		case string:
 			address = text(clean(a))
 		case orderedObject:
+			country := a.values["addressCountry"]
+			if _, ok := country.(orderedObject); ok {
+				country = get(country, "name")
+			}
+			// Match the complete iCIMS multiline locality before splitting it.
+			lines := strings.Split(strings.ReplaceAll(trim(text(a.values["addressLocality"])), "\r\n", "\n"), "\n")
+			coded := []string{}
+			if text(clean(country)) == "US" && len(lines) > 1 && (name == "" || name == org) {
+				for _, line := range lines {
+					match := codedLocalityRE.FindStringSubmatch(strings.TrimPrefix(trim(line), "US-"))
+					if match == nil || text(clean(match[2])) == "" {
+						coded = nil
+						break
+					}
+					coded = append(coded, text(clean(match[2]))+", "+match[1]+", US")
+				}
+			}
+			if len(coded) > 0 {
+				for _, location := range coded {
+					if !seen[location] {
+						out = append(out, location)
+						seen[location] = true
+					}
+				}
+				continue
+			}
 			fields := []string{"addressLocality"}
 			if !ignoreRegion {
 				fields = append(fields, "addressRegion")
@@ -332,6 +359,10 @@ func salary(p any) any {
 	}
 	outer := salaryUnit(b.values["unitText"])
 	value := b.values["value"]
+	// iCIMS also publishes flat MonetaryAmount ranges without value.
+	if value == nil && (b.values["minValue"] != nil || b.values["maxValue"] != nil) {
+		return map[string]any{"currency": b.values["currency"], "min": b.values["minValue"], "max": b.values["maxValue"], "unit": outer}
+	}
 	switch v := value.(type) {
 	case orderedObject:
 		unit := salaryUnit(v.values["unitText"])
