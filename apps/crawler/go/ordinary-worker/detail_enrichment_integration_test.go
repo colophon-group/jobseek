@@ -31,7 +31,7 @@ func enrichmentFixtureMetadata(t *testing.T, scraper string, fields []string) st
 
 func TestRealSharedDOMJSONLDSelectedWriterFieldsPreserveCanonicalData(t *testing.T) {
 	for _, scraper := range []string{"dom", "json-ld"} {
-		for _, field := range []string{"title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary"} {
+		for _, field := range []string{"title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary", "metadata"} {
 			t.Run(scraper+"/"+field, func(t *testing.T) {
 				f, authority, claim := independentDetailOwnedFixture(t, enrichmentFixtureMetadata(t, scraper, []string{field}), "")
 				ctx := context.Background()
@@ -42,7 +42,7 @@ func TestRealSharedDOMJSONLDSelectedWriterFieldsPreserveCanonicalData(t *testing
 				if err != nil {
 					t.Fatal(err)
 				}
-				values := map[string]any{"title": "Senior Software Engineer", "description": "<p>Python. Salary CHF 100000-120000 yearly.</p>", "locations": []any{"Zurich"}, "employment_type": "FULL_TIME", "job_location_type": "remote", "date_posted": "2026-10-01", "base_salary": map[string]any{"currency": "CHF", "value": 100000}}
+				values := map[string]any{"title": "Senior Software Engineer", "description": "<p>Python. Salary CHF 100000-120000 yearly.</p>", "locations": []any{"Zurich"}, "employment_type": "FULL_TIME", "job_location_type": "remote", "date_posted": "2026-10-01", "base_salary": map[string]any{"currency": "CHF", "value": 100000}, "metadata": map[string]any{"team": "Research"}}
 				receipt, err := PersistDetailContent(ctx, authority, detail, richPipelinePreparer(t, f).Processor, values)
 				if err != nil || receipt == nil {
 					t.Fatal("selected canonical write failed", err)

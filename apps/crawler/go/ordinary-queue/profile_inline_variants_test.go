@@ -79,7 +79,7 @@ func TestRichRSSDescriptionEnrichmentRemainsExplicitAndFieldBound(t *testing.T) 
 	if err != nil || p.Profile != "rss.generic-items/v1" {
 		t.Fatal("explicit description refresh rejected", err)
 	}
-	for _, field := range []string{"title", "locations", "employment_type"} {
+	for _, field := range []string{"title", "metadata", "extras", "unknown"} {
 		c["metadata"] = `{"preset":"generic","feed_url":"https://example.com/feed","scraper_type":"dom","scraper_config":{"enrich":["` + field + `"]}}`
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
 			t.Fatal("unqualified RSS field admitted", field)

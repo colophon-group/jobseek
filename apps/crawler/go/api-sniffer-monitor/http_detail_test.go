@@ -112,3 +112,28 @@ func TestHTTPDetailRejectsUnportedTransportAndAuthBeforeRequest(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPDetailSelectedMetadataRetainsProjectionAndRequest(t *testing.T) {
+	config := map[string]any{
+		"api_url": "https://api.example.net/jobs/{id}",
+		"fields":  map[string]any{"description": "body", "metadata.team": "department"},
+		"enrich":  []any{"description", "metadata"},
+	}
+	opts, err := HTTPDetailOptionsForSource(config, "https://careers.example.net/jobs/123")
+	if err != nil || opts.Request.URL != "https://api.example.net/jobs/123" || opts.Request.Method != "GET" {
+		t.Fatal("selected metadata changed the bound request", err)
+	}
+	doc, err := Decode([]byte(`{"body":"<p>Role</p>","department":"Research"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ProjectHTTPDetail(doc, opts)
+	want := map[string]any{"description": "<p>Role</p>", "metadata": map[string]any{"team": "Research"}}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatal("selected metadata projection changed", err)
+	}
+	config["enrich"] = []any{"metadata", "metadata"}
+	if ValidateHTTPDetail(config) == nil {
+		t.Fatal("duplicate metadata selection admitted")
+	}
+}

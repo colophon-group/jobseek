@@ -131,7 +131,7 @@ func ValidateHTTPDetail(c map[string]any) error {
 				return ErrOptions
 			}
 			switch s {
-			case "title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary":
+			case "title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary", "metadata":
 			default:
 				return ErrOptions
 			}

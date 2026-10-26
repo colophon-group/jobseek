@@ -170,7 +170,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			if !ok {
 				return o, ErrOptions
 			}
-			allowed := map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true}
+			allowed := map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true, "metadata": true}
 			seen := map[string]bool{}
 			for _, raw := range fields {
 				field, ok := raw.(string)

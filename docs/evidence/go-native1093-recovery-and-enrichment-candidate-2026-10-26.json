@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-26T18:54:17.859683+00:00",
+  "scope": "Independent recovered production plus bounded candidate enrichment proof. No native activation or final migration completion claimed.",
+  "production": {
+    "version": "0.13.1093",
+    "source_revision": "f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d",
+    "recovery_PR": 10906,
+    "original_full_rollout": 40378238020,
+    "independent_readback_utc": "2026-10-26T18:48:12.699282+00:00",
+    "enabled_boards": 8134,
+    "running_core_services": 7,
+    "successful_HTTP_health_endpoints": 6,
+    "environment_matches_committed_release": true,
+    "native_receipts_absent": true,
+    "active_ordinary_plans": 0,
+    "epoch": 375,
+    "active_scheduled_postings_at_capture": 1953315
+  },
+  "recovery_contract": {
+    "actual_large_provider_schedules": 10025,
+    "atomic_payload_budget_bytes": 67108864,
+    "actual_readonly_preflight_payload_bytes": 1337259,
+    "full_inventory_validation_before_effects": true,
+    "original_Lua_preflight_preserved": true,
+    "actual_PostgreSQL_Redis_forward_reverse_and_late_invalid_zero_effect_tests": "pass"
+  },
+  "candidate": {
+    "families": [
+      "api_sniffer",
+      "oracle_hcm",
+      "rss"
+    ],
+    "new_metadata_availability_preserves_original_nullable_SQL_writes": true,
+    "original_Python_preparation_cases": 18,
+    "new_original_metadata_preparation_cases": 4,
+    "selected_real_PostgreSQL_Redis_test_log_pass_entries": 92,
+    "selected_real_tests_failed": 0,
+    "selected_real_tests_skipped": 0,
+    "private_database_stopped": true,
+    "new_catalogue_rows": 234,
+    "new_catalogue_provider_families": 37,
+    "detached_monitor_SDK_eligible": 230,
+    "detached_detail_SDK_eligible": 232,
+    "remaining_new_compatibility_rows": 6,
+    "eligibility_is_not_serving_authority": true
+  },
+  "next_runtime_PR": 10907,
+  "retained_exact_unique_queued_ID_baseline": 3269016,
+  "preexisting_scheduled_unqueued_routes": 757,
+  "latest_Lightpanda": {
+    "stable_version": "1.0.2",
+    "release_URL": "https://github.com/lightpanda-io/browser/releases/tag/1.0.2",
+    "promotion": "blocked by four unchanged original visibility expectations on three tested architectures; draft10799 retained"
+  },
+  "full_migration_goal": "active; remaining coverage, actual source-bound ownership, operations, freshness/conservation, resources/cost, final reversal/window and production Python retirement remain required"
+}

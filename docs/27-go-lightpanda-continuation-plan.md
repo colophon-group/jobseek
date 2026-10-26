@@ -1,38 +1,73 @@
 # Go and Lightpanda migration delivery plan
 
-## Contained deployment recovery — October 26, 2026
+## Recovered production and next batch — October 26, 2026
 
-[PR #10904](https://github.com/colophon-group/jobseek/pull/10904) merged as
-`00a9e85992245921115028d24b31b631393b5cf5` after exact-head Required CI and
-Crawler Deploy Gate success. Original ordinary retirement, B0 rollback and
-selector clearing succeeded; independent readback verified native owners cold,
-epoch **375**, and the complete retained serving stack before deployment.
+Production is recovered on **0.13.1093**, source
+`f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d`, through
+[PR #10906](https://github.com/colophon-group/jobseek/pull/10906) and the original
+full deployment workflow. Independent readback at **18:48 UTC** verifies seven
+healthy retained services, six HTTP200 endpoints, exact immutable images and
+release/data identities, and a byte-identical runtime/committed environment.
+The actual enabled catalogue is **8,134 boards**. Both native receipts and Redis
+ownership projections are absent; SQL has zero active ordinary plans, epoch
+**375**. Current native ownership is **zero**, pending the supported activation.
 
-The full deployment and its rollback both hit the route-repair inventory ceiling:
-Bajaj now has **10,025** scheduled postings, exceeding the fixed 10,000 limit.
-The rollback contract deliberately kept all crawler writers/exporter stopped
-when that step could not finish. The last verified source remains **0.13.1086** /
-`6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`; do not claim 0.13.1092 is serving or
-restart individual services. Typesense remains available to frontend reads.
+The deployment and its rollback had stopped all writers when Bajaj's **10,025**
+schedules exceeded the old 10,000-row repair ceiling. The recovered helper
+streams the complete inventory into a byte-bounded atomic payload, validates
+every row and retains the original whole-inventory Lua preflight. The 10,025-row
+forward/reverse and late-invalid-record regressions pass on real PostgreSQL and
+Redis. The original complete rollout restored service; no individual restart or
+hand edit of SQL, Redis, ownership receipts or environment was used.
 
-The **0.13.1093** recovery removes that row-count ceiling. Stream the complete
-canonical inventory into a byte-bounded atomic payload, validate every SQL row
-and retain the existing whole-inventory Lua preflight before any queue effect.
-Real private PostgreSQL/Redis regressions cover 10,025 routes, forward and
-rollback lanes, retained hashes/deadlines, and invalid final SQL/Redis records
-with zero earlier effects. Finish required checks and use the original full
-source/image-bound deployment/recovery workflow; independently verify the whole
-serving stack and actual catalogue before B0/ordinary reactivation.
+[PR #10907](https://github.com/colophon-group/jobseek/pull/10907) moves five ATS
+inventory host helpers into the existing Go binary: bounded logs, registry
+snapshots, GitHub App tokens, status publication and network acceptance. Its
+normal path uses Go, retaining the explicit old-image reversal probe. Exact
+image installation and native timer acceptance remain required after CI.
 
-Renderer source reconciliation separately stopped on live cgroup memory
-attestation. The original installer contained its exact predecessor. Its Docker
-configuration still records the required 1 GiB memory/no-swap limits; retry via
-the original supported cold-predecessor path, preserving every verifier. A cold
-or unverified renderer does not qualify browser production ownership.
+The next shared batch admits the existing API-sniffer metadata selection,
+Oracle title/metadata delegation, and RSS location/employment/date delegation.
+The shared detail writer preserves Python's metadata availability check without
+adding canonical column writes. All **18** frozen Python preparation cases pass,
+including four metadata cases. Real migrated PostgreSQL/Redis tests cover
+selected canonical writes, monitor description authority, proxy/publisher
+failures, scheduling and claim settlement with no skips. Detached eligibility
+for the **234** new rows improves to **230 monitors / 232 details** across the
+existing 37 families; six rows still need compatibility work. These are candidate
+configuration results, not serving ownership or full content-parity claims.
 
-## Current publication recovery — October 26, 2026
+The original renderer retry recovered source `00a9e859` with verified **1 GiB /
+no swap** limits. Lightpanda **1.0.2** remains the latest stable release. Its four
+frozen text-visibility failures remain unresolved; preserve all 21 original
+expectations and draft #10799. A private canvas measurement probe is diagnostic,
+not proof of equivalent text rectangles or a promotion.
 
-Production remains on **0.13.1086**, source `6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`,
+Continue in this order:
+
+1. Finish the qualified runtime slices with exact-head Required CI, Crawler
+   Deploy Gate and fresh draft/base/hold/operator checks; use the original full
+   rollout and independently verify the final source. Avoid unnecessary native
+   activation/retirement cycles between runtime rollouts.
+2. Use the captured actual 8,134-board SQL/cache configurations and all actual
+   scheduled URLs to qualify the complete cohort, including new identities.
+   Reconcile the exact **3,269,016** prior unique queued IDs and **757** preexisting
+   scheduled-but-unqueued routes; matching totals do not establish conservation.
+3. Reconcile the renderer source, stage the reviewed selectors, and use the
+   installed B0 and ordinary stage/inspect/activate commands. Decode the complete
+   staged payload and verify actual serving authority. Complete native ATS host
+   rollout and timer acceptance against the same final release.
+4. Finish remaining enabled configurations in shared batches, latest-Lightpanda
+   compatibility, sustained freshness, comparable whole-lane resources/cost,
+   supported cold reversal and its recovery window. Then retire production
+   Python, Playwright, Chromium and runtime-only assets, keeping useful offline
+   Python tooling. The full-delivery goal remains active.
+
+See [recovery and candidate evidence](evidence/go-native1093-recovery-and-enrichment-candidate-2026-10-26.json).
+
+## Historical publication blockers — before recovered 0.13.1093
+
+Before the recovered release, production remained on **0.13.1086**, source `6e1d0ebb3f2294b95e94e26854d5d4fefd282d52`,
 epoch **374**. The supported deployment refuses to replace an active native
 owner; the failed 0.13.1089 and 0.13.1091 deployment attempts do not establish
 new serving authority. Retire ordinary ownership, roll back B0, and clear only
