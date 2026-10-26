@@ -18,6 +18,7 @@ const job51API = "https://coapi.51job.com/"
 const job51SigningSlice = "uD&#mheJQBlgy&S"
 
 var job51BoardPath = regexp.MustCompile(`^/(?:[A-Za-z0-9_-]{1,64}job_list|[A-Za-z0-9_-]{1,64}/job)\.html$`)
+var job51CampusAboutPath = regexp.MustCompile(`^/[A-Za-z0-9_-]{1,64}/about1\.html$`)
 var job51Identity = regexp.MustCompile(`^[0-9]{1,20}$`)
 var job51Date = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}`)
 var job51Qualifications = regexp.MustCompile(`(?:岗位要求|任职要求|职位要求)\s*[:：]?`)
@@ -29,7 +30,7 @@ func Job51BoardOrigin(board string) (string, error) {
 		return "", ErrOptions
 	}
 	host := strings.ToLower(u.Hostname())
-	if !strings.HasSuffix(host, ".51job.com") || host == "www.51job.com" || host == "jobs.51job.com" || host == "coapi.51job.com" || !job51BoardPath.MatchString(u.Path) {
+	if !strings.HasSuffix(host, ".51job.com") || host == "www.51job.com" || host == "jobs.51job.com" || host == "coapi.51job.com" || !(job51BoardPath.MatchString(u.Path) || host == "campus.51job.com" && job51CampusAboutPath.MatchString(u.Path)) {
 		return "", ErrOptions
 	}
 	return "https://" + host, nil

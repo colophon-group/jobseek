@@ -20,6 +20,24 @@
       "max_index_children": 1
     },
     {
+      "id": "acrisure-global",
+      "board_url": "https://careers.acrisure.com/us/en/search-results",
+      "sitemap_url": "https://careers.acrisure.com/us/en/search-results/sitemap.xml",
+      "include_literal": "/us/en/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "amd-careers",
+      "board_url": "https://careers.amd.com/careers-home/jobs",
+      "sitemap_url": "https://careers.amd.com/sitemap.xml",
+      "include_literal": "",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
       "id": "amgen-global",
       "board_url": "https://careers.amgen.com/en/search-jobs/",
       "sitemap_url": "https://careers.amgen.com/en/sitemap.xml",
@@ -33,15 +51,6 @@
       "board_url": "https://avant.wd503.myworkdayjobs.com/External_Careers",
       "sitemap_url": "https://avant.wd503.myworkdayjobs.com/External_Careers/siteMap.xml",
       "include_literal": "/External_Careers/job/",
-      "exclude_literal": "",
-      "max_urls": 50000,
-      "max_index_children": 1
-    },
-    {
-      "id": "bd-global",
-      "board_url": "https://jobs.bd.com/en/search-jobs",
-      "sitemap_url": "https://jobs.bd.com/en/sitemap.xml",
-      "include_literal": "/en/job/",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 1
@@ -78,6 +87,15 @@
       "board_url": "https://www.citadel.com/careers/open-opportunities/",
       "sitemap_url": "https://www.citadel.com/career-sitemap.xml",
       "include_literal": "/careers/details/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "community-health-systems-careers-physicians",
+      "board_url": "https://chsmedcareers.com/jobs",
+      "sitemap_url": "https://chsmedcareers.com/sitemap.xml",
+      "include_literal": "/jobs/",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 1
@@ -132,15 +150,6 @@
       "board_url": "https://careers.gdels.com/",
       "sitemap_url": "https://careers.gdels.com/sitemap.xml",
       "include_literal": "/job/",
-      "exclude_literal": "",
-      "max_urls": 50000,
-      "max_index_children": 1
-    },
-    {
-      "id": "amd-careers",
-      "board_url": "https://careers.amd.com/careers-home/jobs",
-      "sitemap_url": "https://careers.amd.com/sitemap.xml",
-      "include_literal": "",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 1
@@ -267,15 +276,6 @@
       "board_url": "https://theker.factorialhr.com/",
       "sitemap_url": "https://theker.factorialhr.com/sitemap.xml",
       "include_literal": "/job_posting/",
-      "exclude_literal": "",
-      "max_urls": 50000,
-      "max_index_children": 1
-    },
-    {
-      "id": "community-health-systems-careers-physicians",
-      "board_url": "https://chsmedcareers.com/jobs",
-      "sitemap_url": "https://chsmedcareers.com/sitemap.xml",
-      "include_literal": "/jobs/",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 1

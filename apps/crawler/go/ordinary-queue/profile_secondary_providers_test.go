@@ -148,7 +148,11 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			detail, e = InspectJSONLDDetail(profileBoardID, config, o.JobURL("123"), Simple)
+			if scraper == "embedded" {
+				detail, e = InspectEmbeddedDetail(profileBoardID, config, o.JobURL("123"), Simple)
+			} else {
+				detail, e = InspectJSONLDDetail(profileBoardID, config, o.JobURL("123"), Simple)
+			}
 		case "ukg":
 			o, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {

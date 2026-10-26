@@ -347,6 +347,32 @@ class TestProbeRow:
         assert result.status == "ok"
         assert result.message == "production extractor: 1 jobs"
 
+    @pytest.mark.parametrize(
+        ("status", "expected"), [(403, "warn"), (429, "warn"), (503, "warn"), (404, "fail")]
+    )
+    async def test_inline_wrapped_http_status_preserves_probe_policy(self, status, expected):
+        row = _row(
+            board_url="https://example.com/openings",
+            monitor_type="inline",
+            monitor_config=json.dumps(
+                {"transport_attempts": 1, "steps": [{"tag": "h2", "field": "title"}]}
+            ),
+        )
+        result = await self._run(row, lambda _request: httpx.Response(status))
+        assert result.status == expected
+        assert f"status={status}" in result.message
+
+    async def test_inline_wrapped_empty_success_still_blocks(self):
+        row = _row(
+            board_url="https://example.com/openings",
+            monitor_type="inline",
+            monitor_config=json.dumps(
+                {"transport_attempts": 1, "steps": [{"tag": "h2", "field": "title"}]}
+            ),
+        )
+        result = await self._run(row, lambda _request: httpx.Response(200, text=""))
+        assert result.status == "fail"
+
     async def test_johdi_probe_accepts_authoritative_empty_json_inventory(self):
         company_key = "opaque-company-key-1234567890"
         row = _row(

@@ -160,6 +160,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "link_selector",
             "lg_portal",
             "lucca_board",
+            "tupu360_listing",
             "my_job_shop",
             "oracle_adf_job_ids",
             "onclick_selector",
@@ -427,7 +428,22 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "workday_fallback",
         }
     ),
-    "nextdata": frozenset({"defaults", "enrich", "fields", "path", "render", "source", "wait"}),
+    # nextdata delegates rendering to embedded, which forwards NAVIGATE_KEYS.
+    # Keep these explicit so new browser controls still require classification.
+    "nextdata": frozenset(
+        {
+            "actions",
+            "defaults",
+            "enrich",
+            "fields",
+            "path",
+            "render",
+            "source",
+            "timeout",
+            "wait",
+            "wait_fallback",
+        }
+    ),
 }
 
 _SELECTOR_KEYS = frozenset(

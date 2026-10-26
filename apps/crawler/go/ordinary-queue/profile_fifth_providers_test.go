@@ -49,6 +49,9 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		}
 		config := profileConfig()
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
+		if provider == "cornerstone" && metadata["scraper_type"] == "api_sniffer" {
+			config["scraper_needs_browser"] = "1"
+		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
 			if e != nil || profile.Profile != "paylocity.proxy-embedded-items/v1" {
@@ -68,6 +71,13 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "cornerstone":
+			detail, e = InspectBrowserAPIDetail(profileBoardID, config, "https://penskeanz.csod.com/ux/ats/careersite/1/home/requisition/123?c=penskeanz", Browser)
+			if e == nil {
+				if _, wrong := InspectBrowserAPIDetail(profileBoardID, config, detail.SourceURL, Simple); wrong == nil {
+					t.Fatal("browser scraper gained HTTP authority")
+				}
+			}
 		case "adp":
 			o, err := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
@@ -92,7 +102,7 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["adp"] != 14 || counts["cornerstone"] != 14 || counts["paylocity"] != 5 || counts["paylocity_proxy"] != 6 {
+	if counts["adp"] != 15 || counts["cornerstone"] != 15 || counts["paylocity"] != 5 || counts["paylocity_proxy"] != 6 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)

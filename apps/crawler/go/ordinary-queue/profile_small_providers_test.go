@@ -58,7 +58,7 @@ func TestSmallProvidersCurrentRegistryAndTransportAuthority(t *testing.T) {
 		}
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"jobbank104": 5, "cnstaff": 1, "seamlesshiring": 1, "jarvi": 1, "job51": 2}) {
+	if !reflect.DeepEqual(counts, map[string]int{"jobbank104": 6, "cnstaff": 1, "seamlesshiring": 1, "jarvi": 1, "job51": 3}) {
 		t.Fatal("registry count changed", counts)
 	}
 }

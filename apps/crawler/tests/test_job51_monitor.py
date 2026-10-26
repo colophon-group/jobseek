@@ -60,6 +60,7 @@ class TestBoardOrigin:
                 "https://campus.51job.com/polycommercetourism/job.html",
                 "https://campus.51job.com",
             ),
+            ("https://campus.51job.com/rrd2027/about1.html", "https://campus.51job.com"),
         ],
     )
     def test_accepts_exact_employer_board(self, url, origin):
@@ -75,6 +76,10 @@ class TestBoardOrigin:
             "https://pvh.51job.com/C01job_list.html?jobarea=020000",
             "https://campus.51job.com/polycommercetourism/index.html",
             "https://campus.51job.com/polycommercetourism/job.html?poscode=G01",
+            "https://campus.51job.com/rrd2027/about1.html?jobarea=020000",
+            "https://campus.51job.com/rrd2027/about1.html#jobs",
+            "https://pvh.51job.com/rrd2027/about1.html",
+            "https://campus.51job.com/rrd2027/about.html",
             "https://example.com/C01job_list.html",
         ],
     )
@@ -179,7 +184,14 @@ class TestDiscover:
 
         assert [job.metadata["id"] for job in jobs] == ["1"]
 
-    async def test_shared_campus_board_uses_configured_ctmid(self):
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://campus.51job.com/polycommercetourism/job.html",
+            "https://campus.51job.com/rrd2027/about1.html",
+        ],
+    )
+    async def test_shared_campus_board_uses_configured_ctmid(self, url):
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.host == "coapi.51job.com"
             params = json.loads(request.url.params["params"])
@@ -193,7 +205,7 @@ class TestDiscover:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             jobs = await discover(
                 {
-                    "board_url": "https://campus.51job.com/polycommercetourism/job.html",
+                    "board_url": url,
                     "metadata": {"ctmid": 258121},
                 },
                 client,

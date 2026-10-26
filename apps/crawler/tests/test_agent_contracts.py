@@ -314,3 +314,25 @@ def test_privileged_units_never_execute_agent_writable_python():
         for line in privileged:
             assert "python3 -I /usr/local/lib/jobseek-codex/" in line
             assert "/srv/jobseek-codex/repo" not in line
+
+
+def test_reflect_next_finalizes_after_recording_notes(tmp_path, monkeypatch):
+    from src.workspace.state import Workspace, save_workspace
+    from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
+
+    monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+    save_workspace(Workspace(slug="fixture"))
+    _save_wf_to_disk("fixture", WorkflowState(current_step="reflect"))
+    monkeypatch.setattr(task, "resolve_slug", lambda _: "fixture")
+    finalized = []
+
+    def finalize(slug):
+        workflow = _load_wf_from_disk(slug)
+        assert workflow.current_step == "reflect"
+        assert workflow.reflections[-1]["notes"] == "Lessons recorded"
+        finalized.append(slug)
+
+    monkeypatch.setattr(task, "_finalize_workflow", finalize)
+    result = CliRunner().invoke(task.task_next, ["--notes", "Lessons recorded"])
+    assert result.exit_code == 0, result.output
+    assert finalized == ["fixture"]

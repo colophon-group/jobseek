@@ -84,6 +84,8 @@ func TestThirdProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			}
 			if worker == Browser {
 				detail, e = InspectRenderedDetail(profileBoardID, config, source, worker)
+			} else if scraper == "embedded" {
+				detail, e = InspectEmbeddedDetail(profileBoardID, config, source, worker)
 			} else if scraper == "dom" {
 				detail, e = InspectDOMDetail(profileBoardID, config, source, worker)
 			} else {

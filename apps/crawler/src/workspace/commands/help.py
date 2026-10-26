@@ -1435,6 +1435,7 @@ job51 — 51job employer microsites
   Board URLs must use an exact unfiltered employer listing form:
     https://{tenant}.51job.com/C01job_list.html
     https://campus.51job.com/{tenant}/job.html
+    https://campus.51job.com/{tenant}/about1.html
 
   Shared campus microsites usually keep ctmid in an external script, so set
   the public tenant ID explicitly for those boards.
@@ -2108,6 +2109,14 @@ dom — Link or Listing-Row Extraction (fallback)
     strict static rich-row selectors. Titles and locations come from the
     server-rendered cards, while the auto-configured DOM scraper enriches the
     complete description from stable detail-page test IDs.
+
+  Tupu360 employer boards:
+    Unfiltered ``https://<host>.tupu360.com/<site>/position/index`` roots
+    auto-select ``{"tupu360_listing": true}``. Static offset pages preserve
+    titles, locations, dates and recruitment types, and must reconcile with
+    the unchanged advertised total. The ``tupu360`` scraper enriches only
+    descriptions with ``{"enrich": ["description"], "listing_enrichment": true}``.
+    Filtered roots are not accepted by this preset.
 
   Discovery:   Extracts links matching link_selector when configured, or strict
                window.location row actions matching onclick_selector. Otherwise
@@ -3114,7 +3123,8 @@ jobstreet — JobStreet employer profile
   Note:     Use the canonical unfiltered employer URL ending in
             /companies/{slug}-{company_id}/jobs. Legacy *-jobs search routes
             are Cloudflare-guarded and are not accepted as board identities.
-            Malaysia (my) and Singapore (sg) employer profiles are supported.
+            Malaysia (my), Singapore (sg) and Philippines (ph) employer
+            profiles are supported.
 
   Config:
     {"company_id": "175608148114568", "organisation_id": "744981"}
@@ -4723,6 +4733,10 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Allowed difference between Oracle's advertised total and
                      the final accessible rows. Use only for a verified tenant
                      whose TotalJobsCount consistently overstates its tail.
+    page_shortfall_tolerance
+                     Allowed missing rows on an intermediate 200-row page.
+                     Use only for a verified tenant whose stable page union is
+                     complete despite Oracle returning a short page.
     duplicate_row_tolerance
                      Allowed duplicate IDs inside individual response pages.
                      Use only for a verified tenant whose TotalJobsCount counts
@@ -4949,11 +4963,12 @@ headhunter — HeadHunter vacancy detail API scraper
 SCRAPER_JOBSTREET = """\
 jobstreet — JobStreet vacancy detail GraphQL scraper
 
-  API:      POST https://my.jobstreet.com/graphql
+  API:      POST https://{market}.jobstreet.com/graphql
   Returns:  title, complete HTML description, locations, employment type,
             posting date, base salary, expiration date and employer metadata
   Config:   Standard enrich list (auto-configured)
-  Note:     Derives the numeric ID from my.jobstreet.com/job/{id}. Runs on the
+  Note:     Derives the numeric ID from {market}.jobstreet.com/job/{id} for
+            Malaysia, Singapore and the Philippines. Runs on the
             normal scrape schedule so the hourly employer monitor performs
             only the company-scoped listing pass.
 """

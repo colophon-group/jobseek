@@ -172,3 +172,47 @@ func TestRealFifthProviderDetailReferencesCommitCanonicalContentAndSettlement(t 
 		})
 	}
 }
+
+func TestRealCornerstoneDelegatesCompleteDescriptionToBrowserQueue(t *testing.T) {
+	for _, c := range fifthExecutionCases(t) {
+		if c.Provider != "cornerstone" || c.Name != "complete" || c.Detail {
+			continue
+		}
+		md := c.Metadata
+		md["scraper_type"] = "api_sniffer"
+		md["scraper_config"] = map[string]any{
+			"json_path": "data[0].items[0].fields",
+			"fields":    map[string]any{"title": "title", "description": "ad"},
+			"enrich":    []string{"description"},
+		}
+		raw, err := json.Marshal(md)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := privateRichPipelineFixtureURL(t, "cornerstone", string(raw), c.Source, queue.Simple, queue.Browser)
+		ctx := context.Background()
+		claim, circuits := claimFixture(t, f)
+		requests := []fourthHTTPRequest{}
+		var mutex sync.Mutex
+		result, err := RunGreenhouseClaim(ctx, f.a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f), circuits)
+		if err != nil || result == nil || !result.Settled || result.Cycle.Status != "succeeded" {
+			t.Fatal("inventory failed", result, err)
+		}
+		source := c.Expected.URLs[0]
+		var id, title string
+		var due bool
+
+		if err := f.pg.QueryRow(ctx, "SELECT id::text,titles[1],next_scrape_at IS NOT NULL FROM job_posting WHERE board_id=$1::uuid AND source_url=$2", f.board, source).Scan(&id, &title, &due); err != nil {
+			t.Fatal(err)
+		}
+		if title != "Engineer" || !due {
+			t.Fatal("monitor title or detail deadline lost", title, due)
+		}
+		if f.r.HGet(ctx, "scrape:"+id, "source_url").Val() != source || f.r.ZCard(ctx, "ft_scrapes_browser:fixture.csod.com").Val() != 1 || f.r.ZCard(ctx, "ft_scrapes_simple:fixture.csod.com").Val() != 0 {
+			t.Fatal("browser detail lost its source or queue")
+		}
+		assertRichDeadlineAndLease(t, f, "cornerstone")
+		return
+	}
+	t.Fatal("missing complete Cornerstone reference")
+}

@@ -284,7 +284,7 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 		}
 		profile, endpoint = "adp.search-items/v1", o.SearchURL(1)
 	case "cornerstone":
-		if e := feedRichDetailAssignment(config); e != nil {
+		if e := cornerstoneDetailAssignment(config); e != nil {
 			return GreenhouseMonitorProfile{}, e
 		}
 		o, e := api.CornerstoneOptionsFromMetadata(config["board_url"], config["metadata"])
@@ -609,4 +609,31 @@ func SecondaryMonitorGone(config map[string]string, resource string, status int,
 		return e == nil && resource == o.ListURL() && status == 400 && disabled
 	}
 	return false
+}
+
+// Cornerstone's short list description may delegate the complete body to an
+// independently owned browser API scraper, without granting it HTTP authority.
+func cornerstoneDetailAssignment(config map[string]string) error {
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return err
+	}
+	var scraper string
+	if json.Unmarshal(md["scraper_type"], &scraper) != nil {
+		return ErrUnsupportedProfile
+	}
+	if scraper != "api_sniffer" {
+		return feedRichDetailAssignment(config)
+	}
+	if config["scraper_needs_browser"] != "1" {
+		return ErrUnsupportedProfile
+	}
+	fields, err := monitorEnrichmentFields(config, map[string]bool{"description": true})
+	if err != nil || len(fields) != 1 || fields[0] != "description" {
+		return ErrUnsupportedProfile
+	}
+	if _, err := api.BrowserDetailOptionsFromConfig(md["scraper_config"]); err != nil {
+		return ErrUnsupportedProfile
+	}
+	return nil
 }

@@ -372,7 +372,7 @@ func TestRealEightfoldHybridRefreshPreservesTouchedAndRelistedDetailContent(t *t
 				t.Fatal(err)
 			}
 			md["scraper_type"] = "eightfold"
-			md["scraper_config"] = map[string]any{"enrich": []string{"description"}}
+			md["scraper_config"] = map[string]any{"enrich": []string{"description", "employment_type"}}
 			raw, err := json.Marshal(md)
 			if err != nil {
 				t.Fatal(err)
