@@ -6247,6 +6247,7 @@ safaricom,safaricom-careers-et,https://egjd.fa.us6.oraclecloud.com/hcmUI/Candida
 safe,safe-ashby,https://jobs.ashbyhq.com/safe,ashby,"{""token"": ""safe""}",skip,
 safe-security,safe-security-lever,https://jobs.lever.co/safe,lever,"{""token"": ""safe""}",skip,
 safe-superintelligence,safe-superintelligence-ashby,https://jobs.ashbyhq.com/ssi/b91659e4-9352-46fa-b3c5-4fb28827eb2e,inline,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Palo Alto or Tel Aviv"", ""field"": ""location""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this job"", ""from"": 0}], ""defaults"": {""employment_type"": ""full_time""}}",skip,
+safelite,safelite-careers,https://belron.wd3.myworkdayjobs.com/safelite_careers,workday,"{""company"": ""belron"", ""wd_instance"": ""wd3"", ""site"": ""Safelite_Careers"", ""all_sites"": false}",workday,
 safesize,safesize-careers,https://safesize.recruitee.com/,recruitee,"{""slug"": ""safesize"", ""api_base"": ""https://safesize.recruitee.com""}",skip,
 safetyculture,safetyculture-careers,https://jobs.lever.co/safetyculture-2,lever,"{""token"": ""safetyculture-2""}",skip,
 safran,safran-ai,https://jobs.lever.co/safran-ai,lever,"{""token"": ""safran-ai""}",skip,
