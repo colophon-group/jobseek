@@ -164,7 +164,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	}
 	// Replacement order is semantic even though ordinary JSON object order is
 	// normalized. Bind the sequence without changing the stored config shape.
-	if DOMMonitorUsesRichRows(profile) {
+	if DOMMonitorUsesRichRows(profile) && !Tupu360Monitor(config) {
 		options, err := DOMMonitorOptions(config)
 		if err != nil || options.RichRows == nil && !options.ScriptLinks.Rich() {
 			return fail()

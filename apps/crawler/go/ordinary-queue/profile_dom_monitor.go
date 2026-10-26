@@ -3,8 +3,10 @@ package queue
 import (
 	"encoding/json"
 	"net/url"
+	"regexp"
 	"strings"
 
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 )
 
@@ -98,6 +100,15 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if _, qualified := qualifiedDOMHTTPPaginationSources[domHTTPPaginationConfigFingerprint(config)]; qualified && !DOMMonitorHasQualifiedHTTPPagination(boardID, config) {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
+	if raw, present := md["tupu360_listing"]; present {
+		if string(raw) != "true" || !Tupu360Monitor(config) {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if _, err := DOMRichMonitorEnrichment(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "dom", domDirectRowsProfile, "dom", config["board_url"])
+	}
 	listing, err := DOMMonitorOptions(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -125,6 +136,28 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 }
 
 func DOMMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if Tupu360Monitor(config) {
+		u, err := url.Parse(resource)
+		base, _ := url.Parse(config["board_url"])
+		if err != nil || p.Provider != "dom" || u.Scheme != base.Scheme || u.Host != base.Host || u.Path != base.Path || u.RawPath != "" || u.User != nil || u.Fragment != "" {
+			return false
+		}
+		values, err := url.ParseQuery(u.RawQuery)
+		return err == nil && len(values) == 2 && len(values["offset"]) == 1 && len(values["max"]) == 1 && values.Get("max") == "100" && tupuMonitorOffset.MatchString(values.Get("offset"))
+	}
 	c, err := DOMMonitorOptions(config)
 	return err == nil && p.Provider == "dom" && (c.FetchURL != "" && resource == c.FetchURL || c.FetchURL == "" && c.ResourceMatches(p.Endpoint, resource))
+}
+
+var tupuMonitorOffset = regexp.MustCompile(`^(?:0|[1-9][0-9]{0,3})$`)
+
+// The provider-specific static parser uses the existing direct rich-row writer.
+// It ignores no unqualified transport or alternate parser options.
+func Tupu360Monitor(config map[string]string) bool {
+	if config["crawler_type"] != "dom" || config["monitor_needs_browser"] != "0" || !api.Tupu360ListingURL(config["board_url"]) {
+		return false
+	}
+	allowed := map[string]bool{"tupu360_listing": true, "job_filter": true, "url_filter": true, "url_allowlist": true, "url_transform": true, "scraper_type": true, "scraper_config": true, "_monitor_config_fingerprint": true, "suspect_streak": true, "recent_discovered_counts": true, "_confirmed_drop_candidate": true, "delist_threshold": true, "drop_threshold": true, "blast_radius_floor": true}
+	md, err := profileMetadataFields(config["metadata"], allowed)
+	return err == nil && string(md["tupu360_listing"]) == "true"
 }

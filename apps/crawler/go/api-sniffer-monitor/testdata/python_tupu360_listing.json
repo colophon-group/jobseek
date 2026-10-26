@@ -1,0 +1,176 @@
+[
+  {
+    "name": "rich",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "total": 1,
+    "jobs": [
+      {
+        "url": "https://fixture.tupu360.com/fixture/position/detail?positionId=000000000000000000000001&recruitmentType=SOCIALRECRUITMENT",
+        "title": "工程师 & 开发",
+        "locations": [
+          "上海"
+        ],
+        "date_posted": "2026-10-01",
+        "base_salary": {
+          "min": 10000,
+          "max": 20000
+        },
+        "language": "zh",
+        "metadata": {
+          "position_id": "000000000000000000000001",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "salary_text": "薪资待遇：10000-20000"
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-text",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> <b>工程师</b> <i>开发</i> </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "total": 1,
+    "jobs": [
+      {
+        "url": "https://fixture.tupu360.com/fixture/position/detail?positionId=000000000000000000000001&recruitmentType=SOCIALRECRUITMENT",
+        "title": "工程师开发",
+        "locations": [
+          "上海"
+        ],
+        "date_posted": "2026-10-01",
+        "base_salary": {
+          "min": 10000,
+          "max": 20000
+        },
+        "language": "zh",
+        "metadata": {
+          "position_id": "000000000000000000000001",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "salary_text": "薪资待遇：10000-20000"
+        }
+      }
+    ]
+  },
+  {
+    "name": "no-salary",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：面议</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "total": 1,
+    "jobs": [
+      {
+        "url": "https://fixture.tupu360.com/fixture/position/detail?positionId=000000000000000000000001&recruitmentType=SOCIALRECRUITMENT",
+        "title": "工程师 & 开发",
+        "locations": [
+          "上海"
+        ],
+        "date_posted": "2026-10-01",
+        "base_salary": null,
+        "language": "zh",
+        "metadata": {
+          "position_id": "000000000000000000000001",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "salary_text": "薪资待遇：面议"
+        }
+      }
+    ]
+  },
+  {
+    "name": "unicode-space",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海  </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "total": 1,
+    "jobs": [
+      {
+        "url": "https://fixture.tupu360.com/fixture/position/detail?positionId=000000000000000000000001&recruitmentType=SOCIALRECRUITMENT",
+        "title": "工程师 & 开发",
+        "locations": [
+          "上海"
+        ],
+        "date_posted": "2026-10-01",
+        "base_salary": {
+          "min": 10000,
+          "max": 20000
+        },
+        "language": "zh",
+        "metadata": {
+          "position_id": "000000000000000000000001",
+          "recruitment_type": "SOCIALRECRUITMENT",
+          "salary_text": "薪资待遇：10000-20000"
+        }
+      }
+    ]
+  },
+  {
+    "name": "zero",
+    "html": "<div id=\"position-list\" positioncount=\"0\"></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "total": 0,
+    "jobs": []
+  },
+  {
+    "name": "missing-total",
+    "html": "<div id=\"position-list\" ><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "oversize-total",
+    "html": "<div id=\"position-list\" positioncount=\"5001\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "extra-total",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div><div id=\"position-list\" positioncount=\"1\"></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "invalid-id",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"ABC\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "invalid-recruitment",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"social\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "project",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\" projectid=\"project\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "missing-title",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"other\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "missing-location",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "invalid-date",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026/10/01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "reversed-salary",
+    "html": "<div id=\"position-list\" positioncount=\"1\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：20000-10000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  },
+  {
+    "name": "more-than-total",
+    "html": "<div id=\"position-list\" positioncount=\"0\"><div class=\"position-item\" pid=\"000000000000000000000001\" recruitment=\"SOCIALRECRUITMENT\"><div class=\"position-name\"><span class=\"title\"><span class=\"txt\"> 工程师 &amp; 开发 </span></span></div><div class=\"e-city\"><span class=\"txt\">工作城市： 上海 </span></div><span class=\"time\">发布于：2026-10-01</span><div class=\"e-salary\"><span class=\"txt\">薪资待遇：10000-20000</span></div></div></div>",
+    "board": "https://fixture.tupu360.com/fixture/position/index",
+    "rejected": true
+  }
+]

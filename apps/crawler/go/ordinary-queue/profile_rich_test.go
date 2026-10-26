@@ -120,3 +120,28 @@ func TestRichProvidersRetainInactiveDetailConfigWithoutSchedulingEnrichment(t *t
 		})
 	}
 }
+
+func TestLeverSelectedEnrichmentRetainsSealedAPIAndFullBinding(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "lever", "https://jobs.lever.co/fixture"
+	c["metadata"] = `{"token":"fixture","scraper_type":"api_sniffer","scraper_config":{"fields":{"description":"description","date_posted":"createdAt"},"enrich":["description","date_posted"]}}`
+	p, err := InspectRichMonitor(profileBoardID, c)
+	fields, e := leverMonitorEnrichment(c)
+	if err != nil || e != nil || len(fields) != 2 || p.Profile != "lever.token-items/v1" || p.Endpoint != "https://api.lever.co/v0/postings/fixture?limit=100&skip=0" {
+		t.Fatal("selected detail delegation changed list authority", err, e)
+	}
+	var md map[string]any
+	json.Unmarshal([]byte(c["metadata"]), &md)
+	b, _ := json.Marshal(md)
+	c["metadata"] = string(b)
+	reordered, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || reordered.EffectiveConfigSHA256 != p.EffectiveConfigSHA256 {
+		t.Fatal("nested SQL/cache key order changed binding", err)
+	}
+	for _, bad := range []string{`["title"]`, `["description","description"]`, `true`, `[]`} {
+		c["metadata"] = `{"token":"fixture","scraper_type":"api_sniffer","scraper_config":{"enrich":` + bad + `}}`
+		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+			t.Fatal("unqualified Lever enrichment admitted")
+		}
+	}
+}
