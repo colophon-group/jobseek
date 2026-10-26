@@ -93,6 +93,17 @@ frozen text-visibility failures remain unresolved; preserve all 21 original
 expectations and draft #10799. A private canvas measurement probe is diagnostic,
 not proof of equivalent text rectangles or a promotion.
 
+Upstream changed Range geometry on October 25. The newer official snapshot
+**1.1.0-nightly.11106+659958a24** passes **all 21 unchanged original wait-state
+fixtures** on macOS. Candidate #10799 now pins its official multi-architecture
+OCI index and independently verified executable hashes; builds resolve no mutable
+tag or GitHub asset URL. The later nightly Git ref differs from the executable
+build revision, which is recorded separately. Required physical Linux amd64/arm64
+protocol, isolation, resource and original-fixture checks, public field comparison,
+final-head CI and original renderer deployment/acceptance remain mandatory.
+Production still uses the previously accepted engine. See
+[the immutable snapshot evidence](evidence/lightpanda-nightly-20261026-source-qualification.json).
+
 Continue in this order:
 
 1. Finish the qualified runtime slices with exact-head Required CI, Crawler

@@ -12,7 +12,12 @@ class ReleasePinTest(unittest.TestCase):
         dockerfile = (pilot / "Dockerfile").read_text()
         integration = (pilot / "integration_test.go").read_text()
         self.assertEqual(release["schema_version"], 2)
-        self.assertIn(f'LABEL org.jobseek.lightpanda.release="{release["tag"]}"', dockerfile)
+        self.assertIn(
+            f'LABEL org.jobseek.lightpanda.release="{release["build_version"]}"', dockerfile
+        )
+        self.assertEqual(release["tag"], "nightly")
+        self.assertRegex(release["source_revision"], r"^[0-9a-f]{40}$")
+        self.assertTrue(release["build_version"].endswith(release["source_revision"][:9]))
         image = release["image"]
         self.assertEqual(image["repository"], "lightpanda/browser")
         self.assertRegex(image["index_digest"], r"^sha256:[0-9a-f]{64}$")
