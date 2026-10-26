@@ -6019,6 +6019,7 @@ rgt-geb-udemanagement-und-technologie-gmbh,rgt-geb-udemanagement-und-technologie
 rh,rh-careers,https://hcqq.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description"", ""employment_type""]}"
 rh,rh-waterworks,https://jobs.lever.co/waterworks,lever,"{""token"": ""waterworks""}",skip,
 rha-health-services,rha-health-services-careers,https://rhahealthservices.wd1.myworkdayjobs.com/1,workday,,workday,
+rheinenergie,rheinenergie-careers,https://www.rheinenergie.com/karriere/jobs/stellenangebote/,api_sniffer,"{""api_url"": ""https://www.rheinenergie.com/api/jobs/job-listings"", ""params"": {""targetUrl"": ""/karriere/jobs/stellenangebot/""}, ""json_path"": ""data.joblistItems"", ""url_template"": ""https://www.rheinenergie.com{path}"", ""url_template_fields"": {""path"": ""link.to""}, ""item_filter"": {""include"": {""meta.company"": [""RHEINENERGIE_AG""]}}}",json-ld,"{""description_selector"": ""article[data-qa=\""re-job-posting\""]""}"
 rhenus,rhenus-global,https://www.rhenus.group/career/jobboard/,workday,"{""company"": ""rhe"", ""wd_instance"": ""wd3"", ""site"": ""R1111"", ""all_sites"": false}",workday,
 rhenus,rhenus-workday-1989,https://rhe.wd3.myworkdayjobs.com/en-US/1989,workday,"{""company"": ""rhe"", ""wd_instance"": ""wd3"", ""site"": ""1989"", ""all_sites"": false}",workday,
 rho,rho-ashby,https://jobs.ashbyhq.com/rho,ashby,"{""token"": ""rho""}",skip,
