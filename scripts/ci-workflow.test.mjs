@@ -524,7 +524,7 @@ fi
   return { ...result, outputs };
 }
 
-function runCompanyPrLabeler(diff) {
+function runCompanyPrLabeler(diff, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), "label-company-pr-"));
   const output = join(dir, "github-output");
   const log = join(dir, "gh.log");
@@ -534,18 +534,21 @@ function runCompanyPrLabeler(diff) {
     `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1 $2" == "pr view" && "$*" == *"headRefName"* ]]; then
-  printf '%s\n' 'add-company/example'
+  printf '%s\n' "$MOCK_BRANCH"
 elif [[ "$1 $2" == "pr view" && "$*" == *"labels"* ]]; then
   printf '%s\n' 'review-code'
 elif [[ "$1 $2" == "pr diff" && "$*" == *"--name-only"* ]]; then
-  printf '%s\n' 'apps/crawler/tests/lightpanda/fixtures/census.json'
-  printf '%s\n' 'apps/crawler/data/boards.csv' 'apps/crawler/data/companies.csv' 'apps/crawler/data/company_descriptions.csv'
+  printf '%s\n' "$MOCK_FILES"
 elif [[ "$1 $2" == "pr diff" ]]; then
   printf '%s' "$MOCK_DIFF"
 elif [[ "$1" == "api" && "$*" == *"/comments"* ]]; then
-  printf '%s\n' '<!-- crawl-stats {"jobs": 10, "monitor_time": 1.0} -->'
+  printf '%s\n' "$MOCK_STATS"
 elif [[ "$1" == "api" && "$*" == *"/contents/"* ]]; then
-  exit 0
+  if [[ "$*" == *"companies.csv"* ]]; then
+    printf '%s' "$MOCK_COMPANIES"
+  else
+    printf '%s' "$MOCK_BOARDS"
+  fi
 elif [[ "$1 $2" == "label create" ]]; then
   exit 0
 elif [[ "$1 $2" == "pr edit" ]]; then
@@ -568,6 +571,16 @@ fi
       GITHUB_OUTPUT: output,
       MOCK_DIFF: diff,
       MOCK_GH_LOG: log,
+      MOCK_BRANCH: options.branch ?? "add-company/example",
+      MOCK_COMPANIES: options.companies ?? "slug,name,website,logo_url,icon_url\nexample,Example,https://example.com,https://cdn.example/logo,https://cdn.example/icon\nnew-company,New Company,https://new.example,https://cdn.example/logo,https://cdn.example/icon\n",
+      MOCK_BOARDS: options.boards ?? "company_slug,board_slug,board_url,monitor_type\nexample,careers,https://example.com/jobs,greenhouse\nnew-company,careers,https://new.example/jobs,comeet\n",
+      MOCK_FILES: (options.files ?? [
+        "apps/crawler/tests/lightpanda/fixtures/census.json",
+        "apps/crawler/data/boards.csv",
+        "apps/crawler/data/companies.csv",
+        "apps/crawler/data/company_descriptions.csv",
+      ]).join("\n"),
+      MOCK_STATS: options.stats ?? '<!-- crawl-stats {"jobs": 10, "monitor_time": 1.0} -->',
     },
     encoding: "utf8",
   });
@@ -2481,17 +2494,14 @@ test("recurring crawler operations use the bounded maintenance wrapper", () => {
   );
 });
 
-test("maybe-auto-merge wakes without manual retries", () => {
+test("maybe-auto-merge reconciles the queue on automatic and required gate wakes", () => {
   const job = workflowJobBlock(maybeAutoMergeWorkflow, "label-and-merge");
-  assert.match(maybeAutoMergeWorkflow, /workflow_run:\n    workflows: \["CI", "CodeQL"\]/);
+  assert.match(maybeAutoMergeWorkflow, /workflows: \["CI", "CodeQL", "Crawler Deploy Gate"\]/);
   assert.match(maybeAutoMergeWorkflow, /schedule:\n    - cron: "\*\/15 \* \* \* \*"/);
   assert.match(maybeAutoMergeWorkflow, /workflow_dispatch:/);
-  assert.match(job, /name: Select PRs/);
-  assert.match(job, /select_open_company_prs\(\)/);
-  assert.match(job, /\$branch" == "\$default_branch"/);
-  assert.match(job, /\$branch" == "\$default_branch"[\s\S]*select_open_company_prs >> "\$prs_file"/);
-  assert.match(job, /name: Label, rebase, and merge/);
-  assert.match(job, /maybe-auto-merge-pr\.sh/);
+  assert.match(job, /select-company-prs\.sh/);
+  assert.match(job, /ref: \$\{\{ github\.workflow_sha \}\}/);
+  assert.match(job, /continuing the company queue/);
 });
 
 test("maybe-auto-merge script skips image PRs and retries pending merges", () => {
@@ -2503,7 +2513,8 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.doesNotMatch(maybeAutoMergeScript, /grep -qxF/);
   assert.match(maybeAutoMergeScript, /dispatch-pr-checks\.sh/);
   assert.match(maybeAutoMergeScript, /required_ci_state\(\)/);
-  assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
+  assert.match(maybeAutoMergeScript, /required_ci_succeeded\(\)/);
+  assert.doesNotMatch(maybeAutoMergeScript, /sleep 10[\s\S]*Required CI did not/);
   assert.match(maybeAutoMergeScript, /Required CI is successful/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
   assert.match(
@@ -2887,6 +2898,139 @@ diff --git a/apps/crawler/data/company_descriptions.csv b/apps/crawler/data/comp
   assert.match(result.outputs, /^labels=auto-merge$/m);
   assert.match(result.calls, /--remove-label review-code/);
   assert.match(result.calls, /--add-label auto-merge/);
+});
+
+function companyCsvDiff(path, removed, added) {
+  return `diff --git a/${path} b/${path}
+--- a/${path}
++++ b/${path}
+@@ -1,${removed.length} +1,${added.length} @@
+${removed.map((row) => `-${row}\n`).join("")}${added.map((row) => `+${row}\n`).join("")}`;
+}
+
+const reconfigurationDiff = companyCsvDiff(
+  "apps/crawler/data/boards.csv",
+  ["example,careers,https://example.com/old,sitemap,,skip,"],
+  ["example,careers,https://example.com/jobs,greenhouse,,skip,"],
+);
+
+test("company reconfigurations receive the same cost classification as additions", () => {
+  for (const [stats, labels] of [
+    [{ jobs: 499, monitor_time: 60 }, "auto-merge"],
+    [{ jobs: 500, monitor_time: 1 }, "review-size"],
+    [{ jobs: 10, monitor_time: 60.1 }, "auto-merge,review-load"],
+    [{ jobs: 500, monitor_time: 61 }, "review-size,review-load"],
+    [{}, "review-size"],
+    [{ jobs: -1, monitor_time: 0 }, "review-size"],
+  ]) {
+    const result = runCompanyPrLabeler(reconfigurationDiff, {
+      branch: "fix-crawler/example",
+      stats: `<!-- crawl-stats ${JSON.stringify(stats)} -->`,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.outputs.includes(`labels=${labels}\n`), result.stdout);
+  }
+  const missing = runCompanyPrLabeler(reconfigurationDiff, {
+    branch: "fix-crawler/example", stats: "",
+  });
+  assert.equal(missing.status, 0, missing.stderr);
+  assert.match(missing.outputs, /^labels=review-size$/m);
+});
+
+test("company metadata reconfiguration can auto-merge without a new board row", () => {
+  const result = runCompanyPrLabeler(companyCsvDiff(
+    "apps/crawler/data/companies.csv",
+    ["example,Example,https://old.example,,,,,,,"],
+    ["example,Example,https://example.com,,,,,,,"],
+  ), { branch: "fix-crawler/example" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^labels=auto-merge$/m);
+});
+
+test("company reconfiguration cannot auto-merge after removing its last board", () => {
+  const result = runCompanyPrLabeler(companyCsvDiff(
+    "apps/crawler/data/boards.csv",
+    ["example,careers,https://example.com/old,sitemap,,skip,"], [],
+  ), { branch: "fix-crawler/example", boards: "company_slug,board_slug,board_url,monitor_type\n" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^labels=incomplete$/m);
+  assert.match(result.stdout, /no boards configured/);
+});
+
+test("company reconfiguration authority excludes source, identity deletion, and multiple companies", () => {
+  const company = "example,Example,https://example.com,,,,,,,";
+  for (const options of [
+    { files: ["apps/crawler/src/core/monitors/greenhouse.py"] },
+    { diff: companyCsvDiff("apps/crawler/data/companies.csv", [company], []) },
+    { diff: companyCsvDiff("apps/crawler/data/companies.csv", [company], [company.replaceAll("example", "renamed")]) },
+    { diff: reconfigurationDiff + companyCsvDiff("apps/crawler/data/boards.csv", [], ["other,careers,https://other.example,sitemap,,skip,"]) },
+    { diff: "" },
+  ]) {
+    const result = runCompanyPrLabeler(options.diff ?? reconfigurationDiff, {
+      ...options, branch: "fix-crawler/example",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.outputs, /^labels=review-code$/m, result.stdout);
+  }
+});
+
+function runCompanyPrSelector(pages, options = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "select-company-prs-"));
+  const output = join(dir, "output");
+  const gh = join(dir, "gh");
+  writeFileSync(gh, `#!/bin/sh
+test "$1 $2" = "api --paginate" || exit 4
+printf '%s\n' "$MOCK_PAGES"
+exit "$MOCK_STATUS"
+`);
+  chmodSync(gh, 0o755);
+  const result = spawnSync("bash", [".github/scripts/select-company-prs.sh"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      GH_TOKEN: "fake", REPO: "colophon-group/jobseek",
+      RUNNER_TEMP: dir, GITHUB_OUTPUT: output,
+      EVENT_NAME: options.event ?? "schedule", INPUT_PR: options.pr ?? "",
+      MOCK_PAGES: pages.map((page) => JSON.stringify(page)).join("\n"),
+      MOCK_STATUS: String(options.status ?? 0),
+    },
+  });
+  const outputs = existsSync(output) ? readFileSync(output, "utf8") : "";
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, outputs };
+}
+
+test("company queue selection paginates and includes config reconfiguration branches", () => {
+  const pr = (number, branch, extra = {}) => ({
+    number, draft: false, base: { ref: "main" },
+    head: { ref: branch, repo: { full_name: "colophon-group/jobseek" } },
+    ...extra,
+  });
+  const pages = [
+    Array.from({ length: 100 }, (_, i) => pr(1000 + i, "dependabot/package")),
+    [pr(1, "add-company/old"), pr(2, "fix-crawler/example"),
+      pr(3, "add-company/draft", { draft: true }),
+      pr(4, "fix-crawler/fork", { head: { ref: "fix-crawler/fork", repo: { full_name: "external/jobseek" } } }),
+      pr(5, "add-company/other-base", { base: { ref: "other" } })],
+  ];
+  for (const event of ["schedule", "pull_request_target", "workflow_run"]) {
+    const result = runCompanyPrSelector(pages, { event });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, "1\n2\n");
+    assert.match(result.outputs, /^count=2$/m);
+  }
+});
+
+test("company queue manual retry validates the PR and listing failures fail closed", () => {
+  const target = runCompanyPrSelector([], { event: "workflow_dispatch", pr: "123" });
+  assert.equal(target.status, 0, target.stderr);
+  assert.equal(target.stdout, "123\n");
+  const invalid = runCompanyPrSelector([], { event: "workflow_dispatch", pr: "123oops" });
+  assert.notEqual(invalid.status, 0);
+  const failed = runCompanyPrSelector([], { status: 1 });
+  assert.notEqual(failed.status, 0);
+  assert.equal(failed.outputs, "");
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {

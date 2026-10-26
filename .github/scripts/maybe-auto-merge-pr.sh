@@ -9,11 +9,20 @@ set -euo pipefail
 SCRIPTS_DIR="${TRUSTED_SCRIPTS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 OWNER="${REPO%%/*}"
 
-pr_json=$(gh pr view "$PR" --repo "$REPO" \
-  --json state,isDraft,headRefName,headRepositoryOwner,headRefOid,baseRefOid,baseRefName,labels,reviewDecision,mergeStateStatus)
+read_snapshot() {
+  local snapshot base_tip
+  snapshot=$(gh pr view "$PR" --repo "$REPO" \
+    --json state,isDraft,headRefName,headRepositoryOwner,headRefOid,baseRefOid,baseRefName,labels,reviewDecision,mergeStateStatus)
+  # GitHub can retain the PR's old baseRefOid after main advances. Resolve the
+  # actual target ref on every lease read so stale PRs can reach the rebase.
+  base_tip=$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)
+  [[ "$base_tip" =~ ^[a-f0-9]{40}$ ]] || return 1
+  jq --arg base_tip "$base_tip" '. + {baseTipOid: $base_tip}' <<< "$snapshot"
+}
 
+pr_json=$(read_snapshot)
 EXPECTED_HEAD=$(jq -r '.headRefOid' <<< "$pr_json")
-EXPECTED_BASE=$(jq -r '.baseRefOid' <<< "$pr_json")
+EXPECTED_BASE=$(jq -r '.baseTipOid' <<< "$pr_json")
 export EXPECTED_HEAD EXPECTED_BASE
 
 eligible_snapshot() {
@@ -21,15 +30,10 @@ eligible_snapshot() {
     .state == "OPEN" and .isDraft == false and .baseRefName == "main"
     and .reviewDecision != "CHANGES_REQUESTED"
     and .headRepositoryOwner.login == $owner
-    and (.headRefName | startswith("add-company/"))
-    and .headRefOid == $head and .baseRefOid == $base
+    and (.headRefName | startswith("add-company/") or startswith("fix-crawler/"))
+    and .headRefOid == $head and .baseTipOid == $base
     and ([.labels[]?.name | select(test("^(hold|do-not-merge|no-merge|blocked|deployment-hold)(:|$)"))] | length == 0)
   ' >/dev/null
-}
-
-read_snapshot() {
-  gh pr view "$PR" --repo "$REPO" \
-    --json state,isDraft,headRefName,headRepositoryOwner,headRefOid,baseRefOid,baseRefName,labels,reviewDecision,mergeStateStatus
 }
 
 if ! eligible_snapshot <<< "$pr_json"; then
@@ -37,30 +41,7 @@ if ! eligible_snapshot <<< "$pr_json"; then
   exit 0
 fi
 
-state=$(jq -r '.state' <<< "$pr_json")
-draft=$(jq -r '.isDraft' <<< "$pr_json")
 branch=$(jq -r '.headRefName' <<< "$pr_json")
-head_owner=$(jq -r '.headRepositoryOwner.login' <<< "$pr_json")
-
-if [[ "$state" != "OPEN" ]]; then
-  echo "PR #$PR is $state; skipping"
-  exit 0
-fi
-
-if [[ "$draft" == "true" ]]; then
-  echo "PR #$PR is draft; skipping"
-  exit 0
-fi
-
-if [[ "$head_owner" != "$OWNER" ]]; then
-  echo "PR #$PR is from $head_owner, not $OWNER; skipping"
-  exit 0
-fi
-
-if [[ "$branch" != add-company/* ]]; then
-  echo "PR #$PR branch is $branch, not add-company/*; skipping"
-  exit 0
-fi
 
 files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
 if grep -q '^apps/crawler/data/images/' <<< "$files"; then
@@ -82,43 +63,29 @@ required_ci_state() {
   '
 }
 
-wait_for_required_ci() {
-  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
-    state=$(required_ci_state)
-
-    case "$state" in
-      SUCCESS|success)
-        echo "PR #$PR Required CI is successful"
-        return 0
-        ;;
-      FAILURE|ERROR|CANCELLED|TIMED_OUT|ACTION_REQUIRED|failure|cancelled|timed_out|action_required)
-        echo "PR #$PR Required CI is $state; not auto-merging"
-        return 1
-        ;;
-      "")
-        echo "PR #$PR is waiting for Required CI to be reported (attempt $attempt/24)"
-        ;;
-      *)
-        echo "PR #$PR Required CI is $state; waiting (attempt $attempt/24)"
-        ;;
-    esac
-
-    sleep 10
-  done
-
-  echo "PR #$PR Required CI did not become successful in time"
+required_ci_succeeded() {
+  local state
+  state=$(required_ci_state)
+  if [[ "$state" == SUCCESS || "$state" == success ]]; then
+    echo "PR #$PR Required CI is successful"
+    return 0
+  fi
+  echo "PR #$PR Required CI is ${state:-not reported}; retry after check completion"
   return 1
 }
 
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
-git fetch origin main "refs/heads/$branch:refs/remotes/origin/$branch"
+git fetch origin "+refs/heads/main:refs/remotes/origin/main" \
+  "+refs/heads/$branch:refs/remotes/origin/$branch"
 if [[ "$(git rev-parse "origin/$branch")" != "$EXPECTED_HEAD" ||
       "$(git rev-parse origin/main)" != "$EXPECTED_BASE" ]]; then
   echo "PR or base changed before checkout; retry on the next run"
   exit 0
 fi
+# A conflicting PR must leave the checkout usable for the rest of the sweep.
+trap 'git rebase --abort >/dev/null 2>&1 || true' EXIT
 git checkout -B "$branch" "origin/$branch"
 
 # Refuse to rewrite a branch outside the company auto-merger's authority.
@@ -184,7 +151,7 @@ else
   echo "PR #$PR branch updated; dispatched checks before merge"
 fi
 
-if ! wait_for_required_ci; then
+if ! required_ci_succeeded; then
   echo "PR #$PR is not mergeable yet; scheduled/workflow_run retries will revisit it"
   exit 0
 fi
@@ -214,9 +181,19 @@ for attempt in 1 2 3; do
     echo "PR changed during final validation; stopping"
     exit 0
   fi
-  if ! jq -e '.mergeStateStatus == "CLEAN" or .mergeStateStatus == "HAS_HOOKS"' \
+  if ! jq -e '
+      [.labels[]?.name] as $labels
+      | ($labels | index("auto-merge")) != null
+        and ($labels | any(. == "review-load" or . == "review-size" or . == "review-code" or . == "incomplete") | not)
+    ' >/dev/null <<< "$final_snapshot"; then
+    echo "PR decision labels changed during final validation; stopping"
+    exit 0
+  fi
+  # UNSTABLE also includes skipped/advisory checks. Required checks above are
+  # authoritative; GitHub still enforces its rules on the expected-head merge.
+  if ! jq -e '.mergeStateStatus == "CLEAN" or .mergeStateStatus == "HAS_HOOKS" or .mergeStateStatus == "UNSTABLE"' \
       >/dev/null <<< "$final_snapshot"; then
-    echo "PR merge state is not clean; stopping"
+    echo "PR merge state is $(jq -r .mergeStateStatus <<< "$final_snapshot"); stopping"
     exit 0
   fi
   if gh pr merge "$PR" --repo "$REPO" --rebase --match-head-commit "$EXPECTED_HEAD" 2>/tmp/maybe-auto-merge.err; then
