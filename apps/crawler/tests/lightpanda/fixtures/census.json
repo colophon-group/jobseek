@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8136,
-    "boards_sha256": "34ba104830a1816513420ea263499493994f07c69eadc401299e92163477c8dd",
+    "boards_sha256": "ee2c4625abeb365ab9537347edfc9515bd5448dc9936d56b0d6b6b0b5ecba263",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "be4620c43ce3dda7cd1b7915885c6d1272227cafb02a5a6ac65f9344a25e270b",
+  "manifest_sha256": "b7db7c8e1757293c95775b8ba062dbdcc3405497e7bf2ab58e549e1b9019fd03",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -7390,12 +7390,12 @@
       "compatibility_class": "browser_identity",
       "config_shape_sha256": "9a168a085e1b9627378708a7f502d5d1f289e7ee49c15c5c7176f1d9948522e4",
       "crawler_type": "json-ld",
-      "digest_sha256": "444ce733150ca31b9f2e4e4816cb15bda976a24baf847e22fddb1be04030edab",
+      "digest_sha256": "f0ed394fbd8d6ca78c2213147ea68348c605d3d1f0f4ec1d3b4dbc29b5b1710c",
       "fixture": "synthetic.browser_identity.v1",
       "id": "profile.scraper.json-ld.62c28c99dac32332",
       "profile_kind": "configured",
-      "source_count": 3,
-      "source_refs_sha256": "6241e0a37aabc933f417d851e60c10922be562b13e0833823f9448ec3fbe4d67",
+      "source_count": 1,
+      "source_refs_sha256": "115901128cebae418b4e12a6a73228b2bd2740a4b26f699727b3220aa08a8334",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -7419,6 +7419,28 @@
       "profile_kind": "configured",
       "source_count": 4,
       "source_refs_sha256": "881fbc962eaab6544a6150faacbbeba30e7a8aab2124a0c9d7c21a958d9055bc",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.domcontentloaded"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "57727174bb5e9b8d1ea5edfe831b69ccf9fe6713bea063cf729c2c9db8d91661",
+      "crawler_type": "json-ld",
+      "digest_sha256": "26be76771f7393ddcc0433d425effcedbfa1fb9973bf01400dec94c11697d5f5",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.scraper.json-ld.a43ca96f66b6c3b7",
+      "profile_kind": "configured",
+      "source_count": 3,
+      "source_refs_sha256": "0cef31dc22c22f3ef79a3869ab60f1cc04d1a3b04dd65a51b692b04b5bb88bea",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -7463,34 +7485,6 @@
       "profile_kind": "configured",
       "source_count": 6,
       "source_refs_sha256": "196561ec1b516753a730cbc046c01d568cc2cf9d252428cefccb1cde5e98fa79",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "browser.channel",
-        "browser.headful",
-        "browser.persistent_context",
-        "browser.stealth",
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait.domcontentloaded",
-        "navigation.warmup",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "0186fa101e0fcaeb19fdb9319be55374d0ecaebd18c460da235427b14ef7f1e1",
-      "crawler_type": "json-ld",
-      "digest_sha256": "35a634897dfe3bcac5761107207424a9c4b69eaae76ea10fc47dff51c0ee71d8",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.json-ld.dd1f12e17215abf8",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "8206cff4fdffe429c93d5c558ad48622ee84d0081eb10f294f518c5866b757f5",
       "status": "pending_replay",
       "surface": "scraper"
     },

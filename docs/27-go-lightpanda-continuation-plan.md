@@ -1,15 +1,16 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery and next batch — October 26, 2026
+## Current delivery and next batch — October 27, 2026
 
-Production is healthy on **0.13.1096**, source
-`39167aa830ea6499650e18714c97e84d5e9d9c1b`, through
-[PR #10916](https://github.com/colophon-group/jobseek/pull/10916) and the original
-full deployment workflow **40404486955**, including promotion. Independent
-readback verifies seven healthy retained services, six HTTP200 endpoints, exact
-immutable images and a byte-identical runtime/committed environment. A subsequent
-company publication advanced data to `d8eaa5dadfa0ef759cf375b1694bc4797975ce2f`;
-the refreshed actual SQL/cache capture contains **8,136 boards**. Native owners remain cold;
+Production is healthy on **0.13.1098**, source
+`1051a83bd70d3b236320202a008dfd7257fb9f5f`, through
+[PR #10918](https://github.com/colophon-group/jobseek/pull/10918) and the original
+full deployment workflow **40413547691**, including promotion. Independent
+readback at **22:55 UTC on October 26** verifies seven healthy retained services,
+six HTTP200 endpoints, exact immutable images and a byte-identical
+runtime/committed environment. The committed data revision is also `1051a83bd7`,
+preserving both Vinfen rows from the earlier `d8eaa5dadf` company publication.
+The actual enabled catalogue contains **8,136 boards**. Native owners remain cold;
 the last observed epoch is **375**. The earlier **0.13.1093** recovery source
 `f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d` restored service through
 [PR #10906](https://github.com/colophon-group/jobseek/pull/10906).
@@ -95,13 +96,17 @@ not proof of equivalent text rectangles or a promotion.
 
 Upstream changed Range geometry on October 25. The newer official snapshot
 **1.1.0-nightly.11106+659958a24** passes **all 21 unchanged original wait-state
-fixtures** on macOS. Candidate #10799 now pins its official multi-architecture
-OCI index and independently verified executable hashes; builds resolve no mutable
-tag or GitHub asset URL. The later nightly Git ref differs from the executable
-build revision, which is recorded separately. Required physical Linux amd64/arm64
-protocol, isolation, resource and original-fixture checks, public field comparison,
-final-head CI and original renderer deployment/acceptance remain mandatory.
-Production still uses the previously accepted engine. See
+fixtures** and both physical Linux amd64/arm64 protocol/isolation suites.
+[PR #10799](https://github.com/colophon-group/jobseek/pull/10799) merged as
+`e20eb57e998a0d0e556cdc13fcf910648fc48e98` after whole-head Required CI, Crawler
+Deploy Gate, public field/URL comparisons and the ARM64 benchmark job passed.
+Its official OCI index and executable hashes are immutable; builds resolve no
+mutable tag or GitHub asset URL. The later nightly Git ref differs from the
+executable build revision, which is recorded separately. Original renderer
+workflow **40416530488** is running. Keep main unchanged through its exact-main
+reattestation, and require independent source/image/binary/version/1 GiB/no-swap
+and protected-service acceptance. Production retains the accepted engine until
+that rollout completes. See
 [the immutable snapshot evidence](evidence/lightpanda-nightly-20261026-source-qualification.json).
 
 Continue in this order:
@@ -133,7 +138,7 @@ The original WAL operational preflight passed after its natural one-hour window;
 no counter reset or telemetry bypass was used. Recheck current source, holds and
 readiness before any subsequent merge or rollout.
 
-The combined **0.13.1098** candidate in
+The deployed **0.13.1098** batch in
 [PR #10918](https://github.com/colophon-group/jobseek/pull/10918) closes the remaining three new-catalogue
 assignments:
 
@@ -204,6 +209,31 @@ ownership payload before activation. Then finish exact-ID conservation, natural
 freshness, latest-engine compatibility, resource/cost proof, cold reversal and
 production Python retirement. See
 [retained-batch evidence](evidence/go-native1098-retained-variants-candidate-2026-10-26.json).
+
+## Three further explicit JSON-LD navigation replacements
+
+The next data-only batch replaces obsolete Chrome/proxy controls for Citadel
+Securities, Edmond de Rothschild internships and CGI Njoyn with explicit direct
+verified-TLS navigation through the existing rendered JSON-LD profile. Original
+waits, timeouts, extraction, defaults and enrichment remain. CGI's origin-block
+fallback is removed because the candidate already selects direct navigation.
+
+Each source has three positive actual postings on both official Lightpanda 1.0.1
+and the latest official 1.1.0 nightly snapshot. All **18** comparisons match the
+unchanged original browser-neutral JSON-LD parser and original scrape enrichment
+against Go's existing equivalent preparation, including full description and
+structured extras. One raw-stage description difference disappears at that
+equivalent preparation boundary: both append the same qualifications section.
+No parser or writer change is needed. Original Chromium fetches were blocked;
+these references compare original parsing on native-held documents, without
+claiming positive original Chromium navigation.
+
+The 1098 runtime is independently healthy. Keep this batch unmerged until the
+exact-main renderer workflow above completes, then use the original CSV publisher.
+Recapture canonical configurations,
+caches and every added scheduled URL before extending ownership. The underlying
+three monitors and detail lanes remain. Indeed's failed native probe is excluded.
+See [the complete field and transport evidence](evidence/three-jsonld-normal-navigation-candidate-2026-10-26.json).
 
 ## Historical publication blockers — before recovered 0.13.1093
 
