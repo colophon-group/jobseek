@@ -486,6 +486,22 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "/usr/local/libexec/jobseek-ats-inventory-host" in files
     assert "jobseek-ats-inventory-network-probe-legacy.py" in files
     assert 'host-capabilities)" == jobseek.ats-host-tools/v1' in installer
+    # /run is deliberately noexec in production. An executable preflight must
+    # use the root-owned installed helper filesystem without relaxing that mount.
+    candidate = (
+        'HOST_BINARY_CANDIDATE="$(mktemp /usr/local/libexec/.jobseek-ats-inventory-host.XXXXXX)"'
+    )
+    assert candidate in installer
+    assert "mktemp /run/jobseek-ats-inventory-host." not in installer
+    assert installer.index(
+        "install -d -o root -g root -m 0755 /usr/local/libexec"
+    ) < installer.index(candidate)
+    assert (
+        installer.index(candidate)
+        < installer.index('chmod 0755 "$HOST_BINARY_CANDIDATE"')
+        < installer.index("host-capabilities")
+    )
+    assert '[[ -z "$HOST_BINARY_CANDIDATE" ]] || rm -f -- "$HOST_BINARY_CANDIDATE"' in installer
     assert installer.index("host-capabilities") < installer.index("\nopen_shared_crawler_lock\n")
     assert 'chown deploy:deploy "$CRAWLER_LOCK"' in installer
     acceptance = installer.index("systemctl start jobseek-ats-inventory.service")

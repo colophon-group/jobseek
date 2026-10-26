@@ -24,6 +24,9 @@ func feedRichDetailAssignment(config map[string]string) error {
 	allowed := map[string]bool{}
 	if config["crawler_type"] == "rss" {
 		allowed["description"] = true
+		allowed["locations"] = true
+		allowed["employment_type"] = true
+		allowed["date_posted"] = true
 	}
 	_, err = monitorEnrichmentFields(config, allowed)
 	if err != nil {
@@ -32,10 +35,10 @@ func feedRichDetailAssignment(config map[string]string) error {
 	return nil
 }
 
-// The original rich-feed processor refreshes only explicit description enrichment.
-// Other delegated fields retain their owner until their full semantics qualify.
+// Preserve explicit rich-feed delegation to the shared selected-field detail
+// writer. A monitor refresh still retains its existing listing-field authority.
 func RSSMonitorEnrichment(config map[string]string) ([]string, error) {
-	return monitorEnrichmentFields(config, map[string]bool{"description": true})
+	return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "employment_type": true, "date_posted": true})
 }
 
 func feedHasDetailAssignment(md map[string]json.RawMessage) bool {

@@ -38,10 +38,11 @@ func TestOracleMonitorRetainsConfiguredAndAutomaticEnrichmentScheduling(t *testi
 		{`{"scraper_type":"oracle_hcm"}`, 0},
 		{`{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`, 1},
 		{`{"scraper_config":{"enrich":["description","employment_type"]}}`, 2},
+		{`{"scraper_type":"api_sniffer","scraper_config":{"enrich":["title","description","locations","employment_type","metadata"]}}`, 5},
 		{`{"scraper_config":{}}`, 0},
 		{`{"scraper_config":null}`, 0},
 	} {
-		fields, err := oracleMonitorEnrichment(map[string]string{"metadata": test.metadata})
+		fields, err := oracleMonitorEnrichment(map[string]string{"crawler_type": "oracle_hcm", "metadata": test.metadata})
 		if err != nil || len(fields) != test.fields {
 			t.Fatal("Oracle detail delegation changed", test, fields, err)
 		}

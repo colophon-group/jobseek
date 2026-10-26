@@ -78,3 +78,32 @@ func TestFeedURLRulesRefuseUnimplementedIdentityOrDelegation(t *testing.T) {
 		}
 	}
 }
+
+func TestRSSSelectedFieldsRetainIndependentDetailAndConfigBinding(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "rss", "https://example.com/careers"
+	var previous string
+	for _, fields := range [][]string{{"description"}, {"locations"}, {"locations", "employment_type", "date_posted"}} {
+		body, err := json.Marshal(map[string]any{"preset": "generic", "feed_url": "https://example.com/jobs.rss", "scraper_type": "json-ld", "scraper_config": map[string]any{"enrich": fields}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		c["metadata"] = string(body)
+		p, err := InspectRichMonitor(profileBoardID, c)
+		selected, selectionErr := RSSMonitorEnrichment(c)
+		if err != nil || selectionErr != nil || len(selected) != len(fields) || p.EffectiveConfigSHA256 == previous {
+			t.Fatal("RSS delegation or source binding changed", err, selectionErr)
+		}
+		previous = p.EffectiveConfigSHA256
+		if _, err := inspectDetailOwnership(profileBoardID, c); err != nil {
+			t.Fatal("independent detail selection lost", err)
+		}
+	}
+	for _, fields := range [][]string{{"locations", "locations"}, {"language"}, {"metadata"}, {"extras"}, {"unknown"}} {
+		body, _ := json.Marshal(map[string]any{"scraper_type": "json-ld", "scraper_config": map[string]any{"enrich": fields}})
+		c["metadata"] = string(body)
+		if _, err := RSSMonitorEnrichment(c); err == nil {
+			t.Fatal("unqualified RSS selection admitted")
+		}
+	}
+}

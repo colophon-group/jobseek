@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-26T18:54:17.859683+00:00",
+  "scope": "Independent recovered production plus bounded candidate enrichment proof. No native activation or final migration completion claimed.",
+  "recovery_contract": {
+    "actual_large_provider_schedules": 10025,
+    "atomic_payload_budget_bytes": 67108864,
+    "actual_readonly_preflight_payload_bytes": 1337259,
+    "full_inventory_validation_before_effects": true,
+    "original_Lua_preflight_preserved": true,
+    "actual_PostgreSQL_Redis_forward_reverse_and_late_invalid_zero_effect_tests": "pass"
+  },
+  "candidate": {
+    "families": [
+      "api_sniffer",
+      "oracle_hcm",
+      "rss"
+    ],
+    "new_metadata_availability_preserves_original_nullable_SQL_writes": true,
+    "original_Python_preparation_cases": 18,
+    "new_original_metadata_preparation_cases": 4,
+    "selected_real_PostgreSQL_Redis_test_log_pass_entries": 92,
+    "selected_real_tests_failed": 0,
+    "selected_real_tests_skipped": 0,
+    "private_database_stopped": true,
+    "new_catalogue_rows": 234,
+    "new_catalogue_provider_families": 37,
+    "detached_monitor_SDK_eligible": 230,
+    "detached_detail_SDK_eligible": 232,
+    "remaining_new_compatibility_rows": 6,
+    "eligibility_is_not_serving_authority": true
+  },
+  "next_runtime_PR": 10908,
+  "retained_exact_unique_queued_ID_baseline": 3269016,
+  "preexisting_scheduled_unqueued_routes": 757,
+  "latest_Lightpanda": {
+    "stable_version": "1.0.2",
+    "release_URL": "https://github.com/lightpanda-io/browser/releases/tag/1.0.2",
+    "promotion": "blocked by four unchanged original visibility expectations on three tested architectures; draft10799 retained"
+  },
+  "full_migration_goal": "active; remaining coverage, actual source-bound ownership, operations, freshness/conservation, resources/cost, final reversal/window and production Python retirement remain required",
+  "recovered_1093_production": {
+    "version": "0.13.1093",
+    "source_revision": "f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d",
+    "recovery_PR": 10906,
+    "original_full_rollout": 40378238020,
+    "independent_readback_utc": "2026-10-26T18:48:12.699282+00:00",
+    "enabled_boards": 8134,
+    "running_core_services": 7,
+    "successful_HTTP_health_endpoints": 6,
+    "environment_matches_committed_release": true,
+    "native_receipts_absent": true,
+    "active_ordinary_plans": 0,
+    "epoch": 375,
+    "active_scheduled_postings_at_capture": 1953315
+  },
+  "current_production": {
+    "version": "0.13.1094",
+    "source_revision": "c0cb42cd3eb632f945abae4578988df987d57ce9",
+    "original_crawler_workflow": 40383855146,
+    "independent_readback_utc": "2026-10-26T19:30:10.152772+00:00",
+    "healthy_retained_services": 7,
+    "successful_HTTP_endpoints": 6,
+    "environment_matches_committed_release": true,
+    "native_owners": "cold"
+  },
+  "ATS_host_rollout": {
+    "workflow": 40383855295,
+    "result": "failed before replacing existing host helpers",
+    "reason": "candidate executable was on noexec /run",
+    "actual_mount_observation_utc": "2026-10-26T19:39:07.386414+00:00",
+    "candidate_fix": "Preflight in protected root-owned executable /usr/local/libexec; preserve /run noexec and candidate cleanup. Original rollout/native acceptance still required."
+  },
+  "actual_catalogue_and_route_qualification": {
+    "captured_source_revision": "f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d",
+    "Go_candidate_reference": "cd585da11b317eeed198b1a5690a73798676c086",
+    "actual_enabled_boards": 8134,
+    "provisional_monitors": 8088,
+    "provisional_details": 8099,
+    "actual_scheduled_routes_validated": 1957037,
+    "missing_board_caches": 0,
+    "canonical_cache_effective_binding_mismatches": 0,
+    "queued_posting_identity_mismatches": 0,
+    "pending_original_lane_normalizations": 10,
+    "postactivation_strict_lane_verification_required": true,
+    "new_unique_queue_ID_observation_nonatomic": 3298544,
+    "old_unique_IDs_not_observed_in_new_scan": 2402,
+    "exact_missing_ID_current_dispositions": {
+      "inactive": 1157,
+      "no_longer_scheduled": 686,
+      "currently_queued_or_inflight": 559
+    },
+    "captured_scheduled_unqueued": 17,
+    "current_active_scheduled_unqueued": 9,
+    "all_current_active_gaps_present_in_earlier757_gap_set": true,
+    "scope": "Actual SQL/config/cache/URL SDK evidence and exact current canonical dispositions. No ownership, public-content, final conservation or freshness grant."
+  }
+}

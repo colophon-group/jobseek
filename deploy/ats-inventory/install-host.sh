@@ -186,7 +186,10 @@ open_shared_crawler_lock() {
   echo "ERROR: crawler image lacks native ATS host tools" >&2
   exit 1
 }
-HOST_BINARY_CANDIDATE="$(mktemp /run/jobseek-ats-inventory-host.XXXXXX)"
+# /run remains noexec on the hardened host. Preflight from the protected
+# executable filesystem that owns the final host helper, before replacing it.
+install -d -o root -g root -m 0755 /usr/local/libexec
+HOST_BINARY_CANDIDATE="$(mktemp /usr/local/libexec/.jobseek-ats-inventory-host.XXXXXX)"
 docker run --rm --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --memory 96m --cpus 0.25 --pids-limit 32 \
   --entrypoint /bin/cat "$EXPECTED_CRAWLER_REF" /usr/local/bin/go-ats-inventory \
@@ -229,7 +232,6 @@ install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/registry-snapshots"
 rm -rf -- "$STATE_ROOT/acceptance-cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/acceptance-cache"
 install -d -o root -g deploy -m 0750 "$CONFIG_ROOT"
-install -d -o root -g root -m 0755 /usr/local/libexec
 install -o root -g root -m 0755 "$HOST_BINARY_CANDIDATE" \
   /usr/local/libexec/jobseek-ats-inventory-host
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/run.sh" \
@@ -244,7 +246,6 @@ install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-toke
   /usr/local/sbin/jobseek-ats-inventory-github-token
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.sh" \
   /usr/local/sbin/jobseek-ats-inventory-status
-install -d -o root -g root -m 0755 /usr/local/libexec
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network.sh" \
   /usr/local/sbin/jobseek-ats-inventory-network
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/network-probe.sh" \

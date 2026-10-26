@@ -46,7 +46,12 @@ func inspectOracleMonitor(boardID string, config map[string]string, md map[strin
 // scraper supplies its selected description, employment and workplace fields.
 // The detail consumer retains its existing owner until independently admitted.
 func oracleMonitorEnrichment(config map[string]string) ([]string, error) {
-	return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "employment_type": true, "job_location_type": true})
+	allowed := map[string]bool{"description": true, "locations": true, "employment_type": true, "job_location_type": true}
+	// Jobylon also uses this helper; retain its existing qualified field set.
+	if config["crawler_type"] == "oracle_hcm" {
+		allowed["title"], allowed["metadata"] = true, true
+	}
+	return monitorEnrichmentFields(config, allowed)
 }
 
 func monitorEnrichmentFields(config map[string]string, allowed map[string]bool) ([]string, error) {

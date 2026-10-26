@@ -13,13 +13,21 @@ import (
 )
 
 func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t *testing.T) {
+	realOwnedOracleEnrichmentCases(t, `["description","employment_type","job_location_type"]`)
+}
+
+func TestRealOwnedOracleDelegatesTitleAndMetadata(t *testing.T) {
+	realOwnedOracleEnrichmentCases(t, `["title","description","locations","employment_type","metadata"]`)
+}
+
+func realOwnedOracleEnrichmentCases(t *testing.T, selected string) {
 	for _, proxy := range []bool{false, true} {
 		t.Run(fmt.Sprintf("proxy=%v", proxy), func(t *testing.T) {
 			for _, mode := range []string{"complete", "complete_enrich", "complete_enrich_touch", "complete_enrich_relist", "complete_enrich_retained", "complete_enrich_tombstone", "later404", "later_reserved"} {
 				t.Run(mode, func(t *testing.T) {
 					metadata := `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{}}`
 					if strings.HasPrefix(mode, "complete_enrich") {
-						metadata = `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{"enrich":["description","employment_type","job_location_type"]}}`
+						metadata = `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{"enrich":` + selected + `}}`
 					}
 					if proxy {
 						metadata = oracleProxyFixtureMetadata(t, metadata, true)

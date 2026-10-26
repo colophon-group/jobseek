@@ -131,6 +131,15 @@ add("title_no_language_preserves_locales", {"description": None, "language": Non
 add("employment_intern_without_title", {"employment_type": "internship"}, ["employment_type"], rich)
 add("missing_description", {"description": None}, ["description"], rich)
 add("degenerate_description", {"description": "<script>removed</script>"}, ["description"], rich)
+add("metadata_only", {"metadata": {"team": "Research"}}, ["metadata"], rich)
+add("metadata_empty_object", {"metadata": {}}, ["metadata"], rich)
+add("metadata_missing", {"metadata": None}, ["metadata"], rich)
+add(
+    "description_and_metadata",
+    {"metadata": {"team": "Research"}},
+    ["description", "metadata"],
+    rich,
+)
 
 
 async def main():
