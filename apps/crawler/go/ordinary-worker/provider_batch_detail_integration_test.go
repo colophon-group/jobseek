@@ -256,3 +256,36 @@ func TestRealEightfoldEmploymentEnrichmentPreservesMonitorTitle(t *testing.T) {
 		t.Fatal("lease not settled")
 	}
 }
+
+func TestRealMokahrSelectedEnrichmentPreservesMonitorTitle(t *testing.T) {
+	c := providerBatchDetailReference(t, "mokahr", "complete")
+	md := enrichmentFixtureMetadata(t, "mokahr", []string{"description", "locations", "employment_type", "date_posted", "base_salary"})
+	f, a, claim := independentDetailOwnedFixture(t, md, c.URL)
+	ctx := context.Background()
+	if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET titles=ARRAY['Monitor title'],employment_type='part_time',location_ids=ARRAY[1] WHERE id=$1::uuid", f.original); err != nil {
+		t.Fatal(err)
+	}
+	detail, err := a.ReadWorkdayDetail(ctx, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := map[string]any{"title": "Detail title", "description": "<p>Complete role responsibilities.</p>", "employment_type": "FULL_TIME", "locations": []any{"Zurich"}, "date_posted": "2026-10-26", "base_salary": map[string]any{"min": 100000, "currency": "CHF"}}
+	receipt, err := PersistDetailContent(ctx, a, detail, richPipelinePreparer(t, f).Processor, values)
+	if err != nil || receipt == nil {
+		t.Fatal("selected enrichment failed", err)
+	}
+	if err := a.Settle(ctx, claim, receipt); err != nil {
+		t.Fatal(err)
+	}
+	var title, employment string
+	var locations []int32
+	if err := f.pg.QueryRow(ctx, "SELECT titles[1],employment_type,location_ids FROM job_posting WHERE id=$1::uuid", f.original).Scan(&title, &employment, &locations); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Monitor title" || employment != "full_time" || fmt.Sprint(locations) != "[2]" {
+		t.Fatal("selected field ownership lost", title, employment, locations)
+	}
+	if f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
+		t.Fatal("lease not settled")
+	}
+}

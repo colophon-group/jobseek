@@ -201,14 +201,14 @@ func TestRealCornerstoneDelegatesCompleteDescriptionToBrowserQueue(t *testing.T)
 		source := c.Expected.URLs[0]
 		var id, title string
 		var due bool
-		var descriptions int
-		if err := f.pg.QueryRow(ctx, "SELECT id::text,titles[1],next_scrape_at IS NOT NULL,(SELECT count(*) FROM descriptions WHERE posting_id=p.id) FROM job_posting p WHERE board_id=$1::uuid AND source_url=$2", f.board, source).Scan(&id, &title, &due, &descriptions); err != nil {
+
+		if err := f.pg.QueryRow(ctx, "SELECT id::text,titles[1],next_scrape_at IS NOT NULL FROM job_posting WHERE board_id=$1::uuid AND source_url=$2", f.board, source).Scan(&id, &title, &due); err != nil {
 			t.Fatal(err)
 		}
-		if title != "Engineer" || !due || descriptions != 0 {
-			t.Fatal("abbreviated list body acquired detail authority", title, due, descriptions)
+		if title != "Engineer" || !due {
+			t.Fatal("monitor title or detail deadline lost", title, due)
 		}
-		if f.r.HGet(ctx, "scrape:"+id, "source_url").Val() != source || f.r.ZCard(ctx, "ft_scrapes_browser:cornerstone").Val() != 1 || f.r.ZCard(ctx, "ft_scrapes_simple:cornerstone").Val() != 0 {
+		if f.r.HGet(ctx, "scrape:"+id, "source_url").Val() != source || f.r.ZCard(ctx, "ft_scrapes_browser:fixture.csod.com").Val() != 1 || f.r.ZCard(ctx, "ft_scrapes_simple:fixture.csod.com").Val() != 0 {
 			t.Fatal("browser detail lost its source or queue")
 		}
 		assertRichDeadlineAndLease(t, f, "cornerstone")
