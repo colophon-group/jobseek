@@ -66,6 +66,40 @@ Independent serving verification binds immutable image/binary/version, mTLS,
 original wait fixtures pass. Synthetic density/RAM gains retain a measured
 wall-time tradeoff; they do not establish whole-fleet freshness or hosting cost.
 
+**Next grouped release: 0.13.1103 — complete Deloitte HTTP pagination and
+Hexagon's publisher Onlyfy inventory/details.** Two verified Go HTTP traversals
+return **1,459 Deloitte URLs in 147 requests**, ending on an empty page. The
+unchanged Python HTTP parser reproduces the exact capture. Its old 100-page cap
+returns 1,000 URLs on that same capture; all are retained, with 459 beyond the cap.
+Detail extraction and proxy policy stay unchanged. Native runs take 303–362
+seconds within the existing 600-second worker deadline; a live source slowdown
+can still fail the bounded task and must not publish a prefix.
+
+Hexagon's official careers page now publishes an Onlyfy widget. The source-bound
+readback finds zero active or scheduled postings associated with the old route,
+so the new route preserves board/company identity without stranding old detail
+work. Two complete native reads produce **14 URLs and an empty next page**; the
+unchanged Python DOM reader reproduces the exact set. All 14 existing native
+Onlyfy HTTP detail reads produce titles and descriptions. Ten other raw content
+fields match the unchanged Python reader exactly. The 14 description differences
+are HTML attribute order only: DOM structure matches, and both Go and Python
+normalizers produce identical canonical description bytes and hashes.
+
+Real migrated PostgreSQL/private Redis/native-claim checks insert all 1,459 and
+14 postings, queue their details in the simple lane, account for prior absence
+and settle deadlines/leases with zero failures or publisher reservation. All 14
+Onlyfy details also pass actual canonical persistence, pending-description/hash
+and scheduling checks. The prospective **8,108 monitors / 8,125 details** retain
+the complete serving floor and all 8,138 enabled boards; activation remains
+pending. See the [grouped qualification record](evidence/go-native1103-grouped-http-onlyfy-candidate-2026-10-27.json).
+
+Njoyn's exploratory Go HTTP form reader completes one 62-page pass but later
+receives a cross-origin anti-bot redirect. It rejects that redirect and remains
+unqualified; its prototype is retained privately and is not part of this release.
+Other blocked or empty diagnostics likewise confer no ownership. Existing
+publisher failures and dormant work remain explicit so they can be assessed
+against shared parser and canonical-failure contracts without inventing success.
+
 **Delivery sequence from this active floor:**
 
 1. Port the remaining **29 ordinary monitors / 10 details** in groups. Qualify
@@ -82,8 +116,8 @@ wall-time tradeoff; they do not establish whole-fleet freshness or hosting cost.
    Chromium and runtime-only legacy assets. Preserve useful isolated offline
    Python tools and every enabled board.
 
-Deloitte's existing 100-page traversal exposes more jobs beyond its 999-URL cap;
-its sitemap probe remains incomplete and is not an admitted replacement. Keep
+The earlier Deloitte sitemap probe remains incomplete and is not an admitted
+replacement; the new candidate uses its complete HTTP traversal instead. Keep
 blocked or empty reads distinct from complete positive inventories. Sampled
 Circle K empty fields also reproduce in the unchanged Python reader and do not
 establish a Go regression or resolution of the entire cluster.
