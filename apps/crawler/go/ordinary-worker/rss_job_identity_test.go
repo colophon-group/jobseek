@@ -3,13 +3,85 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
+
+func TestRSSJobInviteIdentityPacesPublisherRequests(t *testing.T) {
+	var mu sync.Mutex
+	var last time.Time
+	var blocked bool
+	calls := 0
+	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls++
+		now := time.Now()
+		if !last.IsZero() && now.Sub(last) < 75*time.Millisecond {
+			blocked = true
+		}
+		last = now
+		if blocked {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.Header().Set("Location", "/job/Resolved/"+path.Base(r.URL.Path)+"-en_GB/")
+		w.WriteHeader(http.StatusFound)
+	})
+	p := queue.GreenhouseMonitorProfile{Provider: "rss", Endpoint: "https://example.com/googlefeed.xml", RSSResolveJobInviteIdentity: true}
+	input := RichDiscovery{}
+	for i := 1; i <= 4; i++ {
+		title := "Retained title"
+		input.Jobs = append(input.Jobs, RichMonitorJob{URL: fmt.Sprintf("https://example.com/job/Alias/%d/", i), Title: &title, Metadata: map[string]any{"id": fmt.Sprint(i), "company": "Retained company"}})
+	}
+	out, err := resolveRSSJobInviteIdentities(context.Background(), client.client, p, input)
+	mu.Lock()
+	finalBlocked, finalCalls := blocked, calls
+	mu.Unlock()
+	if err != nil || len(out.Jobs) != len(input.Jobs) || finalBlocked || finalCalls != len(input.Jobs) {
+		t.Fatal("paced identity lookup did not return the complete inventory", err, finalCalls)
+	}
+	for i, job := range out.Jobs {
+		id := fmt.Sprint(i + 1)
+		if job.URL != "https://example.com/job/Resolved/"+id+"-en_GB/" || job.Title == nil || *job.Title != "Retained title" || job.Metadata["feed_id"] != id || job.Metadata["job_invite_id"] != id || job.Metadata["company"] != "Retained company" {
+			t.Fatal("identity resolution changed retained content or identity")
+		}
+		if input.Jobs[i].URL != fmt.Sprintf("https://example.com/job/Alias/%d/", i+1) || len(input.Jobs[i].Metadata) != 2 {
+			t.Fatal("identity resolution mutated the caller inventory")
+		}
+	}
+}
+
+type rssIdentityTestTransport func(*http.Request) (*http.Response, error)
+
+func (f rssIdentityTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestRSSJobInviteIdentityPacingCancellationStopsBeforeRequest(t *testing.T) {
+	var calls atomic.Int32
+	p := rssIdentityPacedTransport{interval: rssIdentityRequestInterval, next: time.Now().Add(time.Hour), inner: rssIdentityTestTransport(func(*http.Request) (*http.Response, error) {
+		calls.Add(1)
+		return nil, errors.New("unexpected request")
+	})}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	request, err := http.NewRequestWithContext(ctx, http.MethodHead, "https://example.com/job/Alias/7/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = p.RoundTrip(request); !errors.Is(err, context.DeadlineExceeded) || calls.Load() != 0 {
+		t.Fatal("cancelled pacing reached the publisher", err)
+	}
+}
 
 func TestRSSJobInviteIdentityMatchesOriginalPython(t *testing.T) {
 	raw, err := os.ReadFile("testdata/python_sf_job_identity.json")
