@@ -1,0 +1,91 @@
+{
+  "schema": "jobseek.native-ordinary.queue-conservation/v1",
+  "observed_at_utc": "2026-10-27T07:49:34.151036+00:00",
+  "source_revision": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+  "epoch": 378,
+  "status": "all-observed-set-differences-accounted",
+  "comparisons": [
+    {
+      "baseline": "incoming",
+      "before_unique": 3385315,
+      "after_unique": 3385854,
+      "retained_unique": 3385158,
+      "before_only": 157,
+      "after_only": 696,
+      "before_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "before_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "after_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "after_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "scope": "Exact observed UUID set differences only; every difference still requires canonical SQL/cache or separate source-bound B0 disposition. Non-atomic dated queue observations."
+    },
+    {
+      "baseline": "outgoing",
+      "before_unique": 3379504,
+      "after_unique": 3385854,
+      "retained_unique": 3379270,
+      "before_only": 234,
+      "after_only": 6584,
+      "before_source": "1051a83bd70d3b236320202a008dfd7257fb9f5f",
+      "before_data": "5349aba18c05129196be13b3f74a74df8b63f847",
+      "after_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "after_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+      "scope": "Exact observed UUID set differences only; every difference still requires canonical SQL/cache or separate source-bound B0 disposition. Non-atomic dated queue observations."
+    }
+  ],
+  "exact_current_dispositions": {
+    "incoming_before_only": {
+      "inactive": 89,
+      "no_longer_scheduled": 9,
+      "currently_queued_or_inflight": 34,
+      "validated_current_b0_ready": 25
+    },
+    "incoming_after_only": {
+      "currently_queued_or_inflight": 696
+    },
+    "outgoing_before_only": {
+      "inactive": 146,
+      "no_longer_scheduled": 87,
+      "currently_queued_or_inflight": 1
+    },
+    "outgoing_after_only": {
+      "currently_queued_or_inflight": 6584
+    },
+    "incoming_scheduled_gaps": {
+      "currently_queued_or_inflight": 14,
+      "inactive": 4
+    },
+    "incoming_lane_changes": {
+      "currently_queued_or_inflight": 12
+    }
+  },
+  "b0_original_decoder_verification": {
+    "engine_owner": "go",
+    "epoch": 378,
+    "matched_before_only_ids": 25,
+    "scope": "Exact25 active scheduled canonical IDs absent from ordinary queues are preserved in the original current B0 namespace; original full-record and canonical-task decoders, actual parser assignment and exactly one matching actual index pass. Redis replay fixture is local Unix-only; no production mutation.",
+    "states": {
+      "browser-use-careers/ready": 5,
+      "bunq-careers/ready": 20
+    },
+    "verified_original_full_record_envelope_payload_hash_parser_assignment_and_index": true
+  },
+  "postactivation_strict": {
+    "scheduled_routes": 2021782,
+    "queue_gaps": 0,
+    "cache_mismatches": 0,
+    "wrong_or_dual_lanes": 0,
+    "native_monitors": 8101,
+    "native_details": 8124
+  },
+  "production_mutations": 0,
+  "scope": "Dated non-atomic complete observations reconciled by exact canonical identities and current source-bound B0 records; does not claim an atomic fleet snapshot or sustained freshness/cost.",
+  "enabled_boards": 8137,
+  "runtime_version": "0.13.1100",
+  "data_revision": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+  "workflow_run": 40458111640,
+  "goal_status": "active-incomplete",
+  "remaining_ordinary_assignments": {
+    "monitors": 33,
+    "details": 10
+  }
+}

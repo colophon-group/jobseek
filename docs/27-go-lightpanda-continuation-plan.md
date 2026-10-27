@@ -7,166 +7,72 @@ canonical content and publisher policy, and retain useful isolated offline Pytho
 Retire production Python, Playwright and Chromium after replacement coverage,
 freshness and supported recovery are demonstrated.
 
-**Next combined candidate: 0.13.1100, not deployed.**
-[PR #10925](https://github.com/colophon-group/jobseek/pull/10925) merged the
-fragment/repeat, RSS and composed API batch as
-`035036b2d18a486e940bc760e29b8edbad232dd5`. It qualifies six additional
-monitors and six details, including 3,118 original-parser listing URLs and
-12 positive detail documents across six sources. Its
-[evidence](evidence/go-native1099-browser-rss-api-candidate-2026-10-27.json)
-remains part of the combined handoff.
+**Runtime 0.13.1100 is deployed and native ownership is active at epoch 378.**
+The original [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40458111640)
+selected runtime and data source `17dea21eefdb55d10cde02dc4023d0a605a24634`.
+All **8,137 boards** remain enabled. Native ordinary authority covers
+**8,101 monitors / 8,124 details**, preserving every prior 8,094 / 8,115 assignment;
+three additional B0 boards retain their separate source-bound ownership.
 
-The next batch ports the original counted facet traversal to the existing Go
-HTTP monitor and writer. Safran's complete **4,496 URLs** match the original
-parser across its 520 captured requests; a separate live Go traversal also
-returns all 4,496. Overlapping cover paths, leaf/parent/root counts, inherited
-queries, stateless cookies, four-request concurrency and four complete snapshot
-attempts preserve the original contract. PostgreSQL/Redis verification covers
-successful publication, changed counts, blocked tails, late publisher reservation
-and lease settlement. The batch also selects direct Lightpanda for Tesla's
-existing API detail reader, preserving fields, wait, settle and selected
-**description-only enrichment**. One positive native capture matches all ten
-prepared fields from the original parser. Subsequent native and original-browser
-probes were blocked or empty; this is field/ownership qualification, with
-upstream availability still open.
+The batch delivers fragment/repeat, RSS and composed API contracts
+([#10925](https://github.com/colophon-group/jobseek/pull/10925)),
+Safran's complete counted facet traversal and Tesla selected description reader
+([#10928](https://github.com/colophon-group/jobseek/pull/10928)),
+and Biorce's public API detail route
+([#10931](https://github.com/colophon-group/jobseek/pull/10931)).
+The Air Apps catalogue row is now published and its qualified detail assignment
+is included. Its selected salary-enrichment monitor remains with the legacy
+owner pending the next implementation batch.
 
-Biorce adds a direct public v2 API detail route using the existing Go HTTP
-profile. Three actual native documents match all ten prepared fields from the
-unchanged original API capture parser. Explicit description-only enrichment
-preserves monitor title, locations and employment type; actual migrated
-PostgreSQL/Redis checks cover writes, failures, reservation and lease settlement.
-Its browser monitor remains unchanged. See the
-[Biorce evidence](evidence/go-biorce-http-detail-candidate-2026-10-27.json).
+Independent serving readback binds exact source/data/images, active B0 and
+ordinary receipts, SQL authority, the complete Redis projection, all ten actors,
+eight successful HTTP health endpoints and the original restart policies.
+Complete strict replay covers **2,021,782 scheduled routes**, with **zero queue
+gaps, cache mismatches or wrong/dual lanes**.
 
-The combined candidate retains all **8,094 monitors / 8,115 details** and now
-qualifies **8,101 / 8,123** against prospective metadata. The pending Air Apps
-catalogue row is additional and awaits actual publication/identity capture.
-The [current evidence](evidence/go-native1100-partitions-api-candidate-2026-10-27.json)
-records the proof scope. Oracle ADF, framed repeat and remaining proxy-dependent
-recipes remain unqualified; their diagnostic prototypes do not grant ownership.
+Exact complete queue set differences are reconciled against current canonical
+state. Incoming before-only 157 = 89 inactive + 9 no longer scheduled + 34 queued
+or in flight + 25 independently verified B0 ready tasks. Outgoing before-only
+234 = 146 inactive + 87 no longer scheduled + 1 queued or in flight. All 696
+incoming and 6,584 outgoing after-only identities are currently queued or in
+flight. The B0 proof uses the original full-record and canonical task decoders,
+actual SQL parser assignments and exactly one matching current queue index.
+These are dated non-atomic observations, not an atomic fleet snapshot. See the
+[serving and conservation record](evidence/go-native1100-serving-2026-10-27.json).
 
-Use **one** original supported retirement, full rollout, exact-main catalogue
-publication and complete-floor reactivation for the stacked changes. Refresh
-actual SQL/cache/source-URL and all scheduled-route proof before activation,
-then verify exact queue conservation, natural execution, freshness and cost.
-Serving ownership below remains unchanged until that handoff succeeds.
-
-Production runtime **0.13.1098**, source
-`1051a83bd70d3b236320202a008dfd7257fb9f5f`, is deployed through
-[PR #10918](https://github.com/colophon-group/jobseek/pull/10918) and
-[the original full rollout](https://github.com/colophon-group/jobseek/actions/runs/40413547691),
-including promotion. Data revision
-`5349aba18c05129196be13b3f74a74df8b63f847` is independently verified after
-[PR #10920](https://github.com/colophon-group/jobseek/pull/10920) and
-[the original CSV publisher](https://github.com/colophon-group/jobseek/actions/runs/40417932421).
-The enabled catalogue contains **8,136 boards**, including both Vinfen rows.
-Main subsequently advanced to `714bfdf950184f1645ee6aa15dd013d9f099778a` with
-Air Apps catalogue/image changes. Its original CSV workflow **40427501269**
-stopped at the supported guard: retire native ordinary ownership before
-publishing data. The accepted runtime and published data above remain selected.
-Include this pending catalogue in the next combined batch, using original ordinary
-retirement, B0 rollback, exact-main CSV publication and full-cohort reactivation.
-
-
-The serving official Lightpanda snapshot,
-[**1.1.0-nightly.11106+659958a24**](https://github.com/lightpanda-io/browser/releases/tag/nightly), is deployed and independently accepted through
-[PR #10799](https://github.com/colophon-group/jobseek/pull/10799) and
-[the original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40416530488).
-The serving renderer source is `e20eb57e998a0d0e556cdc13fcf910648fc48e98`;
-the upstream executable source is `659958a24c0ddb40a577bd528fcb4c6e1c504419`.
-Independent readback verifies the immutable image, official arm64 binary hash,
+The latest available official Lightpanda snapshot,
+[**1.1.0-nightly.11169+6c44d0871**](https://github.com/lightpanda-io/browser/releases/tag/nightly),
+is deployed through [PR #10929](https://github.com/colophon-group/jobseek/pull/10929)
+and [the original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40455154533).
+The serving renderer source is `9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d`;
+the upstream executable source is `6c44d0871aa4d42cf1b88b8c7dde873cafd2755e`.
+Independent readback verifies the immutable image, official ARM64 binary hash,
 engine version, mTLS readiness, **1 GiB memory limit and zero swap**.
-A subsequent official release check found newer **1.1.0-nightly.11169+6c44d0871**
-assets published at 02:50–02:55 UTC on October 27. The
-[new candidate qualification](evidence/lightpanda-nightly-20261027-source-qualification.json)
-binds all official executable hashes and both Linux OCI contents, passes all
-21 unchanged wait fixtures and matches 581 listing URLs plus all ten prepared
-fields on four positive details across nine sources. Both unchanged Linux
-physical suites and original renderer deployment/independent acceptance remain
-required before selecting that snapshot. The serving renderer above remains
-selected until that succeeds. Stable **1.0.2** retains four original visibility failures; the newer
-snapshot passes all **21 unchanged original wait fixtures** and both physical
-Linux architecture suites. Keep the original expectations.
+Both unchanged physical Linux architecture suites and all 21 original wait
+fixtures pass. Five monitors match 581 original-parser URLs, and four positive
+details match all ten prepared fields. Stable 1.0.2's four original visibility
+failures remain historical evidence. See the
+[qualification](evidence/lightpanda-nightly-20261027-source-qualification.json)
+and [serving record](evidence/lightpanda-nightly11169-serving-2026-10-27.json).
 
-The batch also delivers Miniso ItemList discovery, selected embedded/Next data
-fields and Ericsson locale navigation, the R.R. Donnelley detail binding, eight
-retained DOM variants, absent-body API pagination and the rendered MyJobShop
-annotation. Positive public fields, original Python wire/parser oracles and real
-PostgreSQL/Redis writer, queue and publisher-policy contracts pass. The five
-native ATS host helpers are installed and accepted, with a successful report-only
-run, cleared acceptance pin and enabled timer. Useful Python references remain
-offline.
+**Next substantial batch: 0.13.1101.** Finish Ashby selected salary-enrichment
+scheduling and Oracle ADF's fresh-session HTTP/PPR identity bridge together with
+remaining compatible provider contracts. Ashby new, touched and relisted jobs
+pass migrated PostgreSQL/Redis tests. ADF's HTTP protocol matches all 52 original
+browser URLs; its Go implementation still needs complete replay, live and writer
+qualification before admission. Preserve original configuration and queue
+ownership until the complete candidate floor passes actual SQL/cache/URL checks.
 
-**Native handoff delivered:** original B0 activation succeeded at epoch **376**,
-and original ordinary activation completed at **00:09:46 UTC on October 27**.
-Independent readback verifies exact source/data/images, active B0 and ordinary
-receipts, SQL authority, the complete Redis projection for **8,094 monitors /
-8,115 details**, all ten actors, eight successful HTTP health endpoints and the
-original restart policies. The complete immutable staged plan had already passed
-all configuration, worker, domain, company, hash and preserved-membership checks;
-legacy Workday details use the existing shared monitor binding.
-The original commands owned writer quiescence, natural lease expiry, projection
-repair, Redis SAVE and full restart. Complete postactivation replay passes for **2,014,364 scheduled routes** across
-47 detail profiles, with **zero captured gaps, cache mismatches or wrong/dual
-lanes**. A fresh independent health/authority readback also passes. Sustained
-natural execution, freshness and whole-lane resource evidence remain open.
+The remaining ordinary frontier is **33 monitor / 10 detail assignments**.
+Continue substantial contract batches, then use the original supported retirement,
+full rollout and complete-floor reactivation. Finish sustained natural execution,
+freshness, whole-lane resource and attributable cost evidence, supported cold
+reversal and final production Python/browser retirement. Synthetic benchmark
+results do not establish live fleet freshness or hosting cost.
 
-The qualification includes **2,013,754** actual scheduled routes for the prior
-8,094/8,114 proposal, plus all **776** scheduled Mandarin Oriental detail URLs.
-Three current Mandarin documents return HTTP200 with the latest nightly, and
-all ten Go fields match the original Chromium scraper. No Mandarin configuration
-change or new profile implementation is needed. Together with the three
-JSON-LD configuration replacements, this adds four qualified detail sources.
-Every actual canonical/cache binding, source URL, fallback step and interval
-passes the installed SDK. The full staged payload, routing projection and all
-prior memberships are validated; legacy Workday detail contexts use the
-existing shared monitor binding.
-
-The complete queue observations contain **3,377,187 before / 3,377,797 after
-unique IDs**. Every exact difference is accounted for. Of **645 before-only
-IDs**, 93 are inactive, 527 are no longer scheduled and **25 remain ready in the
-separate B0 queue**: 20 bunq and five Browser Use tasks. The original offline
-decoder validates every B0 record, payload hash, parser assignment and SQL
-identity; exactly one matching queue index agrees. All **1,255 after-only IDs**
-exist in canonical SQL and are currently queued or inflight.
-
-All **83 preactivation wholly absent scheduled caches** and **23 legacy lane
-discrepancies** are now queued or inflight. The seven surviving historical gaps
-are also queued; two older records are inactive. The original cold normalizer
-performed these repairs. No manual SQL, Redis, receipt or service edits were
-used. These are dated non-atomic observations; sustained conservation and
-freshness remain open. See [the serving evidence](evidence/go-native1098-latest-nightly-current-handoff-2026-10-27.json).
-
-The latest ARM64 synthetic benchmark admits eight matched pairs: **6.34–12.49×
-density**, **12.6–29.2% peak RSS**, **43.6–66.6% lifetime CPU** and **52.1–64.8%
-p99 latency** relative to Chromium. Its measured checkout is
-`763041f65981bdff2353709055df88dd7ad4f62b`, whose Git tree equals merged renderer
-`e20eb57e998a0d0e556cdc13fcf910648fc48e98`. Preserve that measured source identity.
-This does not establish live whole-fleet freshness, resources or hosting cost.
-
-Continue in this order:
-
-1. Preserve the accepted source/data/images, receipts, SQL authority and whole
-   Redis membership at epoch376. Use only supported lifecycle and recovery paths.
-2. Preserve the completed full-route, strict-lane and exact-ID evidence. Continue
-   natural execution/freshness measurement and diagnose transient claim
-   deadlines/unacknowledged operations after the full-corpus reader is idle.
-3. Demonstrate natural execution, canonical fields and sustained freshness;
-   measure comparable whole-lane resources and attributable cost. Save portable
-   evidence distinguishing accepted serving authority from sustained conservation
-   and freshness.
-4. Finish the remaining **39 monitor / 18 detail assignments**, excluding the
-   three separately tracked B0 boards, in substantial shared batches. The current
-   split is 22 unsupported / 17 eligible-but-unqualified monitors and 14 unsupported /
-   four eligible-but-unqualified details. Empty, challenged and blocked responses
-   confer no absence authority. Preserve the complete cohort across each combined
-   runtime rollout and supported cold handoff.
-5. Exercise the supported cold reversal and retain its recovery window. Retire
-   the remaining production Python execution and legacy runtime assets only after
-   their replacements own all enabled configurations and operational consumers.
-
-Earlier dated sections below retain historical candidate and recovery context;
-the current checkpoint above governs continuation.
+The dated sections below retain earlier implementation and recovery evidence.
+Their serving counts and candidate status are historical; this section and its
+linked serving record describe the current accepted authority.
 
 ## Rendered continuation candidate — October 26, 2026
 
