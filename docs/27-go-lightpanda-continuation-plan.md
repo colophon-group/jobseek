@@ -16,8 +16,11 @@ selected runtime/data source `69cc72ce101ef72a7243584b0a6a7c2536f5d1b2`.
 Original supported B0 and ordinary activation completed. Independent acceptance
 verifies the exact active SQL plan, both protected receipts, complete Redis
 projection, immutable images, all restored actors and eight health endpoints.
-The whole post-activation scheduled-route capture and strict lane/conservation
-proof remain in progress at this checkpoint. All **8,138 enabled boards** remain
+The complete post-activation proof validates **2,024,525 scheduled routes** with
+zero cache mismatches or wrong worker lanes. All 498 removed queue identities
+are accounted for: 401 inactive/disabled, 70 unscheduled, two currently queued
+and 25 exact native B0 guards, accepted by the original read-only namespace
+audit. The ten additional serial-capture gaps are canonically inactive/disabled. All **8,138 enabled boards** remain
 configured, with **8,111 monitors / 8,125 details** under ordinary Go ownership.
 
 Actual published eligibility passes for **8,111 monitors / 8,125 details** and
@@ -25,7 +28,7 @@ Actual published eligibility passes for **8,111 monitors / 8,125 details** and
 scheduled routes**, with zero cache mismatches. The four serial-snapshot gaps are
 now canonically unscheduled; the earlier nine active gaps are correctly queued
 following the original full rollout reseed. Nine lane normalizations were pending before
-the supported handoff; strict post-activation verification remains required.
+the supported handoff; the complete strict post-activation check now passes.
 
 **Runtime 0.13.1104 corrects API transport selection before activation.**
 An exact production-client probe finds McDonald's Italy returning HTTP 403 through
@@ -138,6 +141,18 @@ JSON-LD contract; there are no current detail routes and **no positive live deta
 claim**. Four real native PostgreSQL/Redis race cases verify the authoritative
 empty result, contradictory/missing empty proof, publisher reservation, canonical
 preservation and exact deadline/lease settlement.
+
+The batch also corrects recurring detail discovery across the existing types.
+Production has no first-time due domains, while 1,694 simple and 106 browser
+recurring detail domains are due. A real PostgreSQL/Redis regression reproduces
+four missed claims when due details sit outside the rotating eight-board window,
+on both lanes and behind foreign recurring work. The selector now reads the
+existing recurring ready queue as well as the first-time queue. All original
+profile/config/source, priority, throttle and lease checks remain; the bounded
+canonical fallback continues. All six regression cases and 113 top-level queue
+contract tests pass under the race detector with zero skips, including foreign
+work, global first-time priority, canonical writes and cold retirement. Production
+freshness and throughput improvement still require observation after rollout.
 
 The combined prospective **8,112 monitors / 8,128 details** retain every current
 serving membership and both Taiwan component assignments. The full source SDK
