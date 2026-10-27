@@ -82,6 +82,12 @@ def test_postmerge_detail_sources_use_bounded_proxy_recovery() -> None:
     assert exeter["proxy"] is True
     assert exeter["transport_attempts"] == 5
 
+
+def test_biorce_detail_uses_public_http_with_selected_description_enrichment() -> None:
+    # The browser monitor remains configured independently. The qualified v2
+    # detail endpoint replaces the earlier blocked browser/proxy recipe.
+    row = _board("biorce-main")
+    assert row["scraper_type"] == "api_sniffer"
     biorce = json.loads(_board("biorce-main")["scraper_config"])
     assert biorce == {
         "fields": {
@@ -89,11 +95,9 @@ def test_postmerge_detail_sources_use_bounded_proxy_recovery() -> None:
             "description": "description",
             "locations": "locations[].name",
         },
-        "proxy": True,
-        "transport_attempts": 5,
-        "channel": "chrome",
-        "headless": False,
-        "stealth": True,
+        "api_url": "https://revolutpeople.com/api/biorce/external/v2/postings/{id}",
+        "url_pattern": r"(?P<id>[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})/?(?:[?#]|$)",
+        "enrich": ["description"],
     }
 
 
