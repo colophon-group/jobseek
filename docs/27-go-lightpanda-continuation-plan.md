@@ -8,18 +8,24 @@ latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operato
 decision. Do not add a Chromium or Playwright fallback. Ship several compatible
 contracts per batch; retain useful isolated offline Python tooling.
 
-**Production runtime 0.13.1103 is deployed; Go ownership is intentionally off.**
-[PR #10940](https://github.com/colophon-group/jobseek/pull/10940) passed Required CI
-and Crawler Deploy Gate at `8d5e9977ceb21b6aadc3ed8447981d74fe5036aa`.
-The [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40541887627)
-selected runtime/data source `509e0f883edf184b319349725c504db2a31d7568`.
-Independent readback verifies its immutable images, original restored legacy
-stack, absent ordinary/B0 receipts, cleared selectors and cold epoch **383**.
-All **8,138 enabled boards** remain configured. The prospective floor is **8,111
-ordinary monitors / 8,125 details**, with three separate B0 boards; it has not
-been activated on this release.
+**Production runtime 0.13.1104 has completed its full rollout and promotion.**
+[PR #10941](https://github.com/colophon-group/jobseek/pull/10941) passed Required CI
+and Crawler Deploy Gate at `88b4c8b78c0a9c019c2c205b8e6ac009f1cf1acd`.
+The [original full workflow](https://github.com/colophon-group/jobseek/actions/runs/40561984279)
+selected runtime/data source `69cc72ce101ef72a7243584b0a6a7c2536f5d1b2`.
+Independent host acceptance verifies its immutable images, original restored stack
+and initially cold epoch **383**, with ordinary/B0 receipts absent. Supported
+incoming handoff is in progress at this checkpoint; no new ownership is claimed
+by this document. All **8,138 enabled boards** remain configured.
 
-**Next runtime 0.13.1104 corrects API transport selection before activation.**
+Actual published eligibility passes for **8,111 monitors / 8,125 details** and
+3,257 retained detail references. Full incoming Go validation checks **2,025,031
+scheduled routes**, with zero cache mismatches. The four serial-snapshot gaps are
+now canonically unscheduled; the earlier nine active gaps are correctly queued
+following the original full rollout reseed. Nine lane normalizations remain for
+the supported handoff and require strict post-activation verification.
+
+**Runtime 0.13.1104 corrects API transport selection before activation.**
 An exact production-client probe finds McDonald's Italy returning HTTP 403 through
 the worker's HTTP/1 client, while its existing pinned-CA HTTP/2 client returns a
 complete **164-job** inventory. Earlier qualification used an HTTP/2-capable
@@ -100,6 +106,32 @@ three monitors passes the SDK at **8,111 monitors / 8,125 details**, with all
 The queue registry assertion now expects six Onlyfy boards after Hexagon's
 migration; every existing per-board binding and foreign-source rejection remains
 checked. Activation and final full-migration proof remain pending.
+
+**Next grouped candidate: 0.13.1105 — two Taiwan API detail assignments.**
+Both Bureau Veritas Taiwan boards retain their company, board and publisher job
+URLs. Direct HTML samples return 403, while two complete verified Go API reads
+cover all **24 existing active URLs**. The publisher declares **23 open jobs**
+with complete title, role/requirements/benefits and location data, plus **one off
+job** with no detail body. The reader requires the exact publisher company URL,
+`switch=on` and a job description. It does not publish the off job's header.
+
+The unchanged Python HTTP API reader reproduces all 23 positive field sets and
+canonical descriptions on the frozen Go captures. Real migrated PostgreSQL/Redis
+native claims write all 23 exact normalized descriptions and pending hashes;
+closed, foreign-company, empty-description and publisher-reserved responses
+preserve existing content, activity, absence accounting and exact settlement.
+Only description is enriched: existing Go monitor title/location authority and
+other canonical fields remain intact. The existing monitor delegation path is
+extended and validated for this API assignment; direct/proxy new/touched/relisted
+regressions preserve full scraped descriptions, hashes and locales on refresh.
+
+The prospective **8,111 monitors / 8,127 details** retain the complete 0.13.1104
+qualified floor and pass all 3,281 captured detail references. The browser census
+becomes 333 records / 519 boards. This candidate is isolated and unactivated;
+complete the 0.13.1104 handoff before merging its next source. See the
+[Taiwan API qualification record](evidence/go-native1105-taiwan-api-details-candidate-2026-10-27.json).
+Its eventual activation leaves **24 ordinary monitors / 8 details**, plus final
+whole-lane freshness/resource/cost/reversal and production Python retirement.
 
 Njoyn's exploratory Go HTTP form reader completes one 62-page pass but later
 receives a cross-origin anti-bot redirect. It rejects that redirect and remains

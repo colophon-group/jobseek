@@ -31,10 +31,21 @@ func inspectSmallProviderMonitor(boardID string, config map[string]string, md ma
 	if config["monitor_needs_browser"] != "0" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if _, err := monitorEnrichmentFields(config, map[string]bool{}); err != nil {
+	fields, err := smallProviderMonitorEnrichment(config)
+	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	if err := feedRichDetailAssignment(config); err != nil {
+	var scraper string
+	if config["crawler_type"] == "jobbank104" && json.Unmarshal(md["scraper_type"], &scraper) == nil && scraper == "api_sniffer" {
+		// The independently scheduled API reader must retain an explicit,
+		// supported field mask and its complete HTTP request validation.
+		if len(fields) == 0 {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if _, err := inspectHTTPAPIDetail(boardID, config, config["board_url"], Simple, true); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+	} else if err := feedRichDetailAssignment(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
 	o, err := api.SmallProviderOptionsFromMetadata(config["crawler_type"], config["board_url"], config["metadata"])
@@ -60,4 +71,23 @@ func smallProviderMonitorGone(config map[string]string, resource string, status 
 	}
 	u.RawQuery = ""
 	return u.String() == o.ListingURL()
+}
+
+// Jobbank104 listing fields remain authoritative while its explicit API detail
+// assignment supplements the full description. Other providers retain their
+// existing assignment validation.
+func smallProviderMonitorEnrichment(config map[string]string) ([]string, error) {
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return nil, err
+	}
+	var scraper string
+	if json.Unmarshal(md["scraper_type"], &scraper) != nil {
+		return nil, ErrUnsupportedProfile
+	}
+	allowed := map[string]bool{}
+	if config["crawler_type"] == "jobbank104" && scraper == "api_sniffer" {
+		allowed["description"] = true
+	}
+	return monitorEnrichmentFields(config, allowed)
 }

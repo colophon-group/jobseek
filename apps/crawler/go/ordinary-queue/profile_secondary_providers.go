@@ -59,7 +59,7 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 		return finalHTTPMonitorEnrichment(config)
 	}
 	if SmallProvider(config["crawler_type"]) {
-		return monitorEnrichmentFields(config, map[string]bool{})
+		return smallProviderMonitorEnrichment(config)
 	}
 	if config["crawler_type"] == "linkedin" {
 		// Existing LinkedIn configs delegate description and employment fields
