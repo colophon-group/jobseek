@@ -97,5 +97,8 @@
     "apps/crawler/go/ordinary-queue/profile_jobbank104_api_delegation_test.go": "4d757a3135d8c502d8adf58aeb71889f9960ff21340f5568f2ee2387377797d0",
     "apps/crawler/go/ordinary-worker/jobbank104_api_delegation_integration_test.go": "388562bb42ceebeaa6613080bee14ab3662f043adcbfc276d86326e788f8de5e"
   },
-  "registry_sha256": "e811eeaf217a85fe6ce327a09aaa7181beaf0951d3b7c10280010851e17b9120"
+  "registry_sha256": "e811eeaf217a85fe6ce327a09aaa7181beaf0951d3b7c10280010851e17b9120",
+  "qualification_component_only": true,
+  "combined_batch_record": "go-native1105-grouped-http-api-candidate-2026-10-27.json",
+  "component_floor_precedes_Metalysis": true
 }

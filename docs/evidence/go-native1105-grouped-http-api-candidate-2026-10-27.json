@@ -1,0 +1,90 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "observed_at_utc": "2026-10-27T20:27:34.050790+00:00",
+  "candidate_version": "0.13.1105",
+  "base_runtime_source": "69cc72ce101ef72a7243584b0a6a7c2536f5d1b2",
+  "status": "qualified grouped candidate; exact-head required CI, full rollout and supported activation still required",
+  "components": {
+    "Taiwan": "go-native1105-taiwan-api-details-candidate-2026-10-27.json",
+    "Metalysis": {
+      "monitor": "Existing same-origin paginated HTTP API HTML inventory; unchanged Python provider detection and API-reader replay match native complete empty source.",
+      "detail": "Existing static HTTP JSON-LD contract; no current active or scheduled detail route; no new positive detail claim.",
+      "current_publisher": {
+        "found_jobs": false,
+        "max_num_pages": 0,
+        "verified_HTTP1_and_HTTP2": true,
+        "native_complete_requests": 1,
+        "jobs": 0
+      },
+      "current_canonical": {
+        "enabled": true,
+        "active_postings": 0,
+        "scheduled_postings": 0,
+        "live_posting_leases": 0
+      },
+      "preserved": [
+        "company and board identity",
+        "publisher job URL identity",
+        "rescrape_policy=never"
+      ],
+      "canonical_race_cases": [
+        "authoritative dormant empty",
+        "contradictory advertised page count preserves content",
+        "missing empty proof preserves content",
+        "publisher reservation preserves content and policy"
+      ],
+      "canonical_race_passed": true
+    }
+  },
+  "new_assignments": {
+    "monitors": 1,
+    "details": 3
+  },
+  "complete_prospective_floor": {
+    "candidate_board_CSV_sha256": "af1dcb0a35fc0f04a8e00ce2a6fffbb4949a88b5b334f7539ddcb98b2a26a35a",
+    "candidate_worktree_base": "ff2f9ac45436c38c64829edb60b840b851839f92",
+    "captured_reference_URLs": 3281,
+    "captured_source": "69cc72ce101ef72a7243584b0a6a7c2536f5d1b2",
+    "completed_at_utc": "2026-10-27T20:24:02Z",
+    "details": 8128,
+    "enabled_boards": 8138,
+    "monitors": 8112,
+    "new_detail_has_no_current_routes": true,
+    "new_live_positive_detail_claim": false,
+    "new_monitor_complete_publisher_empty": true,
+    "production_ownership_granted": false,
+    "retained_candidate_details": 8127,
+    "retained_candidate_monitors": 8111,
+    "retained_serving_details": 8125,
+    "retained_serving_monitors": 8111,
+    "source_and_URL_validation_passed": true
+  },
+  "census": {
+    "records": 331,
+    "browser_boards": 518
+  },
+  "focused_validation": {
+    "CSV": true,
+    "Metalysis_provider_contract": true,
+    "Taiwan_and_census_tests": 63,
+    "ruff": true
+  },
+  "remaining_after_eventual_activation": {
+    "ordinary_monitors": 23,
+    "ordinary_details": 7,
+    "separate_B0_boards": 3,
+    "full_migration_complete": false
+  },
+  "ownership_granted": false,
+  "evidence_sha256": {
+    "verified-HTTP1.private.json": "d95ff20fc3006fbb79bdb22a77c320897a3447db3acaf573f12c9f39532af1d5",
+    "verified-WP-HTTP2.private.json": "c2abe06459872a9a54a991d5d256ede5cd2dc65f926afb99a085be95c8e24900",
+    "metalysis-native-API1.private.json": "05759633c7eefa3b7a3036b4309f2ad0c0521700485b5f266e062cffc69bc280",
+    "metalysis-original-reader-parity1.json": "4388640931ca39d5737a823a0fae90351fc0290ef95f6d1402c250effb41f167",
+    "metalysis-WP-original-probe1.json": "eb86345b18f2313350149ed672a5fedd1d37089c1b054b679839103cb43b41fb",
+    "metalysis-current-source1.private.json": "b164d41e50f490a5e53259a2998341ac9170a5cc4d8cad76e98fe0c40cf83d1b",
+    "metalysis-canonical-effects2.json": "afa15b584c299687c9c500bd711c0d3982c8bded14644b0eb75f5ce2e68072f8",
+    "prospective-floor-sdk1.json": "e9a13d007f7d98f9a23455a33d641d5d430f4c9a8e2624206b90112f4bd1d89c"
+  },
+  "registry_sha256": "af1dcb0a35fc0f04a8e00ce2a6fffbb4949a88b5b334f7539ddcb98b2a26a35a"
+}
