@@ -61,6 +61,14 @@ unchanged. Real migrated PostgreSQL/Redis publication inserts all 1,122 jobs,
 queues all 1,122 browser details, accounts for prior absence and settles the
 deadline/lease with zero failures or reservation.
 
+Concurrent company setup on `main` adds Citizens Financial Group through the
+already ported Oracle HCM contract. The release registry therefore contains
+**8,138 boards**. Preserve that contributor's complete company/data change.
+The 8,105 / 8,124 proof above is the retained pre-addition floor; qualify the new
+actual Oracle HCM monitor/detail bindings after publication and include them in
+the complete incoming admission rather than treating the old board count as a
+fixed release limit.
+
 The repair and provider configurations are locally verified; exact-head required CI,
 merge and original full rollout remain required. Retire B0 and clear selectors
 through the original workflows before rollout. Do not retry activation using the
