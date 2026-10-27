@@ -70,6 +70,9 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err != nil {
 		return dom.ListingConfig{}, err
 	}
+	if listing.Pagination != nil && listing.Pagination.Partitions != nil && (monitorWorkerProfile(config) == Browser || listing.RichRows != nil || listing.ScriptLinks != nil || listing.OnclickSelector != "" || listing.Proofs != nil || listing.RequireJSONLD || listing.IncludeBoardURL || listing.HasDetailFilters() || listing.TitleScan != nil || listing.PDFProof != nil || listing.ResponseFingerprintType != "") {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
+	}
 	if err == nil && listing.RichRows != nil && (listing.ScriptLinks != nil || listing.OnclickSelector != "") {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}

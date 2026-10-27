@@ -1,0 +1,586 @@
+[
+  {
+    "name": "counted-flat",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [
+      "https://jobs.example.com/job/one",
+      "https://jobs.example.com/job/three",
+      "https://jobs.example.com/job/two"
+    ],
+    "error": false,
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "uncounted-flat",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_validate_total": false,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [
+      "https://jobs.example.com/job/one",
+      "https://jobs.example.com/job/three",
+      "https://jobs.example.com/job/two"
+    ],
+    "error": false,
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "primary-count-changed",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "_PartitionSnapshotChanged",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "leaf-incomplete",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "_PartitionSnapshotChanged",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "blocked-tail",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 403,
+        "body": "blocked"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "PaginationFetchError",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "empty-success-tail",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a&amp;changefacet=1\">Facet</a><a class=\"primary\" href=\"?facet=b\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": ""
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "PaginationFetchError",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "cross-origin-facet",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"https://other.example.com/list?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=b&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "ValueError",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "exact-fallback",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ],
+        "partition_result_limit": 2,
+        "partition_fallback_selector": "a.child"
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a class=\"child\" href=\"?child=x\">Facet</a><a class=\"child\" href=\"?child=y\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a><a href=\"https://jobs.example.com/job/four\">four</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a><a href=\"https://jobs.example.com/job/four\">four</a></body></html>"
+      }
+    },
+    "expected": [
+      "https://jobs.example.com/job/four",
+      "https://jobs.example.com/job/one",
+      "https://jobs.example.com/job/three",
+      "https://jobs.example.com/job/two"
+    ],
+    "error": false,
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "fallback-count-changed",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ],
+        "partition_result_limit": 2,
+        "partition_fallback_selector": "a.child"
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a class=\"child\" href=\"?child=x\">Facet</a><a class=\"child\" href=\"?child=y\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (1 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "_PartitionSnapshotChanged",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "missing-fallback",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ],
+        "partition_result_limit": 2,
+        "partition_fallback_selector": "a.child"
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=x&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a><a href=\"https://jobs.example.com/job/four\">four</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&child=y&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/three\">three</a><a href=\"https://jobs.example.com/job/four\">four</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "ValueError",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "overlapping-cover",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ],
+        "partition_result_limit": 2,
+        "partition_cover_paths": [
+          [
+            "a.left"
+          ],
+          [
+            "a.right"
+          ]
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (3 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a class=\"left\" href=\"?left=x\">Facet</a><a class=\"right\" href=\"?right=y\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&left=x": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&left=x&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&right=y": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&right=y&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [
+      "https://jobs.example.com/job/one",
+      "https://jobs.example.com/job/three",
+      "https://jobs.example.com/job/two"
+    ],
+    "error": false,
+    "board_url": "https://jobs.example.com/list?lang=en"
+  },
+  {
+    "name": "incomplete-cover",
+    "metadata": {
+      "url_filter": "/job/",
+      "pagination": {
+        "param_name": "page",
+        "max_pages": 6,
+        "transient_403": true,
+        "partition_selector": "a.primary",
+        "partition_count_regex": "\\((\\d+)\\s+vacancies",
+        "partition_validate_total": true,
+        "partition_stateless": true,
+        "partition_drop_params": [
+          "changefacet"
+        ],
+        "partition_result_limit": 2,
+        "partition_cover_paths": [
+          [
+            "a.left"
+          ],
+          [
+            "a.right"
+          ]
+        ]
+      }
+    },
+    "pages": {
+      "https://jobs.example.com/list?lang=en": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a class=\"primary\" href=\"?facet=a\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (4 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a class=\"left\" href=\"?left=x\">Facet</a><a class=\"right\" href=\"?right=y\">Facet</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&left=x": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&left=x&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/one\">one</a><a href=\"https://jobs.example.com/job/two\">two</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&right=y": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      },
+      "https://jobs.example.com/list?lang=en&facet=a&right=y&page=2": {
+        "status": 200,
+        "body": "<html><head><title>Jobs (2 vacancies)</title></head><body><a href=\"https://jobs.example.com/job/two\">two</a><a href=\"https://jobs.example.com/job/three\">three</a></body></html>"
+      }
+    },
+    "expected": [],
+    "error": true,
+    "error_type": "_PartitionSnapshotChanged",
+    "board_url": "https://jobs.example.com/list?lang=en"
+  }
+]

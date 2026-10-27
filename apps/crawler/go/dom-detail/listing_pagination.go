@@ -15,6 +15,7 @@ type ListingPagination struct {
 	Start, Increment, MaxPages, Attempts int
 	Transient403                         bool
 	AdvertisedRanges                     *ListingAdvertisedRanges
+	Partitions                           *ListingPartitions
 }
 
 func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
@@ -27,6 +28,9 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 	}
 	allowed := map[string]bool{}
 	for _, key := range []string{"param_name", "url_template", "start", "start_value", "increment", "max_pages", "browser", "transient_403", "transport_attempts", "advertised_ranges"} {
+		allowed[key] = true
+	}
+	for _, key := range partitionKeys {
 		allowed[key] = true
 	}
 	for key := range m {
@@ -43,6 +47,10 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 		return nil, errors.New("unsupported browser pagination")
 	}
 	p := &ListingPagination{Start: 1, Increment: 1, MaxPages: 10000, Attempts: 3}
+	p.Partitions, err = listingPartitions(m)
+	if err != nil {
+		return nil, err
+	}
 	p.AdvertisedRanges, err = listingAdvertisedRangesOptions(m["advertised_ranges"])
 	if err != nil {
 		return nil, err
@@ -88,6 +96,9 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 	}
 	if p.Template == "" && p.Param == "" {
 		return nil, errors.New("pagination has no URL contract")
+	}
+	if p.Partitions != nil && (p.Template != "" || p.AdvertisedRanges != nil) {
+		return nil, ErrListingPartition
 	}
 	for _, page := range []int{2, p.MaxPages} {
 		if page >= 2 && !jsonld.ValidPublicEndpoint(p.URL(endpoint, page)) {
@@ -151,6 +162,9 @@ func (c ListingConfig) ResourceMatches(endpoint, resource string) bool {
 	}
 	if c.Pagination == nil {
 		return false
+	}
+	if c.Pagination.Partitions != nil {
+		return c.Pagination.Partitions.ResourceMatches(endpoint, resource)
 	}
 	for page := 2; page <= c.Pagination.MaxPages; page++ {
 		if resource == c.Pagination.URL(endpoint, page) {

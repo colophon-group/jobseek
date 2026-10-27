@@ -7,27 +7,41 @@ canonical content and publisher policy, and retain useful isolated offline Pytho
 Retire production Python, Playwright and Chromium after replacement coverage,
 freshness and supported recovery are demonstrated.
 
-**Next combined candidate: 0.13.1099, not deployed.** DOM fragment/repeat
-contracts, RSS scheduling/enrichment and composed API array/URL inference move
-together. Eight explicit configuration updates preserve extraction, actions,
-waits and defaults while selecting verified direct Lightpanda navigation.
-Six monitor sources match **3,118** original-parser URLs, including the complete
-153-page BNP Paribas feed and all fields for its 2,537 accepted jobs. Twelve
-positive detail documents across six sources match all ten prepared fields.
-Both ALTEN detail updates explicitly preserve their existing monitor contracts;
-generic fragment permissions remain refused.
+**Next combined candidate: 0.13.1100, not deployed.**
+[PR #10925](https://github.com/colophon-group/jobseek/pull/10925) merged the
+fragment/repeat, RSS and composed API batch as
+`035036b2d18a486e940bc760e29b8edbad232dd5`. It qualifies six additional
+monitors and six details, including 3,118 original-parser listing URLs and
+12 positive detail documents across six sources. Its
+[evidence](evidence/go-native1099-browser-rss-api-candidate-2026-10-27.json)
+remains part of the combined handoff.
 
-The candidate retains eligibility for all **8,094 monitors / 8,115 details**
-and adds **six of each**, yielding **8,100 / 8,121** against prospective metadata.
-This is SDK qualification, with 81 PostgreSQL/Redis test nodes passing and zero
-skips. Published SQL/cache/source-URL proof and activation remain outstanding;
-the pending Air Apps row is additional and is not included in these counts.
-Use one original full rollout, exact-main publication and complete-floor
-reactivation after required checks, including the pending catalogue. Then
-repeat full scheduled-route and exact queue-conservation verification.
-The [candidate evidence](evidence/go-native1099-browser-rss-api-candidate-2026-10-27.json)
-records exact code blobs, parser comparisons and limits. Serving ownership
-below remains unchanged until that handoff succeeds.
+The next batch ports the original counted facet traversal to the existing Go
+HTTP monitor and writer. Safran's complete **4,496 URLs** match the original
+parser across its 520 captured requests; a separate live Go traversal also
+returns all 4,496. Overlapping cover paths, leaf/parent/root counts, inherited
+queries, stateless cookies, four-request concurrency and four complete snapshot
+attempts preserve the original contract. PostgreSQL/Redis verification covers
+successful publication, changed counts, blocked tails, late publisher reservation
+and lease settlement. The batch also selects direct Lightpanda for Tesla's
+existing API detail reader, preserving fields, wait, settle and selected
+**description-only enrichment**. One positive native capture matches all ten
+prepared fields from the original parser. Subsequent native and original-browser
+probes were blocked or empty; this is field/ownership qualification, with
+upstream availability still open.
+
+The combined candidate retains all **8,094 monitors / 8,115 details** and now
+qualifies **8,101 / 8,122** against prospective metadata. The pending Air Apps
+catalogue row is additional and awaits actual publication/identity capture.
+The [current evidence](evidence/go-native1100-partitions-api-candidate-2026-10-27.json)
+records the proof scope. Oracle ADF, framed repeat and remaining proxy-dependent
+recipes remain unqualified; their diagnostic prototypes do not grant ownership.
+
+Use **one** original supported retirement, full rollout, exact-main catalogue
+publication and complete-floor reactivation for the stacked changes. Refresh
+actual SQL/cache/source-URL and all scheduled-route proof before activation,
+then verify exact queue conservation, natural execution, freshness and cost.
+Serving ownership below remains unchanged until that handoff succeeds.
 
 Production runtime **0.13.1098**, source
 `1051a83bd70d3b236320202a008dfd7257fb9f5f`, is deployed through
