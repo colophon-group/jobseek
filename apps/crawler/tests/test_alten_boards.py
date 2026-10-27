@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-def test_alten_cloudflare_boards_use_stealth_and_proxy_for_monitor_and_scraper() -> None:
+def test_alten_boards_keep_monitor_proxy_and_qualified_detail_transports() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         rows = {
@@ -40,9 +40,19 @@ def test_alten_cloudflare_boards_use_stealth_and_proxy_for_monitor_and_scraper()
         assert monitor_config["proxy"] is True
         assert monitor_config["transport_attempts"] == 3
         assert scraper_config["render"] is True
-        assert scraper_config["stealth"] is True
-        assert scraper_config["proxy"] is True
-        assert scraper_config["transport_attempts"] == 3
+        if row["board_slug"] in {"alten-spain", "alten-finland"}:
+            assert scraper_config["proxy"] is False
+            assert {
+                "stealth",
+                "headless",
+                "channel",
+                "persistent_context",
+                "transport_attempts",
+            }.isdisjoint(scraper_config)
+        else:
+            assert scraper_config["stealth"] is True
+            assert scraper_config["proxy"] is True
+            assert scraper_config["transport_attempts"] == 3
 
 
 def test_alten_spain_uses_live_inventory_and_optional_upstream_location() -> None:

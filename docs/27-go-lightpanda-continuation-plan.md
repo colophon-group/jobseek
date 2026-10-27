@@ -7,6 +7,28 @@ canonical content and publisher policy, and retain useful isolated offline Pytho
 Retire production Python, Playwright and Chromium after replacement coverage,
 freshness and supported recovery are demonstrated.
 
+**Next combined candidate: 0.13.1099, not deployed.** DOM fragment/repeat
+contracts, RSS scheduling/enrichment and composed API array/URL inference move
+together. Eight explicit configuration updates preserve extraction, actions,
+waits and defaults while selecting verified direct Lightpanda navigation.
+Six monitor sources match **3,118** original-parser URLs, including the complete
+153-page BNP Paribas feed and all fields for its 2,537 accepted jobs. Twelve
+positive detail documents across six sources match all ten prepared fields.
+Both ALTEN detail updates explicitly preserve their existing monitor contracts;
+generic fragment permissions remain refused.
+
+The candidate retains eligibility for all **8,094 monitors / 8,115 details**
+and adds **six of each**, yielding **8,100 / 8,121** against prospective metadata.
+This is SDK qualification, with 81 PostgreSQL/Redis test nodes passing and zero
+skips. Published SQL/cache/source-URL proof and activation remain outstanding;
+the pending Air Apps row is additional and is not included in these counts.
+Use one original full rollout, exact-main publication and complete-floor
+reactivation after required checks, including the pending catalogue. Then
+repeat full scheduled-route and exact queue-conservation verification.
+The [candidate evidence](evidence/go-native1099-browser-rss-api-candidate-2026-10-27.json)
+records exact code blobs, parser comparisons and limits. Serving ownership
+below remains unchanged until that handoff succeeds.
+
 Production runtime **0.13.1098**, source
 `1051a83bd70d3b236320202a008dfd7257fb9f5f`, is deployed through
 [PR #10918](https://github.com/colophon-group/jobseek/pull/10918) and

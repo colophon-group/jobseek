@@ -26,6 +26,7 @@ func feedRichDetailAssignment(config map[string]string) error {
 		allowed["description"] = true
 		allowed["locations"] = true
 		allowed["employment_type"] = true
+		allowed["job_location_type"] = true
 		allowed["date_posted"] = true
 	}
 	_, err = monitorEnrichmentFields(config, allowed)
@@ -38,7 +39,7 @@ func feedRichDetailAssignment(config map[string]string) error {
 // Preserve explicit rich-feed delegation to the shared selected-field detail
 // writer. A monitor refresh still retains its existing listing-field authority.
 func RSSMonitorEnrichment(config map[string]string) ([]string, error) {
-	return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "employment_type": true, "date_posted": true})
+	return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true})
 }
 
 func feedHasDetailAssignment(md map[string]json.RawMessage) bool {

@@ -1,0 +1,152 @@
+[
+  {
+    "slug": "alten-spain",
+    "board_url": "https://www.alten.es/unete-a-alten/empleo/",
+    "forward_config": {
+      "render": true,
+      "wait": "domcontentloaded",
+      "timeout": 30000,
+      "proxy": false,
+      "resource_policy": "none",
+      "scope": ".col-md-8.p-4.px-md-5.wp-block-bootstrap-column",
+      "actions": [
+        {
+          "action": "evaluate",
+          "required": true,
+          "script": "(()=>{const m=document.querySelector(`.col-md-8.p-4.px-md-5.wp-block-bootstrap-column`),b=document.querySelector(`.block-body.has-primary-color.has-gray-200-background-color`);if(!m||!b)throw new Error(`missing job content or metadata`);const x=(b.innerText||``).split(/\\n+/).map(s=>s.trim()).filter(Boolean),d=x.find(s=>/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(s)),l=x.filter(s=>s!==d&&!/^(?:[A-Z]{2}\\d+|\\d+)$/.test(s)).join(`, `);if(!d)throw new Error(`missing job date`);const de=document.createElement(`p`);de.dataset.wsDate=``;de.textContent=d;m.appendChild(de);if(l){const le=document.createElement(`p`);le.dataset.wsLocation=``;le.textContent=l;m.appendChild(le)}})()"
+        }
+      ],
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        },
+        {
+          "field": "description",
+          "html": true,
+          "stop": "ENVÍA TU CANDIDATURA"
+        },
+        {
+          "attr": "data-ws-date",
+          "field": "date_posted",
+          "date_input_format": "%d/%m/%Y"
+        },
+        {
+          "attr": "data-ws-location",
+          "field": "locations",
+          "optional": true
+        }
+      ]
+    },
+    "reverse_config": {
+      "wait": "domcontentloaded",
+      "proxy": true,
+      "scope": ".col-md-8.p-4.px-md-5.wp-block-bootstrap-column",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        },
+        {
+          "html": true,
+          "stop": "ENVÍA TU CANDIDATURA",
+          "field": "description"
+        },
+        {
+          "attr": "data-ws-date",
+          "field": "date_posted",
+          "date_input_format": "%d/%m/%Y"
+        },
+        {
+          "attr": "data-ws-location",
+          "field": "locations",
+          "optional": true
+        }
+      ],
+      "render": true,
+      "actions": [
+        {
+          "action": "evaluate",
+          "script": "(()=>{const m=document.querySelector(`.col-md-8.p-4.px-md-5.wp-block-bootstrap-column`),b=document.querySelector(`.block-body.has-primary-color.has-gray-200-background-color`);if(!m||!b)throw new Error(`missing job content or metadata`);const x=(b.innerText||``).split(/\\n+/).map(s=>s.trim()).filter(Boolean),d=x.find(s=>/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(s)),l=x.filter(s=>s!==d&&!/^(?:[A-Z]{2}\\d+|\\d+)$/.test(s)).join(`, `);if(!d)throw new Error(`missing job date`);const de=document.createElement(`p`);de.dataset.wsDate=``;de.textContent=d;m.appendChild(de);if(l){const le=document.createElement(`p`);le.dataset.wsLocation=``;le.textContent=l;m.appendChild(le)}})()",
+          "required": true
+        }
+      ],
+      "stealth": true,
+      "timeout": 30000,
+      "resource_policy": "none",
+      "transport_attempts": 3
+    }
+  },
+  {
+    "slug": "alten-finland",
+    "board_url": "https://www.alten.fi/en/career/jobs/",
+    "forward_config": {
+      "wait": "domcontentloaded",
+      "timeout": 30000,
+      "proxy": false,
+      "render": true,
+      "resource_policy": "none",
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "field": "description",
+          "html": true,
+          "optional": true,
+          "stop": "Apply"
+        },
+        {
+          "text": "Job info",
+          "offset": 1,
+          "field": "date_posted",
+          "from": 0,
+          "optional": true,
+          "date_input_format": "%d/%m/%Y"
+        },
+        {
+          "text": "Job info",
+          "offset": 2,
+          "field": "locations",
+          "from": 0
+        }
+      ]
+    },
+    "reverse_config": {
+      "wait": "domcontentloaded",
+      "proxy": true,
+      "steps": [
+        {
+          "tag": "h1",
+          "field": "title"
+        },
+        {
+          "html": true,
+          "stop": "Apply",
+          "field": "description",
+          "optional": true
+        },
+        {
+          "from": 0,
+          "text": "Job info",
+          "field": "date_posted",
+          "offset": 1,
+          "optional": true,
+          "date_input_format": "%d/%m/%Y"
+        },
+        {
+          "from": 0,
+          "text": "Job info",
+          "field": "locations",
+          "offset": 2
+        }
+      ],
+      "render": true,
+      "stealth": true,
+      "timeout": 30000,
+      "resource_policy": "none",
+      "transport_attempts": 3
+    }
+  }
+]

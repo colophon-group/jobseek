@@ -211,17 +211,20 @@ def test_cgi_configs_use_rendered_jobposting_jsonld() -> None:
     scraper_config = json.loads(row["scraper_config"])
     assert row["scraper_type"] == "json-ld"
     assert monitor_config["persistent_context"] is True
-    assert scraper_config["persistent_context"] is True
     assert monitor_config["channel"] == "chrome"
-    assert scraper_config["channel"] == "chrome"
     assert monitor_config["page_wait_ms"] == 4_000
     assert monitor_config["transport_attempts"] == 5
     assert monitor_config["direct_fallback_on_origin_block"] is True
     assert monitor_config["delist_threshold"] == 4
     assert scraper_config["render"] is True
-    assert scraper_config["proxy"] is True
-    assert scraper_config["transport_attempts"] == 5
-    assert scraper_config["direct_fallback_on_origin_block"] is True
+    assert scraper_config["proxy"] is False
+    assert {
+        "persistent_context",
+        "channel",
+        "headless",
+        "transport_attempts",
+        "direct_fallback_on_origin_block",
+    }.isdisjoint(scraper_config)
     assert "steps" not in scraper_config
 
 

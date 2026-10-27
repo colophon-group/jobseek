@@ -201,6 +201,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "personio":
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
+		allowed["rescrape_policy"] = true
 		allowed["resolve_job_invite_identity"] = true
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["identity_migration"] = true
@@ -298,7 +299,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			}
 		}
 	}
-	if err == nil && sharedServiceAnnotationProvider(config["crawler_type"]) {
+	if err == nil && (sharedServiceAnnotationProvider(config["crawler_type"]) || config["crawler_type"] == "rss") {
 		err = validateSharedServiceAnnotations(md)
 	}
 	return md, err

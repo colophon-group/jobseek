@@ -246,7 +246,9 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	if value, exists := m["json_path"]; !exists || value == nil {
 		fields, explicitFields := m["fields"].(map[string]any)
-		if o.URLField == "" || !explicitFields || len(fields) == 0 {
+		// Array selection and URL inference already share the complete native
+		// traversal. Explicit field mappings need not also declare a URL field.
+		if !explicitFields || len(fields) == 0 {
 			return o, ErrOptions
 		}
 		o.AutoPath = true

@@ -21,6 +21,8 @@ func TestRealRSSSelectedEnrichmentSchedulesAndPreservesDescriptionAuthority(t *t
 		{"description", []string{"description"}, true},
 		{"locations", []string{"locations"}, false},
 		{"locations-employment-date", []string{"locations", "employment_type", "date_posted"}, false},
+		{"location-type", []string{"job_location_type"}, false},
+		{"wordpress-selected-fields", []string{"description", "locations", "employment_type", "job_location_type"}, true},
 	} {
 		for _, mode := range []string{"new", "touched", "relisted"} {
 			t.Run(selected.name+"/"+mode, func(t *testing.T) {
