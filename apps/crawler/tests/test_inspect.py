@@ -1205,11 +1205,9 @@ class TestBnpParibasBoardConfig:
         assert monitor_config["preset"] == "generic"
         assert monitor_config["feed_url"] == ("https://group.bnpparibas/en/careers/rss/offers")
         assert monitor_config["render"] is True
-        assert monitor_config["headless"] is False
-        assert monitor_config["persistent_context"] is True
-        assert monitor_config["channel"] == "chrome"
+        assert {"headless", "persistent_context", "channel", "stealth"}.isdisjoint(monitor_config)
         assert monitor_config["wait"] == "domcontentloaded"
-        assert "proxy" not in monitor_config
+        assert monitor_config["proxy"] is False
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["description_mode"] == "title_employment_location"
         assert monitor_config["pagination"] == {

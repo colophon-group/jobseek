@@ -28,7 +28,7 @@ var cmaHTTPDetailMonitor = func() struct {
 }()
 
 func selfIdentifyingDOMMonitorSource(config map[string]string, md map[string]json.RawMessage) bool {
-	if selfIdentifyingDOMSource(config, md) {
+	if selfIdentifyingDOMSource(config, md) || qualifiedFinalFragmentMonitor(config, md) || qualifiedFinalDetailTransition(config, md) {
 		return true
 	}
 	if config["board_slug"] != cmaHTTPDetailMonitor.Slug || config["board_url"] != cmaHTTPDetailMonitor.URL || config["crawler_type"] != "dom" || config["monitor_needs_browser"] != "1" || config["scraper_needs_browser"] != "0" {

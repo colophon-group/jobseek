@@ -111,6 +111,10 @@ func TestSharedHTTPProxyCurrentRegistryCoverage(t *testing.T) {
 		body, _ := json.Marshal(md)
 		c := profileConfig()
 		c["crawler_type"], c["board_url"], c["metadata"] = provider, row[indexes["board_url"]], string(body)
+		c["board_slug"] = row[indexes["board_slug"]]
+		if detail, ok := md["scraper_config"].(map[string]any); ok && detail["render"] == true {
+			c["scraper_needs_browser"] = "1"
+		}
 		if md["render"] == true || md["browser"] == true {
 			c["monitor_needs_browser"] = "1"
 		}

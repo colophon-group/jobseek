@@ -1,0 +1,152 @@
+{
+  "schema": "jobseek.go-lightpanda.candidate-batch/v1",
+  "observed_at_utc": "2026-10-27T02:19:29.282949+00:00",
+  "status": "candidate-qualified-not-deployed",
+  "candidate_base_revision": "42df0df2b01bf31104ca608bb53a2608ebe1f2f5",
+  "runtime_version": "0.13.1099",
+  "candidate_code_blob_oids": {
+    "apps/crawler/go/api-sniffer-monitor/options.go": "ae6355973e935148a117360c24e3b24bcbd78753",
+    "apps/crawler/go/ordinary-queue/profile_rich.go": "0d82755d7d0ba2c1cd97aeb7918bdb89a90f9de5",
+    "apps/crawler/go/ordinary-queue/profile_feed_options.go": "4e6e4f930ad24569f6890db8ed0558f1e55c212b",
+    "apps/crawler/go/ordinary-queue/profile_cma_http_monitor.go": "ec389d11c40ad9d536f6a53c1fe77f909d285058",
+    "apps/crawler/go/ordinary-queue/profile_final_browser_controls.go": "c6f8cea7cae23e8e0218ab1d83dcf868d928c7c9",
+    "apps/crawler/go/ordinary-queue/final_browser_detail_transitions.json": "22b18afea135b601270ed5562abd67e5bb343641",
+    "apps/crawler/data/boards.csv": "48ab205c1cffeeeb71801873ccc72d3e55268d16"
+  },
+  "serving_floor": {
+    "runtime_revision": "1051a83bd70d3b236320202a008dfd7257fb9f5f",
+    "data_revision": "5349aba18c05129196be13b3f74a74df8b63f847",
+    "epoch": 376,
+    "monitors": 8094,
+    "details": 8115
+  },
+  "engine": {
+    "version": "1.1.0-nightly.11106+659958a24",
+    "upstream_revision": "659958a24c0ddb40a577bd528fcb4c6e1c504419",
+    "physical_reference_platform": "darwin-arm64",
+    "physical_reference_sha256": "76134a94d4297dbffda6ca4ab191d50915e58c38884d937a3f3d89e20018717d",
+    "controller_changed": false,
+    "official_assets_rechecked_utc": "2026-10-27T02:17:43.925325+00:00",
+    "stable_tag": "1.0.2",
+    "deployed_snapshot_assets_unchanged": true
+  },
+  "monitor_original_parser_matches": [
+    {
+      "all_urls_equal": true,
+      "slug": "gpa-pandape",
+      "truncated": false,
+      "urls": 516
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "emirates-group-dnata-au",
+      "truncated": false,
+      "urls": 36
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "centre-for-humanitarian-dialogue-careers",
+      "truncated": false,
+      "urls": 2
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "ltimindtree-careers-us-canada",
+      "truncated": false,
+      "urls": 13
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "ltimindtree-careers-india-europe",
+      "truncated": false,
+      "urls": 14
+    }
+  ],
+  "rss_original_parser_match": {
+    "slug": "bnp-paribas-global",
+    "pages": 153,
+    "raw_items": 3057,
+    "final_page_items": 17,
+    "jobs_after_shared_policy": 2537,
+    "different_jobs": 0,
+    "fields_compared": [
+      "url",
+      "title",
+      "description",
+      "locations",
+      "employment_type",
+      "job_location_type",
+      "date_posted",
+      "base_salary",
+      "metadata",
+      "extras",
+      "language"
+    ]
+  },
+  "detail_original_parser_matches": {
+    "sources": [
+      "alten-finland",
+      "alten-spain",
+      "mcdonalds-canada-restaurants",
+      "mcdonalds-it",
+      "nationwide-careers",
+      "sophia-genetics-careers"
+    ],
+    "actual_positive_samples": 12,
+    "different_fields": 0,
+    "fields_compared": [
+      "title",
+      "description",
+      "locations",
+      "employment_type",
+      "job_location_type",
+      "date_posted",
+      "base_salary",
+      "language",
+      "metadata",
+      "extras"
+    ]
+  },
+  "prospective_floor": {
+    "monitors": 8100,
+    "details": 8121,
+    "old_monitors_retained": 8094,
+    "old_details_retained": 8115,
+    "new_monitors": 6,
+    "new_details": 6,
+    "unsupported": 0,
+    "changed_csv_rows": 8,
+    "pending_air_apps_row_included": false,
+    "scope": "Candidate SDK eligibility against actual published identities with prospective CSV metadata and original sync runtime-field preservation. Actual published canonical/cache/SQL URLs must be requalified before activation."
+  },
+  "implementation": [
+    "Exact-source fragment navigation with original repeat actions; generic fragment permission remains refused.",
+    "Exact ALTEN Spain/Finland detail transitions retain independently qualified monitor parsing and navigation while hashing current metadata.",
+    "RSS rescrape annotation and selected job-location-type detail assignment.",
+    "Existing API array and URL-field inference compose with explicit fields; five unchanged Python wire/parser fixtures preserve full fields and canonical salary preparation."
+  ],
+  "verification": {
+    "postgres_redis": {
+      "actual_migrations": true,
+      "passed_test_nodes": 81,
+      "skipped_test_nodes": 0,
+      "failed_test_nodes": 0,
+      "fixture_stopped": true
+    },
+    "api_package_race": "passed",
+    "queue_package_race": "passed",
+    "worker_focused_race": "passed",
+    "go_vet": "passed",
+    "python_fixture_lint": "passed",
+    "browser_census_tests_passed": 62,
+    "browser_census_regenerated_with_repository_cli": true,
+    "repository_data_validation": "passed",
+    "qualified_transport_contract_tests_passed": 4
+  },
+  "scope_limits": [
+    "Working-tree candidate; public original-parser comparisons do not assert original Chromium transport success for every source.",
+    "No production source/data/owner/queue mutation or activation is established by these candidate probes.",
+    "Remaining enabled sources, current SQL/cache/queue projection, full scheduled route SDK replay, sustained freshness/resources/cost and cold reversal remain required for full migration.",
+    "Pending Air Apps catalogue must enter the same supported publication and full-cohort handoff; runtime Python retirement remains open."
+  ]
+}

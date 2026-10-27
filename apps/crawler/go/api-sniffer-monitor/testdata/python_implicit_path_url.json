@@ -1,0 +1,411 @@
+[
+  {
+    "name": "root",
+    "metadata": {
+      "api_url": "https://example.com/api/jobs",
+      "fields": {
+        "title": "JOB_TITLE",
+        "description": "ZAKRES_OBOWIAZKOW",
+        "locations": "CITY_NAME",
+        "date_posted": "START_DATE",
+        "base_salary": "CATEGORY5"
+      }
+    },
+    "payload": [
+      {
+        "JOB_TITLE": "Engineer 0",
+        "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+        "CITY_NAME": "Bratislava",
+        "START_DATE": "2026-10-27",
+        "CATEGORY5": "EUR 2000 monthly",
+        "links": {
+          "canonical": "https://example.com/jobs/0"
+        }
+      },
+      {
+        "JOB_TITLE": "Engineer 1",
+        "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+        "CITY_NAME": "Bratislava",
+        "START_DATE": "2026-10-27",
+        "CATEGORY5": "EUR 2000 monthly",
+        "links": {
+          "canonical": "https://example.com/jobs/1"
+        }
+      },
+      {
+        "JOB_TITLE": "Engineer 2",
+        "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+        "CITY_NAME": "Bratislava",
+        "START_DATE": "2026-10-27",
+        "CATEGORY5": "EUR 2000 monthly",
+        "links": {
+          "canonical": "https://example.com/jobs/2"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://example.com/jobs/0",
+        "title": "Engineer 0",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "small-root",
+    "metadata": {
+      "api_url": "https://example.com/api/jobs",
+      "fields": {
+        "title": "JOB_TITLE",
+        "description": "ZAKRES_OBOWIAZKOW",
+        "locations": "CITY_NAME",
+        "date_posted": "START_DATE",
+        "base_salary": "CATEGORY5"
+      }
+    },
+    "payload": [
+      {
+        "JOB_TITLE": "Engineer 0",
+        "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+        "CITY_NAME": "Bratislava",
+        "START_DATE": "2026-10-27",
+        "CATEGORY5": "EUR 2000 monthly",
+        "links": {
+          "canonical": "https://example.com/jobs/0"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://example.com/jobs/0",
+        "title": "Engineer 0",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "wrapped",
+    "metadata": {
+      "api_url": "https://example.com/api/jobs",
+      "fields": {
+        "title": "JOB_TITLE",
+        "description": "ZAKRES_OBOWIAZKOW",
+        "locations": "CITY_NAME",
+        "date_posted": "START_DATE",
+        "base_salary": "CATEGORY5"
+      }
+    },
+    "payload": {
+      "data": {
+        "jobs": [
+          {
+            "JOB_TITLE": "Engineer 0",
+            "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+            "CITY_NAME": "Bratislava",
+            "START_DATE": "2026-10-27",
+            "CATEGORY5": "EUR 2000 monthly",
+            "links": {
+              "canonical": "https://example.com/jobs/0"
+            }
+          },
+          {
+            "JOB_TITLE": "Engineer 1",
+            "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+            "CITY_NAME": "Bratislava",
+            "START_DATE": "2026-10-27",
+            "CATEGORY5": "EUR 2000 monthly",
+            "links": {
+              "canonical": "https://example.com/jobs/1"
+            }
+          },
+          {
+            "JOB_TITLE": "Engineer 2",
+            "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+            "CITY_NAME": "Bratislava",
+            "START_DATE": "2026-10-27",
+            "CATEGORY5": "EUR 2000 monthly",
+            "links": {
+              "canonical": "https://example.com/jobs/2"
+            }
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "url": "https://example.com/jobs/0",
+        "title": "Engineer 0",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "vacancies-wrapper",
+    "metadata": {
+      "api_url": "https://example.com/api/jobs",
+      "fields": {
+        "title": "JOB_TITLE",
+        "description": "ZAKRES_OBOWIAZKOW",
+        "locations": "CITY_NAME",
+        "date_posted": "START_DATE",
+        "base_salary": "CATEGORY5"
+      }
+    },
+    "payload": {
+      "vacancies": [
+        {
+          "JOB_TITLE": "Engineer 0",
+          "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+          "CITY_NAME": "Bratislava",
+          "START_DATE": "2026-10-27",
+          "CATEGORY5": "EUR 2000 monthly",
+          "links": {
+            "canonical": "https://example.com/jobs/0"
+          }
+        },
+        {
+          "JOB_TITLE": "Engineer 1",
+          "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+          "CITY_NAME": "Bratislava",
+          "START_DATE": "2026-10-27",
+          "CATEGORY5": "EUR 2000 monthly",
+          "links": {
+            "canonical": "https://example.com/jobs/1"
+          }
+        },
+        {
+          "JOB_TITLE": "Engineer 2",
+          "ZAKRES_OBOWIAZKOW": "<p>Build reliable systems.</p>",
+          "CITY_NAME": "Bratislava",
+          "START_DATE": "2026-10-27",
+          "CATEGORY5": "EUR 2000 monthly",
+          "links": {
+            "canonical": "https://example.com/jobs/2"
+          }
+        }
+      ]
+    },
+    "expected": [
+      {
+        "url": "https://example.com/jobs/0",
+        "title": "Engineer 0",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Bratislava"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-27",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 2000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "empty-root",
+    "metadata": {
+      "api_url": "https://example.com/api/jobs",
+      "fields": {
+        "title": "JOB_TITLE",
+        "description": "ZAKRES_OBOWIAZKOW",
+        "locations": "CITY_NAME",
+        "date_posted": "START_DATE",
+        "base_salary": "CATEGORY5"
+      }
+    },
+    "payload": [],
+    "expected": []
+  }
+]

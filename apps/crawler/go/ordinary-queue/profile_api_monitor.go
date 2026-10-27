@@ -111,7 +111,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// binds the explicit API origin and tenant; preserve the original URL in
 	// the immutable profile while removing its fragment only for this validator.
 	// The same validation-only normalization applies to the exact qualified
-	// rendered DOM source hashes; their actual navigation retains the fragment.
+	// rendered DOM sources; their actual navigation retains the fragment.
 	if provider == "wecruit" || provider == "jobdiva" || provider == "dom" && profile == domRenderedMonitorProfile && selfIdentifyingDOMMonitorSource(config, md) {
 		if u, err := url.Parse(validation["board_url"]); err == nil {
 			u.Fragment, u.RawFragment = "", ""
