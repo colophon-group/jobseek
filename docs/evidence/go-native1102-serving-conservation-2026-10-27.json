@@ -1,0 +1,96 @@
+{
+  "schema": "jobseek.go-migration.serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-27T15:26:05.282477+00:00",
+  "runtime_version": "0.13.1102",
+  "source_revision": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+  "qualified_head": "86c4877beaf11aed034e93ac7d33ce2f09fe3b71",
+  "pull_request": 10937,
+  "full_rollout_run": 40510059509,
+  "epoch": 382,
+  "enabled_boards": 8138,
+  "ordinary_monitors": 8106,
+  "ordinary_details": 8125,
+  "separate_Go_B0_boards": 3,
+  "plan_sha256": "02fa6c2246b09a8739989b41a212e53f17d3afbc8c2845924df19886ad399f45",
+  "projection_sha1": "66b5e88f14aec809201a170b2fdc44fc893cde28",
+  "postactivation": {
+    "scheduled_routes": 2018127,
+    "cache_mismatches": 0,
+    "queue_gaps": 0,
+    "wrong_lanes": 0,
+    "strict_SDK_passed": true,
+    "strict_SDK_seconds": 467.67,
+    "actors_restored": 10,
+    "HTTP_health_endpoints": 8,
+    "unique_queue_IDs": 3393799
+  },
+  "conservation": {
+    "observed_at_utc": "2026-10-27T15:26:05.282477+00:00",
+    "source_revision": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+    "epoch": 382,
+    "identities_reviewed": 950,
+    "canonical_rows_preserved": 950,
+    "union_dispositions": {
+      "inactive_or_disabled": 742,
+      "ordinary_expected_queue_and_cache": 6,
+      "active_unscheduled": 177,
+      "separate_Go_B0_guarded": 25
+    },
+    "groups": {
+      "outgoing_removed": {
+        "inactive_or_disabled": 730,
+        "ordinary_expected_queue_and_cache": 1,
+        "active_unscheduled": 176
+      },
+      "incoming_removed": {
+        "ordinary_expected_queue_and_cache": 1,
+        "inactive_or_disabled": 47,
+        "separate_Go_B0_guarded": 25,
+        "active_unscheduled": 5
+      },
+      "old_six": {
+        "ordinary_expected_queue_and_cache": 5,
+        "active_unscheduled": 1
+      },
+      "incoming_nine": {
+        "inactive_or_disabled": 3,
+        "active_unscheduled": 6
+      }
+    },
+    "unknown": 0,
+    "B0_original_audit": "accepted/audit_ok",
+    "B0_audit_records": 26,
+    "manual_queue_or_SQL_mutations": false,
+    "evidence_sha256": {
+      "current-identities-SQL1.private.json": "ba2c1b61af7b23ac66ef762f49a46b06bb1179fc2f6c34dc650507f54e76125c",
+      "current-identities-queues1.private.json": "f138da1f9659695efca5987a650e5f0f50be4953a1a61e8e441f3f2d340517e9",
+      "B0-native-identities1.private.json": "2118c46809a42db3a15ff81086bfcdf82b2dcadd74da9ab860516ef87037e1f8",
+      "reviewed-identities1.private.json": "f0c7f261f762c15b89fd7e43a03c15a003fc5ca64486c15491514a48830f38d4"
+    }
+  },
+  "natural_monitor_observation": {
+    "as_of_utc": "2026-10-27T15:27:39Z",
+    "ADF": "native completed;52 jobs;zero failures",
+    "Air_Apps": "native completed;zero failures",
+    "McDonalds_Italy_Lenovo_Citizens": "first native completion still unobserved;zero failures"
+  },
+  "lightpanda": {
+    "version": "1.1.0-nightly.11169+6c44d0871",
+    "renderer_source": "9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d",
+    "official_release_last_updated_utc": "2026-10-27T02:55:42Z",
+    "latest_official_assets_rechecked": true
+  },
+  "remaining": {
+    "ordinary_monitors": 29,
+    "ordinary_details": 10,
+    "full_migration_complete": false,
+    "requires": [
+      "remaining provider contracts",
+      "natural freshness",
+      "comparable whole-lane CPU/RAM/density/attributable cost",
+      "supported cold reversal",
+      "production Python/Playwright/Chromium retirement"
+    ]
+  },
+  "backend_constraint": "Self-hosted latest Lightpanda and proven Go HTTP/API only."
+}
