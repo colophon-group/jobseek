@@ -3,81 +3,108 @@
 ## Current delivery and next batch — October 27, 2026
 
 The full migration remains **active and incomplete**. Keep every enabled board,
-canonical content and publisher policy, and retain useful isolated offline Python.
-Retire production Python, Playwright and Chromium after replacement coverage,
-freshness and supported recovery are demonstrated.
+canonical content and publisher policy. Replacement execution must use **the
+latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operator
+decision. Do not add a Chromium or Playwright fallback. Ship several compatible
+contracts per batch; retain useful isolated offline Python tooling.
 
-**Runtime 0.13.1100 is deployed and native ownership is active at epoch 378.**
-The original [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40458111640)
-selected runtime and data source `17dea21eefdb55d10cde02dc4023d0a605a24634`.
-All **8,137 boards** remain enabled. Native ordinary authority covers
-**8,101 monitors / 8,124 details**, preserving every prior 8,094 / 8,115 assignment;
-three additional B0 boards retain their separate source-bound ownership.
+**Production runtime 0.13.1101 is deployed and serving after supported recovery.**
+[PR #10935](https://github.com/colophon-group/jobseek/pull/10935) passed Required CI
+and Crawler Deploy Gate at `1839e40053f9c85271370cbe097019c2dd5c3465`.
+The [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40480716439)
+selected runtime/data source `1d71b1c679c5bfb784166a21c099bbe0dfcd5f61`.
+All **8,137 boards** remain enabled. **B0 is active at epoch 380; ordinary
+ownership is inactive.** The original ordinary activation rejected its eligibility
+snapshot before publication and contained the lane. Original `recover-pending`
+completed at 11:48 UTC, restoring the complete legacy/B0 stack. Independent
+readback verifies exact source/data/images, absent ordinary receipt, zero active
+ordinary plans, original restored restart policies and seven HTTP endpoints.
+Do not describe the proposed ordinary cohort as serving.
 
-The batch delivers fragment/repeat, RSS and composed API contracts
-([#10925](https://github.com/colophon-group/jobseek/pull/10925)),
-Safran's complete counted facet traversal and Tesla selected description reader
-([#10928](https://github.com/colophon-group/jobseek/pull/10928)),
-and Biorce's public API detail route
-([#10931](https://github.com/colophon-group/jobseek/pull/10931)).
-The Air Apps catalogue row is now published and its qualified detail assignment
-is included. Its selected salary-enrichment monitor remains with the legacy
-owner pending the next implementation batch.
+The Ashby selected salary-enrichment and Oracle ADF HTTP/PPR batch is implemented.
+ADF matches all 52 original browser URLs in complete replay and a separate live
+Go run. Actual migrated PostgreSQL/Redis tests verify Ashby new/touched/relisted
+scheduling and ADF complete/failure/publisher-policy settlement. The proposed
+**8,103 monitors / 8,124 details** preserve the last active **8,101 / 8,124** floor.
+All published metadata and **2,022,825 scheduled routes** pass independent Go
+configuration/cache/URL/fallback/interval/lane validation, with no observed gaps,
+cache mismatches or pending lane corrections. The complete staged plan also
+passed original decoding and binding checks. These are admission proofs, not
+activation or sustained freshness evidence.
 
-Independent serving readback binds exact source/data/images, active B0 and
-ordinary receipts, SQL authority, the complete Redis projection, all ten actors,
-eight successful HTTP health endpoints and the original restart policies.
-Complete strict replay covers **2,021,782 scheduled routes**, with **zero queue
-gaps, cache mismatches or wrong/dual lanes**.
+**Next release: 0.13.1102 — repair activation and ship two provider routes.**
+The full-cohort eligibility snapshot incorrectly uses the 15-second runtime
+transaction helper. A real migrated PostgreSQL/Redis regression reproduces the
+failure with 16 seconds of client-side snapshot work. The fix uses the existing
+bounded cold administrative snapshot helper. Parent deadlines, the ten-second
+SQL statement limit and all exclusive host/epoch/lease barriers remain enforced;
+runtime transaction limits remain unchanged. The regression verifies unchanged
+staged SQL/queue state and cancellation by an earlier caller deadline.
 
-Exact complete queue set differences are reconciled against current canonical
-state. Incoming before-only 157 = 89 inactive + 9 no longer scheduled + 34 queued
-or in flight + 25 independently verified B0 ready tasks. Outgoing before-only
-234 = 146 inactive + 87 no longer scheduled + 1 queued or in flight. All 696
-incoming and 6,584 outgoing after-only identities are currently queued or in
-flight. The B0 proof uses the original full-record and canonical task decoders,
-actual SQL parser assignments and exactly one matching current queue index.
-These are dated non-atomic observations, not an atomic fleet snapshot. See the
-[serving and conservation record](evidence/go-native1100-serving-2026-10-27.json).
+McDonald's Italy's existing public JSON API also has a verified Go HTTP route.
+Two live native reads and the unchanged original parser on the captured response
+produce the same 163 URLs and source values; only empty title/extras representations
+differ. Real migrated PostgreSQL/Redis checks retain all **163 records**, including
+148 titles and 15 blank titles, with correct absence accounting, zero failures,
+deadline/lease settlement and no publisher reservation. Its monitor drops legacy
+browser transport settings while preserving source, field map, URL identity and
+existing detail configuration. The combined floor is **8,105 monitors /
+8,124 details**, with every previously qualified assignment retained.
 
-The latest available official Lightpanda snapshot,
-[**1.1.0-nightly.11169+6c44d0871**](https://github.com/lightpanda-io/browser/releases/tag/nightly),
-is deployed through [PR #10929](https://github.com/colophon-group/jobseek/pull/10929)
-and [the original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40455154533).
-The serving renderer source is `9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d`;
-the upstream executable source is `6c44d0871aa4d42cf1b88b8c7dde873cafd2755e`.
-Independent readback verifies the immutable image, official ARM64 binary hash,
-engine version, mTLS readiness, **1 GiB memory limit and zero swap**.
-Both unchanged physical Linux architecture suites and all 21 original wait
-fixtures pass. Five monitors match 581 original-parser URLs, and four positive
-details match all ten prepared fields. Stable 1.0.2's four original visibility
-failures remain historical evidence. See the
-[qualification](evidence/lightpanda-nightly-20261027-source-qualification.json)
-and [serving record](evidence/lightpanda-nightly11169-serving-2026-10-27.json).
+Lenovo now uses its publisher-declared sitemap instead of the capped 100-page
+DOM traversal. Native Go reads all nine XML documents and returns **1,122 English
+URLs**, retaining all **999** configured traversal URLs plus 123 beyond the cap.
+The unchanged Python sitemap reader reproduces exactly the same set on that
+capture. Restricting the filter to the existing `en_US` route avoids duplicate
+postings from eight locale versions. Detail extraction and URL identity remain
+unchanged. Real migrated PostgreSQL/Redis publication inserts all 1,122 jobs,
+queues all 1,122 browser details, accounts for prior absence and settles the
+deadline/lease with zero failures or reservation.
 
-**Next substantial batch: 0.13.1101.** Finish Ashby selected salary-enrichment
-scheduling and Oracle ADF's fresh-session HTTP/PPR identity bridge together with
-remaining compatible provider contracts. Ashby new, touched and relisted jobs
-pass migrated PostgreSQL/Redis tests. The native ADF implementation matches all
-52 original browser URLs in both complete replay and a separate live Go run.
-Real migrated PostgreSQL/Redis checks pass complete publication, failed form
-actions, partial list and identity scans, late publisher reservations and lease
-settlement. Actual published canonical metadata accepts all **8,103 monitors /
-8,124 details**, preserving every serving assignment. This is candidate
-qualification; deployment and complete current URL/cache admission remain required.
-See the [combined evidence](evidence/go-native1101-adf-ashby-candidate-2026-10-27.json). Preserve original configuration and queue
-ownership until the complete candidate floor passes actual SQL/cache/URL checks.
+Concurrent company setup on `main` adds Citizens Financial Group through the
+already ported Oracle HCM contract. The release registry therefore contains
+**8,138 boards**. Preserve that contributor's complete company/data change.
+The 8,105 / 8,124 proof above is the retained pre-addition floor; qualify the new
+actual Oracle HCM monitor/detail bindings after publication and include them in
+the complete incoming admission rather than treating the old board count as a
+fixed release limit.
 
-The remaining ordinary frontier is **33 monitor / 10 detail assignments**.
-Continue substantial contract batches, then use the original supported retirement,
-full rollout and complete-floor reactivation. Finish sustained natural execution,
-freshness, whole-lane resource and attributable cost evidence, supported cold
-reversal and final production Python/browser retirement. Synthetic benchmark
-results do not establish live fleet freshness or hosting cost.
+The repair and provider configurations are locally verified; exact-head required CI,
+merge and original full rollout remain required. Retire B0 and clear selectors
+through the original workflows before rollout. Do not retry activation using the
+unchanged rejected runtime or manually clear leases, receipts, SQL plans or Redis
+state. Preserve the inactive staged plan as recovery history.
 
-The dated sections below retain earlier implementation and recovery evidence.
-Their serving counts and candidate status are historical; this section and its
-linked serving record describe the current accepted authority.
+Deloitte's existing 100-page traversal returns 999 URLs but exposes additional
+jobs at offset 1,000. Its publisher-declared sitemap probe is incomplete, so it
+does not qualify as a replacement inventory. Keep blocked/empty reads distinct from positive qualification;
+keep other remaining browser/session/frame contracts in substantial batches.
+After the currently proposed 0.13.1102 floor activates, the ordinary frontier is
+**29 monitors / 10 details**, plus the three separately owned B0 boards.
+
+**Latest Lightpanda remains deployed:**
+[1.1.0-nightly.11169+6c44d0871](https://github.com/lightpanda-io/browser/releases/tag/nightly),
+renderer source `9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d`, upstream source
+`6c44d0871aa4d42cf1b88b8c7dde873cafd2755e`. Official Linux and macOS asset hashes
+were rechecked at 12:28 UTC and remain the newest published snapshot. Independent
+serving verification binds its immutable image, official binary, version, mTLS,
+1 GiB memory and zero swap. Both physical Linux architecture suites and all 21
+original wait fixtures pass. The synthetic density/RAM gains retain a measured
+wall-time tradeoff; they do not establish whole-fleet freshness or hosting cost.
+
+After repaired activation, verify exact serving authority and complete current
+queue routing/conservation. Then finish natural freshness, whole-lane CPU/RAM/
+attributable-cost evidence, supported cold reversal and final production Python,
+Playwright and Chromium retirement. Sampled Circle K empty fields reproduce in
+the unchanged Python reader; do not misclassify that evidence as a Go regression
+or claim the entire failure cluster is resolved.
+
+See the [0.13.1102 candidate record](evidence/go-native1102-eligibility-http-sitemap-candidate-2026-10-27.json),
+[deployed recovery record](evidence/go-native1101-deployed-pending-reactivation-2026-10-27.json),
+[combined 0.13.1101 qualification](evidence/go-native1101-adf-ashby-candidate-2026-10-27.json),
+[0.13.1100 serving/conservation record](evidence/go-native1100-serving-2026-10-27.json)
+and [latest renderer record](evidence/lightpanda-nightly11169-serving-2026-10-27.json).
+The dated sections below retain historical implementation and recovery evidence.
 
 ## Rendered continuation candidate — October 26, 2026
 

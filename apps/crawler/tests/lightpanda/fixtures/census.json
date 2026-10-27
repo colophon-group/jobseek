@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8138,
-    "boards_sha256": "4e278375b8c0799a5aaa487145a871255d3c0c2ab7bc2fc54768a8859c1751b3",
+    "boards_sha256": "24aa1fe542401991500f5424eaa9ba1d2d6acdf9ad0c9f900cffa0cde8082ac1",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "35a1c4aa284f38c54513e3f46bb1cbd3ebd22153dfebfb1e294383669b903b03",
+  "manifest_sha256": "bf9911cb4494e15780b7640b04ebecb6675a9f0619dc6627683c510d5f87cd37",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -389,34 +389,6 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "8c3e34cf8b67581ca19bdebb5bc308bf32a0aa10038b46ec01d8616f3668520f",
-      "status": "pending_replay",
-      "surface": "monitor"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "browser.channel",
-        "browser.headful",
-        "browser.persistent_context",
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait.domcontentloaded",
-        "network.proxy",
-        "network.request_observe",
-        "network.response_capture"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "eaa954c68607fa56233bbdf46d6704432bcb16b3b76052834aa0b6dbbbe4842e",
-      "crawler_type": "api_sniffer",
-      "digest_sha256": "70dd92326982fa0279805f092b41c75e3c1a723eb48378f1ae62434ba0a63a81",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.monitor.api_sniffer.408dad08c66058fc",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "9e0510de4652e8380f75095d9a2e4dfd527b3780ca36df5ee0db7bad722f3ef7",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -2681,12 +2653,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "7988f7dce4e4581697194b3c9aca0d243c6aa24862b7eb9ee02849fa3845c52a",
       "crawler_type": "dom",
-      "digest_sha256": "7bc80c494351379b7630efff0146b88ffa46ffe4443d70e1ac724180857a2a03",
+      "digest_sha256": "c9a22466d37cab04cc667e301f82ac95a7ca1f7397152dcc0548659eaf017168",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "profile.monitor.dom.4f7b9bd5ede1e44d",
       "profile_kind": "configured",
-      "source_count": 2,
-      "source_refs_sha256": "9edb8c041a2d2c984f9434c955936cdf491230f03e40cd2dea49a1a4d1e30c20",
+      "source_count": 1,
+      "source_refs_sha256": "de7d5b5e77b35fec9d21147a3bfc574895da0a00454faa2678f2012d1179d057",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -7801,12 +7773,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "76f6578053b67be7ee7cd41dee516f3bd30347f5622c81bd84292b4010de6831",
       "crawler_type": "dom",
-      "digest_sha256": "2550914eb31c108de3558eb47b440de62cd7fd8ae745aca14e9508312c631245",
+      "digest_sha256": "4ccf5442180570f33d3638c98c04a9b1c89f0f5fcd0fccc2ad37e8201ee414a8",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.dom",
       "profile_kind": "registry",
-      "source_count": 859,
-      "source_refs_sha256": "5ae79558cb182afb43c2de9d21f1a11f99bd1625880da985eceb87c9fa2bc392",
+      "source_count": 858,
+      "source_refs_sha256": "878f275dede2b650c5877ed24acedee3518506b4ef6ffbbe728b0951a6b523b4",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -8013,11 +7985,11 @@
   ],
   "summary": {
     "browser_board_count": 523,
-    "browser_required_step_count": 680,
-    "configured_profile_occurrence_count": 681,
-    "configured_record_count": 321,
+    "browser_required_step_count": 678,
+    "configured_profile_occurrence_count": 679,
+    "configured_record_count": 320,
     "registry_record_count": 17,
-    "total_record_count": 338,
+    "total_record_count": 337,
     "zero_browser_config_registry_count": 1
   }
 }
