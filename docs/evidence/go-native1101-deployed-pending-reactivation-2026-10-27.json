@@ -1,0 +1,85 @@
+{
+  "schema": "jobseek.native-provider.deployed-handoff/v1",
+  "observed_at_utc": "2026-10-27T11:48:47Z",
+  "version": "0.13.1101",
+  "status": "deployed-and-recovered-after-ordinary-activation-rejection",
+  "source_revision": "1d71b1c679c5bfb784166a21c099bbe0dfcd5f61",
+  "data_revision": "1d71b1c679c5bfb784166a21c099bbe0dfcd5f61",
+  "pull_request": 10935,
+  "qualified_head": "1839e40053f9c85271370cbe097019c2dd5c3465",
+  "required_ci": "success",
+  "crawler_deploy_gate": "success",
+  "workflow_run": 40480716439,
+  "workflow_conclusion": "success",
+  "promotion_conclusion": "success",
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:987ff2df27ee93d48b3375d621a2e518e77716c57ff0e5e2fb13d22c10352634",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:b3b310c57fe87782ca0696d7838af1bf07e216e7b90d6a25ac76d74e00199b1c"
+  },
+  "backend_constraint": {
+    "allowed": [
+      "latest self-hosted Lightpanda",
+      "proven Go HTTP/API"
+    ],
+    "new_Chromium_or_Playwright_fallback": "forbidden by explicit operator decision"
+  },
+  "supported_outgoing_phases": {
+    "ordinary_retirement": "passed",
+    "B0_rollback": "passed",
+    "selector_clearing": "passed"
+  },
+  "current_authority": {
+    "epoch": 380,
+    "B0_active": true,
+    "active_ordinary_plans": 0,
+    "ordinary_receipt_present": false,
+    "serving_mode": "complete legacy/B0 stack restored by original recover-pending"
+  },
+  "independent_rollout_readback": {
+    "passed": true,
+    "exact_source_data_images": true,
+    "serving_actors": 7,
+    "successful_legacy_HTTP_endpoints": 6,
+    "inactive_native_contract": "Ordinary service removed; producer/executor stopped with original full-deploy restart policies. This matches the preceding accepted full rollout.",
+    "scope": "Cold full rollout readback: seven actors/six endpoints; superseded for current serving mode by independent_supported_recovery, nine actors/seven endpoints."
+  },
+  "complete_actual_admission": {
+    "enabled_boards": 8137,
+    "proposed_monitors": 8103,
+    "proposed_details": 8124,
+    "all_prior_monitors_retained": 8101,
+    "all_prior_details_retained": 8124,
+    "scheduled_detail_routes": 2022825,
+    "cache_mismatches": 0,
+    "scheduled_unqueued": 0,
+    "pending_lane_normalizations": 0,
+    "native_SDK_passed": true,
+    "SDK_completed_at_utc": "2026-10-27T11:01:11Z",
+    "scope": "Dated non-atomic captured SQL/config/cache/URL/lane proof; no activation, sustained freshness or queue-conservation grant."
+  },
+  "current_activation_interlock": {
+    "operation": "ordinary activation",
+    "result": "rejected before projection; lane contained; original pending recovery completed",
+    "reason": "full-cohort eligibility exceeded runtime15second snapshot budget",
+    "inert_staged_history_preserved": true,
+    "guards_overridden": false
+  },
+  "latest_Lightpanda": {
+    "version": "1.1.0-nightly.11169+6c44d0871",
+    "official_assets_rechecked_at_utc": "2026-10-27T11:00:32Z",
+    "official_nightly_updated_at_utc": "2026-10-27T02:55:42Z",
+    "serving_renderer_source": "9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d"
+  },
+  "remaining": [
+    "Review and deploy1102 administrative eligibility-budget repair with full cold barriers and the proven McDonald Italy HTTP configuration.",
+    "Use original B0 rollback/selector/full-rollout/staging/activation workflows, followed by exact serving and complete queue/conservation proof.",
+    "Continue remaining compatible contracts; prove natural freshness/resources/cost/reversal before production Python retirement."
+  ],
+  "independent_supported_recovery": {
+    "passed": true,
+    "completed_at_utc": "2026-10-27T11:48:21.287010+00:00",
+    "successful_HTTP_endpoints": 7,
+    "serving_actors": 9,
+    "ordinary_owner_active": false
+  }
+}

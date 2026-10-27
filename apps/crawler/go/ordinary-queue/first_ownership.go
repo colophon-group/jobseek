@@ -68,7 +68,9 @@ func RetireFirstOwnershipInHostScope(ctx context.Context, pool *pgxpool.Pool, cl
 func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client, epoch int64, digest, source string, target *ColdB0Target, retire bool) (*OwnershipPlan, string, error) {
 	var plan *OwnershipPlan
 	var state string
-	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
+	// Eligibility observes the full fleet just like canonical restoration. Keep
+	// its bounded administrative snapshot inside the existing cold barriers.
+	err := coldCanonicalSnapshotTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		var current int64
 		var called, prior, attempts bool
 		if err := tx.QueryRow(ctx, "SELECT last_value,is_called FROM public.lightpanda_b0_routing_epoch_seq").Scan(&current, &called); err != nil {

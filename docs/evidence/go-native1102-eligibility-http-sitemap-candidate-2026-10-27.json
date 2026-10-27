@@ -1,0 +1,93 @@
+{
+  "schema": "jobseek.native-provider.candidate/v1",
+  "observed_at_utc": "2026-10-27T12:27:57.693891+00:00",
+  "version": "0.13.1102",
+  "status": "locally-qualified; exact-head CI/merge/full rollout and activation required",
+  "constraint": "latest self-hosted Lightpanda and proven Go HTTP/API; no new Chromium/Playwright fallback",
+  "activation_repair": {
+    "cause": "firstOwnershipPlan used15second runtime transaction helper for full-fleet eligibility snapshot",
+    "change": "reuse coldCanonicalSnapshotTransaction inside existing host cold scope",
+    "old_code_real_PG_Redis_regression": "fails at15.08s with16second client snapshot work",
+    "fixed_real_PG_Redis_regression": "passes16second snapshot plus earlier caller cancellation and unchanged staged/queue state",
+    "retained": "parent deadline,10second SQL statement timeout,exclusive host/epoch/lease barriers and runtime transaction budgets"
+  },
+  "providers": [
+    {
+      "slug": "mcdonalds-it",
+      "route": "existing explicit-field automatic-array Go HTTP API profile",
+      "complete_URLs": 163,
+      "unchanged_original_parser_replay": "exact URLs and allsourcevalues;15empty titles and163nil/emptyextras representation differences",
+      "real_PG_Redis": {
+        "inserted": 163,
+        "titled": 148,
+        "untitled": 15,
+        "missing_count": 1,
+        "failures": 0,
+        "reserved": false,
+        "requests": 1,
+        "deadline_and_lease_settled": true
+      },
+      "changed": "monitor transport only; source,field map,identity,detail unchanged",
+      "original_live_Python_HTTP": "403; not claimed successful"
+    },
+    {
+      "slug": "lenovo-careers",
+      "route": "publisher-declared sitemap,existing native Go sitemap reader",
+      "complete_XML_documents": 9,
+      "complete_English_URLs": 1122,
+      "unchanged_original_sitemap_reader_replay": "exact captured fullURLset equality",
+      "original_configured_prefix_retained": 999,
+      "additional_beyond_original_cap": 123,
+      "locale_scope": "en_US, matching original board; eightlocale duplicates excluded",
+      "truncated": false,
+      "publisher_reserved": false,
+      "detail_configuration": "unchanged",
+      "real_PG_Redis": {
+        "browser_details_queued": 1122,
+        "failures": 0,
+        "inserted": 1122,
+        "missing_count": 1,
+        "requests": 9,
+        "reserved": false,
+        "settled": true,
+        "deadline_and_lease_settled": true
+      }
+    }
+  ],
+  "prospective_admission": {
+    "enabled_boards": 8137,
+    "monitors": 8105,
+    "details": 8124,
+    "old_monitors_retained": 8101,
+    "old_details_retained": 8124,
+    "actual_canonical_metadata_SDK": "passed,zero unsupported bindings",
+    "serving_claim": false,
+    "remaining_ordinary_monitors": 29,
+    "remaining_ordinary_details": 10,
+    "separate_B0_boards": 3
+  },
+  "validation": {
+    "full_ordinary_queue_race": "passed after final provider configurations",
+    "queue_and_worker_vet": "passed",
+    "census": "regenerated;62tests passed"
+  },
+  "rejected_probe": {
+    "deloitte-careers-us": "100page traversal999 incomplete;offset1000 stilljobs;declared sitemap graph incomplete; no admission"
+  },
+  "production_at_checkpoint": {
+    "version": "0.13.1101",
+    "source": "1d71b1c679c5bfb784166a21c099bbe0dfcd5f61",
+    "epoch": 380,
+    "B0_active": true,
+    "ordinary_active": false,
+    "supported_recovery": "passed;unchanged1101activation must not be retried"
+  },
+  "latest_lightpanda": "1.1.0-nightly.11169+6c44d0871",
+  "required_next": [
+    "Required CI and Crawler Deploy Gate at exact PR head; current merge authority.",
+    "Original B0 rollback and selector clearing; original full deployment.",
+    "Fresh actual catalogue and scheduled-route admission; original staging/activation; complete serving/queue conservation.",
+    "Remaining contracts,natural freshness,whole-lane resources/cost,cold reversal,final production Python retirement."
+  ],
+  "latest_lightpanda_official_rechecked_utc": "2026-10-27T12:28:00Z"
+}

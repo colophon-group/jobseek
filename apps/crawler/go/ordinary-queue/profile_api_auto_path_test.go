@@ -22,6 +22,7 @@ func TestAutomaticAPIArrayCurrentExplicitFieldRegistryBindings(t *testing.T) {
 		h[k] = i
 	}
 	count := 0
+	mcdonaldsHTTP := false
 	for _, r := range rows[1:] {
 		if r[h["monitor_type"]] != "api_sniffer" {
 			continue
@@ -53,6 +54,9 @@ func TestAutomaticAPIArrayCurrentExplicitFieldRegistryBindings(t *testing.T) {
 		if err != nil || !o.AutoPath || !APISnifferMonitorResourceMatches(p, c, p.Endpoint) {
 			t.Fatal("automatic path/source binding", err)
 		}
+		if r[h["board_slug"]] == "mcdonalds-it" {
+			mcdonaldsHTTP = true
+		}
 		delete(md, "fields")
 		body, _ = json.Marshal(md)
 		c["metadata"] = string(body)
@@ -61,7 +65,7 @@ func TestAutomaticAPIArrayCurrentExplicitFieldRegistryBindings(t *testing.T) {
 		}
 		count++
 	}
-	if count != 11 {
+	if count != 12 || !mcdonaldsHTTP {
 		t.Fatal("registry coverage changed", count)
 	}
 }
