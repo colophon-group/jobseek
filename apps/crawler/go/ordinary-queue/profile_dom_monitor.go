@@ -100,6 +100,12 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if _, err := FeedMonitorURLRules(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	if raw := md["oracle_adf_job_ids"]; raw != nil && string(raw) != "null" {
+		if _, err := OracleADFMonitorOptions(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "dom", domRenderedMonitorProfile, "dom", config["board_url"])
+	}
 	if _, qualified := qualifiedDOMHTTPPaginationSources[domHTTPPaginationConfigFingerprint(config)]; qualified && !DOMMonitorHasQualifiedHTTPPagination(boardID, config) {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}

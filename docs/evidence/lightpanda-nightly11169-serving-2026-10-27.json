@@ -1,0 +1,63 @@
+{
+  "schema": "jobseek.lightpanda.serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-27T05:28:41.734450+00:00",
+  "status": "latest-renderer-deployed-and-independently-accepted",
+  "runtime_ownership_status": "Native ordinary8101M8124D and separate B0 active epoch378 on runtime/data17dea; see go-native1100-serving-2026-10-27.json.",
+  "renderer": {
+    "independently_verified_latest_renderer": true,
+    "observed_at_utc": "2026-10-27T05:28:41.734450+00:00",
+    "source_revision": "9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d",
+    "engine_version": "1.1.0-nightly.11169+6c44d0871",
+    "engine_sha256": "25e10dafb85fb11c972ce96af3e5757a89d08614ad8d133cd2ae869d323e736c",
+    "image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:8ef6b69100106322ecf485add7da117d1fab414f4c83e26f5bf4bf67c06939c1",
+    "memory_max_bytes": 1073741824,
+    "memory_swap_max_bytes": 0,
+    "memory_current_bytes": 22929408,
+    "readiness_probe_passed": true,
+    "docker_healthcheck_defined": false,
+    "running": true,
+    "oom": false,
+    "scope": "Read-only allowlisted provider resolution and host Docker source/digest/binary/version/cgroup/health checks after original exact-main renderer deployment; no service or policy mutation.",
+    "workflow_run": 40455154533,
+    "workflow_conclusion": "success"
+  },
+  "matched_synthetic_benchmark": {
+    "schema": "jobseek.lightpanda.whole-lane-synthetic/v1",
+    "workflow_run": 40450153470,
+    "job": 122010724570,
+    "engine_version": "1.1.0-nightly.11169+6c44d0871",
+    "measured_source": "474aa26a7b5ac09a5a145730e52db2833f12eb99",
+    "deployed_renderer_source": "9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d",
+    "measured_and_deployed_git_trees_equal": true,
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "reasons": [],
+    "density_ratio_range": [
+      5.212404945375888,
+      12.315791148721123
+    ],
+    "peak_rss_ratio_range": [
+      0.12831692729118016,
+      0.2853534391937347
+    ],
+    "lifetime_cpu_ratio_range": [
+      0.42543620618843375,
+      0.688036298145358
+    ],
+    "p99_latency_ratio_range": [
+      0.6266745677943556,
+      0.7787361490787849
+    ],
+    "wall_time_ratio_range": [
+      1.272103615135689,
+      1.5900642593090835
+    ],
+    "scope": "Synthetic matched candidate/control whole-lane fixture only; no live whole-fleet freshness, fairness or attributable hosting-cost claim."
+  },
+  "limits": [
+    "Synthetic benchmark is not whole-fleet freshness, fairness or attributable hosting cost.",
+    "Full migration remains active;33monitor/10detail ordinary assignments remain."
+  ],
+  "goal_status": "active-incomplete"
+}

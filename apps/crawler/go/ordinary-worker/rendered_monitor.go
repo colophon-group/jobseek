@@ -46,6 +46,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if profile.Profile == queue.CandidatusHTTPProfile {
 		return discoverCandidatusHTTP(ctx, verified, config)
 	}
+	if options, err := queue.OracleADFMonitorOptions(config); err == nil {
+		return discoverOracleADF(ctx, verified, profile, config, options, pauseRich)
+	}
 	if slaughterWebFormsConfigured(profile, config) {
 		return discoverSlaughterWebForms(ctx, verified)
 	}
