@@ -487,11 +487,9 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if claim.Descriptor().Kind == queue.Scrape {
 			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits, renderer)
 		}
-		if provider := claim.Descriptor().Config["crawler_type"]; provider == "workday" || provider == "smartrecruiters" || provider == "workable" || provider == "join" || provider == "sitemap" {
-			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)
-		}
 		monitorRenderer, _ := renderer.(renderedMonitorClient)
-		return RunGreenhouseClaim(ctx, authority, claim, httpClient, preparer, circuits, monitorRenderer)
+		client := directMonitorHTTP(claim.Descriptor().Config["crawler_type"], httpClient, workdayHTTP)
+		return RunGreenhouseClaim(ctx, authority, claim, client, preparer, circuits, monitorRenderer)
 	}}
 	err = runWorkerLoop(process, c, services, m)
 	_ = server.Close()
@@ -506,6 +504,18 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	default:
 	}
 	return err
+}
+
+// Public APIs can reject HTTP/1 while serving the same request over HTTP/2.
+// Reuse the process-owned verified client; ALPN still permits HTTP/1 fallback.
+// Proxy and explicit TLS exceptions are selected before this direct-only path.
+func directMonitorHTTP(provider string, http1, http2 *VerifiedHTTP) *VerifiedHTTP {
+	switch provider {
+	case "api_sniffer", "workday", "smartrecruiters", "workable", "join", "sitemap":
+		return http2
+	default:
+		return http1
+	}
 }
 
 // CheckHealth interrogates the installed process without creating another DB

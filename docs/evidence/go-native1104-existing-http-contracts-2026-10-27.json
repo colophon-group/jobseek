@@ -1,0 +1,141 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "observed_at_utc": "2026-10-27T18:03:18.577306+00:00",
+  "candidate_version": "0.13.1104",
+  "status": "qualified unchanged HTTP contracts; ownership not granted",
+  "captured_source": "509e0f883edf184b319349725c504db2a31d7568",
+  "cold_epoch": 383,
+  "canonical_baselines": [
+    {
+      "slug": "association-for-prevention-torture-vacancies",
+      "enabled": true,
+      "active_postings": 0,
+      "scheduled_postings": 0,
+      "failures": 0,
+      "error_category": "other"
+    },
+    {
+      "slug": "black-ore-careers",
+      "enabled": true,
+      "active_postings": 0,
+      "scheduled_postings": 0,
+      "failures": 0,
+      "error_category": "none"
+    },
+    {
+      "slug": "international-basketball-federation-hq",
+      "enabled": true,
+      "active_postings": 1,
+      "scheduled_postings": 1,
+      "failures": 35,
+      "error_category": "other"
+    }
+  ],
+  "unchanged_Python_replays": [
+    {
+      "slug": "association-for-prevention-torture-vacancies",
+      "native_success": false,
+      "native_jobs": 0,
+      "native_http_statuses": [
+        404
+      ],
+      "native_error_type": "*worker.DiscoveryError",
+      "original_success": false,
+      "original_error_type": "BoardGoneError",
+      "original_requests": 1
+    },
+    {
+      "slug": "black-ore-careers",
+      "native_success": true,
+      "native_jobs": 0,
+      "native_http_statuses": [
+        200
+      ],
+      "native_error_type": null,
+      "original_success": true,
+      "original_jobs": 0,
+      "exact_URL_set": true,
+      "original_requests": 1
+    },
+    {
+      "slug": "international-basketball-federation-hq",
+      "native_success": false,
+      "native_jobs": 0,
+      "native_http_statuses": [
+        200
+      ],
+      "native_error_type": "*errors.errorString",
+      "original_success": false,
+      "original_error_type": "ValueError",
+      "original_requests": 1
+    }
+  ],
+  "actual_native_canonical_effects": [
+    {
+      "failures": 0,
+      "inserted": 0,
+      "prior_active": false,
+      "prior_missing_count": 0,
+      "requests": 1,
+      "reserved": false,
+      "settled": true,
+      "slug": "association-for-prevention-torture-vacancies",
+      "status": "gone_pending"
+    },
+    {
+      "failures": 0,
+      "inserted": 0,
+      "prior_active": false,
+      "prior_missing_count": 0,
+      "requests": 1,
+      "reserved": false,
+      "settled": true,
+      "slug": "black-ore-careers",
+      "status": "succeeded"
+    },
+    {
+      "failures": 1,
+      "inserted": 0,
+      "prior_active": true,
+      "prior_missing_count": 0,
+      "requests": 1,
+      "reserved": false,
+      "settled": true,
+      "slug": "international-basketball-federation-hq",
+      "status": "failed"
+    }
+  ],
+  "regression_validation": "Native claims and migrated PostgreSQL/private Redis passed under race detector. Original failure/gone/empty outcomes remain explicit. Prior active FIBA posting retained with missing_count zero.",
+  "prospective_floor": {
+    "monitors": 8111,
+    "details": 8125,
+    "enabled_boards": 8138,
+    "captured_detail_reference_URLs": 3257,
+    "SDK_failures": 0,
+    "retains_qualified_8108_monitor_8125_detail_floor": true
+  },
+  "remaining_after_activation": {
+    "ordinary_monitors": 24,
+    "ordinary_details": 10
+  },
+  "ownership_granted": false,
+  "positive_live_job_claim": false,
+  "source_config_changes": false,
+  "rejected_candidates": [
+    "Rothschild direct HTTP candidate binding rejected before I/O; no ownership or profile/config changes."
+  ],
+  "required_next": [
+    "Exact-head Required CI and Crawler Deploy Gate",
+    "Fresh expected-head merge authority and original full rollout",
+    "Actual published 8111/8125 metadata and complete scheduled routes",
+    "Original supported activation and queue conservation",
+    "Whole-lane freshness/resources/cost/reversal and final production Python retirement"
+  ],
+  "evidence_sha256": {
+    "http-native1.private.json": "e32efd57fbe5340c56c5e3ac267825ea6762a2cada86f79b85eb3b7af08dac39",
+    "original-replay-summary1.json": "2977eae8a3eba7bcc4e8d22662d1d1722f823a826367182a4a8bed2b0fe948aa",
+    "canonical-contracts2.json": "feef04ca35a31e9c02a6600cd6a1ece31d3398e0b86eb67235b2e14bb6ccd7b8",
+    "source-current1.private.json": "c04b92cc483de59469015d4245646ec81fb2221dfea2f511b68088cd9c843cb3",
+    "prospective-floor-sdk1.json": "e32452e2aee10509b98ea1294109720270aede48d1094eb3b92467c246b24c9e"
+  }
+}

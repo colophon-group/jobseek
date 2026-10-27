@@ -1,0 +1,99 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "observed_at_utc": "2026-10-27T18:03:18.578843+00:00",
+  "candidate_version": "0.13.1104",
+  "status": "local qualification complete; exact-head CI rerun pending",
+  "problem": {
+    "provider": "McDonalds Italy configured HTTP API",
+    "actual_runtime_HTTP1_status": 403,
+    "verified_runtime_HTTP2_status": 200,
+    "complete_HTTP2_jobs": 164,
+    "earlier_qualification_gap": "The prior positive source probe negotiated HTTP/2 while the production api_sniffer worker selected its HTTP/1 client."
+  },
+  "change": {
+    "direct_API_monitors": "Reuse existing process-owned pinned-CA HTTP/2 client; ALPN permits HTTP/1 fallback.",
+    "existing_H2_providers": "Retain current selection.",
+    "renderer": "Retain renderer argument for browser API profiles.",
+    "proxy_and_explicit_TLS_exceptions": "Existing earlier selection branches remain authoritative.",
+    "new_browser_fallbacks": false
+  },
+  "positive_source_parity": {
+    "completed_at_utc": "2026-10-27T17:21:37.576673+00:00",
+    "complete_jobs": 164,
+    "exact_URL_set": true,
+    "compared_fields": [
+      "SourceIdentity",
+      "Title",
+      "Description",
+      "Locations",
+      "Language",
+      "DatePosted",
+      "BaseSalary",
+      "Metadata",
+      "Extras",
+      "EmploymentType",
+      "JobLocationType"
+    ],
+    "field_differences": 0,
+    "requests": 1,
+    "native_protocols": [
+      "HTTP/2.0"
+    ],
+    "scope": "Unchanged Python API parser on frozen full positive pinned-CA native H2 capture; no replacement browser route or ownership grant"
+  },
+  "regression": {
+    "test": "TestRealAPIMonitorHTTP2SelectionAndCanonicalSettlement",
+    "database_and_queue": "Real migrated PostgreSQL and private Redis; native claims and canonical writer",
+    "old_selection": "fails: one HTTP/1 403, no published jobs",
+    "new_selection": "both HTTP/2-required and HTTP/1-only fallback subtests pass under race detector",
+    "expected_effects": {
+      "inserted": 2,
+      "prior_missing_count": 1,
+      "consecutive_failures": 0,
+      "publisher_reserved": false,
+      "lease_deadline": "settled"
+    }
+  },
+  "verification": {
+    "full_worker_race": "Completed: only two legacy DOC tests failed because local antiword was absent; no race or timeout.",
+    "resolved_missing_dependency_failures": "Both failed tests and changed HTTP/2 regression passed under race with actual SHA256-verified local antiword.",
+    "worker_vet": "passed",
+    "frozen_capture_canonical_effects": {
+      "failures": 0,
+      "inserted": 164,
+      "missing_count": 1,
+      "requests": 1,
+      "reserved": false,
+      "settled": true,
+      "titled": 149,
+      "untitled": 15
+    },
+    "first_PR_CI": "Worker race suite and installed image parity passed. Queue job found stale Onlyfy registry expected count5 after Hexagon became the sixth board; expected count corrected, all per-board assertions retained."
+  },
+  "production_before_candidate": {
+    "version": "0.13.1103",
+    "source": "509e0f883edf184b319349725c504db2a31d7568",
+    "full_rollout_workflow": 40541887627,
+    "full_rollout_conclusion": "success",
+    "independent_readback": "passed",
+    "cold_epoch": 383,
+    "ordinary_and_B0_ownership": "inactive",
+    "selectors": "cleared",
+    "enabled_boards": 8138,
+    "prospective_monitors": 8108,
+    "prospective_details": 8125
+  },
+  "negative_diagnostics": "Blocked or empty API probes for other publishers do not qualify new ownership.",
+  "required_next": [
+    "Exact-head Required CI and Crawler Deploy Gate; fresh merge authority",
+    "Original complete rollout and independent readback",
+    "Actual published full-route proof and original supported activation",
+    "Whole-lane natural freshness, resources/cost, reversal and production Python retirement"
+  ],
+  "evidence_sha256": {
+    "McD-exact-H1-native1.private.json": "e01321b7df5db4edd826d67d493ebd7710b57cd035a56e2a395ff3759f0d38d3",
+    "McD-verified-H2-native1.private.json": "dafbe26800a15b63680bc03dcdabd1551b18ab0c54076be47556653bc258e1ca",
+    "McD-H2-source-parity1.json": "f7ac4c1dc84f223d45cb1ff5cf76d8c13cd51f4bcb1c3450ed23dbc60ddcb01f"
+  },
+  "related_existing_contract_qualification": "go-native1104-existing-http-contracts-2026-10-27.json"
+}
