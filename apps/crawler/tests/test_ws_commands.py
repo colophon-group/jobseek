@@ -771,6 +771,27 @@ class TestTaxonomy:
 
 
 class TestDelBoard:
+    def test_deleted_board_rejects_late_probe_log(self, tmp_path, monkeypatch):
+        from src.workspace.errors import WorkspaceStateError
+        from src.workspace.state import load_board
+
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", active_board="careers"))
+        set_active_slug("test")
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        pending_probe = load_board("test", "careers")
+
+        runner = CliRunner()
+        removed = runner.invoke(ws, ["del", "board", "careers"])
+        assert removed.exit_code == 0
+        pending_probe.log.append({"cmd": "probe scraper", "ok": True})
+        with pytest.raises(WorkspaceStateError, match="was deleted"):
+            save_board("test", pending_probe)
+
+        status = runner.invoke(ws, ["status", "test"])
+        assert status.exit_code == 0
+        assert "test-careers" not in status.output
+
     def test_del_board_accepts_full_board_slug(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test", active_board="careers"))

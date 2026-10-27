@@ -170,6 +170,11 @@ class Board:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Board:
+        from src.workspace.errors import WorkspaceStateError
+
+        for key in ("alias", "slug", "url"):
+            if not isinstance(data.get(key), str) or not data[key]:
+                raise WorkspaceStateError(f"Invalid board YAML: missing or invalid {key!r}")
         board = cls._from_v2(data) if "configs" in data else cls._from_v1(data)
         board._baseline = deepcopy(board.to_dict())
         return board
@@ -553,10 +558,16 @@ def _merge_board_changes(base: dict, proposed: dict, current: dict) -> dict:
 
 def save_board(slug: str, board: Board) -> None:
     """Persist only changes since load under a lock, with stale-result rejection."""
+    from src.workspace.errors import WorkspaceStateError
+
     path = board_yaml_path(slug, board.alias)
     path.parent.mkdir(parents=True, exist_ok=True)
     proposed = board.to_dict()
     with file_lock(path):
+        if board._baseline and not path.exists():
+            raise WorkspaceStateError(
+                f"Board {board.alias!r} was deleted; refusing to save stale results"
+            )
         current = load_board(slug, board.alias).to_dict() if path.exists() else {}
         merged = _merge_board_changes(board._baseline or {}, proposed, current)
         _atomic_write(path, yaml.dump(merged, default_flow_style=False, sort_keys=False))

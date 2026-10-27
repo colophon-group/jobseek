@@ -15,11 +15,12 @@ import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser
 
+from src.core.salary_extract import parse_salary_text
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
 
-_LABEL_RE = re.compile(r"^(?:Position|Location|Job Id|# of Openings):\s*", re.IGNORECASE)
+_LABEL_RE = re.compile(r"^(?:Position|Location|Job Id|# of Openings|Pay Range):\s*", re.IGNORECASE)
 
 
 def _field_text(tree: LexborHTMLParser, selector: str) -> str | None:
@@ -40,12 +41,20 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     description_html = description_node.inner_html if description_node is not None else None
     description = description_html.strip() if description_html else None
 
-    location = _field_text(tree, "#gnewtonJobLocationInfo")
+    # Newton repeats this ID for street and city/state address lines.
+    # Taking only the first node can drop the actual city entirely.
+    location_parts = [
+        value
+        for node in tree.css("#gnewtonJobLocationInfo")
+        if (value := node.text(separator=" ", strip=True).strip())
+    ]
+    location = ", ".join(dict.fromkeys(location_parts))
     job_id = _field_text(tree, "#gnewtonJobID")
     openings = _field_text(tree, "#gnewtonJobOpening")
+    pay_range = _field_text(tree, "#gnewtonJobPayRange")
     metadata = {
         key: value
-        for key, value in (("job_id", job_id), ("openings", openings))
+        for key, value in (("job_id", job_id), ("openings", openings), ("pay_range", pay_range))
         if value is not None
     }
 
@@ -53,6 +62,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         title=_field_text(tree, "#gnewtonJobPosition"),
         description=description,
         locations=[location] if location else None,
+        base_salary=parse_salary_text(pay_range) if pay_range else None,
         metadata=metadata or None,
     )
 

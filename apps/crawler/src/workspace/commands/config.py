@@ -1503,6 +1503,8 @@ def add_boards(slug: str | None, only_codes: str | None, exclude_codes: str | No
 @click.argument("alias", required=False)
 def del_board(slug_or_alias: str, alias: str | None):
     """Remove a board from workspace."""
+    from src.workspace.filelock import file_lock
+
     slug, alias = resolve_two_args(slug_or_alias, alias)
     resolved_alias = resolve_board_alias(slug, alias)
 
@@ -1510,10 +1512,10 @@ def del_board(slug_or_alias: str, alias: str | None):
         out.die(f"Workspace {slug!r} not found")
 
     path = board_yaml_path(slug, resolved_alias)
-    if not path.exists():
-        out.die(f"Board {alias!r} not found in workspace {slug!r}")
-
-    path.unlink()
+    with file_lock(path):
+        if not path.exists():
+            out.die(f"Board {alias!r} not found in workspace {slug!r}")
+        path.unlink()
     if resolved_alias != alias:
         out.warn("board", f"Resolved {alias!r} to alias {resolved_alias!r}")
     out.info("board", f"Removed board {resolved_alias!r}")

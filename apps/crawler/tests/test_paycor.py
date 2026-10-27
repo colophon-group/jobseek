@@ -55,6 +55,34 @@ def test_can_handle_requires_newton_job_detail_markup_on_every_sample():
     assert can_handle([DETAIL_HTML, "<html>not a Newton detail page</html>"]) is None
 
 
+def test_parse_html_preserves_address_lines_and_hourly_pay():
+    html = DETAIL_HTML.replace(
+        '<td id="gnewtonJobLocationInfo"> Salt Lake City, UT<br></td>',
+        '<td id="gnewtonJobLocationInfo">1265 W Cruises Blvd.</td></tr><tr>'
+        '<td id="gnewtonJobLocationInfo">Miami, FL</td>',
+    ).replace(
+        "</table>",
+        '<tr><td id="gnewtonJobPayRange"><b>Pay Range:</b> $16 per hour</td></tr></table>',
+    )
+
+    result = parse_html(html)
+
+    assert result.locations == ["1265 W Cruises Blvd., Miami, FL"]
+    assert result.base_salary == {"currency": "USD", "min": 16.0, "max": None, "unit": "hour"}
+    assert result.metadata["pay_range"] == "$16 per hour"
+
+
+def test_parse_html_keeps_unstructured_pay_without_inventing_salary():
+    html = DETAIL_HTML.replace(
+        "</table>", '<tr><td id="gnewtonJobPayRange">Pay Range: Competitive</td></tr></table>'
+    )
+
+    result = parse_html(html)
+
+    assert result.base_salary is None
+    assert result.metadata["pay_range"] == "Competitive"
+
+
 async def test_scrape_fetches_static_html():
     transport = httpx.MockTransport(
         lambda request: httpx.Response(200, text=DETAIL_HTML, request=request)

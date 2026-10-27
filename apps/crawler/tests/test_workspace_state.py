@@ -437,6 +437,45 @@ class TestActiveWorkspace:
 
 
 class TestBoard:
+    @pytest.mark.parametrize("change", ["log", "detections", "config"])
+    def test_late_save_does_not_recreate_deleted_board(self, tmp_path, monkeypatch, change):
+        from src.workspace.errors import WorkspaceStateError
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        save_board("test", board)
+        stale = load_board("test", "careers")
+        path = tmp_path / "test" / "boards" / "careers.yaml"
+        path.unlink()
+        if change == "log":
+            stale.log.append({"cmd": "probe scraper", "ok": True})
+        elif change == "detections":
+            stale.detections["json-ld"] = {"detected": True}
+        else:
+            stale.monitor_type = "dom"
+
+        with pytest.raises(WorkspaceStateError, match="was deleted"):
+            save_board("test", stale)
+
+        assert not path.exists()
+        assert list_boards("test") == []
+
+    @pytest.mark.parametrize("key", ["alias", "slug", "url"])
+    def test_missing_board_identity_is_a_state_error(self, tmp_path, monkeypatch, key):
+        from src.workspace.errors import WorkspaceStateError
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        save_board("test", board)
+        data = board.to_dict()
+        del data[key]
+        path = tmp_path / "test" / "boards" / "careers.yaml"
+        path.write_text(yaml.safe_dump(data))
+
+        with pytest.raises(WorkspaceStateError, match=key):
+            load_board("test", "careers")
+        assert list_boards("test") == []
+
     def test_to_dict_roundtrip(self):
         board = Board(
             alias="careers", slug="stripe-careers", url="https://boards.greenhouse.io/stripe"

@@ -4888,12 +4888,14 @@ SCRAPER_PAYCOR = """\
 paycor — Paycor/Newton server-rendered detail scraper
 
   Page:     GET https://recruitingbypaycor.com/career/JobIntroduction.action?...&id={id}
-  Returns:  title, complete HTML description, locations,
-            metadata (job_id, openings)
+  Returns:  title, complete HTML description, locations, base_salary when
+            a public pay range is parseable, metadata (job_id, openings, pay_range)
   Config:   None needed.
   Note:     Legacy Newton templates use a generic visible page heading and
             nested tables. This scraper reads the stable gnewtonJob* fields
             directly over static HTTP, so Playwright is not required.
+            Repeated location cells are joined as address lines so a street
+            address cannot hide the following city/state.
 """
 
 SCRAPER_PHUKETALL = """\
