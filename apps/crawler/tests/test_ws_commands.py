@@ -4809,6 +4809,31 @@ class TestCostScoring:
         cfg = board.configs[board.active_config]
         assert cfg["cost"]["initial_load"] > 0
 
+    def test_select_api_sniffer_preserves_pagination_value_template(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+        pagination = {
+            "param_name": "currentQuery",
+            "location": "body",
+            "start_value": 1,
+            "increment": 1,
+            "max_pages": 30,
+            "value_template": "page={value}&page_size=12&view_size=12",
+        }
+        config = {"api_url": "https://test.com/api/jobs", "pagination": pagination}
+
+        result = CliRunner().invoke(
+            ws, ["select", "monitor", "test", "api_sniffer", "--config", json.dumps(config)]
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        assert board.configs[board.active_config]["monitor_config"]["pagination"] == pagination
+
     def test_select_rich_nextdata_accepts_page_metadata_pagination(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))

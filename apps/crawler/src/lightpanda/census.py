@@ -252,6 +252,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "expected_page_title",
             "fields",
             "include_item_values",
+            "job_filter",
             "pagination",
             "path",
             "render",

@@ -1,0 +1,136 @@
+{
+  "issue": 9528,
+  "verified_at": "2026-10-27",
+  "company": "Mohawk Industries",
+  "website": "https://mohawkind.com/",
+  "identity": {
+    "registry_searches": [
+      "Mohawk",
+      "Us Careers",
+      "careers.mohawkind.com"
+    ],
+    "duplicate_issue_9457": "Inspected read-only: Crown tenant us-careers.crown.com; unrelated employer.",
+    "ownership_sources": [
+      "https://mohawkind.com/about/",
+      "https://ir.mohawkind.com/static-files/2a7b1ab9-66f2-4914-8de2-a4672830ab7d",
+      "https://jobs.unilin.com/en/mohawk"
+    ]
+  },
+  "metadata": {
+    "industry": 4,
+    "employee_count_range": 8,
+    "employee_evidence": "Official about page reports approximately 40,500 employees at 2025-12-31.",
+    "founded_year": "Unset:1878 operating roots versus 1988 current-corporation incorporation.",
+    "descriptions": [
+      "en",
+      "de",
+      "fr",
+      "it"
+    ],
+    "logo": "https://mohawkind.com/_images/global/logo.svg",
+    "icon": "https://icons.duckduckgo.com/ip3/mohawkind.com.ico",
+    "icon_limitation": "32 px distinct brand symbol; discovery found no larger standalone official mark. Full logo is original SVG."
+  },
+  "boards": [
+    {
+      "alias": "careers",
+      "jobs": 419,
+      "required_fields": "419/419 title, description, location",
+      "count_check": "Official search 430; feed 419 is 2.6% lower. Historical issue estimate 495 is stale.",
+      "description_shortest_plaintext_chars": 1820,
+      "coverage": "Mohawk and Dal-Tile branded pages, including Mexico subset."
+    },
+    {
+      "alias": "careers-br",
+      "jobs": 15,
+      "count_check": "18 unfiltered source entries minus 3 explicitly named Banco de Talentos registrations. A mechanical internship categorized as vacancy_type_talent_pool remains included; title-based exclusion preserves it.",
+      "detail_samples": 10,
+      "required_fields": "10/10 clean title, description and full city/state/country",
+      "optional_fields": [
+        "employment_type 7/10",
+        "job_location_type 10/10",
+        "date_posted 10/10",
+        "valid_through 10/10"
+      ],
+      "method": "NextData listing with rich titles for title filter, NextData details because native JSON-LD missed 6/10 samples.",
+      "source_inconsistency": "Ajudante Geral remains published in the unfiltered source despite expiresAt 2026-06-30. Source expiry is preserved; review rather than invent a replacement.",
+      "description": "All four source content fields included: description, responsibilities, prerequisites and relevantExperiences (benefits)."
+    },
+    {
+      "alias": "careers-unilin",
+      "jobs": 150,
+      "count_check": "Exact listerParams.totalCount 150; sitemap 147 lagged live API.",
+      "required_fields": "150/150 title, substantive HTML description and location",
+      "description_shortest_plaintext_chars": 654,
+      "pagination": "Initial 12 rows then pageSize=advertised total using bounded cumulative_limit, max 500 pages worth. Normal pageNumber and changing page sizes caused overlap. Material shortfalls remain truncated; existing monitor tolerates one record or 1% for churn.",
+      "locations": "Explicit map for 26 observed location/division strings removes organization suffixes; unmapped future values become null.",
+      "optional_fields": "List keys inspected: title, locationAndDivision, description, url, background, tags, isNewJob, hasHorizontalSlide. No structured standard optional fields available."
+    },
+    {
+      "alias": "careers-kerama",
+      "jobs": 27,
+      "required_fields": "10/10 sampled detail title, description and locations",
+      "optional_fields": [
+        "date_posted 10/10",
+        "valid_through 10/10"
+      ],
+      "scope_review": "Unfiltered exact employer 1427286 search returns 27. Shared branded employer UI says 53 and is reused on other legal employer accounts 609300 and 1261810. Their Mohawk ownership was not proved; do not equate shared branding with corporate ownership. Review additional legal account coverage before ready state.",
+      "transport": "Supported proxy/public-search fallback and JSON-LD detail fallback."
+    },
+    {
+      "alias": "careers-godfrey-au",
+      "jobs": 6,
+      "required_fields": "6/6 detail title, description and location",
+      "optional_fields": [
+        "employment_type 6/6",
+        "date_posted 6/6",
+        "valid_through 6/6"
+      ],
+      "advertiser_id": "24060831",
+      "identity_evidence": "First-party GraphQL for 95427234 explicitly identifies Godfrey Hirst Australia."
+    },
+    {
+      "alias": "careers-godfrey-nz",
+      "jobs": 2,
+      "required_fields": "2/2 detail title, description and location",
+      "optional_fields": [
+        "employment_type 2/2",
+        "date_posted 2/2",
+        "valid_through 2/2"
+      ],
+      "advertiser_id": "39721842",
+      "identity_evidence": "First-party GraphQL identifies Godfrey Hirst NZ Ltd. Initially sampled 94875653 expired 2026-10-25; native rejection was correct. Current 95450258 and 95018106 verified."
+    }
+  ],
+  "overlap": "ws compare-boards: zero shared URLs for all 15 pairs; datasets geographically and organizationally distinct.",
+  "exclusions": {
+    "mirrors": [
+      "Dal-Tile and Marazzi category pages within Mohawk SF",
+      "Daltile Mexico SF path",
+      "Unilin language and regional aliases for same requisitions"
+    ],
+    "forms_only": [
+      "Marazzi Italy/Spain",
+      "Emilgroup"
+    ],
+    "unverified_review": [
+      "DriveForMohawk Tenstreet widget did not expose a verified current vacancy source",
+      "KAI jobs.bg company 216449 blocked 403; no current list verified",
+      "Additional Kerama regional legal employers need ownership/coverage review"
+    ],
+    "empty": "Godfrey NZ older TalentPropeller recruitmenthub explicitly empty; current SEEK source configured."
+  },
+  "code_changes": [
+    "Accept documented API pagination.value_template at ws select validation; runtime already supports bounded templates.",
+    "Allow runtime-supported NextData job_filter in browser census key registry.",
+    "Bump crawler VERSION and regenerate census."
+  ],
+  "validation": {
+    "csv": "Passed",
+    "browser": "No final config renders a browser.",
+    "test_contracts": "Unilin cumulative-limit complete inventory, material missing tail, NextData filter census, API value_template CLI round-trip.",
+    "initial_environment": "Native DOM parser absent on resolver host; final configs avoid DOM. jq for agent shell fixtures unpacked into ignored temporary tooling; production selectors unchanged.",
+    "focused_tests": "803 passed; workspace, API pagination, API monitor, census, agent contracts, company regressions."
+  },
+  "raw_artifacts": "Initial artifacts lost after backup command failure before guided cleanup; final evidence was rebuilt live in isolated fix worktree. No credentials or raw HTTP headers committed."
+}
