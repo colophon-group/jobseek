@@ -1,0 +1,159 @@
+{
+  "observed_at_utc": "2026-10-27T04:27:36.746785+00:00",
+  "official_snapshot": {
+    "tag": "nightly",
+    "build_version": "1.1.0-nightly.11169+6c44d0871",
+    "source_revision": "6c44d0871aa4d42cf1b88b8c7dde873cafd2755e",
+    "nightly_ref_observed": "8ec22ca6b889d372088722d30ff5e1916730390b",
+    "assets": [
+      {
+        "id": 680250700,
+        "name": "lightpanda-x86_64-linux",
+        "updated_at": "2026-10-27T02:55:40Z",
+        "size": 76772680,
+        "sha256": "d1a01aaaab70103cf6e5c82f46a1af2279a1ef9593c917fc08b72225eab3e16a",
+        "image_manifest_digest": "sha256:05653aad7db79998501884406a913c3b2f6e77f6fc19d0db2c36321f56616864",
+        "image_created_at": "2026-10-27T02:56:31.890600337Z",
+        "image_binary_layer_digest": "sha256:c1d3f1503595847542a0afedc80407a176da3a02f033ce6131789b14a84e3d4e"
+      },
+      {
+        "id": 680244962,
+        "name": "lightpanda-aarch64-linux",
+        "updated_at": "2026-10-27T02:53:06Z",
+        "size": 74027064,
+        "sha256": "25e10dafb85fb11c972ce96af3e5757a89d08614ad8d133cd2ae869d323e736c",
+        "image_manifest_digest": "sha256:553d553ee760c6b04379b60e2a149feb8fd76313ae6bcf9c3e0a10de465676c8",
+        "image_created_at": "2026-10-27T02:56:30.882209705Z",
+        "image_binary_layer_digest": "sha256:a95f763e21101db7ae754b790100dc68ee0959c5d9b27ed08188285eac44316f"
+      },
+      {
+        "id": 680240406,
+        "name": "lightpanda-aarch64-macos",
+        "updated_at": "2026-10-27T02:50:47Z",
+        "size": 93510200,
+        "sha256": "9c17245294ff3f619ed0933a822c4caffe3fc996e575f8f7e39f49b6f42a537b"
+      }
+    ]
+  },
+  "immutable_image_verification": {
+    "observed_at_utc": "2026-10-27T04:16:42.164808+00:00",
+    "immutable_index": "sha256:5e5c49bc657f3460f2b86c8f2bc9dcc1025b910f6f65bcce69a80c395cc1b659",
+    "platforms": [
+      {
+        "architecture": "amd64",
+        "manifest_digest": "sha256:05653aad7db79998501884406a913c3b2f6e77f6fc19d0db2c36321f56616864",
+        "created_at": "2026-10-27T02:56:31.890600337Z",
+        "labels": {},
+        "entrypoint": [
+          "/usr/bin/tini",
+          "--"
+        ],
+        "binary_path": "/usr/bin/lightpanda",
+        "binary_sha256": "d1a01aaaab70103cf6e5c82f46a1af2279a1ef9593c917fc08b72225eab3e16a",
+        "binary_bytes": 76772680,
+        "binary_layer_digest": "sha256:c1d3f1503595847542a0afedc80407a176da3a02f033ce6131789b14a84e3d4e"
+      },
+      {
+        "architecture": "arm64",
+        "manifest_digest": "sha256:553d553ee760c6b04379b60e2a149feb8fd76313ae6bcf9c3e0a10de465676c8",
+        "created_at": "2026-10-27T02:56:30.882209705Z",
+        "labels": {},
+        "entrypoint": [
+          "/usr/bin/tini",
+          "--"
+        ],
+        "binary_path": "/usr/bin/lightpanda",
+        "binary_sha256": "25e10dafb85fb11c972ce96af3e5757a89d08614ad8d133cd2ae869d323e736c",
+        "binary_bytes": 74027064,
+        "binary_layer_digest": "sha256:a95f763e21101db7ae754b790100dc68ee0959c5d9b27ed08188285eac44316f"
+      }
+    ],
+    "note": "Every OCI index/platform/config/layer/extracted binary digest independently verified; extracted Linux executables match official nightly asset digests. No Docker socket or mutable image reference used for builds."
+  },
+  "original_wait_state_fixture_count": 21,
+  "all_original_wait_states_pass_macos": true,
+  "wait_controller_and_expectations_unchanged": true,
+  "local_original_physical": {
+    "passed_nodes": 51,
+    "platform_skips": 13,
+    "linux_only_proxy_failure_nodes": 13,
+    "limitation": "Existing restricted proxy child cannot reach readiness on macOS. Both unchanged Linux architecture suites remain mandatory. Two additional private provider diagnostics are excluded from passing original node count."
+  },
+  "public_monitor_original_parser_matches": [
+    {
+      "all_urls_equal": true,
+      "slug": "emirates-group-dnata-au",
+      "truncated": false,
+      "urls": 36
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "centre-for-humanitarian-dialogue-careers",
+      "truncated": false,
+      "urls": 2
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "gpa-pandape",
+      "truncated": false,
+      "urls": 516
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "ltimindtree-careers-india-europe",
+      "truncated": false,
+      "urls": 14
+    },
+    {
+      "all_urls_equal": true,
+      "slug": "ltimindtree-careers-us-canada",
+      "truncated": false,
+      "urls": 13
+    }
+  ],
+  "public_detail_prepared_field_matches": [
+    {
+      "different_fields": [],
+      "sample": 0,
+      "slug": "sophia-genetics-careers"
+    },
+    {
+      "different_fields": [],
+      "sample": 0,
+      "slug": "mcdonalds-it"
+    },
+    {
+      "different_fields": [],
+      "sample": 0,
+      "slug": "alten-finland"
+    },
+    {
+      "different_fields": [],
+      "sample": 0,
+      "slug": "mcdonalds-canada-restaurants"
+    }
+  ],
+  "public_positive_sources": 9,
+  "public_monitor_urls": 581,
+  "prepared_detail_fields_compared": [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "language",
+    "metadata",
+    "extras"
+  ],
+  "other_current_probes": {
+    "alten_spain": "navigation failed",
+    "nationwide_retained_sample": "HTTP404",
+    "tesla_api_details": "three current native attempts blocked; existing1100 capture remains prior-engine evidence",
+    "oracle_adf": "required browser action failed; no qualification or ownership grant"
+  },
+  "local_hermetic_race_vet_and_release_pin": "passed",
+  "source_candidate_base": "cff14eaeb4f6d249e19ef1f47692e107656296ec",
+  "scope": "Candidate only. Latest official assets and OCI contents independently verified; immutable index/platform/layer/binary and executable-source identities pinned. Both Linux physical suites, exact final-head RequiredCI/Gate/current operator authority, original constrained renderer workflow and independent serving acceptance required before promotion. Preserve prior promoted image for reversal. Crawler ownership remains unchanged."
+}

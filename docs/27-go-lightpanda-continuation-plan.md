@@ -60,7 +60,7 @@ Include this pending catalogue in the next combined batch, using original ordina
 retirement, B0 rollback, exact-main CSV publication and full-cohort reactivation.
 
 
-The latest available official Lightpanda snapshot,
+The serving official Lightpanda snapshot,
 [**1.1.0-nightly.11106+659958a24**](https://github.com/lightpanda-io/browser/releases/tag/nightly), is deployed and independently accepted through
 [PR #10799](https://github.com/colophon-group/jobseek/pull/10799) and
 [the original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40416530488).
@@ -68,8 +68,15 @@ The serving renderer source is `e20eb57e998a0d0e556cdc13fcf910648fc48e98`;
 the upstream executable source is `659958a24c0ddb40a577bd528fcb4c6e1c504419`.
 Independent readback verifies the immutable image, official arm64 binary hash,
 engine version, mTLS readiness, **1 GiB memory limit and zero swap**.
-Official release assets were rechecked after the local date rollover and remain
-unchanged. Stable **1.0.2** retains four original visibility failures; the newer
+A subsequent official release check found newer **1.1.0-nightly.11169+6c44d0871**
+assets published at 02:50–02:55 UTC on October 27. The
+[new candidate qualification](evidence/lightpanda-nightly-20261027-source-qualification.json)
+binds all official executable hashes and both Linux OCI contents, passes all
+21 unchanged wait fixtures and matches 581 listing URLs plus all ten prepared
+fields on four positive details across nine sources. Both unchanged Linux
+physical suites and original renderer deployment/independent acceptance remain
+required before selecting that snapshot. The serving renderer above remains
+selected until that succeeds. Stable **1.0.2** retains four original visibility failures; the newer
 snapshot passes all **21 unchanged original wait fixtures** and both physical
 Linux architecture suites. Keep the original expectations.
 
