@@ -1,8 +1,8 @@
 {
   "schema": "jobseek.migration.evidence/v1",
-  "observed_at_utc": "2026-10-27T17:23:20.821550+00:00",
+  "observed_at_utc": "2026-10-27T18:03:18.578843+00:00",
   "candidate_version": "0.13.1104",
-  "status": "local qualification in progress; no ownership grant",
+  "status": "local qualification complete; exact-head CI rerun pending",
   "problem": {
     "provider": "McDonalds Italy configured HTTP API",
     "actual_runtime_HTTP1_status": 403,
@@ -55,9 +55,20 @@
     }
   },
   "verification": {
-    "full_worker_race": "running",
+    "full_worker_race": "Completed: only two legacy DOC tests failed because local antiword was absent; no race or timeout.",
+    "resolved_missing_dependency_failures": "Both failed tests and changed HTTP/2 regression passed under race with actual SHA256-verified local antiword.",
     "worker_vet": "passed",
-    "frozen_capture_canonical_effects": "pending"
+    "frozen_capture_canonical_effects": {
+      "failures": 0,
+      "inserted": 164,
+      "missing_count": 1,
+      "requests": 1,
+      "reserved": false,
+      "settled": true,
+      "titled": 149,
+      "untitled": 15
+    },
+    "first_PR_CI": "Worker race suite and installed image parity passed. Queue job found stale Onlyfy registry expected count5 after Hexagon became the sixth board; expected count corrected, all per-board assertions retained."
   },
   "production_before_candidate": {
     "version": "0.13.1103",
@@ -83,5 +94,6 @@
     "McD-exact-H1-native1.private.json": "e01321b7df5db4edd826d67d493ebd7710b57cd035a56e2a395ff3759f0d38d3",
     "McD-verified-H2-native1.private.json": "dafbe26800a15b63680bc03dcdabd1551b18ab0c54076be47556653bc258e1ca",
     "McD-H2-source-parity1.json": "f7ac4c1dc84f223d45cb1ff5cf76d8c13cd51f4bcb1c3450ed23dbc60ddcb01f"
-  }
+  },
+  "related_existing_contract_qualification": "go-native1104-existing-http-contracts-2026-10-27.json"
 }

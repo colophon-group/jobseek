@@ -15,7 +15,7 @@ The [full rollout and promotion](https://github.com/colophon-group/jobseek/actio
 selected runtime/data source `509e0f883edf184b319349725c504db2a31d7568`.
 Independent readback verifies its immutable images, original restored legacy
 stack, absent ordinary/B0 receipts, cleared selectors and cold epoch **383**.
-All **8,138 enabled boards** remain configured. The prospective floor is **8,108
+All **8,138 enabled boards** remain configured. The prospective floor is **8,111
 ordinary monitors / 8,125 details**, with three separate B0 boards; it has not
 been activated on this release.
 
@@ -87,6 +87,20 @@ and scheduling checks. The prospective **8,108 monitors / 8,125 details** retain
 the complete serving floor and all 8,138 enabled boards; activation remains
 pending. See the [grouped qualification record](evidence/go-native1103-grouped-http-onlyfy-candidate-2026-10-27.json).
 
+Three unchanged HTTP DOM contracts also qualify for the same activation.
+Black Ore returns the same empty set, with zero active/scheduled postings; APT
+returns the same HTTP 404/gone signal, also with zero active/scheduled postings.
+FIBA rejects the same invalid HTTP 200 response and retains its one active,
+scheduled posting. Unchanged Python replays and real native PostgreSQL/Redis
+claims preserve these empty/gone/failure states, absence accounting and settlement.
+They confer no positive live-job claim. The complete retained floor plus these
+three monitors passes the SDK at **8,111 monitors / 8,125 details**, with all
+3,257 captured detail references. See the
+[existing-contract qualification record](evidence/go-native1104-existing-http-contracts-2026-10-27.json).
+The queue registry assertion now expects six Onlyfy boards after Hexagon's
+migration; every existing per-board binding and foreign-source rejection remains
+checked. Activation and final full-migration proof remain pending.
+
 Njoyn's exploratory Go HTTP form reader completes one 62-page pass but later
 receives a cross-origin anti-bot redirect. It rejects that redirect and remains
 unqualified; its prototype is retained privately and is not part of this release.
@@ -96,7 +110,7 @@ against shared parser and canonical-failure contracts without inventing success.
 
 **Delivery sequence from this prospective floor:**
 
-1. Port the remaining **27 ordinary monitors / 10 details** in groups. Qualify
+1. Port the remaining **24 ordinary monitors / 10 details** in groups. Qualify
    complete HTTP/API/form inventories and existing shared parsers first; use
    Lightpanda for browser requirements. Keep exact publisher URL identity,
    field/policy behavior, fail-closed incomplete inventories and database effects.
