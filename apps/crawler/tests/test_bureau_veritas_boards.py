@@ -43,12 +43,39 @@ def test_bureau_veritas_board_inventory_and_proxy_boundaries_are_exact() -> None
     }.items():
         row = rows[slug]
         assert json.loads(row["monitor_config"]) == {"token": token, "proxy": True}
-        assert row["scraper_type"] == "dom"
+        assert row["scraper_type"] == "api_sniffer"
         scraper = json.loads(row["scraper_config"])
-        assert scraper["proxy"] is True
-        assert scraper["render"] is True
-        assert [step["field"] for step in scraper["steps"]] == [
-            "title",
-            "description",
-            "locations",
-        ]
+        assert set(scraper) == {
+            "api_url",
+            "url_pattern",
+            "json_path",
+            "request_headers",
+            "fields",
+            "enrich",
+        }
+        assert scraper["api_url"] == "https://www.104.com.tw/job/ajax/content/{id}"
+        assert scraper["json_path"] == (
+            "data | [@][?switch == 'on' && header.custUrl == `"
+            + json.dumps(row["board_url"])
+            + "` && jobDetail.jobDescription] | [0]"
+        )
+        assert scraper["request_headers"] == {
+            "Referer": "https://www.104.com.tw/",
+            "Accept": "application/json",
+        }
+        assert scraper["enrich"] == ["description"]
+        assert scraper["fields"] == {
+            "title": "header.jobName",
+            "description": [
+                "=<h2>工作內容</h2>",
+                "jobDetail.jobDescription",
+                "=<h2>其他條件</h2>",
+                "condition.other",
+                "=<h2>公司福利</h2>",
+                "welfare.welfare",
+            ],
+            "locations": {
+                "concat": ["jobDetail.addressRegion", "jobDetail.addressDetail"],
+                "separator": "",
+            },
+        }
