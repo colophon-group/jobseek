@@ -1,0 +1,133 @@
+{
+  "schema": "jobseek.go-migration.candidate/v1",
+  "candidate_version": "0.13.1103",
+  "base_revision": "ca88138dfaf7b7a76182757f64ef77f55b90b497",
+  "production_source": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+  "production_epoch": 382,
+  "production_floor": {
+    "monitors": 8106,
+    "details": 8125,
+    "enabled_boards": 8138
+  },
+  "prospective_floor": {
+    "monitors": 8108,
+    "details": 8125,
+    "enabled_boards": 8138,
+    "all_serving_assignments_retained": true,
+    "captured_reference_URLs": 3257,
+    "complete_SDK_passed": true,
+    "failures": 0
+  },
+  "Deloitte": {
+    "complete_Go_HTTP_runs": 2,
+    "complete_URLs_per_run": [
+      1459,
+      1459
+    ],
+    "requests_per_run": [
+      147,
+      147
+    ],
+    "native_seconds": [
+      303.43,
+      362.29
+    ],
+    "original_HTTP_parser_exact_same_capture": true,
+    "same_capture_old_100_page_cap": 1000,
+    "all_capped_URLs_retained": true,
+    "additional_URLs_beyond_cap": 459,
+    "terminal_empty_page_observed": true,
+    "monitor_browser_transport_settings_removed": true,
+    "detail_configuration_unchanged": true
+  },
+  "Hexagon": {
+    "publisher_source": "Onlyfy widget published by the official careers page",
+    "complete_Go_HTTP_runs": 2,
+    "complete_URLs_per_run": [
+      14,
+      14
+    ],
+    "requests_per_run": [
+      2,
+      2
+    ],
+    "empty_next_page_observed": true,
+    "original_HTTP_DOM_parser_exact_same_capture": true,
+    "new_source_detail_reader": "existing onlyfy.public-detail/v1 over verified Go HTTP",
+    "positive_native_details": 14,
+    "positive_titles": 14,
+    "positive_descriptions": 14,
+    "raw_content_fields": [
+      "base_salary",
+      "date_posted",
+      "description",
+      "employment_type",
+      "extras",
+      "job_location_type",
+      "language",
+      "localizations",
+      "locations",
+      "metadata",
+      "title"
+    ],
+    "raw_description_attribute_order_differences": 14,
+    "HTML_DOM_identical_after_attribute_order_normalization": 14,
+    "canonical_description_bytes_and_hashes_match_unchanged_Python": 14,
+    "other_raw_fields_exact": true,
+    "prechange_active_postings": 0,
+    "prechange_scheduled_postings": 0,
+    "prechange_source_bound_observer": true,
+    "board_and_company_IDs_preserved": true
+  },
+  "canonical_effects": {
+    "Onlyfy_details_persisted": 14,
+    "completed_at_utc": "2026-10-27T16:08:26Z",
+    "monitors": [
+      {
+        "details_queued": 1459,
+        "failures": 0,
+        "inserted": 1459,
+        "lease_and_deadline_settled": true,
+        "missing_count": 1,
+        "publisher_reserved": false,
+        "slug": "deloitte-careers-us"
+      },
+      {
+        "details_queued": 14,
+        "failures": 0,
+        "inserted": 14,
+        "lease_and_deadline_settled": true,
+        "missing_count": 1,
+        "publisher_reserved": false,
+        "slug": "hexagon-robotics-careers"
+      }
+    ],
+    "original_description_bytes_and_hashes_checked_separately": true,
+    "scope": "Actual configured source options and complete positive native captured HTTP responses through migrated PostgreSQL/private Redis/native claim/normalizer/canonical writer. No production mutation."
+  },
+  "unqualified_work": {
+    "Njoyn": "One complete 62-page pass, then a cross-origin anti-bot redirect; rejected, no admission. Tested prototype retained privately.",
+    "other_HTTP_browser_controls": "Blocked and empty diagnostics are not positive inventories or ownership evidence."
+  },
+  "backend_constraint": "Latest self-hosted Lightpanda and proven Go HTTP/API only.",
+  "ownership_granted": false,
+  "remaining_after_activation": {
+    "ordinary_monitors": 27,
+    "ordinary_details": 10
+  },
+  "required_next": [
+    "exact-head Required CI and Crawler Deploy Gate",
+    "fresh merge authority and original full rollout",
+    "actual published configuration and full scheduled-route proof",
+    "original supported activation and queue conservation",
+    "natural freshness/resource/cost/reversal/Python retirement"
+  ],
+  "evidence_sha256": {
+    "grouped-http-native1.private.json": "544c76f2148558265402021fe9a8a29d84d53dfe6b1555e86452f558e9aae262",
+    "hexagon-onlyfy-details-native1.private.json": "110162e5f23c3e87c1ef171a6e0ff5be68eca1adce3cf8b4cbc7914c1a17492a",
+    "grouped-original-replay2.private.json": "1c92073dcb29dc395d13e4579a1a582889b403f01104be009cd9973177fec765",
+    "grouped-source-parity2.json": "f00b75a4ce41304ca520be2b1c4b6581599041d3d262651c2e4946263eb916fc",
+    "grouped-canonical-effects1.json": "f0c21ff365728c8fa6650807420214adc46c1724d5cc7d5f4d9bd764067bc3cf"
+  },
+  "registry_sha256": "ee0ab52d09af3249ba07c1675d1f869ddfd90d6e4d0a45429b43feabba5427c0"
+}
