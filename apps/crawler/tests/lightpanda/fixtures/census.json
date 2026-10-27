@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8137,
-    "boards_sha256": "d95418be0bf940dac446b1b311ccc0459bb5ecdbbbcf646f11f28c592d28846e",
+    "boards_sha256": "0421dfd22b833f59cb1c6423c5ffaed8e4be3dd4fc031aee20406eb629822f6f",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "ac2992fd478ca58c94731e7b20583382ad8f84f597419959d96e609eb7910f81",
+  "manifest_sha256": "e98df77eb0fc429e8a1ddc3aece9031d3bb5c7c8c04a6c890b64cf2df72d4805",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -5437,6 +5437,30 @@
       "capabilities": [
         "cdp.navigation",
         "dom.snapshot",
+        "navigation.wait.domcontentloaded",
+        "network.request_observe",
+        "network.response_capture"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "network_session",
+      "config_shape_sha256": "c028e92513ab244b3f98d2d454f1a4424f4466802cb74edfb7ab5b43c04fa00c",
+      "crawler_type": "api_sniffer",
+      "digest_sha256": "e61d5adee1c9fa15e95abffa6564698fcda9fc5314b7b9adfb62db0a98ede83f",
+      "fixture": "synthetic.network_session.v1",
+      "id": "profile.scraper.api_sniffer.9ec8276b68f8888c",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "73de0edfbe97c7cbae5655b3a48a8834ddd81310005fde526ef85989368ec112",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
         "navigation.wait_fallback",
         "network.request_observe",
         "network.response_capture"
@@ -5503,35 +5527,6 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "34a755ffdd626b7105f1002b5729a0819f90262994b1296e31565a2ef60fa203",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "browser.channel",
-        "browser.headful",
-        "browser.persistent_context",
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait.domcontentloaded",
-        "navigation.warmup",
-        "network.proxy",
-        "network.request_observe",
-        "network.response_capture"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "dd4a95d8355833e54dc0c4bc0d3d3b97fa7c2d113ca68fe7f0726fb1c2e133bf",
-      "crawler_type": "api_sniffer",
-      "digest_sha256": "ad3b234f62091d1dd011e872278127a70d61ae58e60f6d1b89f7c13f70825198",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.api_sniffer.c73303b1d5e6e4bb",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "73de0edfbe97c7cbae5655b3a48a8834ddd81310005fde526ef85989368ec112",
       "status": "pending_replay",
       "surface": "scraper"
     },

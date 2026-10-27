@@ -143,6 +143,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err != nil {
 		return fail()
 	}
+	if listing.Pagination != nil && listing.Pagination.Partitions != nil {
+		return fail()
+	}
 	if !qualifiedHTTPPagination && DOMMonitorUsesHeldPagination(config) && (listing.Pagination == nil || listing.Pagination.Template != "" || listing.Pagination.AdvertisedRanges != nil || listing.RequireJSONLD || listing.PDFProof != nil || listing.RichRows != nil || listing.FetchURL != "") {
 		return fail()
 	}

@@ -319,6 +319,9 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 	if client == nil {
 		return RichDiscovery{}, queue.ErrConfiguration
 	}
+	if c.Pagination != nil && c.Pagination.Partitions != nil {
+		return discoverDOMPartitions(ctx, client, profile, config, c, pauseRich)
+	}
 	scoped := *client
 	scoped.Jar, err = cookiejar.New(nil)
 	if err != nil {

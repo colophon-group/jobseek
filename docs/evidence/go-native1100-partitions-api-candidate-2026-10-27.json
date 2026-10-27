@@ -1,0 +1,84 @@
+{
+  "schema": "jobseek.go-lightpanda.candidate-batch/v1",
+  "observed_at_utc": "2026-10-27T04:01:53.675282+00:00",
+  "status": "candidate-qualified-not-deployed",
+  "candidate_base_revision": "035036b2d18a486e940bc760e29b8edbad232dd5",
+  "runtime_version": "0.13.1100",
+  "candidate_code_blob_oids": {
+    "apps/crawler/go/dom-detail/listing_partitions.go": "3aad41e52fceaa1092f421ea8b1cb71a05f54de9",
+    "apps/crawler/go/dom-detail/listing_pagination.go": "ff19c101294816894d3c4c804cb5e23719267bc1",
+    "apps/crawler/go/ordinary-queue/profile_dom_monitor.go": "c8c67bac769ab82999da5cd3ec5656abab7f19be",
+    "apps/crawler/go/ordinary-queue/profile_rendered_monitor.go": "cb6b0ea7985d6bb0bef9cd4b8aac326fae69ea1a",
+    "apps/crawler/go/ordinary-worker/dom_partition_discovery.go": "d257be18ee0f21288fa78f733a4e80b98dde8ed9",
+    "apps/crawler/go/ordinary-worker/dom_monitor_discovery.go": "1b7968bef16e629e9b8afcaf2d7e568f40bc7272",
+    "apps/crawler/data/boards.csv": "9662cc7b74d94eeea58256154c547383f14c9a14"
+  },
+  "serving_floor": {
+    "runtime_revision": "1051a83bd70d3b236320202a008dfd7257fb9f5f",
+    "data_revision": "5349aba18c05129196be13b3f74a74df8b63f847",
+    "epoch": 376,
+    "monitors": 8094,
+    "details": 8115
+  },
+  "safran_partition_inventory": {
+    "original_requests": 520,
+    "original_urls": 4496,
+    "native_replay_requests": 519,
+    "native_replay_urls": 4496,
+    "original_and_native_equal": true,
+    "unmatched_requests": 0,
+    "separate_live_native_urls": 4496,
+    "live_native_elapsed_seconds": 83.185,
+    "transport": "existing verified public HTTP; stateless partition reads; complete counted union; unchanged ordinary URL writer"
+  },
+  "tesla_api_detail": {
+    "reader": "api_sniffer.browser-detail/v1",
+    "engine_version": "1.1.0-nightly.11106+659958a24",
+    "engine_sha256": "76134a94d4297dbffda6ca4ab191d50915e58c38884d937a3f3d89e20018717d",
+    "positive_original_parser_prepared_field_matches": 1,
+    "fields_compared": [
+      "title",
+      "description",
+      "locations",
+      "employment_type",
+      "job_location_type",
+      "date_posted",
+      "base_salary",
+      "language",
+      "metadata",
+      "extras"
+    ],
+    "different_fields": 0,
+    "enrichment": [
+      "description"
+    ],
+    "extraction_wait_settle_enrichment_preserved": true,
+    "recipe": "direct native capture; Chrome launch annotations, proxy, browser annotation and warmup removed explicitly",
+    "latest_native_probes_blocked": 3,
+    "original_browser_probes_empty": 2,
+    "availability_still_open": true
+  },
+  "verification": {
+    "original_python_partition_cases": 12,
+    "partition_options_and_resource_scope_tests": "passed",
+    "race_and_vet_dom_detail_queue_worker": "focused passed; full queue test passed",
+    "python_census_and_inspect_tests": 184,
+    "actual_migrated_postgres_redis": "passed; complete publication, count mismatch and blocked tail conservation, late publisher reservation, lease settlement and sitemap control; fixture stopped",
+    "combined_prospective_sdk": {
+      "monitors": 8101,
+      "details": 8122,
+      "failures": 0,
+      "preserved_monitors": 8094,
+      "preserved_details": 8115,
+      "pending_air_apps_excluded": true
+    }
+  },
+  "limits": [
+    "No production ownership or deployment grant.",
+    "Use one original combined retirement/full rollout/CSV publication/reactivation for merged1099 and this batch.",
+    "Refresh actual SQL, canonical caches and all scheduled source URLs before activation.",
+    "Oracle ADF/framed repeats and remaining proxy-dependent recipes are unqualified; no diagnostic prototype is included in runtime source.",
+    "Whole-lane freshness, fairness and attributable cost remain open."
+  ],
+  "goal_status": "active-incomplete"
+}
