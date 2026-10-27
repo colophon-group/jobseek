@@ -1,0 +1,33 @@
+{
+  "schema": "jobseek.go-lightpanda.candidate-batch/v1",
+  "observed_at_utc": "2026-10-27T05:26:00.480492+00:00",
+  "status": "candidate-qualified-not-deployed",
+  "candidate_base_revision": "f42f519e09ae31f93068dfff1771b6e50180476d",
+  "runtime_version": "0.13.1100",
+  "board": "biorce",
+  "change": "Existing HTTP API detail profile with public v2 endpoint and canonical ID extraction; description-only enrichment preserves rich monitor fields. Existing browser monitor is unchanged.",
+  "verification": {
+    "actual_go_http_positive_samples": 3,
+    "original_api_capture_parser_positive_samples": 3,
+    "prepared_fields_per_sample": 10,
+    "different_fields": 0,
+    "actual_migrated_postgres_redis": "passed: description writes; monitor title, location and employment conservation; API failure preservation; successful-response publisher reservation; lease settlement; existing selected-field scheduling",
+    "python_census_and_inspection_tests": 184,
+    "csv_validation": "passed",
+    "combined_prospective_sdk": {
+      "monitors": 8101,
+      "details": 8123,
+      "failures": 0,
+      "preserved_monitors": 8094,
+      "preserved_details": 8115,
+      "pending_air_apps_excluded": true
+    }
+  },
+  "limits": [
+    "Original browser network capture remains empty; equivalence uses the unchanged original capture parser on actual Go HTTP response bodies.",
+    "No production ownership grant; refresh actual SQL/caches and all scheduled source URLs during the combined original handoff.",
+    "The three separately owned B0 boards remain separate.",
+    "Whole-fleet freshness and attributable cost remain open."
+  ],
+  "goal_status": "active-incomplete"
+}
