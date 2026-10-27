@@ -118,7 +118,7 @@ func TestLightpandaSessionPublicOriginalInventory(t *testing.T) {
 			if !reflect.DeepEqual(original.Jobs, inventory.Jobs) {
 				t.Fatal("public identity/field inventory differs", "original", len(original.Jobs), "native", len(inventory.Jobs))
 			}
-			t.Logf("release=1.1.0-nightly.11106+659958a24 jobs=%d identity_and_non_description_fields_match=true cleanup_proved=true direct_candidate_only=%t", len(inventory.Jobs), directCandidate)
+			t.Logf("release=1.1.0-nightly.11169+6c44d0871 jobs=%d identity_and_non_description_fields_match=true cleanup_proved=true direct_candidate_only=%t", len(inventory.Jobs), directCandidate)
 		})
 	}
 }
