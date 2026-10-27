@@ -8,53 +8,47 @@ latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operato
 decision. Do not add a Chromium or Playwright fallback. Ship several compatible
 contracts per batch; retain useful isolated offline Python tooling.
 
-**Production runtime 0.13.1102 is serving with ordinary and B0 ownership active.**
-[PR #10937](https://github.com/colophon-group/jobseek/pull/10937) passed Required CI
-and Crawler Deploy Gate at `86c4877beaf11aed034e93ac7d33ce2f09fe3b71`.
-The [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40510059509)
-selected runtime/data source `8b3a5b4994767033bd5b186f0ffda5e07a15e11e`.
-Original activation completed at 14:31 UTC, epoch **382**, with **8,106 ordinary
-monitors / 8,125 details**, all **8,138 enabled boards** and three separately
-Go-owned B0 boards. Independent readback verifies source/data/images, exact
-receipts and SQL authority, complete Redis ownership projection, all ten actors,
-eight healthy HTTP endpoints and original restored restart policies.
+**Production runtime 0.13.1103 is deployed; Go ownership is intentionally off.**
+[PR #10940](https://github.com/colophon-group/jobseek/pull/10940) passed Required CI
+and Crawler Deploy Gate at `8d5e9977ceb21b6aadc3ed8447981d74fe5036aa`.
+The [full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/40541887627)
+selected runtime/data source `509e0f883edf184b319349725c504db2a31d7568`.
+Independent readback verifies its immutable images, original restored legacy
+stack, absent ordinary/B0 receipts, cleared selectors and cold epoch **383**.
+All **8,138 enabled boards** remain configured. The prospective floor is **8,108
+ordinary monitors / 8,125 details**, with three separate B0 boards; it has not
+been activated on this release.
 
-The release fixes eligibility snapshots by using the existing bounded cold
-administrative transaction helper. A real PostgreSQL/Redis regression reproduces
-the former 15-second failure with 16 seconds of client-side snapshot work and
-verifies the fix, earlier caller cancellation and unchanged staged state.
-Runtime transaction limits, the ten-second SQL statement limit and exclusive
-host/epoch/lease barriers remain enforced. Original recovery and full cutover
-workflows succeeded; no manual lease, SQL, receipt or queue repairs were used.
+**Next runtime 0.13.1104 corrects API transport selection before activation.**
+An exact production-client probe finds McDonald's Italy returning HTTP 403 through
+the worker's HTTP/1 client, while its existing pinned-CA HTTP/2 client returns a
+complete **164-job** inventory. Earlier qualification used an HTTP/2-capable
+client and missed that runtime selection difference. The correction selects the
+existing verified HTTP/2 client for direct API monitors, retains HTTP/1 fallback
+through ALPN, and continues passing the renderer for browser API profiles. Proxy
+and explicit TLS-exception selection stay in their existing branches.
 
-This grouped delivery also activates Ashby selected salary enrichment, Oracle
-ADF HTTP/PPR, McDonald's Italy HTTP API and Lenovo's complete publisher-declared
-sitemap. McDonald's captured inventory retains all 163 records and fields.
-Lenovo retains all 999 configured traversal URLs and adds 123 beyond its old
-100-page cap; all nine sitemap documents produce 1,122 English URLs. Actual
-PostgreSQL/Redis qualification verifies publication, absence accounting, detail
-scheduling, policy and lease/deadline settlement. Concurrent Citizens Financial
-Group setup is preserved and its actual Oracle HCM monitor/detail bindings and
-complete 499-URL qualification are included in the published floor.
+The real PostgreSQL/Redis regression reproduces the old HTTP/1 failure and
+verifies HTTP/2 publication, HTTP/1-only fallback, absence accounting and exact
+lease/deadline settlement. The unchanged Python API parser reproduces all 164
+URLs and every populated raw field on the frozen verified HTTP/2 capture.
+Blocked and empty probes for other API publishers remain unqualified. No new
+Chromium or Playwright route is introduced. See the
+[transport correction record](evidence/go-native1104-api-http2-selection-2026-10-27.json).
 
-**Full post-activation admission and queue conservation passed.** Independent Go
-validation checks **2,018,127 scheduled routes**, every current binding/cache,
-URL, fallback, interval and lane, with **zero gaps, cache mismatches or wrong
-lanes**. There are 3,393,799 distinct queue IDs. Comparing the outgoing active and
-incoming cold captures identifies 950 identities for review. All 950 remain in
-canonical SQL: 742 inactive/disabled, 177 active but unscheduled, six currently
-queued in the expected ordinary lane with matching caches and 25 in the separate
-Go B0 cohort. The original read-only B0 audit accepts its complete record/index/
-guard state; every one of those 25 IDs matches a native guard. None is unexplained.
-The previous six snapshot gaps are five now correctly queued and one unscheduled;
-the nine incoming gaps are now unscheduled. Serial captures are not simultaneous,
-so canonical dispositions and exact native ownership are the conservation proof.
+The previous 0.13.1102 activation at epoch 382 owned 8,106 monitors / 8,125 details.
+Its full post-activation proof checked 2,018,127 scheduled routes with zero gaps,
+cache mismatches or wrong lanes. All 950 identities removed between serial
+captures were accounted for in canonical SQL or exact native B0 guards; none was
+unexplained. Original supported ordinary retirement, B0 rollback and selector
+clearing completed before the full 0.13.1103 rollout; no manual SQL/queue/receipt
+repairs were used.
 
-At 15:27 UTC, natural Go execution has completed for ADF (52 jobs) and Air Apps,
-both with zero failures. First native completion remains unobserved for the new
-McDonald's Italy, Lenovo and Citizens bindings, also with zero failures. Earlier
-lane metrics show natural monitor/detail work and no lost heartbeat. Healthy
-ports and complete admission alone do not prove sustained freshness or cost.
+Natural execution before retirement completed ADF (52 jobs) and Air Apps (499),
+both without failures. First native completion remained unobserved for the new
+McDonald's Italy, Lenovo and Citizens bindings. The latest earlier lane snapshot
+included one lost heartbeat; sustained freshness and whole-lane cost remain
+unproved. Healthy ports and complete admission alone do not establish those goals.
 
 **Latest Lightpanda remains deployed:**
 [1.1.0-nightly.11169+6c44d0871](https://github.com/lightpanda-io/browser/releases/tag/nightly),
@@ -66,7 +60,7 @@ Independent serving verification binds immutable image/binary/version, mTLS,
 original wait fixtures pass. Synthetic density/RAM gains retain a measured
 wall-time tradeoff; they do not establish whole-fleet freshness or hosting cost.
 
-**Next grouped release: 0.13.1103 — complete Deloitte HTTP pagination and
+**Deployed grouped source changes in 0.13.1103 — complete Deloitte HTTP pagination and
 Hexagon's publisher Onlyfy inventory/details.** Two verified Go HTTP traversals
 return **1,459 Deloitte URLs in 147 requests**, ending on an empty page. The
 unchanged Python HTTP parser reproduces the exact capture. Its old 100-page cap
@@ -100,9 +94,9 @@ Other blocked or empty diagnostics likewise confer no ownership. Existing
 publisher failures and dormant work remain explicit so they can be assessed
 against shared parser and canonical-failure contracts without inventing success.
 
-**Delivery sequence from this active floor:**
+**Delivery sequence from this prospective floor:**
 
-1. Port the remaining **29 ordinary monitors / 10 details** in groups. Qualify
+1. Port the remaining **27 ordinary monitors / 10 details** in groups. Qualify
    complete HTTP/API/form inventories and existing shared parsers first; use
    Lightpanda for browser requirements. Keep exact publisher URL identity,
    field/policy behavior, fail-closed incomplete inventories and database effects.
