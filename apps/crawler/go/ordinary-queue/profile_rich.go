@@ -235,6 +235,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "dom":
+		allowed["oracle_adf_job_ids"] = true
 		// Legacy DOM metadata keeps these aliases but Python never reads them.
 		// Retain them in the full ownership hash without selecting another URL
 		// or applying an additional link filter.
@@ -425,15 +426,19 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	// Admission retains the original values for binding. Only the validation
 	// copy supplies a canonical token and drops provider-specific aliases.
-	noEnrichmentDetail := false
+	independentJSONLDDetail := false
 	if config["crawler_type"] == "ashby" || config["crawler_type"] == "lever" || config["crawler_type"] == "recruitee" {
 		var scraper string
 		if json.Unmarshal(md["scraper_type"], &scraper) == nil && scraper == "json-ld" {
-			fields, err := monitorEnrichmentFields(config, map[string]bool{})
-			if err != nil || len(fields) != 0 {
+			allowed := map[string]bool{}
+			if config["crawler_type"] == "ashby" {
+				allowed["base_salary"] = true
+			}
+			_, err := monitorEnrichmentFields(config, allowed)
+			if err != nil {
 				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 			}
-			noEnrichmentDetail = true
+			independentJSONLDDetail = true
 		}
 	}
 	// Explicit Lever enrichment schedules the independent detail assignment.
@@ -458,7 +463,7 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 			validationMD[key] = value
 		}
 	}
-	if noEnrichmentDetail || leverEnrichment {
+	if independentJSONLDDetail || leverEnrichment {
 		// Detail assignments are independently validated and executed. Keep
 		// the complete original options in the immutable binding below.
 		validationMD["scraper_type"] = json.RawMessage(`"skip"`)
@@ -503,7 +508,7 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		}
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if noEnrichmentDetail || leverEnrichment {
+	if independentJSONLDDetail || leverEnrichment {
 		stable, err = stableJSONLDConfig(config, md)
 	}
 	if err != nil {
@@ -538,7 +543,7 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	case "pinpoint":
 		profile.Endpoint, profile.Profile = tenantEndpoint, "pinpoint.slug-skip/v1"
 	}
-	if noEnrichmentDetail || leverEnrichment {
+	if independentJSONLDDetail || leverEnrichment {
 		profile.Profile = strings.Replace(profile.Profile, "-skip/v1", "-items/v1", 1)
 	}
 	return profile, nil
@@ -548,4 +553,8 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 // the listing owns all other fields and provides a fallback for new rows.
 func leverMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"description": true, "date_posted": true})
+}
+
+func ashbyMonitorEnrichment(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"base_salary": true})
 }

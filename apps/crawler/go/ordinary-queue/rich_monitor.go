@@ -109,6 +109,12 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, ErrConfiguration
 	}
 	var enrich []string
+	if profile.Provider == "ashby" {
+		enrich, err = ashbyMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if profile.Provider == "api_sniffer" {
 		enrich, err = apiSnifferMonitorEnrichment(claim.task.Config)
 		if err != nil {
@@ -256,7 +262,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" && profile.Provider != "rss" && profile.Provider != "lever" && !DOMMonitorUsesRichRows(profile.Profile) {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" && profile.Provider != "rss" && profile.Provider != "lever" && profile.Provider != "ashby" && !DOMMonitorUsesRichRows(profile.Profile) {
 			return nil, ErrConfiguration
 		}
 	}

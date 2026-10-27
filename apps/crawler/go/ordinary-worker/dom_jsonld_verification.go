@@ -30,6 +30,9 @@ func domVerificationResponseMatches(p queue.GreenhouseMonitorProfile, config map
 	}
 	b := r.domVerification
 	c, e := queue.DOMMonitorOptions(config)
+	if _, adfErr := queue.OracleADFMonitorOptions(config); adfErr == nil && oracleADFResourceMatches(p.Endpoint, r.endpoint) {
+		return p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
+	}
 	qualifiedChildResource := false
 	if qualifiedWixDOMHTTPMonitor(p, config) {
 		route := qualifiedWixDOMHTTPMonitors[p.EffectiveConfigSHA256]

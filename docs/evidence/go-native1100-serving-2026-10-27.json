@@ -16,7 +16,7 @@
       "before_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
       "after_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
       "after_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
-      "scope": "Exact observed UUID set differences only; every difference still requires canonical SQL/cache or separate source-bound B0 disposition. Non-atomic dated queue observations."
+      "scope": "Complete dated non-atomic UUID set comparison; every exact difference reconciled in exact_current_dispositions and original B0 decoder verification."
     },
     {
       "baseline": "outgoing",
@@ -29,7 +29,7 @@
       "before_data": "5349aba18c05129196be13b3f74a74df8b63f847",
       "after_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
       "after_data": "17dea21eefdb55d10cde02dc4023d0a605a24634",
-      "scope": "Exact observed UUID set differences only; every difference still requires canonical SQL/cache or separate source-bound B0 disposition. Non-atomic dated queue observations."
+      "scope": "Complete dated non-atomic UUID set comparison; every exact difference reconciled in exact_current_dispositions and original B0 decoder verification."
     }
   ],
   "exact_current_dispositions": {
@@ -87,5 +87,12 @@
   "remaining_ordinary_assignments": {
     "monitors": 33,
     "details": 10
+  },
+  "independent_natural_health_readback": {
+    "observed_at_utc": "2026-10-27T08:00:18.392921+00:00",
+    "passed": true,
+    "actors": 10,
+    "http_healthy": 8,
+    "scope": "Current exact authority/health readback; no forced jobs or sustained freshness/cost claim."
   }
 }

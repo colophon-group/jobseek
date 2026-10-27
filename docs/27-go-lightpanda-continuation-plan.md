@@ -58,9 +58,14 @@ and [serving record](evidence/lightpanda-nightly11169-serving-2026-10-27.json).
 **Next substantial batch: 0.13.1101.** Finish Ashby selected salary-enrichment
 scheduling and Oracle ADF's fresh-session HTTP/PPR identity bridge together with
 remaining compatible provider contracts. Ashby new, touched and relisted jobs
-pass migrated PostgreSQL/Redis tests. ADF's HTTP protocol matches all 52 original
-browser URLs; its Go implementation still needs complete replay, live and writer
-qualification before admission. Preserve original configuration and queue
+pass migrated PostgreSQL/Redis tests. The native ADF implementation matches all
+52 original browser URLs in both complete replay and a separate live Go run.
+Real migrated PostgreSQL/Redis checks pass complete publication, failed form
+actions, partial list and identity scans, late publisher reservations and lease
+settlement. Actual published canonical metadata accepts all **8,103 monitors /
+8,124 details**, preserving every serving assignment. This is candidate
+qualification; deployment and complete current URL/cache admission remain required.
+See the [combined evidence](evidence/go-native1101-adf-ashby-candidate-2026-10-27.json). Preserve original configuration and queue
 ownership until the complete candidate floor passes actual SQL/cache/URL checks.
 
 The remaining ordinary frontier is **33 monitor / 10 detail assignments**.

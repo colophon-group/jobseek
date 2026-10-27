@@ -1,0 +1,74 @@
+{
+  "schema": "jobseek.native-provider.candidate-qualification/v1",
+  "observed_at_utc": "2026-10-27T08:02:18.049134+00:00",
+  "version": "0.13.1101",
+  "status": "qualified-local-candidate-not-deployed",
+  "oracle_adf": {
+    "existing_monitor_type": "dom",
+    "configuration_changed": false,
+    "queue_owner_preserved": "browser",
+    "implementation": "Fresh HTTP form/PPR session, complete More traversal and ordered title/location matching through bounded stateless numeric detail scan.",
+    "original_browser_urls": 52,
+    "native_replay_urls": 52,
+    "native_live": {
+      "canonical_response_binding": true,
+      "complete": true,
+      "duration_seconds": 31.5778255,
+      "exact_original_url_match": true,
+      "last_http_status": 200,
+      "original_urls": 52,
+      "publisher_reserved": false,
+      "truncated": false,
+      "urls": 52
+    },
+    "completion": "More anchor absence in each appended fragment; no short-page assumption.",
+    "bounds": {
+      "max_items": 500,
+      "max_scan": 5000,
+      "detail_batch": 32,
+      "detail_concurrency": 8
+    },
+    "failures": "Missing state, repeated pages, XML errors, failed form action, redirects, bounds, unmatched/reordered identity and late header/decoded-fragment/detail publisher reservations return no authoritative inventory. Form actions are not retried in the same session."
+  },
+  "ashby": {
+    "change": "Delegate original JSON-LD base_salary-only enrichment while preserving Ashby listing title/description and independent detail assignment.",
+    "real_database_modes": [
+      "new",
+      "touched",
+      "relisted"
+    ],
+    "other_enrichment_fields": "Remain unsupported for this existing JSON-LD bridge.",
+    "salary_extraction_semantics": "Unchanged; this change supplies scheduling for the existing selected-field detail parser."
+  },
+  "actual_published_floor": {
+    "serving_source": "17dea21eefdb55d10cde02dc4023d0a605a24634",
+    "serving_monitors_preserved": 8101,
+    "serving_details_preserved": 8124,
+    "candidate_monitors": 8103,
+    "candidate_details": 8124,
+    "lost_memberships": 0,
+    "unsupported": 0,
+    "no_ownership_grant": true
+  },
+  "migrated_postgresql_redis": {
+    "returncode": 0,
+    "completed_at_utc": "2026-10-27T07:58:52.049048+00:00",
+    "actual_migrations_applied": true,
+    "database_guard_suffix": "_ordinary_worker_test",
+    "loopback_only": true,
+    "scope": "Actual migrated PostgreSQL/Redis Ashby JSON-LD salary delegation for new, touched and relisted rows, original monitor title/description authority, independent detail scheduling and lease settlement, plus native ADF complete publication, incomplete list/scan and late publisher reservation controls. Fixture always stopped."
+  },
+  "production_mutations": 0,
+  "remaining": [
+    "Required CI and Crawler Deploy Gate at exact final head.",
+    "Fresh actual complete source/cache/URL admission and supported full deployment/cutover.",
+    "Remaining enabled profile coverage, natural freshness/resources and final production Python retirement."
+  ],
+  "local_validation": {
+    "ordinary_queue_full_race": "passed",
+    "oracle_adf_full_original_replay_and_failure_race": "passed",
+    "ordinary_worker_full_race": "All exercised tests passed except local document-conversion cases requiring antiword. PDF control passed with existing native helper; Linux CI must verify complete suite with production conversion dependencies.",
+    "migrated_postgresql_redis": "nine Ashby/ADF cases passed; fixture stopped",
+    "ci": "pending exact final head"
+  }
+}
