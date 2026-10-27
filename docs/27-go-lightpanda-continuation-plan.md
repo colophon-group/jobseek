@@ -30,8 +30,16 @@ prepared fields from the original parser. Subsequent native and original-browser
 probes were blocked or empty; this is field/ownership qualification, with
 upstream availability still open.
 
+Biorce adds a direct public v2 API detail route using the existing Go HTTP
+profile. Three actual native documents match all ten prepared fields from the
+unchanged original API capture parser. Explicit description-only enrichment
+preserves monitor title, locations and employment type; actual migrated
+PostgreSQL/Redis checks cover writes, failures, reservation and lease settlement.
+Its browser monitor remains unchanged. See the
+[Biorce evidence](evidence/go-biorce-http-detail-candidate-2026-10-27.json).
+
 The combined candidate retains all **8,094 monitors / 8,115 details** and now
-qualifies **8,101 / 8,122** against prospective metadata. The pending Air Apps
+qualifies **8,101 / 8,123** against prospective metadata. The pending Air Apps
 catalogue row is additional and awaits actual publication/identity capture.
 The [current evidence](evidence/go-native1100-partitions-api-candidate-2026-10-27.json)
 records the proof scope. Oracle ADF, framed repeat and remaining proxy-dependent
