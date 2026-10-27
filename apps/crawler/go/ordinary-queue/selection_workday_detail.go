@@ -88,46 +88,51 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 		selectedPostings[id] = true
 		return nil
 	}
-	// Strict first-time priority can strand an entire lane when its due detail
-	// boards sit outside this pass's cohort window. Observe the existing ready
-	// queues first; they remain the Lua pop authority. Keep part of the batch
-	// available for rotating canonical traversal, including foreign queue heads.
-	domains, err := a.queue.redis.ZRangeByScore(ctx, "ready:"+string(worker)+":0", &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: 8}).Result()
-	if err != nil {
-		return nil, ErrObservation
-	}
+	// Due first-time and recurring details can both sit outside this pass's
+	// eight-board window. Observe their existing ready queues before rotating
+	// canonical traversal, retaining the fallback for foreign queue heads.
+	// Every candidate still passes the original Lua priority/throttle/lease checks.
 priority:
-	for _, domain := range domains {
-		rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, "ft_scrapes_"+string(worker)+":"+domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
+	for _, source := range []struct {
+		tier                int
+		readySuffix, prefix string
+	}{{0, ":0", "ft_scrapes_"}, {2, ":2", "scrapes_"}} {
+		domains, err := a.queue.redis.ZRangeByScore(ctx, "ready:"+string(worker)+source.readySuffix, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: 8}).Result()
 		if err != nil {
 			return nil, ErrObservation
 		}
-		pipe := a.queue.redis.Pipeline()
-		configs := make([]*redis.MapStringStringCmd, len(rows))
-		for i, row := range rows {
-			id, ok := row.Member.(string)
-			if !ok || !canonicalUUID.MatchString(id) {
-				return nil, ErrProtocol
-			}
-			configs[i] = pipe.HGetAll(ctx, "scrape:"+id)
-		}
-		if _, err := pipe.Exec(ctx); err != nil {
-			return nil, ErrObservation
-		}
-		for i, row := range rows {
-			cached, err := configs[i].Result()
+		for _, domain := range domains {
+			rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, source.prefix+string(worker)+":"+domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
 			if err != nil {
 				return nil, ErrObservation
 			}
-			board := cached["board_id"]
-			if _, owned := bindings[board]; !owned {
-				continue
+			pipe := a.queue.redis.Pipeline()
+			configs := make([]*redis.MapStringStringCmd, len(rows))
+			for i, row := range rows {
+				id, ok := row.Member.(string)
+				if !ok || !canonicalUUID.MatchString(id) {
+					return nil, ErrProtocol
+				}
+				configs[i] = pipe.HGetAll(ctx, "scrape:"+id)
 			}
-			if err := add(row.Member.(string), board, cached["source_url"], domain, row.Score, 0, cached); err != nil {
-				return nil, err
+			if _, err := pipe.Exec(ctx); err != nil {
+				return nil, ErrObservation
 			}
-			if len(candidates) >= ownershipCandidateBatch/4 {
-				break priority
+			for i, row := range rows {
+				cached, err := configs[i].Result()
+				if err != nil {
+					return nil, ErrObservation
+				}
+				board := cached["board_id"]
+				if _, owned := bindings[board]; !owned {
+					continue
+				}
+				if err := add(row.Member.(string), board, cached["source_url"], domain, row.Score, source.tier, cached); err != nil {
+					return nil, err
+				}
+				if len(candidates) >= ownershipCandidateBatch/4 {
+					break priority
+				}
 			}
 		}
 	}

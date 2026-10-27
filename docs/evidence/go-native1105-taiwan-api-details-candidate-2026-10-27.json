@@ -1,0 +1,104 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "observed_at_utc": "2026-10-27T19:38:47.883518+00:00",
+  "candidate_version": "0.13.1105",
+  "base_runtime_source": "69cc72ce101ef72a7243584b0a6a7c2536f5d1b2",
+  "status": "local qualified candidate; not published or activated",
+  "boards": [
+    "bureau-veritas-taiwan",
+    "bureau-veritas-taiwan-cps"
+  ],
+  "existing_active_detail_URLs": 24,
+  "positive_open_job_details": 23,
+  "publisher_off_details": 1,
+  "original_HTML_reader_diagnostics": {
+    "sample_requests": 4,
+    "HTTP_status": 403,
+    "positive_content": 0
+  },
+  "native_API_reads": {
+    "complete_URL_reads": 2,
+    "requests_per_read": 24,
+    "HTTP_status": 200,
+    "actual_client": "Existing worker pinned-CA HTTP/2 client; publisher negotiates HTTP/1.1 through ALPN fallback.",
+    "publisher_reservations": 0
+  },
+  "request_and_content_scope": {
+    "same_company_board_and_job_URL_identity": true,
+    "publisher_enabled_gate": "switch=on",
+    "company_gate": "exact configured company URL in publisher header",
+    "required_content_gate": "job description must exist",
+    "closed_response": "No title-only publication; existing posting retained for monitor lifecycle/retry",
+    "browser_fallback_added": false
+  },
+  "unchanged_Python_HTTP_API_parity": {
+    "positive_details": 23,
+    "raw_field_differences": 0,
+    "exact_normalized_descriptions": 23,
+    "publisher_off_rejected_without_content": 1,
+    "scope": "Same new API configuration and frozen native responses. No positive original DOM parity claim; original HTML route returns403."
+  },
+  "canonical_native_claims": {
+    "positive_description_writes": 23,
+    "exact_Python_normalized_HTML_and_SHA256": 23,
+    "pending_description_and_hash_checks": 23,
+    "selected_field_mask": [
+      "description"
+    ],
+    "existing_titles_locations_and_employment_preserved": true,
+    "actual_closed_response_preserved": 1,
+    "foreign_company_missing_description_and_header_reservation_negatives": 3,
+    "active_and_absence_state": "retained",
+    "deadline_and_lease": "exact recurring schedule and settled lease"
+  },
+  "monitor_delegation": {
+    "implementation": "Existing Jobbank104 monitor and secondary-provider description delegation, with full independent HTTP API option validation.",
+    "transport": "Original direct/proxy listing request, endpoint and worker lane retained.",
+    "regression": "Real migrated PostgreSQL/private Redis/native claims: new/touched/relisted across both direct and credentialed proxy fixtures pass. Scraped API description/hash/locales remain authoritative on refresh.",
+    "unsupported_masks_browser_options_and_missing_mask": "rejected"
+  },
+  "complete_prospective_floor": {
+    "monitors": 8111,
+    "details": 8127,
+    "enabled_boards": 8138,
+    "captured_detail_references": 3281,
+    "SDK_failures": 0,
+    "retains_complete_1104_qualified_floor": true
+  },
+  "census": {
+    "records": 333,
+    "browser_boards": 519
+  },
+  "remaining_after_eventual_activation": {
+    "ordinary_monitors": 24,
+    "ordinary_details": 8
+  },
+  "ownership_granted": false,
+  "required_next": [
+    "Exact-head Required CI and Crawler Deploy Gate",
+    "Fresh expected-head merge authority after1104activation completes",
+    "Original full rollout and actual published configuration/scheduled-route proof",
+    "Original supported activation and full queue conservation",
+    "Whole-lane natural freshness/resources/cost/reversal and final production Python retirement"
+  ],
+  "evidence_sha256": {
+    "native-full1.private.json": "422e2408ca67e112e3ef1ea068086be81530cd1efc2e8cf2725e9d7b26906dbb",
+    "native-full2.private.json": "5bc366f256acdc358c17ce118c5e4d0e74fa3cae131b1a3bf7a9e6afa6f78a0b",
+    "API-source-parity1.json": "27a22e525dc393e57a8684d9d4f6bd3953e70d36ee59cacf55138966c1d70f3d",
+    "canonical-effects3.json": "ee197d702ac4e4ea81f67632e91b69406ac16160e3d1d2724de2b8f8d7fc40b4",
+    "monitor-delegation-race3.private.log": "7ec08e24ae33962680769d91e60f5abfeccc856f6952c967c6dcb991cc9ebf04",
+    "registry-and-delegation-race1.json": "88ddd0c8afc55fc8705746ea6efed20d0307a843b0aa3d763606996b38eb5466",
+    "prospective-floor-sdk3.json": "0b8b0d2e5a80c2649481509b5aa55432e0235955628ce8483b39dd9680390e87",
+    "final-source-validation2.json": "6835c9218d41a5a2cefe5e45174eb8651c2d6db549dc7780e392be597ff1083b"
+  },
+  "source_sha256": {
+    "apps/crawler/go/ordinary-queue/profile_small_providers.go": "b8351805222db3ef568a918140ad5abfe653406f6fad8a734a64ad664df3da27",
+    "apps/crawler/go/ordinary-queue/profile_secondary_providers.go": "e5909dffbdc8665111d9097d4d5eb60a010e661df37e19a7d903ce9cd0164814",
+    "apps/crawler/go/ordinary-queue/profile_jobbank104_api_delegation_test.go": "4d757a3135d8c502d8adf58aeb71889f9960ff21340f5568f2ee2387377797d0",
+    "apps/crawler/go/ordinary-worker/jobbank104_api_delegation_integration_test.go": "388562bb42ceebeaa6613080bee14ab3662f043adcbfc276d86326e788f8de5e"
+  },
+  "registry_sha256": "e811eeaf217a85fe6ce327a09aaa7181beaf0951d3b7c10280010851e17b9120",
+  "qualification_component_only": true,
+  "combined_batch_record": "go-native1105-grouped-http-api-candidate-2026-10-27.json",
+  "component_floor_precedes_Metalysis": true
+}

@@ -1996,8 +1996,10 @@ class TestGrooveQuantumSiteGroundConfig:
 class TestMetalysisSiteGroundConfig:
     """Metalysis must bypass SiteGround's crawler-IP challenge (#4351)."""
 
-    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+    def test_monitor_uses_authoritative_http_api_and_static_jsonld(self):
         import json
+        import re
+        from urllib.parse import urlsplit
 
         from src.shared.constants import get_data_dir
         from src.shared.csv_io import read_csv
@@ -2005,21 +2007,28 @@ class TestMetalysisSiteGroundConfig:
         _, rows = read_csv(get_data_dir() / "boards.csv")
         row = next((r for r in rows if r["board_slug"] == "metalysis-careers"), None)
         assert row is not None, "metalysis-careers row missing from boards.csv"
-
-        assert row["monitor_type"] == "dom"
+        assert row["monitor_type"] == "api_sniffer"
         assert row["scraper_type"] == "json-ld"
-
-        monitor_config = json.loads(row["monitor_config"])
-        scraper_config = json.loads(row["scraper_config"])
-        for config in (monitor_config, scraper_config):
-            assert config["render"] is True
-            assert config["proxy"] is True
-            assert config["persistent_context"] is True
-            assert config["channel"] == "chrome"
-            assert config["headless"] is False
-
-        assert monitor_config["rescrape_policy"] == "never"
-        assert monitor_config["url_filter"] == "/job/"
+        config = json.loads(row["monitor_config"])
+        assert json.loads(row["scraper_config"]) == {}
+        assert not (
+            {"render", "proxy", "persistent_context", "channel", "headless"} & config.keys()
+        )
+        assert config["rescrape_policy"] == "never"
+        endpoint, board = urlsplit(config["api_url"]), urlsplit(row["board_url"])
+        assert endpoint.scheme == board.scheme == "https"
+        assert endpoint.netloc == board.netloc
+        assert endpoint.path == "/jm-ajax/get_listings/"
+        assert config["method"] == "GET"
+        assert config["params"] == {"per_page": "100"}
+        assert config["json_path"] == "html"
+        assert config["empty_response"] == {"found_jobs": False, "max_num_pages": 0}
+        assert config["pagination"]["param_name"] == "page"
+        assert config["pagination"]["max_pages"] == 200
+        pattern = re.compile(config["url_regex"])
+        assert pattern.search(f'<a href="{board.scheme}://{board.netloc}/job/fixture/">')
+        assert pattern.search('<a href="/job/fixture/">')
+        assert not pattern.search('<a href="https://foreign.example/job/fixture/">')
 
 
 class TestOrangeQuantumSystemsSiteGroundConfig:
