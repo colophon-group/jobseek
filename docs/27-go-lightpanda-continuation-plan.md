@@ -2,134 +2,120 @@
 
 ## Current delivery and next batch — October 27, 2026
 
-Production is healthy on **0.13.1098**, source
-`1051a83bd70d3b236320202a008dfd7257fb9f5f`, through
-[PR #10918](https://github.com/colophon-group/jobseek/pull/10918) and the original
-full deployment workflow **40413547691**, including promotion. Independent
-readback at **22:55 UTC on October 26** verifies seven healthy retained services,
-six HTTP200 endpoints, exact immutable images and a byte-identical
-runtime/committed environment. The committed data revision is also `1051a83bd7`,
-preserving both Vinfen rows from the earlier `d8eaa5dadf` company publication.
-The actual enabled catalogue contains **8,136 boards**. Native owners remain cold;
-the last observed epoch is **375**. The earlier **0.13.1093** recovery source
-`f2e84b142cd14cdde0b11a9d8bd3f1a206f8ca3d` restored service through
-[PR #10906](https://github.com/colophon-group/jobseek/pull/10906).
+The full migration remains **active and incomplete**. Keep every enabled board,
+canonical content and publisher policy, and retain useful isolated offline Python.
+Retire production Python, Playwright and Chromium after replacement coverage,
+freshness and supported recovery are demonstrated.
 
-The deployment and its rollback had stopped all writers when Bajaj's **10,025**
-schedules exceeded the old 10,000-row repair ceiling. The recovered helper
-streams the complete inventory into a byte-bounded atomic payload, validates
-every row and retains the original whole-inventory Lua preflight. The 10,025-row
-forward/reverse and late-invalid-record regressions pass on real PostgreSQL and
-Redis. The original complete rollout restored service; no individual restart or
-hand edit of SQL, Redis, ownership receipts or environment was used.
+Production runtime **0.13.1098**, source
+`1051a83bd70d3b236320202a008dfd7257fb9f5f`, is deployed through
+[PR #10918](https://github.com/colophon-group/jobseek/pull/10918) and
+[the original full rollout](https://github.com/colophon-group/jobseek/actions/runs/40413547691),
+including promotion. Data revision
+`5349aba18c05129196be13b3f74a74df8b63f847` is independently verified after
+[PR #10920](https://github.com/colophon-group/jobseek/pull/10920) and
+[the original CSV publisher](https://github.com/colophon-group/jobseek/actions/runs/40417932421).
+The enabled catalogue contains **8,136 boards**, including both Vinfen rows.
+Main subsequently advanced to `714bfdf950184f1645ee6aa15dd013d9f099778a` with
+Air Apps catalogue/image changes. Its original CSV workflow **40427501269**
+stopped at the supported guard: retire native ordinary ownership before
+publishing data. The accepted runtime and published data above remain selected.
+Include this pending catalogue in the next combined batch, using original ordinary
+retirement, B0 rollback, exact-main CSV publication and full-cohort reactivation.
 
-[PR #10907](https://github.com/colophon-group/jobseek/pull/10907) moves five ATS
-inventory host helpers into the existing Go binary: bounded logs, registry
-snapshots, GitHub App tokens, status publication and network acceptance. Its
-first host installation stopped before replacement because `/run` is mounted
-`noexec`. The repaired installer preflights its root-owned binary in protected
-executable `/usr/local/libexec`, preserving `/run` hardening. Original workflow
-**40407317067** succeeded against independently healthy 1096. Independent readback
-confirms native capability, root/0755 binary, all five Go wrapper delegates,
-successful report-only acceptance, cleared acceptance pin, and active/enabled timer.
 
-[PR #10908](https://github.com/colophon-group/jobseek/pull/10908) merged as
-`151ddbf4331548910dec0efd72faec5387a50372`, version **0.13.1095**, with both required
-checks green. Its crawler rollout stopped before quiescence on the original WAL
-archive gate; 1096 subsequently passed that gate and deployed the accumulated
-changes. The earlier ATS workflow timed out waiting for 1095; the successful
-current-release dispatch above supersedes it. The release admits API-sniffer metadata selection, Oracle
-title/metadata delegation, and RSS location/employment/date delegation. The
-shared detail writer preserves Python's metadata availability check without
-adding canonical column writes. All 18 frozen preparation cases and the real
-selected-writer/queue/publisher tests pass. Its new-catalogue SDK result is
-**230 monitors / 232 details** across the existing 37 families.
+The latest available official Lightpanda snapshot,
+[**1.1.0-nightly.11106+659958a24**](https://github.com/lightpanda-io/browser/releases/tag/nightly), is deployed and independently accepted through
+[PR #10799](https://github.com/colophon-group/jobseek/pull/10799) and
+[the original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40416530488).
+The serving renderer source is `e20eb57e998a0d0e556cdc13fcf910648fc48e98`;
+the upstream executable source is `659958a24c0ddb40a577bd528fcb4c6e1c504419`.
+Independent readback verifies the immutable image, official arm64 binary hash,
+engine version, mTLS readiness, **1 GiB memory limit and zero swap**.
+Official release assets were rechecked after the local date rollover and remain
+unchanged. Stable **1.0.2** retains four original visibility failures; the newer
+snapshot passes all **21 unchanged original wait fixtures** and both physical
+Linux architecture suites. Keep the original expectations.
 
-The deployed **0.13.1096** shared batch handles **three** additional monitor
-configurations together:
+The batch also delivers Miniso ItemList discovery, selected embedded/Next data
+fields and Ericsson locale navigation, the R.R. Donnelley detail binding, eight
+retained DOM variants, absent-body API pagination and the rendered MyJobShop
+annotation. Positive public fields, original Python wire/parser oracles and real
+PostgreSQL/Redis writer, queue and publisher-policy contracts pass. The five
+native ATS host helpers are installed and accepted, with a successful report-only
+run, cleared acceptance pin and enabled timer. Useful Python references remain
+offline.
 
-- Workday applies the existing canonical URL transform after CXS discovery,
-  preserving independent detail scheduling. Robots discovery accepts the original
-  `siteMap.xml` spelling and retains the published site's case.
-- Lever schedules explicit description/date enrichment through the existing
-  selected-field detail writer. Listing refreshes preserve scraped descriptions;
-  discovery retains structured salary emitted by the existing parser.
-- Tupu360 uses the retained direct rich-row writer with a strict static parser.
-  Its authoritative count, constant total, card fields, unique IDs and pagination
-  must all validate before any inventory is published. Later failures and publisher
-  reservations retain no partial inventory or absence authority.
+**Native handoff delivered:** original B0 activation succeeded at epoch **376**,
+and original ordinary activation completed at **00:09:46 UTC on October 27**.
+Independent readback verifies exact source/data/images, active B0 and ordinary
+receipts, SQL authority, the complete Redis projection for **8,094 monitors /
+8,115 details**, all ten actors, eight successful HTTP health endpoints and the
+original restart policies. The complete immutable staged plan had already passed
+all configuration, worker, domain, company, hash and preserved-membership checks;
+legacy Workday details use the existing shared monitor binding.
+The original commands owned writer quiescence, natural lease expiry, projection
+repair, Redis SAVE and full restart. Complete postactivation replay passes for **2,014,364 scheduled routes** across
+47 detail profiles, with **zero captured gaps, cache mismatches or wrong/dual
+lanes**. A fresh independent health/authority readback also passes. Sustained
+natural execution, freshness and whole-lane resource evidence remain open.
 
-All **16** original Python Tupu360 parser cases match. Fresh original-wrapper
-public captures and sealed Go replay match every returned URL and available
-field: **92 Tupu360 postings / one request**, **538 transformed Workday URLs /
-28 requests**, and **54 Lever postings / one request**. Real migrated
-PostgreSQL/Redis tests cover separate detail queues, new/touched/relisted
-content authority, four-miss absence, later-page failures and reservations.
-The complete actual 8,134-board SQL/cache SDK check now admits **233 monitors /
-232 details** among the 234 new rows, proposing **8,091 monitors / 8,099 details**
-with zero binding mismatches. Three new-catalogue assignments remain:
-Miniso Argentina monitor, Ericsson China detail and R.R. Donnelley India detail.
-These candidate checks grant no staging or serving authority. The retained old
-frontier, full route proof, freshness, resource evidence and final reversal also
-remain required.
+The qualification includes **2,013,754** actual scheduled routes for the prior
+8,094/8,114 proposal, plus all **776** scheduled Mandarin Oriental detail URLs.
+Three current Mandarin documents return HTTP200 with the latest nightly, and
+all ten Go fields match the original Chromium scraper. No Mandarin configuration
+change or new profile implementation is needed. Together with the three
+JSON-LD configuration replacements, this adds four qualified detail sources.
+Every actual canonical/cache binding, source URL, fallback step and interval
+passes the installed SDK. The full staged payload, routing projection and all
+prior memberships are validated; legacy Workday detail contexts use the
+existing shared monitor binding.
 
-See [the three-family qualification evidence](evidence/go-native1096-workday-lever-tupu360-candidate-2026-10-26.json).
+The complete queue observations contain **3,377,187 before / 3,377,797 after
+unique IDs**. Every exact difference is accounted for. Of **645 before-only
+IDs**, 93 are inactive, 527 are no longer scheduled and **25 remain ready in the
+separate B0 queue**: 20 bunq and five Browser Use tasks. The original offline
+decoder validates every B0 record, payload hash, parser assignment and SQL
+identity; exactly one matching queue index agrees. All **1,255 after-only IDs**
+exist in canonical SQL and are currently queued or inflight.
 
-The complete recovered-source observation and SDK replay cover **1,957,037
-actual scheduled URLs** for a provisional **8,088-monitor / 8,099-detail** cohort,
-with zero cached identity mismatches. All actual fallback steps and intervals
-validate. **Ten** legacy lane duplicates are recorded for the existing original
-cold-activation normalizer; require strict canonical lane proof afterward.
-The newer non-atomic queue observation contains **3,298,544 unique IDs**. All
-**2,402** IDs absent from the older 3,269,016-ID scan have exact current
-canonical dispositions: 1,157 inactive, 686 no longer scheduled, and 559 already
-queued or inflight again. Of 17 observed gaps, nine remain active and unqueued;
-all nine are in the previously captured 757-gap set. Preserve these exact private
-IDs and complete their original cold-lifecycle dispositions. This does not yet
-establish postactivation conservation, freshness or public content parity.
+All **83 preactivation wholly absent scheduled caches** and **23 legacy lane
+discrepancies** are now queued or inflight. The seven surviving historical gaps
+are also queued; two older records are inactive. The original cold normalizer
+performed these repairs. No manual SQL, Redis, receipt or service edits were
+used. These are dated non-atomic observations; sustained conservation and
+freshness remain open. See [the serving evidence](evidence/go-native1098-latest-nightly-current-handoff-2026-10-27.json).
 
-The original renderer retry recovered source `00a9e859` with verified **1 GiB /
-no swap** limits. Lightpanda **1.0.2** remains the latest stable release. Its four
-frozen text-visibility failures remain unresolved; preserve all 21 original
-expectations and draft #10799. A private canvas measurement probe is diagnostic,
-not proof of equivalent text rectangles or a promotion.
-
-Upstream changed Range geometry on October 25. The newer official snapshot
-**1.1.0-nightly.11106+659958a24** passes **all 21 unchanged original wait-state
-fixtures** and both physical Linux amd64/arm64 protocol/isolation suites.
-[PR #10799](https://github.com/colophon-group/jobseek/pull/10799) merged as
-`e20eb57e998a0d0e556cdc13fcf910648fc48e98` after whole-head Required CI, Crawler
-Deploy Gate, public field/URL comparisons and the ARM64 benchmark job passed.
-Its official OCI index and executable hashes are immutable; builds resolve no
-mutable tag or GitHub asset URL. The later nightly Git ref differs from the
-executable build revision, which is recorded separately. Original renderer
-workflow **40416530488** is running. Keep main unchanged through its exact-main
-reattestation, and require independent source/image/binary/version/1 GiB/no-swap
-and protected-service acceptance. Production retains the accepted engine until
-that rollout completes. See
-[the immutable snapshot evidence](evidence/lightpanda-nightly-20261026-source-qualification.json).
+The latest ARM64 synthetic benchmark admits eight matched pairs: **6.34–12.49×
+density**, **12.6–29.2% peak RSS**, **43.6–66.6% lifetime CPU** and **52.1–64.8%
+p99 latency** relative to Chromium. Its measured checkout is
+`763041f65981bdff2353709055df88dd7ad4f62b`, whose Git tree equals merged renderer
+`e20eb57e998a0d0e556cdc13fcf910648fc48e98`. Preserve that measured source identity.
+This does not establish live whole-fleet freshness, resources or hosting cost.
 
 Continue in this order:
 
-1. Finish the qualified runtime slices with exact-head Required CI, Crawler
-   Deploy Gate and fresh draft/base/hold/operator checks; use the original full
-   rollout and independently verify the final source. Avoid unnecessary native
-   activation/retirement cycles between runtime rollouts.
-2. Use the refreshed actual 8,136-board SQL/cache configurations and all actual
-   scheduled URLs to qualify the complete cohort, including new identities.
-   Reconcile the exact **3,269,016** prior unique queued IDs and **757** preexisting
-   scheduled-but-unqueued routes; matching totals do not establish conservation.
-3. Reconcile the renderer source, stage the reviewed selectors, and use the
-   installed B0 and ordinary stage/inspect/activate commands. Decode the complete
-   staged payload and verify actual serving authority. Complete native ATS host
-   rollout and timer acceptance against the same final release.
-4. Finish remaining enabled configurations in shared batches, latest-Lightpanda
-   compatibility, sustained freshness, comparable whole-lane resources/cost,
-   supported cold reversal and its recovery window. Then retire production
-   Python, Playwright, Chromium and runtime-only assets, keeping useful offline
-   Python tooling. The full-delivery goal remains active.
+1. Preserve the accepted source/data/images, receipts, SQL authority and whole
+   Redis membership at epoch376. Use only supported lifecycle and recovery paths.
+2. Preserve the completed full-route, strict-lane and exact-ID evidence. Continue
+   natural execution/freshness measurement and diagnose transient claim
+   deadlines/unacknowledged operations after the full-corpus reader is idle.
+3. Demonstrate natural execution, canonical fields and sustained freshness;
+   measure comparable whole-lane resources and attributable cost. Save portable
+   evidence distinguishing accepted serving authority from sustained conservation
+   and freshness.
+4. Finish the remaining **39 monitor / 18 detail assignments**, excluding the
+   three separately tracked B0 boards, in substantial shared batches. The current
+   split is 22 unsupported / 17 eligible-but-unqualified monitors and 14 unsupported /
+   four eligible-but-unqualified details. Empty, challenged and blocked responses
+   confer no absence authority. Preserve the complete cohort across each combined
+   runtime rollout and supported cold handoff.
+5. Exercise the supported cold reversal and retain its recovery window. Retire
+   the remaining production Python execution and legacy runtime assets only after
+   their replacements own all enabled configurations and operational consumers.
 
-See [recovery and candidate evidence](evidence/go-native1093-recovery-and-enrichment-candidate-2026-10-26.json).
+Earlier dated sections below retain historical candidate and recovery context;
+the current checkpoint above governs continuation.
 
 ## Rendered continuation candidate — October 26, 2026
 

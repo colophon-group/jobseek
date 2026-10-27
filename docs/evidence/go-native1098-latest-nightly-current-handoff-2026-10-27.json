@@ -1,0 +1,73 @@
+{
+  "observed_at_utc": "2026-10-26T23:34:20.003776+00:00",
+  "runtime_revision": "1051a83bd70d3b236320202a008dfd7257fb9f5f",
+  "data_revision": "5349aba18c05129196be13b3f74a74df8b63f847",
+  "monitors": 8094,
+  "details": 8115,
+  "base_scheduled_routes": 2013754,
+  "additional_Mandarin_routes": 776,
+  "combined_scheduled_routes": 2014530,
+  "Mandarin_original_positive_fields": 3,
+  "Mandarin_original_vs_latest_nightly_all_ten_fields_match": true,
+  "ordinary_activation": "succeeded through original installed wrapper at2026-10-27T00:09:46Z",
+  "renderer_version": "1.1.0-nightly.11106+659958a24",
+  "renderer_deployed_source": "e20eb57e998a0d0e556cdc13fcf910648fc48e98",
+  "renderer_upstream_source": "659958a24c0ddb40a577bd528fcb4c6e1c504419",
+  "base_sdk_sha256": "b9f2834b9e741d69fb79ab788d090e25d24251045dbf43dff0070c8f5845f558",
+  "Mandarin_sdk_delta_sha256": "c12c8d1a4ea2515a5cb753ff6bce06712178ebbdab51b925186808dce8306550",
+  "qualification_epoch": 375,
+  "selected_B0_epoch": 376,
+  "qualification_scope": "Additive evidence for unchanged source/data at cold375: complete prior8094M/8114D actual route/cache proof plus entire776-route Mandarin detail delta. Three actual positive original Chromium/current latest-nightly field maps match. Whole queue baseline remains original completed full corpus. No current serving authority.",
+  "ordinary_active_epoch": 376,
+  "ordinary_plan_sha256": "0782164bc1dfb1a170e0578019b6ff5f247f5bf333df02a446f64d6befe70e85",
+  "ordinary_projection_sha1": "cdd289188b6603b52e1ca4ad53aac6fc74ca539b",
+  "independent_serving_observed_at_utc": "2026-10-27T00:26:36.681192+00:00",
+  "independent_exact_sources_images_receipts_SQL_Redis_membership": true,
+  "healthy_actor_count": 10,
+  "successful_HTTP_health_endpoints": 8,
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:226c4d8a85790c64240b0ba7fc3f2c845157b837d0957b2a4c639edb00efb0c0",
+  "renderer_official_arm64_binary_sha256": "0417bab177fc1e4b4c2984a56a183ea92068f2373fab7cb4628132f9bdd288fa",
+  "renderer_memory_limit_bytes": 1073741824,
+  "renderer_swap_limit_bytes": 0,
+  "postactivation_complete_actual_routes": {
+    "count": 2014364,
+    "detail_profiles": 47,
+    "selected_lanes_strictly_validated": true,
+    "captured_gaps": 0,
+    "cache_mismatches": 0,
+    "wrong_or_dual_lanes": 0,
+    "completed_at_utc": "2026-10-27T00:25:50Z"
+  },
+  "scope": "Accepted ordinary8094M/8115D plus separateB0 serving authority at376. Complete2,014,364actualscheduledroute/cache/strictlane replay passed with zero capturedgaps/mismatches/wronglanes. Every exact before-only/after-only ID is accounted for, including25separateB0readytasks. Observations are non-atomic. Sustained natural execution/freshness/resources, remaining enabled assignments, cold reversal/rollbackwindow and final productionPythonretirement remain. Full migration is active/incomplete.",
+  "exact_queue_observations": {
+    "before_unique": 3377187,
+    "after_unique": 3377797,
+    "before_only": 645,
+    "after_only": 1255,
+    "common": 3376542
+  },
+  "before_only_dispositions": {
+    "inactive": 93,
+    "no_longer_scheduled": 527,
+    "separate_B0_ready": 25
+  },
+  "after_only_all_canonical_and_queued_or_inflight": 1255,
+  "preactivation_absent_83_now_queued_or_inflight": 83,
+  "preactivation_lane_discrepancies_23_now_queued_or_inflight": 23,
+  "historical_nine": {
+    "inactive": 2,
+    "now_queued_or_inflight": 7
+  },
+  "separate_B0_records": {
+    "ready": 25,
+    "bunq": 20,
+    "Browser_Use": 5,
+    "original_full_record_decoder_and_SQL_identity_and_index_match": true
+  },
+  "pending_catalogue": {
+    "repository_revision": "714bfdf950184f1645ee6aa15dd013d9f099778a",
+    "company": "Air Apps",
+    "original_CSV_workflow": 40427501269,
+    "status": "Original publisher refused because native ordinary ownership is active; accepted runtime/data stay selected. Combine publication with next shared batch through original retirement/B0rollback/CSVsync/full-cohort reactivation."
+  }
+}
