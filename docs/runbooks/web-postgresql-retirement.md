@@ -45,7 +45,10 @@ provider response bodies belong in logs or commits.
 6. The new endpoint uses a DNS-only record, a publicly trusted ACME certificate,
    mandatory TLS and independent owner/auditor/worker logins. Certificate
    renewal copies protected certificate material and reloads this service.
-   The worker login is limited to the crawler's known public/private sources.
+   Owner, auditor and restricted worker logins require TLS and independent
+   strong passwords. Deployment runners also need the restricted worker login
+   for their consistent-snapshot visibility check; worker data privileges stay
+   restricted to the reviewed tables and policies.
 7. Dispatch `rehearse`. It creates a uniquely named temporary database, takes
    a complete source snapshot, restores with the restricted destination owner,
    compares table fingerprints and sequence bounds, preserves the exact source
@@ -59,6 +62,11 @@ provider response bodies belong in logs or commits.
    external certificate-verified login must pass or that dedicated change rolls
    back. The shared SSH/ICMP firewall remains under its existing owner. Future
    ingress maintenance preserves this declared service and verifies it separately.
+9. Dispatch `prepare-worker-access` before copy. It updates only the protected
+   web service's authentication policy on an uncopied empty candidate and
+   verifies the real restricted login, TLS certificate and role/session limits
+   from the deployment runner. The original crawler database is untouched.
+   Copy repeats this read-only check before pausing the source matching worker.
 
 A packet uses one exported repeatable-read source snapshot for its catalogue,
 row fingerprints and `pg_dump`. Sequence values are nontransactional: the

@@ -145,12 +145,35 @@ class SafetyTests(unittest.TestCase):
             "verify-server",
             "Prove external certificate verification and SCRAM login",
             "deploy/web-postgresql/ingress.py rollback",
+            "prepare-worker-access",
         ]:
             self.assertIn(boundary, workflow)
         host = (ROOT / "deploy/web-postgresql/host.py").read_text()
         self.assertIn("source_fence(src, remove=True)", host)
         self.assertIn("successful complete restore rehearsal is required", host)
         self.assertNotIn("GRANT SELECT ON ALL TABLES", host)
+
+    def test_runner_worker_login_is_proven_before_source_pause(self):
+        workflow = (ROOT / ".github/workflows/operate-web-postgresql.yml").read_text()
+        proof = workflow.index(
+            "name: Require the deployment runner can use the restricted worker login"
+        )
+        pause = workflow.index("name: Pause and verify the standalone matching process")
+        self.assertLess(proof, pause)
+        probe = (ROOT / "deploy/web-postgresql/verify-worker-access.sh").read_text()
+        for contract in [
+            "PGUSER=jobseek_narrowed_worker",
+            "PGSSLMODE=verify-full",
+            "default_transaction_read_only=on",
+            "rolconnlimit=6",
+            "rolsuper OR rolcreatedb OR rolcreaterole",
+            'test "$result" = t',
+        ]:
+            self.assertIn(contract, probe)
+        self.assertIn(
+            "hostssl all jobseek_narrowed_worker 0.0.0.0/0 scram-sha-256", host.HBA
+        )
+        self.assertNotIn("host all all 0.0.0.0/0 trust", host.HBA)
 
     def test_repository_recovery_does_not_force_live_locks(self):
         with (
