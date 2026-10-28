@@ -1,6 +1,59 @@
 # Go and Lightpanda migration delivery plan
 
-## Eligibility timeout recovery — October 28, 2026, 21:58 UTC
+## Combined recovery and next native batch — October 28, 2026, 22:36 UTC
+
+[Hotfix #10992](https://github.com/colophon-group/jobseek/pull/10992) is merged as
+`019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, runtime **0.13.1111**, after
+Required CI, Crawler Deploy Gate and both native suites passed. The original
+[full crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40780616828)
+is building its immutable images. **Production is still the contained 1110
+source at epoch 394 with its retiring ordinary receipt.** No hotfix runtime or
+recovery success is claimed yet. Scheduled Typesense reconciliation finished
+normally. The official nightly's seven assets remain unchanged; latest
+Lightpanda stays **1.1.0-nightly.11227+0eee96bf2**.
+
+Use the successful source-bound build and original admin-prepull workflow, then
+the installed wrapper's exact newer-admin `recover-pending` path. Require
+independent complete old-stack restoration, ordinary SQL retirement and absent
+ordinary receipt before the normal B0 rollback and selector clearing. Deploy
+the complete hotfix through its original workflow and verify its actual
+runtime/data pair. Keep native ownership inactive through the grouped CSV
+publication below; perform one incoming B0/ordinary activation after both are
+qualified. Preserve the entire **3,443,518-ID** outgoing queue baseline.
+
+[Data candidate #10991](https://github.com/colophon-group/jobseek/pull/10991)
+combines **six detail configurations** and **two unchanged monitor admissions**.
+The six detail changes and Firehawk's HTTP monitor adjustment are described
+below. The additional monitor contracts are Tesco Go HTTP and Syneos Lightpanda
+DOM. Tesco's current three redirect/HTML attempts are explicitly rejected as
+non-JSON, preserving inventory instead of treating the original empty result
+as a valid empty inventory. Three real PostgreSQL/Redis cases prove retained
+visibility/missing counts, policy, deadlines and leases. Syneos' actual complete
+403 is rejected by both the unchanged original navigation guard and native
+rendered parsing. Four real canonical cases cover that failure, transport,
+incomplete output and publisher reservation. Neither is positive access or a
+verified empty inventory. See [monitor admission evidence](evidence/go-native-blocked-monitors-candidate-2026-10-28.json).
+
+The source-1110 prospective corpus, checked through the merged hotfix runtime,
+retains **8,125 monitors / 8,131 details** and validates **8,127 / 8,137** across
+all **3,513 reference URLs**, with zero constructor failures and no B0 overlap.
+This historical catalogue excludes the later main addition: Gray Media is
+preserved unchanged, yielding **8,141 CSV boards**. Qualify it and every current
+assignment from the actual published catalogue before staging; expected full
+coverage is conditional **8,128 monitors / 8,138 details**, leaving **10 ordinary
+monitors / zero details**. No candidate evidence itself grants ownership.
+
+Publish the data group only with the unchanged hotfix runtime contract, then
+verify the actual runtime/data source pair, full canonical/cache/reference
+corpus, every snapshot gap and retained assignments. Use original incoming
+wrappers, independent full-stack acceptance, strict postactivation routes and
+whole queue conservation. Preserve working IHG and NTT until complete positive
+replacement inventories pass. Full migration still requires natural freshness,
+stability, comparable resources/cost and the final supported reversal/window
+before retiring the four remaining Python worker/browser processes and
+legacy runtime assets. Execution stays strictly Lightpanda and Go HTTP/API.
+
+## Historical eligibility timeout and merged recovery fix — October 28, 2026, 21:58 UTC
 
 The original 1110 ordinary retirement and `recover-pending` both refused
 `eligibility / observation`. The writer fleet is contained, with its exact
@@ -32,7 +85,90 @@ remaining monitors and final freshness, stability, resources and reversal proof.
 Execution remains strictly latest Lightpanda and proven Go HTTP/API.
 See [recovery evidence](evidence/go-native-eligibility-timeout-2026-10-28.json).
 
-## Current handoff and grouped candidate — October 28, 2026, 18:22 UTC
+## Historical verified 1110 checkpoint and six-detail candidate — October 28, 2026, 21:35 UTC
+
+Runtime **0.13.1110** is deployed from
+`dfdb4d9d094f5133d207bec53a0d0e593a746bf0` after
+[PR #10986](https://github.com/colophon-group/jobseek/pull/10986). The original
+[crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40758947071)
+and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40759073784)
+succeeded. Independent checks verify the exact runtime/data images, complete
+restored stack and health endpoints. Lightpanda remains
+**1.1.0-nightly.11227+0eee96bf2**; all seven official nightly assets were
+rechecked unchanged at 20:02 UTC. Execution stays strictly Lightpanda and Go HTTP.
+
+**Ordinary Go ownership is active at epoch 394: 8,125 monitors / 8,131 details.**
+The original activation succeeded at 21:11 UTC. Independent readback verifies the
+exact runtime/data images, both protected receipts, SQL owner, full staged Redis
+projection, all ten actors and eight health endpoints. B0 remains separately active.
+All **8,140 enabled boards** remain configured.
+
+The strict postactivation SDK validates **2,037,459 scheduled routes**, zero cache
+mismatches, zero wrong-lane residue and **zero scheduled queue gaps**. Whole queue
+conservation compares **3,435,508** outgoing unique identities with **3,443,518**
+after activation. All **271 removals** are classified: **251** inactive/disabled
+and **20** unscheduled, with **zero unexplained identities**. The full unfiltered
+baseline is preserved. The initial local comparison script refused a previous
+batch's baseline before remote observation; correcting its directory preserved
+all assertions. No manual queue, receipt, lease, budget or SQL repair occurred.
+The normal 16-partition Typesense repair completed before staging retried.
+See the [verified serving evidence](evidence/go-native1110-serving-2026-10-28.json).
+
+The next group changes **six detail configurations** using existing contracts:
+Indeed, Zenline, Alten Sweden, Firehawk, Hotel Loewen and McDonald's Taiwan.
+Firehawk also moves its existing API monitor to direct HTTP. No parser or backend
+extension is needed, and the runtime contract stays unchanged.
+
+Firehawk's configured inventory returns **36 URLs**. Its public detail API returns
+**31 complete jobs / five HTTP 403 failures**. The unchanged field mappings match
+Python, and the original description-only enrichment remains selected. Separately,
+all **16 retained canonical URLs**, including all **13 scheduled** URLs, were
+checked: **two** return job data and **14** return 404. The API scraper preserves
+the original empty-result failure behavior for those 404s. Real PostgreSQL/Redis
+tests cover **38 current-detail**, **18 retained-detail** and **four monitor** cases,
+including content/hash retention, pending upload, publisher policy, deadlines and
+leases. These counts describe separate captures, with overlapping source URLs.
+
+All **16** current retained role URLs for Indeed, Alten Sweden and Hotel Loewen
+were tested in the latest Lightpanda. Alten has one positive page whose complete
+ten-field output matches Python, including the retained title, a **3,078-character**
+description and one location. Its other results are **three 404s / two transport
+failures**; all **seven** Indeed roles return 403. Hotel's **three** active,
+unscheduled roles return 200 without job fields. **18** real canonical cases
+verify the positive output, failure retention, original navigation-404 tombstones,
+publisher reservation and incomplete output. No blocked or empty page establishes
+a positive job or successful empty inventory.
+
+Zenline and McDonald's Taiwan are explicitly dormant: **zero active / scheduled**
+postings, with **three / zero** retained inactive records. Their existing DOM
+extraction remains intact. Zenline's removed evaluation only writes diagnostic
+class names to `document.title`; configured extraction skips header content.
+Dormancy does not establish future publisher access or positive role coverage.
+
+The prospective SDK retains **8,125 monitors / 8,131 details** and validates
+**8,125 monitors / 8,137 details** across **3,513 reference URLs**, excluding all
+three B0 boards. The conditional ordinary remainder is **12 monitors / zero
+details**. Original sync fingerprint/browser decisions match all six candidate
+CSV rows. Publish through the documented CSV workflow after the current handoff
+and supported outgoing boundary; verify the actual runtime/data pair and complete
+queues again before ownership. No production ownership is conferred by this
+candidate. See the [candidate evidence](evidence/go-native-final-details-candidate-2026-10-28.json).
+
+The candidate incorporates main's subsequent Gray Media addition unchanged:
+**8,141 CSV boards**, with exactly the same six migration rows changed relative
+to that main revision. The quoted prospective floor is bound to the serving
+1110 catalogue; the new board must be included in the actual published catalogue
+and independently qualified before the next ownership plan. The runtime contract
+remains unchanged. Regenerated census, CSV validation and all **66** affected
+Python tests pass after reconciliation.
+
+Full migration remains incomplete: finish monitor coverage, natural freshness and
+stability, comparable whole-service resources/cost, and the final supported
+reversal/window before retiring production Python. Keep useful offline Python
+tools isolated. Continue in groups using existing contracts; preserve the working
+IHG and NTT inventories until complete replacement inventories pass.
+
+## Historical 1109 handoff and 1110 candidate — October 28, 2026, 18:22 UTC
 
 Runtime **0.13.1109** is deployed from
 `0766fc017af4b5981c4ffbd1f9dc6eef12745299` after

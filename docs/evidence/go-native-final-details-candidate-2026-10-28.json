@@ -1,0 +1,126 @@
+{
+  "schema": "jobseek.go-lightpanda-candidate/v1",
+  "observed_at_utc": "2026-10-28T20:57:44.391651+00:00",
+  "runtime_base": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+  "runtime_version": "0.13.1111",
+  "runtime_changes": false,
+  "backend_constraint": "Strict Lightpanda and proven Go HTTP/API",
+  "engine": "1.1.0-nightly.11227+0eee96bf2",
+  "engine_linux_arm64_sha256": "b335058c35e78a8ddf6315145bc573eb48d793018d620fb3c4a8b731a4838e01",
+  "changed_board_rows": 6,
+  "candidate_labels": [
+    "indeed-careers",
+    "zenline-ai-careers",
+    "alten-sweden",
+    "firehawk-aerospace-appone",
+    "liebherr-hotel-loewen",
+    "mcdonalds-tw"
+  ],
+  "enabled_boards": 8140,
+  "retained_cohort": {
+    "monitors": 8125,
+    "details": 8131
+  },
+  "prospective_cohort": {
+    "monitors": 8125,
+    "details": 8137,
+    "reference_URLs": 3513,
+    "eligibility_failures": 0,
+    "B0_boards_excluded": 3
+  },
+  "conditional_ordinary_remainder": {
+    "monitors": 12,
+    "details": 0
+  },
+  "Firehawk": {
+    "current_inventory": 36,
+    "current_detail_capture": {
+      "200": 31,
+      "403": 5
+    },
+    "retained_canonical_capture": {
+      "200": 2,
+      "404_empty_result": 14,
+      "scheduled_included": 13,
+      "total": 16
+    },
+    "capture_overlap_exists": true,
+    "original_fields_and_description_only_mask_preserved": true,
+    "real_canonical_current_detail_cases": 38,
+    "real_canonical_retained_detail_cases": 18,
+    "real_canonical_monitor_cases": 4
+  },
+  "current_Lightpanda_roles": {
+    "Indeed": {
+      "403": 7
+    },
+    "Alten_Sweden": {
+      "positive_200": 1,
+      "404_original_tombstones": 3,
+      "transport_failure": 2,
+      "positive_description_characters": 3078,
+      "positive_title_matches_retained": true,
+      "positive_location_count": 1,
+      "all_ten_raw_fields_equal": true
+    },
+    "Hotel_Loewen": {
+      "200_without_job_fields": 3,
+      "active_unscheduled": 3
+    },
+    "real_canonical_cases": 18
+  },
+  "dormant": {
+    "Zenline": {
+      "active": 0,
+      "scheduled": 0,
+      "retained_inactive": 3
+    },
+    "McDonalds_Taiwan": {
+      "active": 0,
+      "scheduled": 0,
+      "retained_inactive": 0
+    },
+    "future_publisher_access_or_positive_roles_claimed": false
+  },
+  "CSV_original_sync_fingerprint_and_worker_flag_binding": {
+    "rows": 6,
+    "passed": true
+  },
+  "local_validation": {
+    "data_validation": "passed",
+    "census_regenerated": true,
+    "census_tests_passed": 62,
+    "Alten_board_tests_passed": 4,
+    "Go_Registry_Census_race": "passed"
+  },
+  "private_evidence_sha256": {
+    "Firehawk-qualified-followup-summary1.json": "459e633e9755dda79eba4cceaf11cb1c74bffdf65b9dde60a8e237ea6eb1ed38",
+    "firehawk-retained-original-fields1.private.json": "f3a99b2e6570df67148c225bfd8aa21bca93efba5dc592d4f00210c56df00f95",
+    "firehawk-retained-canonical-effects1.json": "bd551b1e685da4135baa9d72db03b84fcb02e08aa4ff49b5bf4596ca66ed5b35",
+    "firehawk-retained-canonical-validation1.json": "9162690e1282e24a437e8003404f074d20a7acba55b7de616aac49d5453a3b79",
+    "remaining-details-current-canonical-effects1.json": "768e80fc40807eb5ed108608c30fed403797cd6513dd803e7769b8865f2b1c70",
+    "remaining-details-current-canonical-validation1.json": "f402ab381a06360b13cf86b7dfa247e90a47c1633a98c87eb93c894790035228",
+    "alten-current-native-fields1.private.json": "b43aef8b8fd237e8bfdd7598373afe164d310a94d3e3b9bbf11f3d71eab6025b",
+    "remaining-details-original-gone-disposition1.json": "210b6de211cb5c70bd8697baae3b810ee87f965733410166f915c6e768bd6904",
+    "remaining-two-dormant-details-qualification1.json": "0c9647257922b704797fdd46ab260d003ab9d3842e8fa2389c6822a7118e81ad",
+    "remaining-six-details-prospective-floor-sdk1.json": "5fe2c254f4607d163a3ca0bac3962b2c6820ae088459d9201b4724f251de51f5",
+    "six-details-CSV-candidate-binding1.json": "4169ca0d1ff4e904b353102136351a166b6abfa2ee1ea75df4c3b06bb48345a5"
+  },
+  "qualification_scope": "Separate actual positive, failure and explicit dormancy evidence; eligibility and reference checks do not establish future publisher access. Metadata assembled from actual runtime/data base captured at epoch393; epoch394 is current B0 context. No captured content or identifiers published here.",
+  "publication": "Documented CSV workflow subject to unchanged runtime-contract proof, current native retirement boundary and actual runtime/data/source/queue verification. No ownership granted by this candidate.",
+  "production_ownership_granted": false,
+  "full_migration_complete": false,
+  "main_reconciliation": {
+    "base": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+    "preserved_main_additions": 1,
+    "candidate_CSV_board_rows": 8141,
+    "migration_rows_changed_relative_to_main": 6,
+    "runtime_contract_unchanged": true,
+    "affected_python_tests_passed": 66,
+    "prospective_floor_scope": "Serving1110 canonical catalogue plus six exact migration proposals. New main board requires actual postpublication catalogue/SDK qualification before ownership.",
+    "runtime_contract": "2a0b01f332e0192f9b98f57ff6cd06f00e51346b212499f5806b89d95692d85a"
+  },
+  "captured_evidence_runtime_base": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "parser_and_monitor_implementation_unchanged_since_capture": true,
+  "combined_monitor_admissions": "TescoHTTP and SyneosLP current explicit-failure cases; see go-native-blocked-monitors-candidate-2026-10-28.json. Actual source/data incoming qualification remains required."
+}
