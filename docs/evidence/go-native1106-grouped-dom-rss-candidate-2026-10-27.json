@@ -1,0 +1,164 @@
+{
+  "schema": "jobseek.go-lightpanda.grouped-candidate/v1",
+  "observed_at_utc": "2026-10-27T23:55:28.154906+00:00",
+  "version": "0.13.1106",
+  "base_source_revision": "61c69bfd4452714cfe3de0253436709518fd2ce3",
+  "production_ownership_granted": false,
+  "backend_constraint": "Self-hosted Lightpanda and proven Go HTTP/API only; no new Chromium/Playwright route.",
+  "Lightpanda": {
+    "version": "1.1.0-nightly.11169+6c44d0871",
+    "all_seven_official_assets_unchanged_at_utc": "2026-10-27T23:46:59.159246+00:00",
+    "production_document_limit_bytes": 4000000,
+    "production_large_document_navigation_already_enabled": true
+  },
+  "sources": [
+    {
+      "provider": "Bridgestone Australia",
+      "type": "dom",
+      "transport": "direct Lightpanda",
+      "original_and_native_URLs": 180,
+      "rendered_HTML_bytes": 555639,
+      "monitor_proxy_disabled": true,
+      "detail_execution_unchanged": true,
+      "scope": "Complete configured single-page source, unchanged original parser agreement; historical posting counts do not prove current inventory."
+    },
+    {
+      "provider": "Fressnapf Ireland",
+      "type": "dom",
+      "transport": "direct Lightpanda",
+      "original_and_native_URLs": 0,
+      "rendered_HTML_bytes": 838420,
+      "configured_empty_selector_matches": 1,
+      "exact_empty_text_matches": 1,
+      "missing_empty_proof_rejected": true
+    },
+    {
+      "provider": "Implenia",
+      "type": "rss",
+      "transport": "verified Go HTTP",
+      "identity_request_spacing_ms": 200,
+      "complete_raw_jobs": 354,
+      "feed_requests": 1,
+      "successful_identity_redirects": 354,
+      "HTTP_429_responses": 0,
+      "original_and_native_canonical_jobs": 310,
+      "raw_fields_compared_per_job": 11,
+      "different_jobs": 0,
+      "old_source_publisher_burst_regression_reproduced": true,
+      "all_canonical_titles_locales_and_normalized_descriptions_verified": 310,
+      "canonical_effect_cases": [
+        {
+          "active_rows": 310,
+          "canonical_rows": 310,
+          "deadline_and_lease_equal": true,
+          "failures": 0,
+          "heartbeat_extensions": 11,
+          "heartbeat_losses": 0,
+          "identity_requests": 354,
+          "matched_all_content_rows": 310,
+          "mode": "positive",
+          "old_missing": 0,
+          "publisher_reserved": false,
+          "requests": 355,
+          "status": "succeeded"
+        },
+        {
+          "active_rows": 1,
+          "canonical_rows": 1,
+          "deadline_and_lease_equal": true,
+          "failures": 1,
+          "heartbeat_extensions": 0,
+          "heartbeat_losses": 0,
+          "identity_requests": 0,
+          "matched_all_content_rows": 0,
+          "mode": "feed503",
+          "old_missing": 3,
+          "publisher_reserved": false,
+          "requests": 3,
+          "status": "failed"
+        },
+        {
+          "active_rows": 1,
+          "canonical_rows": 1,
+          "deadline_and_lease_equal": true,
+          "failures": 0,
+          "heartbeat_extensions": 0,
+          "heartbeat_losses": 0,
+          "identity_requests": 0,
+          "matched_all_content_rows": 0,
+          "mode": "feedreserved",
+          "old_missing": 3,
+          "publisher_reserved": true,
+          "requests": 1,
+          "status": "publisher_reserved"
+        },
+        {
+          "active_rows": 1,
+          "canonical_rows": 1,
+          "deadline_and_lease_equal": true,
+          "failures": 1,
+          "heartbeat_extensions": 0,
+          "heartbeat_losses": 0,
+          "identity_requests": 36,
+          "matched_all_content_rows": 0,
+          "mode": "identity429",
+          "old_missing": 3,
+          "publisher_reserved": false,
+          "requests": 37,
+          "status": "failed"
+        },
+        {
+          "active_rows": 1,
+          "canonical_rows": 1,
+          "deadline_and_lease_equal": true,
+          "failures": 0,
+          "heartbeat_extensions": 0,
+          "heartbeat_losses": 0,
+          "identity_requests": 4,
+          "matched_all_content_rows": 0,
+          "mode": "identityreserved",
+          "old_missing": 3,
+          "publisher_reserved": true,
+          "requests": 5,
+          "status": "publisher_reserved"
+        }
+      ]
+    }
+  ],
+  "prospective_floor": {
+    "enabled_boards": 8138,
+    "retained_monitors": 8112,
+    "retained_details": 8128,
+    "candidate_monitors": 8115,
+    "candidate_details": 8128,
+    "retained_detail_reference_URLs": 3281,
+    "unsupported_profiles": 0,
+    "retained_detail_execution_profiles_equal_except_immutable_config_binding": true,
+    "conditional_remaining_monitors": 20,
+    "conditional_remaining_details": 7
+  },
+  "validation": {
+    "RSS_identity_focused_go_race": "passed",
+    "go_vet": "passed",
+    "DOM_canonical_race_cases": 9,
+    "RSS_canonical_race_cases": 5,
+    "canonical_test_skips": 0,
+    "CSV_validation_errors": 0,
+    "census_tests_passed": 62,
+    "provider_registry_proxy_tests_passed": 192,
+    "census_records": 331,
+    "browser_boards": 518,
+    "local_PostgreSQL_stopped": true
+  },
+  "source_sha256": {
+    "apps/crawler/go/ordinary-worker/rss_job_identity.go": "14ceb26522b4119eeea14a3eb3ccee679f46746835ee8c05f121245ea8e50b4d",
+    "apps/crawler/go/ordinary-worker/rss_job_identity_test.go": "f93a13f98de4a260cf455fe4223aa3bb7fbfd22ed558aecdf705952229f1fc3c",
+    "apps/crawler/data/boards.csv": "2c431decb9137793fd46da8f4eadcd277ba5281fc007f7197b7de58693f4d73b",
+    "apps/crawler/tests/lightpanda/fixtures/census.json": "c3dd7f23fac4359dd65218209ff6f98fc07554c2de6a8c9a783c875f3bd47f08"
+  },
+  "limits": [
+    "Candidate evidence grants no production ownership.",
+    "Original supported publication, complete current-source validation and activation remain required.",
+    "Whole migration, sustained freshness/resource/cost proof and production Python retirement remain incomplete."
+  ]
+}

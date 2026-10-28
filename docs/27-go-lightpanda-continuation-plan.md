@@ -8,7 +8,56 @@ latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operato
 decision. Do not add a Chromium or Playwright fallback. Ship several compatible
 contracts per batch; retain useful isolated offline Python tooling.
 
-**Production runtime 0.13.1104 is active at epoch 384.**
+**Production runtime 0.13.1105 is active at epoch 386.**
+[PR #10942](https://github.com/colophon-group/jobseek/pull/10942) passed Required CI
+and Crawler Deploy Gate at `e52a8d0909b38fe1ad7fde5a28bf60a72f2c8079`.
+The [original full workflow](https://github.com/colophon-group/jobseek/actions/runs/40588968005)
+deployed and promoted runtime/data source `61c69bfd4452714cfe3de0253436709518fd2ce3`.
+Original ordinary retirement, B0 rollback, selector clearing, full rollout and
+incoming B0/ordinary activation completed. Independent readback verifies the
+exact SQL plan, both protected receipts, complete Redis projection, immutable
+images, all ten actors and eight health endpoints.
+
+The strict post-activation SDK validates **2,024,660 scheduled routes** with
+**zero gaps, cache mismatches or wrong lanes**. The whole queue comparison starts
+with **3,408,195 unique identities** and finishes with **3,412,420**. Every one of
+140 removals is explained: 121 canonically inactive/disabled, 17 unscheduled and
+two currently queued in the expected lane. There are **zero unexplained losses**.
+All **8,138 enabled boards** remain configured. Ordinary Go owns **8,112 monitors /
+8,128 details**, with separate B0 active and **3,281** retained detail references
+validated against actual published metadata. See the [serving checkpoint](evidence/go-native1105-serving-2026-10-27.json).
+
+Continue with **23 ordinary monitors / 7 details**, then complete sustained
+freshness/resource/cost evidence and final reversal/recovery before retiring
+production Python, Playwright and Chromium.
+
+**Grouped candidate 0.13.1106: Bridgestone, Fressnapf and Implenia.**
+Bridgestone and Fressnapf use the existing Lightpanda 4 MB document contract.
+Correctly configured physical captures and unchanged original/native parsing
+agree on all 180 Bridgestone URLs and Fressnapf's configured authoritative empty
+state. The earlier diagnostic used the default 512 KB cap; the production
+navigation already requests large documents. No renderer limit change is needed.
+Bridgestone's monitor switches from proxy to the proved direct source; its
+scraper configuration and detail execution remain unchanged. Historical posting
+counts do not establish the current source inventory.
+
+Implenia's actual Go HTTP reader resolves all 354 feed rows with 200 ms request
+pacing, 354 successful redirect identities and no HTTP 429s. The unchanged
+original monitor and native dispatcher agree on **all 310 canonical jobs across
+11 raw fields**, including descriptions and metadata. Pacing applies only to the
+existing opt-in identity resolver, including retries, and honors cancellation.
+The prior source reproduces the publisher-burst regression.
+
+The prospective whole floor retains every current assignment and all 3,281
+detail reference URLs: **8,115 monitors / 8,128 details**, across all 8,138 enabled
+boards. Every retained detail execution profile is unchanged; only its immutable
+configuration binding may reflect the monitor edit. Real PostgreSQL/Redis checks
+cover complete inventories, failure, incomplete documents, verified emptiness
+and publisher reservations. Candidate evidence confers no new production
+ownership. After supported publication and activation, the conditional remainder
+is **20 monitors / 7 details**. See the [grouped qualification](evidence/go-native1106-grouped-dom-rss-candidate-2026-10-27.json).
+
+**Previous production release 0.13.1104 served epoch 384.**
 [PR #10941](https://github.com/colophon-group/jobseek/pull/10941) passed Required CI
 and Crawler Deploy Gate at `88b4c8b78c0a9c019c2c205b8e6ac009f1cf1acd`.
 The [original full workflow](https://github.com/colophon-group/jobseek/actions/runs/40561984279)
@@ -112,12 +161,12 @@ migration; every existing per-board binding and foreign-source rejection remains
 checked. These three monitors are included in the epoch-384 activation; final
 full-migration proof remains pending.
 
-**Next grouped candidate: 0.13.1105 — Taiwan API details and Metalysis HTTP contracts.**
+**Delivered grouped batch: 0.13.1105 — Taiwan API details and Metalysis HTTP contracts.**
 [PR #10942](https://github.com/colophon-group/jobseek/pull/10942) combines the existing
 jobbank104 description-delegation change with three browser detail assignments
 and one monitor reconfiguration. The source batch retains the Lightpanda/Go HTTP
-boundary; the complete current ownership handoff and exact-head required CI must
-pass before its merge.
+boundary; exact-head required CI, the complete supported handoff and strict
+post-activation conservation passed, as recorded above.
 
 Both Bureau Veritas Taiwan boards retain their company, board and publisher job
 URLs. Two complete verified Go API reads cover all **24 existing active URLs**:
@@ -160,8 +209,10 @@ checks all 8,138 enabled boards and all **3,281** retained detail references,
 including exact retained profile/config hashes and worker lanes. The browser
 census becomes **331 records / 518 boards**. Provider inventory/proxy-boundary
 checks, CSV validation and all 63 focused census/Taiwan tests pass. This candidate
-is not activated. See the [combined qualification record](evidence/go-native1105-grouped-http-api-candidate-2026-10-27.json).
-Its eventual activation leaves **23 ordinary monitors / 7 details**, plus final
+is now active at epoch 386; its actual published configurations, full scheduled
+routes and whole queue conservation pass. See the [combined source qualification](evidence/go-native1105-grouped-http-api-candidate-2026-10-27.json)
+and [serving checkpoint](evidence/go-native1105-serving-2026-10-27.json).
+Its activation leaves **23 ordinary monitors / 7 details**, plus final
 whole-lane freshness/resource/cost/reversal and production Python retirement.
 
 Njoyn's exploratory Go HTTP form reader completes one 62-page pass but later

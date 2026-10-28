@@ -1,0 +1,60 @@
+{
+  "schema": "jobseek.go-lightpanda.serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-27T23:17:08.361872+00:00",
+  "version": "0.13.1105",
+  "pull_request": 10942,
+  "qualified_head": "e52a8d0909b38fe1ad7fde5a28bf60a72f2c8079",
+  "source_revision": "61c69bfd4452714cfe3de0253436709518fd2ce3",
+  "data_revision": "61c69bfd4452714cfe3de0253436709518fd2ce3",
+  "workflow_run": 40588968005,
+  "workflow_conclusion": "success",
+  "promotion_conclusion": "success",
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:68b06dfdf649bf6f722e5bfe20e99a3486f84c71f51da487eaa45bb02a8d4cd6",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:beded4c060ed85636b7e6cb2ee61a5a62bee2d017c00ea4e94b1bfe25895b3e0"
+  },
+  "epoch": 386,
+  "ordinary_monitors": 8112,
+  "ordinary_details": 8128,
+  "enabled_boards": 8138,
+  "actual_retained_detail_references": 3281,
+  "B0_separate_and_active": true,
+  "original_supported_retirement_full_rollout_and_activation_completed": true,
+  "independent_SQL_receipts_complete_Redis_projection_and_ten_actors_verified": true,
+  "healthy_HTTP_endpoints": 8,
+  "strict_postactivation": {
+    "scheduled_routes": 2024660,
+    "queue_gaps": 0,
+    "cache_mismatches": 0,
+    "wrong_lanes": 0
+  },
+  "queue_conservation": {
+    "before_unique": 3408195,
+    "after_unique": 3412420,
+    "removed": 140,
+    "added": 4365,
+    "SDK_gaps": 0,
+    "classes": {
+      "canonical_inactive_or_disabled": 121,
+      "canonical_unscheduled": 17,
+      "currently_queued_expected": 2
+    },
+    "unexplained": 0,
+    "all_dispositions_accounted": true
+  },
+  "latest_Lightpanda": {
+    "engine_version": "1.1.0-nightly.11169+6c44d0871",
+    "upstream_revision": "6c44d0871aa4d42cf1b88b8c7dde873cafd2755e",
+    "official_assets_last_verified_unchanged_at_utc": "2026-10-27T21:49:48.618215+00:00",
+    "renderer_source_revision": "9d6e5c15f078eb8fec11d9e54a1ae4f40e128f9d"
+  },
+  "remaining_ordinary_monitors": 23,
+  "remaining_ordinary_details": 7,
+  "backend_constraint": "Latest self-hosted Lightpanda and proven Go HTTP/API only; no new Chromium/Playwright route.",
+  "limits": [
+    "Full migration and production Python retirement remain incomplete.",
+    "Sustained whole-lane freshness, matched CPU/RAM/density/attributable cost and final supported reversal/recovery window remain required.",
+    "Empty/failure/dormant provider qualification is not a positive live inventory or detail-content claim."
+  ],
+  "goal_status": "active-incomplete"
+}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sync"
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
@@ -16,6 +17,38 @@ import (
 
 var sfJobInviteRedirect = regexp.MustCompile(`^/job/[^/?#]+/([1-9][0-9]{0,11})-([a-z]{2}_[A-Z]{2})/$`)
 
+const rssIdentityRequestInterval = 200 * time.Millisecond
+
+// Limit the opt-in identity lookup's request starts, including retries. A
+// concurrency bound alone still bursts into the publisher's rate limit.
+type rssIdentityPacedTransport struct {
+	inner    http.RoundTripper
+	mu       sync.Mutex
+	next     time.Time
+	interval time.Duration
+}
+
+func (p *rssIdentityPacedTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if err := request.Context().Err(); err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	delay := max(time.Until(p.next), 0)
+	p.next = time.Now().Add(delay + p.interval)
+	p.mu.Unlock()
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-request.Context().Done():
+		return nil, request.Context().Err()
+	case <-timer.C:
+		if err := request.Context().Err(); err != nil {
+			return nil, err
+		}
+		return p.inner.RoundTrip(request)
+	}
+}
+
 // Resolve aliases before the canonical URL transform and preferred-locale
 // selection. No failed or partially resolved inventory can retire postings.
 func resolveRSSJobInviteIdentities(ctx context.Context, verified *http.Client, profile queue.GreenhouseMonitorProfile, inventory RichDiscovery) (RichDiscovery, error) {
@@ -24,6 +57,11 @@ func resolveRSSJobInviteIdentities(ctx context.Context, verified *http.Client, p
 	}
 	client := *verified
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	inner := client.Transport
+	if inner == nil {
+		inner = http.DefaultTransport
+	}
+	client.Transport = &rssIdentityPacedTransport{inner: inner, interval: rssIdentityRequestInterval}
 	jobs := append([]RichMonitorJob(nil), inventory.Jobs...)
 	responses := make([]*GreenhouseResponse, len(jobs))
 	group, call := errgroup.WithContext(ctx)

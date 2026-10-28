@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8138,
-    "boards_sha256": "af1dcb0a35fc0f04a8e00ce2a6fffbb4949a88b5b334f7539ddcb98b2a26a35a",
+    "boards_sha256": "2c431decb9137793fd46da8f4eadcd277ba5281fc007f7197b7de58693f4d73b",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "dc4daf43be4feb7b2f030cf6ae814034987a4f5f989ec5a30478085c2bdbf63c",
+  "manifest_sha256": "135050084642ff8995d8783e8e1ee4eebe66b42e3bce175a385d22e8cb7009cb",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1851,29 +1851,6 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait_fallback",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "83fb2f9667e2387b853abe079852fd1054287963126328012f58424bf5ea606d",
-      "crawler_type": "dom",
-      "digest_sha256": "a09dfe53d1871b198741b7f68e58964c05b77eadc60ef41297a41d4f3b3340ce",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.monitor.dom.0f5edb0e111fd92f",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "db0415c24ec74eb9a856af23de8cda24e56ef5001a9558b372ec60a59f9ba168",
-      "status": "pending_replay",
-      "surface": "monitor"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
         "action.dismiss_overlays",
         "action.repeat",
         "cdp.navigation",
@@ -2611,6 +2588,28 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "3efc583a175eb2e91ea502775b2d43013810de8954fb7536d4eef6a8f6fd1e51",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "1602bc02bb9f34936a3b443351a45fa458bdbce74e9095368279b48465a00b21",
+      "crawler_type": "dom",
+      "digest_sha256": "313cd0cbf0cd398ec772996fc74f1b351c471c0460e11220e5f28db7b29bd11e",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.monitor.dom.4ea4762f5c413b1b",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "db0415c24ec74eb9a856af23de8cda24e56ef5001a9558b372ec60a59f9ba168",
       "status": "pending_replay",
       "surface": "monitor"
     },
