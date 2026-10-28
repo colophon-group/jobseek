@@ -52,6 +52,13 @@ provider response bodies belong in logs or commits.
    auditor/worker table and sequence grants, and removes the temporary database.
    Keep the successful aggregate evidence. A local production-data rehearsal on
    October 28 restored 54 tables / 784,784 rows from a 26.2 MB custom archive.
+8. Dispatch `open-ingress`. Before opening the provider boundary it requires
+   full host conformance for the existing private crawler database and the new
+   TLS/SCRAM instance. It manages a separate owned firewall through the existing
+   ingress adapter, admitting IPv4 TCP 5433 only on the PostgreSQL host. An
+   external certificate-verified login must pass or that dedicated change rolls
+   back. The shared SSH/ICMP firewall remains under its existing owner. Future
+   ingress maintenance preserves this declared service and verifies it separately.
 
 A packet uses one exported repeatable-read source snapshot for its catalogue,
 row fingerprints and `pg_dump`. Sequence values are nontransactional: the

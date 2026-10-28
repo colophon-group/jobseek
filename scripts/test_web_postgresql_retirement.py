@@ -86,6 +86,10 @@ class SafetyTests(unittest.TestCase):
             "WEB-POSTGRESQL-${ACTION^^}",
             "production-backup-operations",
             "deploy/ai-filter-refresh/pause-remote.sh",
+            "hetzner-ingress-production",
+            "verify-server",
+            "Prove external certificate verification and SCRAM login",
+            "deploy/web-postgresql/ingress.py rollback",
         ]:
             self.assertIn(boundary, workflow)
         host = (ROOT / "deploy/web-postgresql/host.py").read_text()

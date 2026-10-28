@@ -14,6 +14,7 @@ import ssl
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,33 @@ def _desired_rules() -> list[dict[str, Any]]:
             "description": "Jobseek network diagnostics and path MTU",
         },
     ]
+
+
+@dataclass(frozen=True)
+class FirewallPolicy:
+    name: str
+    owner_label: str
+    rules: tuple[dict[str, Any], ...]
+
+
+def web_postgresql_policy() -> FirewallPolicy:
+    return FirewallPolicy(
+        "jobseek-web-postgresql-ingress",
+        "jobseek-web-postgresql",
+        (
+            {
+                "direction": "in",
+                "protocol": "tcp",
+                "port": "5433",
+                "source_ips": ["0.0.0.0/0"],
+                "description": "Jobseek web PostgreSQL TLS/SCRAM",
+            },
+        ),
+    )
+
+
+def _policy(value: FirewallPolicy | None) -> FirewallPolicy:
+    return value or FirewallPolicy(FIREWALL_NAME, OWNER_LABEL, tuple(_desired_rules()))
 
 
 def _rule_signature(rule: dict[str, Any]) -> tuple[Any, ...]:
@@ -200,17 +228,20 @@ def discover_targets(
     return targets
 
 
-def _managed_firewall(client: HetznerClient) -> tuple[dict[str, Any] | None, int]:
+def _managed_firewall(
+    client: HetznerClient, *, policy: FirewallPolicy | None = None
+) -> tuple[dict[str, Any] | None, int]:
+    policy = _policy(policy)
     firewalls = client.request("GET", "/firewalls?per_page=50").get("firewalls")
     if not isinstance(firewalls, list):
         raise IngressError("Hetzner firewall inventory is unavailable")
-    matches = [item for item in firewalls if item.get("name") == FIREWALL_NAME]
+    matches = [item for item in firewalls if item.get("name") == policy.name]
     if len(matches) > 1:
         raise IngressError("multiple managed firewalls have the same name")
     firewall = matches[0] if matches else None
     if (
         firewall is not None
-        and (firewall.get("labels") or {}).get("owner") != OWNER_LABEL
+        and (firewall.get("labels") or {}).get("owner") != policy.owner_label
     ):
         raise IngressError("refusing to modify an unowned firewall")
     return firewall, len(firewalls) - len(matches)
@@ -230,13 +261,15 @@ def _summary(
     firewall: dict[str, Any] | None,
     targets: dict[str, dict[str, Any]],
     unrelated_count: int,
+    *,
+    policy: FirewallPolicy | None = None,
 ) -> dict[str, Any]:
     target_ids = {server["id"] for server in targets.values()}
     applied = _applied_server_ids(firewall or {})
     return {
         "managed_firewall_present": firewall is not None,
         "desired_rules_exact": bool(firewall)
-        and _rules_match(firewall.get("rules") or [], _desired_rules()),
+        and _rules_match(firewall.get("rules") or [], list(_policy(policy).rules)),
         "target_coverage_exact": bool(firewall) and applied == target_ids,
         "target_count": len(target_ids),
         "unrelated_firewall_count": unrelated_count,
@@ -281,7 +314,9 @@ def _probe_port(address: str, port: int) -> bool:
         return False
 
 
-def verify_external(targets: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def verify_external(
+    targets: dict[str, dict[str, Any]], *, web_postgresql: bool = False
+) -> dict[str, Any]:
     checks: list[tuple[str, str, int, bool]] = []
     for role, server in targets.items():
         public = server.get("public_net") or {}
@@ -292,10 +327,14 @@ def verify_external(targets: dict[str, dict[str, Any]]) -> dict[str, Any]:
         checks.extend(
             (role, str(address), port, False) for port in SENSITIVE_PUBLIC_PORTS[role]
         )
+        checks.append(
+            (role, str(address), 5433, web_postgresql and role == "postgresql")
+        )
     with concurrent.futures.ThreadPoolExecutor(max_workers=24) as pool:
         states = list(pool.map(lambda item: _probe_port(item[1], item[2]), checks))
     ssh_open = 0
     sensitive_open = []
+    web_port_ready = not web_postgresql
     for (role, _address, port, expected_open), is_open in zip(
         checks, states, strict=True
     ):
@@ -303,10 +342,12 @@ def verify_external(targets: dict[str, dict[str, Any]]) -> dict[str, Any]:
             ssh_open += 1
         elif not expected_open and is_open:
             sensitive_open.append({"role": role, "port": port})
+        elif role == "postgresql" and port == 5433 and expected_open:
+            web_port_ready = is_open
     result = {
         "ssh_open_roles": ssh_open,
         "sensitive_open": sensitive_open,
-        "compliant": ssh_open == len(targets) and not sensitive_open,
+        "compliant": ssh_open == len(targets) and not sensitive_open and web_port_ready,
     }
     if not result["compliant"]:
         raise IngressError("external ingress verification failed")
@@ -352,10 +393,14 @@ def apply(
     client: HetznerClient,
     targets: dict[str, dict[str, Any]],
     state_path: Path,
+    *,
+    policy: FirewallPolicy | None = None,
 ) -> dict[str, Any]:
-    firewall, unrelated_count = _managed_firewall(client)
+    policy = _policy(policy)
+    firewall, unrelated_count = _managed_firewall(client, policy=policy)
     previous = {
         "existed": firewall is not None,
+        "firewall_name": policy.name,
         "rules": (firewall or {}).get("rules") or [],
         "applied_server_ids": sorted(_applied_server_ids(firewall or {})),
     }
@@ -367,9 +412,12 @@ def apply(
                 "POST",
                 "/firewalls",
                 body={
-                    "name": FIREWALL_NAME,
-                    "labels": {"owner": OWNER_LABEL, "environment": "production"},
-                    "rules": _desired_rules(),
+                    "name": policy.name,
+                    "labels": {
+                        "owner": policy.owner_label,
+                        "environment": "production",
+                    },
+                    "rules": list(policy.rules),
                 },
             )
             firewall = response.get("firewall")
@@ -380,7 +428,7 @@ def apply(
             for action in response.get("actions") or []:
                 client.wait_action(action)
         else:
-            _set_rules(client, firewall["id"], _desired_rules())
+            _set_rules(client, firewall["id"], list(policy.rules))
         firewall_id = firewall["id"]
         current = _refresh_firewall(client, firewall_id)
         for server_id in sorted(target_ids - _applied_server_ids(current)):
@@ -389,21 +437,26 @@ def apply(
         for server_id in sorted(_applied_server_ids(current) - target_ids):
             _remove_server(client, firewall_id, server_id)
         current = _refresh_firewall(client, firewall_id)
-        summary = _summary(current, targets, unrelated_count)
+        summary = _summary(current, targets, unrelated_count, policy=policy)
         if not summary["desired_rules_exact"] or not summary["target_coverage_exact"]:
             raise IngressError("managed firewall did not converge")
         return summary
     except Exception:
-        rollback(client, state_path)
+        rollback(client, state_path, policy=policy)
         raise
 
 
-def rollback(client: HetznerClient, state_path: Path) -> None:
+def rollback(
+    client: HetznerClient, state_path: Path, *, policy: FirewallPolicy | None = None
+) -> None:
+    policy = _policy(policy)
     try:
         state = json.loads(state_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise IngressError("rollback state is unavailable") from exc
-    firewall, _ = _managed_firewall(client)
+    if state.get("firewall_name", FIREWALL_NAME) != policy.name:
+        raise IngressError("rollback state belongs to a different firewall policy")
+    firewall, _ = _managed_firewall(client, policy=policy)
     if firewall is None:
         if state.get("existed"):
             raise IngressError("cannot restore a missing pre-existing firewall")
@@ -453,7 +506,21 @@ def main() -> int:
         summary = _summary(firewall, targets, unrelated)
         if not summary["desired_rules_exact"] or not summary["target_coverage_exact"]:
             raise IngressError("managed firewall is not exact")
-        summary["external"] = verify_external(targets)
+        web, _ = _managed_firewall(client, policy=web_postgresql_policy())
+        if web is not None:
+            web_summary = _summary(
+                web,
+                {"postgresql": targets["postgresql"]},
+                0,
+                policy=web_postgresql_policy(),
+            )
+            if (
+                not web_summary["desired_rules_exact"]
+                or not web_summary["target_coverage_exact"]
+            ):
+                raise IngressError("web PostgreSQL firewall is not exact")
+            summary["web_postgresql"] = web_summary
+        summary["external"] = verify_external(targets, web_postgresql=web is not None)
     else:
         firewall, unrelated = _managed_firewall(client)
         summary = _summary(firewall, targets, unrelated)

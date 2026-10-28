@@ -6,6 +6,10 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import socket
+import ssl
+import stat
+import struct
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -15,6 +19,7 @@ from typing import Any
 KNOWN_PORTS = {
     22,
     5432,
+    5433,
     6379,
     8108,
     8080,
@@ -29,6 +34,7 @@ KNOWN_PORTS = {
 }
 CRAWLER_METRICS_PORTS = {9093, 9094, 9095, 9096, 9097, 9098}
 POSTGRES_NETWORK_CONFIG = Path("/etc/jobseek-ingress/postgresql-network.env")
+WEB_POSTGRES_CONFIG = Path("/etc/jobseek-web-postgresql/postgresql.conf")
 POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
 POSTGRES_LOG_DRIVER = "json-file"
 POSTGRES_LOG_OPTIONS = {"max-size": "50m", "max-file": "3"}
@@ -119,7 +125,9 @@ def _sshd_state(output: str) -> dict[str, Any]:
         key, separator, value = line.partition(" ")
         if separator:
             values.setdefault(key, []).append(value.strip())
-    allow_users = {user for directive in values.get("allowusers", []) for user in directive.split()}
+    allow_users = {
+        user for directive in values.get("allowusers", []) for user in directive.split()
+    }
     exact_values = {
         "authenticationmethods": "publickey",
         "passwordauthentication": "no",
@@ -154,12 +162,19 @@ def _sshd_state(output: str) -> dict[str, Any]:
 
 
 def _ufw_state(
-    output: str, added: str, role: str, crawler_ip: ipaddress.IPv4Address
+    output: str,
+    added: str,
+    role: str,
+    crawler_ip: ipaddress.IPv4Address,
+    *,
+    web_postgresql: bool = False,
 ) -> dict[str, Any]:
     lines = [line.strip().lower() for line in output.splitlines()]
     active = "status: active" in lines
     defaults = any(
-        line.startswith("default:") and "deny (incoming)" in line and "allow (outgoing)" in line
+        line.startswith("default:")
+        and "deny (incoming)" in line
+        and "allow (outgoing)" in line
         for line in lines
     )
     commands = [
@@ -172,13 +187,22 @@ def _ufw_state(
     expected_commands = 1
     if role == "postgresql":
         service_allowed = any(
-            command.startswith(f"ufw allow from {crawler_ip} to any port 5432 proto tcp")
+            command.startswith(
+                f"ufw allow from {crawler_ip} to any port 5432 proto tcp"
+            )
             for command in commands
         )
         expected_commands = 2
+        if web_postgresql:
+            service_allowed = service_allowed and any(
+                command.startswith("ufw allow 5433/tcp") for command in commands
+            )
+            expected_commands += 1
     elif role == "typesense":
         service_allowed = any(
-            command.startswith(f"ufw allow from {crawler_ip} to any port 8108 proto tcp")
+            command.startswith(
+                f"ufw allow from {crawler_ip} to any port 8108 proto tcp"
+            )
             for command in commands
         )
         expected_commands = 2
@@ -189,30 +213,105 @@ def _ufw_state(
         "ssh_allowed": ssh_allowed,
         "required_private_service_allowed": service_allowed,
         "exact_managed_rules": exact_rules,
-        "compliant": active and defaults and ssh_allowed and service_allowed and exact_rules,
+        "compliant": active
+        and defaults
+        and ssh_allowed
+        and service_allowed
+        and exact_rules,
     }
 
 
 def _postgres_container() -> str | None:
-    result = _run(["docker", "ps", "--format", "{{.ID}} {{.Image}}"])
-    if result.returncode != 0:
-        return None
-    for line in result.stdout.splitlines():
-        container_id, separator, image = line.partition(" ")
-        if separator and "postgres" in image.lower():
-            return container_id
-    return None
+    # The separate web instance must never be mistaken for crawler truth.
+    result = _run(["docker", "inspect", "--format", "{{.State.Running}}", "postgres"])
+    return (
+        "postgres"
+        if result.returncode == 0 and result.stdout.strip() == "true"
+        else None
+    )
 
 
-def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[str, Any]:
-    shared_memory = _run(["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container])
+def _web_postgresql_configured() -> bool:
+    if not WEB_POSTGRES_CONFIG.exists():
+        return False
+    metadata = WEB_POSTGRES_CONFIG.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != 0
+        or stat.S_IMODE(metadata.st_mode) != 0o444
+    ):
+        raise ConformanceError("web PostgreSQL configuration is not protected")
+    return True
+
+
+def _web_postgresql_state() -> dict[str, Any]:
+    query = """SELECT current_setting('ssl')='on' AND current_setting('port')='5433'
+        AND current_setting('password_encryption')='scram-sha-256'
+        AND current_setting('ssl_min_protocol_version') IN ('TLSv1.2','TLSv1.3')
+        AND NOT EXISTS(SELECT FROM pg_hba_file_rules WHERE error IS NOT NULL OR NOT (
+          auth_method='reject' OR (type='local' AND user_name=ARRAY['postgres'] AND auth_method='trust') OR
+          (type='hostssl' AND auth_method='scram-sha-256' AND user_name <@
+            ARRAY['jobseek_web_owner','jobseek_migration_auditor','jobseek_narrowed_worker']::text[])))
+        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl' AND user_name=ARRAY['jobseek_web_owner'])
+        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl' AND user_name=ARRAY['jobseek_migration_auditor'])"""
+    result = _run(
+        [
+            "docker",
+            "exec",
+            "--user",
+            "70:70",
+            "jobseek-web-postgresql",
+            "psql",
+            "-X",
+            "-w",
+            "-A",
+            "-t",
+            "-p",
+            "5433",
+            "-U",
+            "postgres",
+            "-d",
+            "postgres",
+            "-c",
+            query,
+        ]
+    )
+    tls = False
+    try:
+        context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        with socket.create_connection(("127.0.0.1", 5433), timeout=3) as connection:
+            connection.sendall(struct.pack("!II", 8, 80877103))
+            if connection.recv(1) == b"S":
+                with context.wrap_socket(
+                    connection, server_hostname="web-postgres.jseek.co"
+                ):
+                    tls = True
+    except (OSError, ssl.SSLError):
+        pass
+    authentication = result.returncode == 0 and result.stdout.strip() == "t"
+    return {
+        "tls_certificate_verified": tls,
+        "tls_scram_roles_exact": authentication,
+        "compliant": tls and authentication,
+    }
+
+
+def _postgres_state(
+    container: str, crawler_ip: ipaddress.IPv4Address
+) -> dict[str, Any]:
+    shared_memory = _run(
+        ["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container]
+    )
     log_config_result = _run(
         ["docker", "inspect", "--format", "{{json .HostConfig.LogConfig}}", container]
     )
     shared_memory_mount = _run(["docker", "exec", container, "df", "-B1", "/dev/shm"])
     try:
         shared_memory_bytes = int(shared_memory.stdout.strip())
-        shared_memory_capacity_bytes = int(shared_memory_mount.stdout.splitlines()[-1].split()[1])
+        shared_memory_capacity_bytes = int(
+            shared_memory_mount.stdout.splitlines()[-1].split()[1]
+        )
     except (IndexError, ValueError):
         shared_memory_bytes = 0
         shared_memory_capacity_bytes = 0
@@ -245,8 +344,10 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             "-AtF",
             "|",
             "-c",
-            "select name,setting from pg_settings where name in "
-            "('listen_addresses','password_encryption','ssl') order by name",
+            (
+                "select name,setting from pg_settings where name in "
+                "('listen_addresses','password_encryption','ssl') order by name"
+            ),
         ]
     )
     if settings.returncode != 0:
@@ -261,7 +362,9 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
     parsed_settings = dict(
         line.split("|", 1) for line in settings.stdout.splitlines() if "|" in line
     )
-    listeners = {item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")}
+    listeners = {
+        item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")
+    }
     private_listeners = set()
     for item in listeners - {"127.0.0.1"}:
         try:
@@ -270,7 +373,9 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             continue
         if isinstance(address, ipaddress.IPv4Address) and address.is_private:
             private_listeners.add(address)
-    listen_match = "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
+    listen_match = (
+        "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
+    )
     config_match = False
     try:
         config_value = POSTGRES_NETWORK_CONFIG.read_text(encoding="utf-8").strip()
@@ -300,8 +405,10 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             "-AtF",
             "|",
             "-c",
-            "select type,coalesce(address,''),coalesce(netmask,''),database[1],user_name[1],"
-            "auth_method from pg_hba_file_rules where error is null order by line_number",
+            (
+                "select type,coalesce(address,''),coalesce(netmask,''),database[1],user_name[1],"
+                "auth_method from pg_hba_file_rules where error is null order by line_number"
+            ),
         ]
     )
     rules_match = hba.returncode == 0
@@ -364,8 +471,11 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
     }
 
 
-def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dict[str, Any]:
+def audit(
+    role: str, crawler_private_ip: str, *, host_only: bool = False
+) -> dict[str, Any]:
     crawler_ip = _private_address(crawler_private_ip)
+    web = role == "postgresql" and _web_postgresql_configured()
     ufw_status = _run(["ufw", "status", "verbose"])
     ufw_added = _run(["ufw", "show", "added"])
     sshd = _run(["sshd", "-T"])
@@ -404,7 +514,9 @@ def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dic
     result: dict[str, Any] = {
         "role": role,
         "scope": "host" if host_only else "full",
-        "ufw": _ufw_state(ufw_status.stdout, ufw_added.stdout, role, crawler_ip),
+        "ufw": _ufw_state(
+            ufw_status.stdout, ufw_added.stdout, role, crawler_ip, web_postgresql=web
+        ),
         "sshd": _sshd_state(sshd.stdout),
         "required_listener_scope": listener_policy,
         "root_password_locked": root_locked if role == "postgresql" else None,
@@ -416,19 +528,24 @@ def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dic
             if container
             else {"readable": False, "compliant": False}
         )
+        if web:
+            result["web_postgresql"] = _web_postgresql_state()
     result["compliant"] = (
         result["ufw"]["compliant"]
         and result["sshd"]["compliant"]
         and (host_only or listener_policy)
         and (role != "postgresql" or root_locked)
         and (host_only or role != "postgresql" or result["postgresql"]["compliant"])
+        and (host_only or not web or result["web_postgresql"]["compliant"])
     )
     return result
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--role", required=True, choices=("crawler", "postgresql", "typesense"))
+    parser.add_argument(
+        "--role", required=True, choices=("crawler", "postgresql", "typesense")
+    )
     parser.add_argument("--crawler-private-ip", required=True)
     parser.add_argument(
         "--host-only",
