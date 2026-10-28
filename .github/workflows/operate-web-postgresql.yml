@@ -146,7 +146,7 @@ jobs:
         run: |
           set -euo pipefail
           image=postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
-          for attempt in $(seq 1 12); do
+          for _attempt in $(seq 1 12); do
             if docker run --rm --network host --read-only --cap-drop=ALL --security-opt=no-new-privileges \
               -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE -e PGSSLROOTCERT -e PGCONNECT_TIMEOUT \
               "$image" psql -X -w -A -t -q -c 'SELECT 1'; then
