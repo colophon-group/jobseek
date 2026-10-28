@@ -109,5 +109,14 @@
   "qualification_scope": "Separate actual positive, failure and explicit dormancy evidence; eligibility and reference checks do not establish future publisher access. Metadata assembled from actual runtime/data base captured at epoch393; epoch394 is current B0 context. No captured content or identifiers published here.",
   "publication": "Documented CSV workflow subject to unchanged runtime-contract proof, current native retirement boundary and actual runtime/data/source/queue verification. No ownership granted by this candidate.",
   "production_ownership_granted": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "main_reconciliation": {
+    "base": "77e8399097747e05d0afec7ab5ca3101152c8c28",
+    "preserved_main_additions": 1,
+    "candidate_CSV_board_rows": 8141,
+    "migration_rows_changed_relative_to_main": 6,
+    "runtime_contract_unchanged": true,
+    "affected_python_tests_passed": 66,
+    "prospective_floor_scope": "Serving1110 canonical catalogue plus six exact migration proposals. New main board requires actual postpublication catalogue/SDK qualification before ownership."
+  }
 }

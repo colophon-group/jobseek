@@ -3266,6 +3266,7 @@ graphcore,graphcore-greenhouse,https://job-boards.greenhouse.io/graphcore,greenh
 graphite,graphite-ashby,https://jobs.ashbyhq.com/graphite,ashby,"{""token"": ""graphite""}",skip,
 gravis-robotics,gravis-robotics-careers,https://jobs.lever.co/gravisrobotics,lever,"{""token"": ""gravisrobotics""}",skip,
 gravityclimate,gravityclimate-ashby,https://jobs.ashbyhq.com/gravityclimate,ashby,"{""token"": ""gravityclimate""}",skip,
+gray-media,gray-media-careers,https://recruiting.ultipro.com/GRA1017GRYT/JobBoard/ae441110-89bd-444d-8ad2-b76c7b9db7a9,ukg,,embedded,"{""pattern"": ""new\\s+US\\.Opportunity\\.CandidateOpportunityDetail\\s*\\("", ""fields"": {""title"": ""Title"", ""description"": ""Description""}, ""enrich"": [""description""]}"
 graymatter-robotics,graymatter-robotics-ashby,https://jobs.ashbyhq.com/graymatter-robotics,ashby,"{""token"": ""graymatter-robotics""}",skip,
 grayscale-investments,grayscale-investments-greenhouse,https://job-boards.greenhouse.io/grayscaleinvestments,greenhouse,"{""token"": ""grayscaleinvestments""}",skip,
 greatquestion,greatquestion-careers,https://jobs.ashbyhq.com/greatquestion,ashby,"{""token"": ""greatquestion""}",skip,

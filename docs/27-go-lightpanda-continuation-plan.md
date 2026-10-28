@@ -69,6 +69,14 @@ and supported outgoing boundary; verify the actual runtime/data pair and complet
 queues again before ownership. No production ownership is conferred by this
 candidate. See the [candidate evidence](evidence/go-native-final-details-candidate-2026-10-28.json).
 
+The candidate incorporates main's subsequent Gray Media addition unchanged:
+**8,141 CSV boards**, with exactly the same six migration rows changed relative
+to that main revision. The quoted prospective floor is bound to the serving
+1110 catalogue; the new board must be included in the actual published catalogue
+and independently qualified before the next ownership plan. The runtime contract
+remains unchanged. Regenerated census, CSV validation and all **66** affected
+Python tests pass after reconciliation.
+
 Full migration remains incomplete: finish monitor coverage, natural freshness and
 stability, comparable whole-service resources/cost, and the final supported
 reversal/window before retiring production Python. Keep useful offline Python
