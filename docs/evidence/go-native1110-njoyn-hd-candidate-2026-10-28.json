@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-lightpanda-candidate/v1",
-  "observed_at_utc": "2026-10-28T18:00:00.982139+00:00",
+  "observed_at_utc": "2026-10-28T18:22:55.054425+00:00",
   "runtime_version": "0.13.1110",
   "base_source": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
   "production_ownership_granted": false,
@@ -74,5 +74,8 @@
     "inventory_or_empty_success_claimed": false,
     "configurations_changed": false,
     "inherited_failure_semantics_preserved": true
-  }
+  },
+  "current_serving_checkpoint": "go-native1109-serving-2026-10-28.json",
+  "local_existing_HD_config_contract_tests": 4,
+  "CI_obsolete_HD_proxy_assertion_fixed": true
 }

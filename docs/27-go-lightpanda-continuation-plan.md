@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current handoff and grouped candidate — October 28, 2026, 18:00 UTC
+## Current handoff and grouped candidate — October 28, 2026, 18:22 UTC
 
 Runtime **0.13.1109** is deployed from
 `0766fc017af4b5981c4ffbd1f9dc6eef12745299` after
@@ -11,17 +11,27 @@ succeeded. The renderer runs **1.1.0-nightly.11227+0eee96bf2**; the official
 nightly's seven assets remain unchanged at 17:45 UTC. Execution remains strictly
 Lightpanda and proven Go HTTP/API, by operator instruction.
 
-The first original ordinary activation refused `projection / authority / adoption`.
-Original `recover-pending` succeeded; independent readback then verified B0
-active at epoch **392**, **zero active ordinary SQL plans**, exact runtime/data
-images, protected receipts, serving actors and health endpoints. No manual queue,
-lease, receipt or SQL repair occurred. A bounded read-only inflight census found
-zero wrong-lane/live/expired entries; it does not establish the historical cause.
-All eight incoming snapshot gaps are currently canonically unscheduled/inactive.
-A second attempt through the unchanged original activation workflow is in progress.
-Do not claim ordinary activation until its result, independent readback, whole-route
-SDK and whole-queue conservation pass. The staged cohort is **8,122 monitors /
-8,130 details**. Previous serving proofs below are historical.
+**Ordinary Go ownership is active at epoch 392: 8,122 monitors / 8,130 details.**
+The original activation succeeded at 18:06 UTC. Independent readback verifies the
+exact runtime/data images, both protected receipts, SQL owner, full staged Redis
+projection, all ten actors and eight health endpoints. B0 `cdom` stays separate.
+All 8,140 enabled boards remain configured.
+
+The strict postactivation SDK validates **2,030,799 scheduled routes**, zero cache
+mismatches and zero wrong-lane residue. Its **five** snapshot gaps are all
+accounted for by fresh canonical/queue dispositions. Whole queue conservation
+starts with **3,425,351 unique identities** and finishes with **3,435,369**.
+All **382 removals plus five snapshot gaps** are classified: **348**
+inactive/disabled, **37** unscheduled and **two** currently queued in the expected
+lane. There are **zero unexplained identities**. No manual queue, receipt, lease,
+budget or SQL repair occurred. See the [verified serving checkpoint](evidence/go-native1109-serving-2026-10-28.json).
+
+The first activation refused `projection / authority / adoption`; original
+`recover-pending` restored the full legacy/B0 stack before the second original
+attempt. Its exact historical cause remains unattributed. Successful retry does
+not establish a cause. Full migration, sustained freshness/stability, whole-service
+resources/cost and final supported reversal/window remain incomplete. Earlier
+serving proofs below are historical.
 
 **Grouped candidate 0.13.1110 adds Njoyn, two Swiss HTTP monitors and HD details.**
 Njoyn's complete two-pass, four-second-paced traversal needs more than ten minutes:

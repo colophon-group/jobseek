@@ -1,0 +1,63 @@
+{
+  "schema": "jobseek.go-lightpanda-serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-28T18:22:55.054425+00:00",
+  "runtime_version": "0.13.1109",
+  "source_revision": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+  "data_revision": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+  "merged_PR": 10957,
+  "crawler_workflow_run": 40719928348,
+  "renderer_workflow_run": 40720025782,
+  "immutable_images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:3545982b36d2d15e4d394f63cfcaf761972e6d129fc4427f11f2050c149b6cd3",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3370aa2db2da3126406433f7222273bb7e01eef17ed6cc3b9678e121a8b7d7b1"
+  },
+  "engine_version": "1.1.0-nightly.11227+0eee96bf2",
+  "engine_upstream_revision": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+  "official_latest_assets_rechecked_unchanged_UTC": "2026-10-28T17:45:12Z",
+  "enabled_boards": 8140,
+  "routing_epoch": 392,
+  "ordinary_monitors": 8122,
+  "ordinary_details": 8130,
+  "B0_cdom_separate": true,
+  "active_SQL_plans": 1,
+  "exact_staged_projection_matched": true,
+  "protected_receipt_SHA256": {
+    ".ordinary-go-owner-v1": "9b39690de68d176b33e8cd386b1a34d9c5ceb08e834ed25f28bb8ae0eb8f5b92",
+    ".lightpanda-b0-active-v1": "53f8af009a0a40b5f8fd9c08635584d6787ea1188457fe44f893348ccee0537b"
+  },
+  "serving_actors_independently_verified": 10,
+  "healthy_endpoints_independently_verified": 8,
+  "strict_postactivation": {
+    "scheduled_routes": 2030799,
+    "cache_mismatches": 0,
+    "wrong_lane_residue": 0,
+    "snapshot_gaps": 5,
+    "current_gap_dispositions": {
+      "canonical_inactive_or_disabled": 5
+    }
+  },
+  "queue_conservation": {
+    "before_unique": 3425351,
+    "after_unique": 3435369,
+    "removed": 382,
+    "added": 10400,
+    "SDK_gaps": 5,
+    "dispositions_requested": 387,
+    "classes": {
+      "canonical_inactive_or_disabled": 348,
+      "currently_queued_expected": 2,
+      "canonical_unscheduled": 37
+    },
+    "unexplained": 0,
+    "all_dispositions_accounted": true
+  },
+  "activation": {
+    "attempt1": "refused projection/authority/adoption; original recover-pending succeeded and full legacy+B0 stack independently accepted",
+    "attempt2": "original activation succeeded 2026-10-28T18:06:52Z; independent authority/full stack and strict whole-route/conservation passed",
+    "historical_root_cause_proven": false,
+    "manual_queue_lease_receipt_SQL_repair": false
+  },
+  "migration_complete": false,
+  "freshness_resources_cost_reversal_window_proven": false,
+  "scope": "Verified serving1109 and complete non-atomic before/after queue disposition proof. Grouped1110 candidate and final runtime retirement remain ungranted."
+}
