@@ -84,11 +84,32 @@
   "delivery_requirements": [
     "Complete exact-head Required CI and Crawler Deploy Gate plus Linux renderer architecture qualification",
     "Promote renderer using existing immutable-image workflow and independently verify version/mTLS/readiness",
-    "Use existing CSV publication for configuration-only changes after ordinary ownership is absent",
+    "Original full crawler deployment owns publication of this mixed runtime/configuration revision; do not substitute the standalone CSV-only path.",
     "Refresh actual published catalogue including newly added companies; bind whole selected plan/configurations and scheduled routes",
     "Use unchanged original cutover; preserve publication guards, canonical schedules and all enabled boards",
     "Strict postactivation, queue conservation, natural freshness and resource/cost proof remain required"
   ],
   "production_ownership_granted": false,
-  "ordinary_activation_status": "Previous1106 projection refusal recovered via original recover-pending; ordinary ownership remains inactive until a new verified handoff."
+  "ordinary_activation_status": "Previous1106 projection refusal recovered via original recover-pending; ordinary ownership remains inactive until a new verified handoff.",
+  "candidate_runtime_version": "0.13.1107",
+  "cold_publication_diagnostics": {
+    "fixed_conditions": [
+      "rows",
+      "worker-types",
+      "row",
+      "ordered-progress",
+      "adoption",
+      "deadline",
+      "cache",
+      "metadata",
+      "queue",
+      "rate",
+      "lease"
+    ],
+    "all_preflight_predicates_and_mutation_statements_unchanged": true,
+    "unknown_Redis_errors_reduced_to_generic_condition": true,
+    "no_config_URL_ID_or_credential_values_in_diagnostic": true,
+    "original_authority_loss_and_containment_preserved": true,
+    "real_cold_rejection_test_asserts_no_partial_Redis_or_canonical_effect": true
+  }
 }

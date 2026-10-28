@@ -20,7 +20,12 @@ The original B0 namespace audit passed. The unchanged `recover-pending` workflow
 completed and independent readback confirms all nine expected actors restored,
 B0 active at epoch **388**, and no ordinary ownership receipt or active SQL plan.
 Production is serving through the restored legacy lanes plus native B0 while the
-publication rejection is investigated. Do not report the staged floor as current
+publication rejection is investigated. Candidate **0.13.1107** records the fixed
+retirement condition on a refused publication, while retaining every preflight
+predicate, mutation statement and original containment/recovery behavior.
+Unknown Redis error contents never enter the diagnostic. The runtime revision
+and corrected Dnata regression expectation require the original full crawler
+deployment path. Do not report the staged floor as current
 ordinary Go coverage. The 500 missing first-time schedules also remain pending
 strict post-activation proof. No manual queue, receipt, lease or SQL repair is
 permitted. See the [cutover and recovery checkpoint](evidence/go-native1106-cutover-recovery-2026-10-28.json).

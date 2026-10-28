@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -211,6 +212,22 @@ SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
 	return plan, state, err
 }
 
+// Only fixed script conditions may enter diagnostics; Redis errors can contain
+// URLs, cached configuration or credentials and must never be logged directly.
+func firstOwnershipProjectionReason(message string) string {
+	const prefix = "first ordinary retirement rejected: "
+	if !strings.HasPrefix(message, prefix) {
+		return "redis-refused"
+	}
+	reason := strings.TrimPrefix(message, prefix)
+	switch reason {
+	case "rows", "worker-types", "row", "ordered-progress", "adoption", "deadline", "cache", "metadata", "queue", "rate", "lease":
+		return reason
+	default:
+		return "redis-refused"
+	}
+}
+
 func firstOwnershipProjection(ctx context.Context, client *Client, epoch int64, plan *OwnershipPlan, target *ColdB0Target, operation, retirement string) error {
 	keys := append(target.keys(), ownershipProjectionKey, coldPublicationKey, "inflight:simple")
 	args := append(target.auditArguments(epoch), operation, plan.body, retirement, plan.projection)
@@ -219,6 +236,7 @@ func firstOwnershipProjection(ctx context.Context, client *Client, epoch int64, 
 	if err != nil {
 		var refused redis.Error
 		if errors.As(err, &refused) {
+			log.Printf("ordinary first ownership projection rejected: condition=%s", firstOwnershipProjectionReason(refused.Error()))
 			return ErrAuthorityLost
 		}
 		return ErrObservation

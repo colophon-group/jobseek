@@ -85,7 +85,9 @@ end
 local changes, domains
 if (operation == "retire" or operation == "publish") and retirement ~= "[]" then
     changes, domains = prepare_first_retirement(plan, retirement, exists, operation == "publish")
-    if changes == nil then return redis.error_reply("first ordinary ownership rejected") end
+    if changes == nil then
+        return redis.error_reply("first ordinary retirement rejected: " .. retirement_rejection_phase)
+    end
 elseif retirement ~= "[]" then
     return redis.error_reply("first ordinary ownership rejected")
 end
