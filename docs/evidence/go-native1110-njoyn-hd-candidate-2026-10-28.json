@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-lightpanda-candidate/v1",
-  "observed_at_utc": "2026-10-28T17:47:11.532238+00:00",
+  "observed_at_utc": "2026-10-28T18:00:00.982139+00:00",
   "runtime_version": "0.13.1110",
   "base_source": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
   "production_ownership_granted": false,
@@ -8,7 +8,8 @@
   "changes": [
     "Njoyn browser-monitor scoped default 20-minute task and inventory deadline",
     "Njoyn direct Lightpanda configuration, preserving two-pass inventory and four-second pacing",
-    "HD direct Lightpanda DOM configuration using existing header/range options"
+    "HD direct Lightpanda DOM configuration using existing header/range options",
+    "Admit two unchanged Swiss Confederation HTTP monitors with current original/native explicit-failure parity"
   ],
   "Njoyn": {
     "complete_inventory_sizes": [
@@ -44,13 +45,13 @@
   },
   "prospective_floor": {
     "enabled_boards": 8140,
-    "monitors": 8123,
+    "monitors": 8125,
     "details": 8131,
     "retained_monitors": 8122,
     "retained_details": 8130,
     "reference_URLs": 3283,
     "eligibility_failures": 0,
-    "conditional_remaining_monitors": 14,
+    "conditional_remaining_monitors": 12,
     "conditional_remaining_details": 6
   },
   "physical_engine": "1.1.0-nightly.11227+0eee96bf2",
@@ -64,5 +65,14 @@
     "maintenance and CSV/deployment consumers",
     "supported reversal and rollback window",
     "retire production Python/Playwright/Chromium assets"
-  ]
+  ],
+  "Swiss_HTTP": {
+    "sources": 2,
+    "actual_native_and_original_failure_parity": true,
+    "exact_native_responses_consumed_by_original": 6,
+    "canonical_cases_passed": 6,
+    "inventory_or_empty_success_claimed": false,
+    "configurations_changed": false,
+    "inherited_failure_semantics_preserved": true
+  }
 }

@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current handoff and grouped candidate — October 28, 2026, 17:47 UTC
+## Current handoff and grouped candidate — October 28, 2026, 18:00 UTC
 
 Runtime **0.13.1109** is deployed from
 `0766fc017af4b5981c4ffbd1f9dc6eef12745299` after
@@ -23,7 +23,7 @@ Do not claim ordinary activation until its result, independent readback, whole-r
 SDK and whole-queue conservation pass. The staged cohort is **8,122 monitors /
 8,130 details**. Previous serving proofs below are historical.
 
-**Grouped candidate 0.13.1110 adds Njoyn monitoring and HD rendered details.**
+**Grouped candidate 0.13.1110 adds Njoyn, two Swiss HTTP monitors and HD details.**
 Njoyn's complete two-pass, four-second-paced traversal needs more than ten minutes:
 a complete latest-Lightpanda capture returned **3,132 URLs in 1,060 seconds**;
 a subsequent candidate capture returned **3,130 URLs**. Intervening sessions failed
@@ -44,10 +44,21 @@ pages plus failed, incomplete and publisher-reserved documents, source identity,
 pending description upload, deadlines and cleared leases. Other probed blocked,
 gone, empty-body and dormant sources remain unqualified.
 
+The two unchanged Swiss Confederation HTTP monitor configurations already fit
+existing native contracts. Current direct Go and original Python reads both fail
+on the same three redirect responses per source. Offline unchanged Python replay
+consumes those exact six captured responses and reproduces both failures. Six
+real canonical cases verify inherited failure, transport failure and publisher
+reservation for each source: retained visibility/missing counts, no new postings,
+correct failures/policy, deadlines and leases. These are inherited-failure
+admissions, without a successful or empty inventory claim. Tesco remains excluded:
+the original treated a blocked response as empty while native Go safely rejected
+non-JSON inventory; its behavior is not yet qualified.
+
 The prospective cohort retains every prior assignment and all **3,281** prior
-reference URLs, adds two actual HD references and validates **8,123 monitors /
+reference URLs, adds two actual HD references and validates **8,125 monitors /
 8,131 details**, with zero eligibility failures. After supported deployment and
-activation, the conditional remainder is **14 monitors / 6 details**. This candidate
+activation, the conditional remainder is **12 monitors / 6 details**. This candidate
 confers no production ownership. See the [candidate evidence](evidence/go-native1110-njoyn-hd-candidate-2026-10-28.json).
 
 Continue porting compatible types together, then prove natural freshness/stability,
