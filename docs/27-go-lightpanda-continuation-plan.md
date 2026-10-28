@@ -1,5 +1,37 @@
 # Go and Lightpanda migration delivery plan
 
+## Eligibility timeout recovery — October 28, 2026, 21:58 UTC
+
+The original 1110 ordinary retirement and `recover-pending` both refused
+`eligibility / observation`. The writer fleet is contained, with its exact
+epoch-394 SQL owner, retiring receipt and separate B0 identity retained.
+**PR #10991 remains unmerged.** Scheduled Typesense reconciliation runs through
+its normal wrapper; do not cancel it or bypass containment.
+
+Read-only replay of the exact source query confirms PostgreSQL `57014` at the
+unchanged **10-second statement limit**. Retained history contains **114 plans**,
+**1,609 active fences** and **33 active fence epochs**. Runtime candidate
+**0.13.1111** checks those epochs separately inside the same original cold
+snapshot and joins their ownership sets without correlated history rescans.
+It preserves every fence and all source, epoch, board, profile, posting and
+exclusive ownership checks. The original statement, snapshot and host deadlines
+stay unchanged. The candidate's complete read-only check takes **19.735 seconds**
+over all 33 epochs; its slowest statement takes **1.231 seconds**.
+
+Native migrations and real PostgreSQL/Redis race tests pass: **81 test/subtest
+entries**, zero skips, including foreign historical monitor/detail refusal and
+legitimate retained details whose canonical posting no longer exists. Both private
+database runs stopped and removed their sockets. Required CI and
+Crawler Deploy Gate remain required. Merge with fresh exact-head authority, build the immutable
+source-bound image, and use the original admin-prepull workflow and installed
+wrapper's exact newer-admin `recover-pending` path. Verify complete old-runtime
+restoration independently before B0 rollback and full rollout. No ad hoc SQL,
+Redis, receipt, lease, deadline or partial-stack repair is authorized. Resume the
+six-detail CSV batch after reconciling its runtime/data frontier, then the twelve
+remaining monitors and final freshness, stability, resources and reversal proof.
+Execution remains strictly latest Lightpanda and proven Go HTTP/API.
+See [recovery evidence](evidence/go-native-eligibility-timeout-2026-10-28.json).
+
 ## Current handoff and grouped candidate — October 28, 2026, 18:22 UTC
 
 Runtime **0.13.1109** is deployed from
