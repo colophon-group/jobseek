@@ -73,6 +73,13 @@
     "canonical_deadline_and_lease_settlement": true,
     "local_PostgreSQL_stopped_and_socket_removed": true
   },
+  "runtime_proxy_browser_dispatch": {
+    "reachable_active_monitor_count": 1,
+    "defect": "Proxy monitor branch omitted the installed renderer",
+    "fix": "Retain the installed renderer for every monitor transport",
+    "real_owned_claim_race_regression": "Prior invocation reproduces startup configuration refusal; corrected invocation publishes rendered inventory and settles canonical deadline/lease",
+    "historical_restart_attribution": "Incomplete; do not conflate this reachable defect with proof of the exact historical failed claim"
+  },
   "prospective_whole_floor": {
     "enabled_boards": 8140,
     "retained_monitors": 8119,

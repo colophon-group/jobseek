@@ -99,11 +99,15 @@ renderer/crawler deployment and ownership handoff pass. After activation the
 conditional remainder is **15 monitors / 7 details**. See the
 [candidate evidence](evidence/go-native1109-api-rss-warmup-candidate-2026-10-28.json).
 
-Subsequent natural observation of 1107 records one worker restart at 13:20 UTC
-with `detail_terminal: authority_lost` on `dom.direct-detail/v1`, no OOM and no
-further restart through 13:48 UTC. Claim errors last occur at 13:31 UTC in that
-observation. Its exact cause remains unattributed. Preserve the authority guards;
-the successful rollout checks do not establish sustained stability.
+Subsequent natural observation of 1107 records two worker restarts: at 13:20 UTC
+with `detail_terminal: authority_lost` on `dom.direct-detail/v1`, and at 13:53 UTC
+with `startup: configuration`. It is healthy with no OOM or lost heartbeats at
+14:19 UTC. Exact historical attribution remains incomplete. This batch also fixes
+a reachable dispatch defect: the proxy-monitor branch omitted the installed
+renderer, although one active monitor requires both. A real owned-claim/race
+regression reproduces that startup refusal, then verifies rendered publication
+and deadline/lease settlement with the renderer retained. Every monitor transport
+now receives it. Preserve the authority guards; sustained stability is unproved.
 
 **Earlier verified ordinary checkpoint: runtime 0.13.1105, epoch 386.**
 [PR #10942](https://github.com/colophon-group/jobseek/pull/10942) passed Required CI
