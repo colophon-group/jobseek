@@ -67,6 +67,13 @@ provider response bodies belong in logs or commits.
    verifies the real restricted login, TLS certificate and role/session limits
    from the deployment runner. The original crawler database is untouched.
    Copy repeats this read-only check before pausing the source matching worker.
+10. Dispatch `prepare-locale` while Supabase and matching remain live. It aligns
+    only a pristine idle candidate to the source locale, so final copy does not
+    need to prepare the database after pausing matching. During inspection a
+    zero database connection limit blocks the three nonsuperuser network logins
+    while retaining the local administrator. Existing sessions or any user
+    objects abort replacement; an ordinary failure restores the prior limit.
+    PostgreSQL does not allow disabling all connections from the current database.
 
 A packet uses one exported repeatable-read source snapshot for its catalogue,
 row fingerprints and `pg_dump`. Sequence values are nontransactional: the
