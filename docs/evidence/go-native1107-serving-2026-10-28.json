@@ -1,0 +1,97 @@
+{
+  "schema": "jobseek.go-lightpanda-serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-28T13:08:47.981086+00:00",
+  "migration_complete": false,
+  "runtime_version": "0.13.1107",
+  "source_revision": "c8583b8f4f739160fbd9ee948ab3e6916e5e8704",
+  "data_revision": "c8583b8f4f739160fbd9ee948ab3e6916e5e8704",
+  "delivery_PR": 10948,
+  "crawler_workflow_run": 40679757820,
+  "renderer_workflow_run": 40679811781,
+  "required_CI": "success",
+  "Crawler_Deploy_Gate": "success",
+  "exact_merged_tree_matches_qualified_head": true,
+  "images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:09307211f74b158ccafaf9808beaf3b129c0381f0f93e77b121c50fabf670d5a",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:31cf17374da38004f810007cf5d482a1a52ad3248424a570cd199ab24a50a861"
+  },
+  "renderer": {
+    "source_revision": "c8583b8f4f739160fbd9ee948ab3e6916e5e8704",
+    "engine_version": "1.1.0-nightly.11227+0eee96bf2",
+    "engine_sha256": "b335058c35e78a8ddf6315145bc573eb48d793018d620fb3c4a8b731a4838e01",
+    "image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:8b3816e71e53a21a1d5201eafa5531f5516fc9a45c6bf2a72596505dde67b4bb",
+    "memory_max_bytes": 1073741824,
+    "memory_swap_max_bytes": 0,
+    "readiness_probe_passed": true,
+    "running": true,
+    "oom": false
+  },
+  "official_nightly_assets_rechecked_unchanged": true,
+  "upstream_engine_source": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+  "ordinary": {
+    "routing_epoch": 390,
+    "monitors": 8119,
+    "details": 8130,
+    "active_SQL_plans": 1,
+    "original_activation_succeeded": true,
+    "independent_owner_projection_and_serving_stack_passed": true,
+    "staged_contracts_match_actual": true,
+    "retained_reference_URLs": 3281
+  },
+  "B0": {
+    "routing_epoch": 390,
+    "state": "active",
+    "cohort": "cdom",
+    "members": [
+      "algorized-careers",
+      "browser-use-careers",
+      "bunq-careers"
+    ],
+    "ordinary_overlap": 0
+  },
+  "enabled_boards": 8140,
+  "serving_actors": 10,
+  "postactivation": {
+    "actual_scheduled_routes": 2025540,
+    "cache_identity_mismatches": 0,
+    "scheduled_unqueued_gaps": 0,
+    "wrong_lane_residue": 0,
+    "strict_whole_SDK_passed": true
+  },
+  "queue_conservation": {
+    "before_unique": 3423294,
+    "after_unique": 3423929,
+    "removed": 1332,
+    "added": 1967,
+    "SDK_gaps": 0,
+    "unexplained": 0,
+    "all_dispositions_accounted": true,
+    "removed_identity_classes": {
+      "canonical_inactive_or_disabled": 521,
+      "canonical_unscheduled": 809,
+      "currently_queued_expected": 2
+    },
+    "scope": "Complete non-atomic before/after queue identity comparison and exact current canonical/typed queue dispositions under active source/receipt/SQL owner guards."
+  },
+  "original_missing500": {
+    "identities": 500,
+    "classes": {
+      "currently_queued_expected": 500
+    },
+    "unexplained": 0,
+    "resolved": true
+  },
+  "remaining_ordinary": {
+    "monitors": 18,
+    "details": 7
+  },
+  "backend_constraint": "Self-hosted Lightpanda and proven Go HTTP/API only; no production Chromium or Playwright fallback.",
+  "unfinished": [
+    "remaining monitor/detail coverage",
+    "sustained natural work and freshness",
+    "comparable whole-service CPU/RAM/density/cost",
+    "final supported reversal and production Python/Playwright/Chromium retirement"
+  ],
+  "historical1106_refusal": "Original recovery restored serving; later1107 full deployment and activation succeeded. Exact1106 refusal root cause remains unattributed.",
+  "scope": "Original committed workflows and independent exact-source/image/receipt/projection/full-stack verification. No manual SQL/Redis/lease/receipt repair; serving counts do not establish whole-service freshness or cost parity."
+}

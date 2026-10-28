@@ -8,52 +8,70 @@ latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operato
 decision. Do not add a Chromium or Playwright fallback. Ship several compatible
 contracts per batch; retain useful isolated offline Python tooling.
 
-**Runtime 0.13.1106 is deployed; ordinary ownership was safely recovered.**
-[PR #10943](https://github.com/colophon-group/jobseek/pull/10943) passed Required CI
-and Crawler Deploy Gate. The [original full deployment](https://github.com/colophon-group/jobseek/actions/runs/40608725673)
-promoted runtime/data source `3c6f8c10a642063c884d92983bb604b7e98e7b6e`.
-The exact staged plan passed configuration binding for **8,115 monitors /
-8,128 details**, retaining every previous assignment. Its original activation
-then refused Redis projection publication with `phase=projection reason=authority`.
-SQL never activated the ordinary owner, and its Redis projection was absent.
-The original B0 namespace audit passed. The unchanged `recover-pending` workflow
-completed and independent readback confirms all nine expected actors restored,
-B0 active at epoch **388**, and no ordinary ownership receipt or active SQL plan.
-Production is serving through the restored legacy lanes plus native B0 while the
-publication rejection is investigated. Candidate **0.13.1107** records the fixed
-retirement condition on a refused publication, while retaining every preflight
-predicate, mutation statement and original containment/recovery behavior.
-Unknown Redis error contents never enter the diagnostic. The runtime revision
-and corrected Dnata regression expectation require the original full crawler
-deployment path. Do not report the staged floor as current
-ordinary Go coverage. The 500 missing first-time schedules also remain pending
-strict post-activation proof. No manual queue, receipt, lease or SQL repair is
-permitted. See the [cutover and recovery checkpoint](evidence/go-native1106-cutover-recovery-2026-10-28.json).
+**Runtime 0.13.1107 is deployed; native ordinary ownership is active.**
+[PR #10948](https://github.com/colophon-group/jobseek/pull/10948) passed Required CI,
+Crawler Deploy Gate, both Linux Lightpanda suites and the ARM64 candidate/control
+benchmark. The [original full crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40679757820)
+deployed and promoted runtime/data source `c8583b8f4f739160fbd9ee948ab3e6916e5e8704`.
+The [original renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40679811781)
+deployed **1.1.0-nightly.11227+0eee96bf2**, upstream source
+`0eee96bf27e2d1dccee59cfcba1a99028a43534e`. Official assets were rechecked
+unchanged. Independent readback verifies its binary digest, immutable image,
+1 GiB memory limit, no swap and mTLS readiness. Use `lightpanda version`.
 
-**Continue the current goal in shared batches.** Diagnose the rejected projection
-with read-only evidence or isolated replay before another original cutover.
-The newest upstream nightly is now **1.1.0-nightly.11227+0eee96bf2**, source
-`0eee96bf27e2d1dccee59cfcba1a99028a43534e`. All three official asset digests and
-both immutable OCI platform binaries match. Its `serve` flags remain compatible;
-version probing uses `lightpanda version`. Local physical and Linux architecture
-qualification must pass before the original renderer promotion workflow. The
-currently deployed renderer still uses nightly 11169 until that promotion. The
-full local run passes 175 tests; the two restricted-proxy failures also reproduce
-with the old pin because that child is Linux-only. Retain those architecture
-limits and require both Linux physical suites.
+Original B0 rollback, selector clearing, full deployment, selector staging,
+B0 activation, ordinary staging and ordinary activation completed. Independent
+readback verifies **8,119 ordinary monitors / 8,130 ordinary details**, SQL owner,
+both protected receipts at epoch **390**, complete Redis projection, immutable
+images and all **ten serving actors**. B0 `cdom` separately owns Algorized,
+Browser Use and Bunq. Preserve that boundary. All **8,140 enabled boards** remain
+configured. See the [verified serving checkpoint](evidence/go-native1107-serving-2026-10-28.json).
 
-The next source work includes Dnata's proved direct DOM inventory and Persistent
-Systems' existing HTTP API contract. The latest-engine DOM check retains all 76
-Dnata URLs. Eight local PostgreSQL/Redis cases under the race detector preserve
-its inventory and both monitors' existing failure/policy/deadline behavior. See
-the [combined candidate evidence](evidence/go-native11227-dom-http-candidate-2026-10-28.json). Preserve Persistent's actual HTTP 503 failure
-and retry behavior explicitly; synthetic schema checks are not live successful
-inventory evidence. Bunq already belongs to the native B0 `cdom` cohort with
-Algorized and Browser Use. Its additional field-parity checks do not authorize an
-overlapping ordinary owner. Reconcile the **20 remaining ordinary monitors /
-7 details** using that actual B0 boundary, including Indeed, and retain all enabled
-boards. Finish sustained freshness/resource/cost evidence and supported reversal
-before removing production Python, Playwright and Chromium.
+The strict postactivation SDK validates **2,025,540 scheduled routes**, with
+**zero gaps, cache mismatches or wrong-lane residue**. Queue conservation starts
+with **3,423,294 unique identities** and finishes with **3,423,929**. Every one
+of **1,332 removals** has current evidence: **521** inactive/disabled, **809**
+unscheduled and **two** queued in the expected lane. There are **zero unexplained
+identities**. The exact prior **500 missing first-time schedules** are now all
+queued in the expected lane after the original full deployment and activation.
+No manual queue, receipt, lease, budget or SQL repair was used.
+
+The earlier 0.13.1106 projection refusal was restored through original recovery.
+Its exact root cause remains unattributed; the successful 1107 activation does
+not establish a cause. The fixed rejection enums preserve all authority guards
+and containment behavior. See the [historical recovery](evidence/go-native1106-cutover-recovery-2026-10-28.json).
+
+**Deliver the remaining 18 ordinary monitors / 7 details as a grouped batch.**
+
+1. Reuse existing Go contracts and exhaust configuration options first. Most
+   remaining cases already have native constructors. Address API capture/HTTP
+   sessions, rendered feed transport, DOM pagination and Njoyn together. Njoyn
+   becomes eligible after removing its legacy browser-fallback option, but its
+   latest live session hit the actual ten-minute production deadline. Its HTTP
+   prototype remains unpublished and unqualified.
+2. Qualify complete inventories, field samples and shared canonical effects
+   together. Preserve explicit current publisher failures and dormant work
+   without waiting for a publisher to create new vacancies; prove failure/empty
+   distinctions, backoff and inventory protection. A constructor, HTTP 200,
+   empty parser result or synthetic fixture alone is not successful live
+   inventory evidence. Indeed's four-URL monitor and four real canonical cases
+   pass; its detail route remains unqualified. The latest four HTTP alternatives
+   returned blocked, error or HTML responses and remain unqualified.
+3. Stage all qualified additions in one supported handoff. Verify the actual
+   catalogue, effective configurations, every scheduled route and immutable
+   staged plan, then use original activation and strict postchecks. Keep runtime
+   source identity distinct from later data-only revisions.
+4. Complete sustained natural work/freshness, comparable whole-service
+   CPU/RAM/density/cost and supported reversal. Verify maintenance, deployment
+   and later CSV publication consumers with the completed Go runtime. Remove
+   production Python execution, Playwright, Chromium and legacy runtime assets
+   after the rollback window; preserve useful isolated offline tooling.
+
+Dnata's direct Lightpanda configuration and Persistent Systems' existing Go HTTP
+contract are included in the active cohort. Dnata retains its complete 76-URL
+reference. Persistent's actual HTTP 503 and retry/failure behavior is preserved;
+it is not claimed as successful live inventory. The benchmark and current
+serving/queue proofs do not establish whole-service cost or freshness parity.
 
 **Earlier verified ordinary checkpoint: runtime 0.13.1105, epoch 386.**
 [PR #10942](https://github.com/colophon-group/jobseek/pull/10942) passed Required CI
