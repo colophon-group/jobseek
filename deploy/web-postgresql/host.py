@@ -81,7 +81,7 @@ def owner_url(cfg: dict, *, name: str = "jobseek_web") -> str:
     return f"postgresql://jobseek_web_owner:{password}@{DOMAIN}:{PORT}/{name}?sslmode=verify-full"
 
 
-def admin(sql: str) -> str:
+def admin(sql: str, *, name: str = "postgres") -> str:
     return run(
         [
             "docker",
@@ -103,7 +103,7 @@ def admin(sql: str) -> str:
             "-p",
             str(PORT),
             "-d",
-            "postgres",
+            name,
         ],
         input_text=sql,
     )
@@ -124,6 +124,15 @@ def cloudflare(cfg: dict, method: str, endpoint: str, data=None):
     if body.get("success") is not True:
         raise database.DatabaseError("protected DNS operation failed")
     return body["result"]
+
+
+def configure_worker_role():
+    admin(
+        "ALTER ROLE jobseek_narrowed_worker NOINHERIT CONNECTION LIMIT 6; "
+        "ALTER ROLE jobseek_narrowed_worker SET timezone='UTC'; "
+        "ALTER ROLE jobseek_narrowed_worker SET statement_timeout='45s'; "
+        "ALTER ROLE jobseek_narrowed_worker SET idle_in_transaction_session_timeout='15s';"
+    )
 
 
 def prepare_dns(cfg: dict):
@@ -381,6 +390,7 @@ exec docker run --rm --name {CONTAINER} --label jobseek.service=web-postgresql \
         "ALTER ROLE jobseek_migration_auditor SET default_transaction_read_only=on; "
         "ALTER ROLE jobseek_narrowed_worker CONNECTION LIMIT 6;"
     )
+    configure_worker_role()
     exists = admin("SELECT count(*) FROM pg_database WHERE datname='jobseek_web';")
     if exists == "0":
         admin("CREATE DATABASE jobseek_web OWNER jobseek_web_owner TEMPLATE template0;")
@@ -395,6 +405,53 @@ exec docker run --rm --name {CONTAINER} --label jobseek.service=web-postgresql \
     )
 
 
+def prepare_empty_database_locale(name: str, locale: dict):
+    if name != "jobseek_web" or (STATE / "copy.json").exists():
+        raise database.DatabaseError(
+            "locale replacement is limited to an uncopied candidate"
+        )
+    database.validate_locale(locale)
+    identity = json.loads(
+        admin("""SELECT json_build_object(
+      'owned',pg_get_userbyid(datdba)='jobseek_web_owner',
+      'sessions',(SELECT count(*) FROM pg_stat_activity WHERE datname='jobseek_web'))
+      FROM pg_database WHERE datname='jobseek_web'""")
+    )
+    if not identity["owned"] or identity["sessions"]:
+        raise database.DatabaseError(
+            "locale replacement requires a pristine idle managed candidate"
+        )
+    # Fence new connections before checking the entire candidate for user objects.
+    # Existing sessions prevent replacement; the public endpoint never gains a
+    # check/drop race in which newly written data could be discarded.
+    disabled = True
+    try:
+        objects = admin(
+            """ALTER DATABASE jobseek_web ALLOW_CONNECTIONS false;
+      SELECT (
+      (SELECT count(*) FROM pg_namespace WHERE nspname NOT IN ('public','information_schema')
+        AND nspname !~ '^pg_') +
+      (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public') +
+      (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public') +
+      (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='public') +
+      (SELECT count(*) FROM pg_extension WHERE extname<>'plpgsql') +
+      (SELECT count(*) FROM pg_stat_activity WHERE datname=current_database()
+        AND pid<>pg_backend_pid()))::text""",
+            name=name,
+        )
+        if objects != "0":
+            raise database.DatabaseError(
+                "locale replacement requires a pristine idle managed candidate"
+            )
+        # No FORCE: any surviving session aborts before source fencing.
+        admin("DROP DATABASE jobseek_web;")
+        disabled = False
+        admin(database.create_database_sql(name, "jobseek_web_owner", locale))
+    finally:
+        if disabled:
+            admin("ALTER DATABASE jobseek_web ALLOW_CONNECTIONS true;")
+
+
 def copy_database(*, rehearsal: bool):
     cfg = config()
     revision = Path(__file__).resolve().parents[2].name
@@ -403,11 +460,15 @@ def copy_database(*, rehearsal: bool):
             "operation must run from an immutable revision bundle"
         )
     source = CONFIG / "source.url"
+    locale_client = database.Client(database.private_file(source), RUNTIME)
+    try:
+        with locale_client.snapshot() as (query, _):
+            source_locale = database.validate_locale(query(database.locale_query()))
+    finally:
+        locale_client.close()
     if rehearsal:
         name = "jobseek_rehearsal_" + str(int(time.time()))
-        admin(
-            f"CREATE DATABASE {database.identifier(name)} OWNER jobseek_web_owner TEMPLATE template0;"
-        )
+        admin(database.create_database_sql(name, "jobseek_web_owner", source_locale))
         target_file = RUNTIME / (name + ".url")
         write(target_file, owner_url(cfg, name=name))
     else:
@@ -417,9 +478,15 @@ def copy_database(*, rehearsal: bool):
             raise database.DatabaseError(
                 "a completed production copy cannot be overwritten"
             )
-        if not (STATE / "rehearsal.json").exists() or not json.loads(
-            (STATE / "rehearsal.json").read_text()
-        ).get("success"):
+        rehearsal_receipt = (
+            json.loads((STATE / "rehearsal.json").read_text())
+            if (STATE / "rehearsal.json").exists()
+            else {}
+        )
+        if (
+            not rehearsal_receipt.get("success")
+            or rehearsal_receipt.get("database_locale") != source_locale
+        ):
             raise database.DatabaseError(
                 "successful complete restore rehearsal is required"
             )
@@ -446,6 +513,9 @@ def copy_database(*, rehearsal: bool):
                 raise database.DatabaseError(
                     "production destination is already populated"
                 )
+            destination_locale = json.loads(dst.sql(database.locale_query()))
+            if destination_locale != source_locale:
+                prepare_empty_database_locale(name, source_locale)
             # The driver pauses the worker before this operation. Every source
             # DML path is fenced at the database boundary, including old deploys.
             fenced = True
@@ -576,6 +646,7 @@ def main():
         if args.action == "prepare":
             prepare()
         elif args.action in ("rehearse", "copy"):
+            configure_worker_role()
             copy_database(rehearsal=args.action == "rehearse")
         elif args.action == "renew-tls":
             renew_tls()

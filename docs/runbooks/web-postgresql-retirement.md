@@ -70,6 +70,16 @@ the evidence. The custom archive is SHA-256-bound and encrypted off host by
 Restic. Restore proof reads the encrypted snapshot into a disposable, networkless
 PostgreSQL 17 instance, and checks cleanup.
 
+Database encoding, collation provider, locale and ICU rules are part of the
+packet and restore comparison. Supabase uses UTF-8 with ICU `en-US`; the default
+libc locale of a new container is not equivalent. Rehearsal and isolated recovery
+create a database with the recorded settings and rebuild its indexes there.
+Copy requires a successful rehearsal with that locale. Before fencing source
+writes it may replace only the still-pristine, idle managed destination: new
+connections are blocked before the complete user-object/session check, and no
+populated database or completed copy can take this path. A locale mismatch
+otherwise fails before restoring any schema or data.
+
 ## Cutover
 
 Preparation and rehearsals leave production on Supabase. Finish them before
@@ -107,7 +117,10 @@ beginning the bounded write-maintenance window.
    receipt. Timeout or interruption after a successful copy leaves source
    writes fenced because an external update might already have committed.
 7. Activate Narrowed through its existing workflow using the new protected
-   database setting. It provisions/verifies its restricted role and holds the
+   database setting. The host prepares the worker's cluster-level login and
+   timeout settings before source fencing. Activation verifies those settings
+   when the application owner lacks role-administration privileges, then
+   provisions/verifies only the database grants and policies and holds the
    existing bundle/policy readiness lock in the new database. Preserve the
    cache HMAC and provider credentials; no AI identity rotation is needed.
 8. Dispatch the normal web production workflow with `rebuild=true`. Its migration

@@ -22,6 +22,61 @@ import repository
 
 
 class SafetyTests(unittest.TestCase):
+    def test_database_locale_values_cannot_inject_sql(self):
+        locale = {
+            "encoding": "UTF8",
+            "provider": "i",
+            "collate": "en_US.UTF-8",
+            "ctype": "en_US.UTF-8",
+            "locale": "en-US",
+            "icu_rules": None,
+        }
+        self.assertIn(
+            "LOCALE_PROVIDER icu",
+            database.create_database_sql("fixture", "owner", locale),
+        )
+        for key, value in [
+            ("locale", "en-US'; DROP DATABASE postgres;--"),
+            ("provider", "unknown"),
+            ("icu_rules", "custom"),
+        ]:
+            with self.subTest(key=key), self.assertRaises(database.DatabaseError):
+                database.create_database_sql("fixture", "owner", {**locale, key: value})
+
+    def test_locale_alignment_refuses_user_objects_or_sessions(self):
+        locale = {
+            "encoding": "UTF8",
+            "provider": "i",
+            "collate": "en_US.UTF-8",
+            "ctype": "en_US.UTF-8",
+            "locale": "en-US",
+            "icu_rules": None,
+        }
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(host, "STATE", Path(directory)),
+        ):
+            for identity, objects in [
+                ({"owned": False, "sessions": 0}, "0"),
+                ({"owned": True, "sessions": 1}, "0"),
+                ({"owned": True, "sessions": 0}, "1"),
+            ]:
+                with patch.object(
+                    host, "admin", side_effect=[json.dumps(identity), objects, ""]
+                ) as admin:
+                    with self.assertRaises(database.DatabaseError):
+                        host.prepare_empty_database_locale("jobseek_web", locale)
+                    self.assertFalse(
+                        any("DROP DATABASE" in c.args[0] for c in admin.call_args_list)
+                    )
+                    if objects == "1":
+                        self.assertIn(
+                            "ALLOW_CONNECTIONS false", admin.call_args_list[1].args[0]
+                        )
+                        self.assertIn(
+                            "ALLOW_CONNECTIONS true", admin.call_args_list[-1].args[0]
+                        )
+
     def test_no_remote_plaintext_or_transaction_pooler(self):
         for url in [
             "postgresql://u:p@example.org/db?sslmode=disable",
@@ -137,6 +192,11 @@ class SafetyTests(unittest.TestCase):
                 self.assertRaises(database.DatabaseError),
             ):
                 repository.backup_snapshot(json.dumps(invalid), packet)
+        prior = {**snapshot, "id": "b" * 64, "paths": ["/run/fixture/packet-0"]}
+        with self.assertRaises(database.DatabaseError):
+            repository.backup_snapshot(
+                json.dumps([{**group, "snapshots": [prior, snapshot]}]), packet
+            )
         for field, value in [
             ("id", "short"),
             ("paths", ["/old-packet"]),
@@ -146,6 +206,63 @@ class SafetyTests(unittest.TestCase):
             invalid = {**group, "snapshots": [{**snapshot, field: value}]}
             with self.subTest(field=field), self.assertRaises(database.DatabaseError):
                 repository.backup_snapshot(json.dumps([invalid]), packet)
+
+    def test_backup_snapshot_query_filters_the_exact_packet(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "status").mkdir()
+            packet = root / "packet-1000"
+            packet.mkdir()
+            manifest = {
+                "archive_bytes": 1,
+                "archive_sha256": "c" * 64,
+                "catalog": {"tables": ["fixture"]},
+                "fingerprints": {"tables": {"fixture": {"rows": 1}}},
+            }
+
+            def restic(*args):
+                if args[0] != "snapshots":
+                    return ""
+                self.assertIn("--path", args)
+                self.assertEqual(args[args.index("--path") + 1], str(packet))
+                return json.dumps(
+                    [
+                        {
+                            "group_key": {
+                                "hostname": repository.HOST,
+                                "paths": None,
+                                "tags": [repository.TAG],
+                            },
+                            "snapshots": [
+                                {
+                                    "id": "a" * 64,
+                                    "hostname": repository.HOST,
+                                    "tags": [repository.TAG],
+                                    "paths": [str(packet)],
+                                }
+                            ],
+                        }
+                    ]
+                )
+
+            with (
+                patch.object(repository, "ROOT", root),
+                patch.object(repository, "STATUS", root / "status"),
+                patch.object(repository, "restic", side_effect=restic),
+                patch.object(repository.time, "time", return_value=1000),
+                patch.object(
+                    database,
+                    "private_file",
+                    return_value="postgresql://u:p@supabase.example/db",
+                ),
+                patch.object(database, "Client"),
+                patch.object(database, "dump", return_value=manifest),
+            ):
+                result = repository.backup(root / "credential")
+            self.assertTrue(result["success"])
+            self.assertEqual(
+                result["last_success_details"]["repository_snapshot_id"], "a" * 64
+            )
 
     def test_failed_backup_packets_cannot_grow_without_bound(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -188,16 +305,28 @@ class SafetyTests(unittest.TestCase):
     def test_fence_commit_followed_by_transport_failure_is_unfenced(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "rehearsal.json").write_text('{"success":true}')
+            locale = {
+                "encoding": "UTF8",
+                "provider": "c",
+                "collate": "C",
+                "ctype": "C",
+                "locale": None,
+                "icu_rules": None,
+            }
+            (root / "rehearsal.json").write_text(
+                json.dumps({"success": True, "database_locale": locale})
+            )
 
             @contextmanager
             def snapshot():
-                yield lambda _query: 0, "fixture"
+                yield lambda query: locale if "'encoding'" in query else 0, "fixture"
 
             source = Mock()
             source.snapshot = snapshot
             destination = Mock()
-            destination.sql.return_value = "0"
+            destination.sql.side_effect = lambda query: (
+                json.dumps(locale) if "'encoding'" in query else "0"
+            )
 
             def fence(_client, *, remove=False):
                 if not remove:
@@ -216,7 +345,9 @@ class SafetyTests(unittest.TestCase):
                 ),
                 patch.object(host, "config", return_value={}),
                 patch.object(database, "private_file", return_value="fixture"),
-                patch.object(database, "Client", side_effect=[source, destination]),
+                patch.object(
+                    database, "Client", side_effect=[source, source, destination]
+                ),
                 patch.object(database, "source_fence", side_effect=fence) as guarded,
             ):
                 with self.assertRaises(database.DatabaseError):
@@ -246,8 +377,11 @@ class TransferIntegrationTests(unittest.TestCase):
         self.prefix = "web_db_fixture_" + uuid.uuid4().hex[:10]
         self.names = [self.prefix + suffix for suffix in ["_source", "_target"]]
         self.clients = []
+        self.extra_roles = []
         for name in self.names:
-            self.admin.sql(f"CREATE DATABASE {database.identifier(name)};")
+            self.admin.sql(
+                f"CREATE DATABASE {database.identifier(name)} TEMPLATE template0 ENCODING 'UTF8';"
+            )
             parsed = urlsplit(os.environ["WEB_DB_TEST_URL"])
             url = urlunsplit(parsed._replace(path="/" + name))
             self.clients.append(database.Client(url, self.root, native_bin=self.native))
@@ -288,8 +422,52 @@ class TransferIntegrationTests(unittest.TestCase):
             client.close()
         for name in self.names:
             self.admin.sql(f"DROP DATABASE {database.identifier(name)} WITH (FORCE);")
+        for role in self.extra_roles:
+            self.admin.sql(f"DROP ROLE {database.identifier(role)};")
         self.admin.close()
         self.directory.cleanup()
+
+    def test_icu_locale_is_preserved_and_mismatch_refused_before_restore(self):
+        locale = {
+            "encoding": "UTF8",
+            "provider": "i",
+            "collate": "en_US.UTF-8",
+            "ctype": "en_US.UTF-8",
+            "locale": "en-US",
+            "icu_rules": None,
+        }
+        name = self.prefix + "_icu"
+        owner = self.prefix + "_owner"
+        self.admin.sql(f"CREATE ROLE {database.identifier(owner)} NOLOGIN;")
+        self.extra_roles.append(owner)
+        self.admin.sql(database.create_database_sql(name, owner, locale))
+        self.names.append(name)
+        parsed = urlsplit(os.environ["WEB_DB_TEST_URL"])
+        client = database.Client(
+            urlunsplit(parsed._replace(path="/" + name)),
+            self.root,
+            native_bin=self.native,
+        )
+        self.clients.append(client)
+        client.sql(
+            "CREATE SCHEMA drizzle; CREATE TABLE drizzle.__drizzle_migrations(id int); "
+            "CREATE TABLE public.words(value text); INSERT INTO words VALUES ('z'),('Å'),('ä'),('a');"
+        )
+        packet = self.root / "icu-packet"
+        manifest = database.dump(client, packet)
+        self.assertEqual(manifest["catalog"]["database_locale"], locale)
+        with self.assertRaisesRegex(database.DatabaseError, "locale differs"):
+            database.restore(self.target, packet)
+        self.assertEqual(
+            self.target.sql("SELECT count(*) FROM pg_tables WHERE schemaname='public'"),
+            "0",
+        )
+        self.admin.sql(f"DROP DATABASE {database.identifier(self.names[1])};")
+        self.admin.sql(database.create_database_sql(self.names[1], owner, locale))
+        proof = database.restore(self.target, packet)
+        self.assertEqual(proof["database_locale"], locale)
+        ordering = "SELECT json_agg(value ORDER BY value) FROM words"
+        self.assertEqual(client.sql(ordering), self.target.sql(ordering))
 
     def test_complete_roundtrip_preserves_new_tables_constraints_roles_and_sequence(
         self,

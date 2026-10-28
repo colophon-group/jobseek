@@ -2297,6 +2297,18 @@ jobs:
           bash -n deploy/web-postgresql/deploy-remote.sh
           systemd-analyze verify deploy/web-postgresql/jobseek-web-postgresql.service
 
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Verify worker activation with a restricted PostgreSQL 17 schema owner
+        env:
+          WEB_DB_TEST_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/retirement-driver" --ignore-scripts --no-audit --no-fund postgres@3.4.9
+          export WEB_DB_DRIVER_TEST_MODULE="$RUNNER_TEMP/retirement-driver/node_modules/postgres/src/index.js"
+          node --experimental-strip-types --test scripts/test-narrowed-worker-role.mjs
+
   required-ci:
     name: Required CI
     if: always()

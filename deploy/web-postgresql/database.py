@@ -264,6 +264,47 @@ class Client:
                 process.stdout.close()
 
 
+def locale_query() -> str:
+    return """SELECT json_build_object('encoding',pg_encoding_to_char(encoding),
+      'provider',datlocprovider,'collate',datcollate,'ctype',datctype,
+      'locale',to_jsonb(d)->>'datlocale','icu_rules',to_jsonb(d)->>'daticurules')
+      FROM pg_database d WHERE datname=current_database()"""
+
+
+def validate_locale(value: dict) -> dict:
+    keys = {"encoding", "provider", "collate", "ctype", "locale", "icu_rules"}
+    if (
+        not isinstance(value, dict)
+        or set(value) != keys
+        or value["encoding"] != "UTF8"
+        or value["provider"] not in ("c", "i")
+        or value["icu_rules"] not in (None, "")
+    ):
+        raise DatabaseError("unsupported database locale contract")
+    for key in ("collate", "ctype", "locale"):
+        field = value[key]
+        if key == "locale" and value["provider"] == "c" and field is None:
+            continue
+        if not isinstance(field, str) or not re.fullmatch(
+            r"[A-Za-z0-9_.@-]{1,128}", field
+        ):
+            raise DatabaseError("invalid database locale setting")
+    return value
+
+
+def create_database_sql(name: str, owner: str, locale: dict) -> str:
+    value = validate_locale(locale)
+    provider = "icu" if value["provider"] == "i" else "libc"
+    statement = (
+        f"CREATE DATABASE {identifier(name)} OWNER {identifier(owner)} TEMPLATE template0 "
+        f"ENCODING 'UTF8' LOCALE_PROVIDER {provider} "
+        f"LC_COLLATE '{value['collate']}' LC_CTYPE '{value['ctype']}'"
+    )
+    if provider == "icu":
+        statement += f" ICU_LOCALE '{value['locale']}'"
+    return statement + ";"
+
+
 def inventory(query) -> dict:
     tables = query("""SELECT coalesce(json_agg(t ORDER BY t.schema,t.name),'[]') FROM (
         SELECT n.nspname AS schema,c.relname AS name,c.relkind AS kind
@@ -294,7 +335,11 @@ def inventory(query) -> dict:
     large_objects = query("SELECT to_json(count(*)) FROM pg_largeobject_metadata")
     if large_objects:
         raise DatabaseError("large objects need a separately reviewed backup boundary")
-    return {"tables": tables, "policy_roles": roles}
+    return {
+        "tables": tables,
+        "policy_roles": roles,
+        "database_locale": validate_locale(query(locale_query())),
+    }
 
 
 def fingerprints(query, catalog: dict) -> dict:
@@ -390,6 +435,7 @@ def validate_packet(packet: Path) -> dict:
     manifest = json.loads((packet / "manifest.json").read_text())
     if manifest.get("packet_version") != 4 or manifest.get("schemas") != list(SCHEMAS):
         raise DatabaseError("complete web database packet is required")
+    validate_locale(manifest.get("catalog", {}).get("database_locale"))
     archive = packet / "database.dump"
     if archive.is_symlink() or not archive.is_file():
         raise DatabaseError("database archive is not a regular file")
@@ -414,6 +460,9 @@ def restore(client: Client, packet: Path) -> dict:
     )
     if tables:
         raise DatabaseError("refusing to restore into a populated application database")
+    actual_locale = json.loads(client.sql(locale_query()))
+    if actual_locale != manifest["catalog"]["database_locale"]:
+        raise DatabaseError("destination database locale differs from the source")
     for role in POLICY_ROLES:
         client.sql(
             f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='{role}') "
@@ -499,6 +548,7 @@ def restore(client: Client, packet: Path) -> dict:
         "row_count": sum(x["rows"] for x in actual["tables"].values()),
         "archive_sha256": manifest["archive_sha256"],
         "archive_bytes": manifest["archive_bytes"],
+        "database_locale": actual_catalog["database_locale"],
     }
 
 
