@@ -10,8 +10,8 @@ import ipaddress
 import json
 import os
 import re
-import signal
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -40,7 +40,13 @@ def run(
     timeout: int = 600,
 ) -> str:
     p = subprocess.run(
-        argv, input=input_text, env=env, capture_output=True, text=True, timeout=timeout
+        argv,
+        input=input_text,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
     )
     if p.returncode:
         # Output may contain SQL or provider URLs: retain it only in root state.
@@ -441,8 +447,16 @@ def copy_database(*, rehearsal: bool):
                 )
             # The driver pauses the worker before this operation. Every source
             # DML path is fenced at the database boundary, including old deploys.
-            database.source_fence(src)
             fenced = True
+            database.atomic_json(
+                STATE / "source-fence.json",
+                {
+                    "fence_attempted": True,
+                    "fenced": None,
+                    "created_unix": int(time.time()),
+                },
+            )
+            database.source_fence(src)
             database.atomic_json(
                 STATE / "source-fence.json",
                 {"fenced": True, "created_unix": int(time.time())},
