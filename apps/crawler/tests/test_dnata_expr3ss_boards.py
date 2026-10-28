@@ -34,17 +34,8 @@ def test_dnata_australia_expr3ss_monitor_and_detail_transports() -> None:
         scraper_config = json.loads(row["scraper_config"])
 
         assert monitor_config["render"] is True
-        if row["board_slug"] == "emirates-group-dnata-au":
-            assert monitor_config["proxy"] is False
-            assert {"transport_attempts", "channel", "headless", "stealth"}.isdisjoint(
-                monitor_config
-            )
-        else:
-            assert monitor_config["proxy"] is True
-            assert monitor_config["transport_attempts"] == 5
-            assert monitor_config["channel"] == "chrome"
-            assert monitor_config["headless"] is False
-            assert monitor_config["stealth"] is True
+        assert monitor_config["proxy"] is False
+        assert {"transport_attempts", "channel", "headless", "stealth"}.isdisjoint(monitor_config)
         assert monitor_config["url_filter"].startswith(f"^https://{re.escape(host)}")
 
         transform = monitor_config["url_transform"]

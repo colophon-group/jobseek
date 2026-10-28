@@ -1,8 +1,10 @@
 package queue
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -181,8 +183,17 @@ func TestRealFirstRetirementPreflightsBeforeAnyEffect(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+			var diagnostic bytes.Buffer
+			previousWriter := log.Writer()
+			log.SetOutput(&diagnostic)
+			defer log.SetOutput(previousWriter)
 			if _, err := applyFirstFixture(t, p, true); !errors.Is(err, ErrAuthorityLost) {
 				t.Fatal("unsafe retirement admitted", err)
+			}
+			if mode == "wrong-type" || mode == "invalid-queue-tail" {
+				if !strings.Contains(diagnostic.String(), "projection rejected: condition=queue") || strings.Contains(diagnostic.String(), p.f.task.ID) {
+					t.Fatal("rejected cold publication lost its fixed, identity-free condition")
+				}
 			}
 			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) || firstFixtureState(t, p) != "active" {
 				t.Fatal("rejected retirement partially changed state")

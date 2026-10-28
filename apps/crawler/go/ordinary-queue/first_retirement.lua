@@ -11,9 +11,13 @@ local function retirement_type(key, expected)
     return kind == "none" or kind == expected
 end
 
+local retirement_rejection_phase = "rows"
+
 local function prepare_first_retirement(plan, raw, exists, adopting)
+    retirement_rejection_phase = "rows"
     local ok, rows = pcall(cjson.decode, raw)
     if not ok or type(rows) ~= "table" or #rows < #plan.members or #rows == 0 then return nil end
+    retirement_rejection_phase = "worker-types"
     for _, worker in ipairs({"simple", "browser"}) do
         for _, item in ipairs({{"inflight:", "zset"}, {"inflight_tokens:", "hash"},
             {"inflight_strikes:", "hash"}, {"monitor_repair_due:", "hash"},
@@ -33,6 +37,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
     for _, member in ipairs(plan.details or {}) do detail_members[member.board_id] = member end
     local changes, domains, seen = {}, {}, {}
     for index, row in ipairs(rows) do
+        retirement_rejection_phase = "row"
         if type(row) ~= "table" then return nil end
         local member, kind, id = plan.members[index], "monitor", row.board_id
         if index > #plan.members then
@@ -47,6 +52,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
             or (row.learned_host ~= "" and not row.completed) then return nil end
         local worker = member.worker
         if worker ~= "simple" and worker ~= "browser" then return nil end
+        retirement_rejection_phase = "ordered-progress"
         if row.next_step ~= nil or row.next_at ~= nil or row.next_hash ~= nil or row.next_interval ~= nil then
             local ordered_worker = (worker == "simple" and (member.profile == "detail.ordered-http/v1" or member.profile == "detail.ordered-proxy-http/v1"))
                 or (worker == "browser" and member.profile == "detail.ordered-browser/v1")
@@ -64,6 +70,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         end
         -- Adoption grants no current attempt receipt. A monitor in the wrong
         -- queue namespace or a completed/current native attempt is a refusal.
+        retirement_rejection_phase = "adoption"
         if adopting then
             if row.completed or row.learned_host ~= "" then return nil end
             local other = worker == "simple" and "browser" or "simple"
@@ -73,11 +80,13 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         end
         seen[kind.."|"..id] = true
         local due = nil
+        retirement_rejection_phase = "deadline"
         if row.due ~= cjson.null then
             if type(row.due) ~= "string" then return nil end
             due = tonumber(row.due)
             if not retirement_finite(due) or due < 0 then return nil end
         end
+        retirement_rejection_phase = "cache"
         local board_key = kind == "scrape" and ("scrape:"..id) or ("board:" .. row.board_id)
         if redis.call("TYPE", board_key)["ok"] ~= "hash" then return nil end
         local fields = 0
@@ -87,6 +96,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
             fields = fields + 1
         end
         if fields == 0 or redis.call("HLEN", board_key) ~= fields then return nil end
+        retirement_rejection_phase = "metadata"
         if row.metadata ~= nil then
             if kind ~= "monitor" or worker ~= "simple" or (member.profile ~= "eightfold.pcsx-sitemap/v1" and member.profile ~= "eightfold.proxy-pcsx-sitemap/v1")
                 or row.config.crawler_type ~= "eightfold" or type(row.metadata) ~= "string"
@@ -94,6 +104,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
             local ok, decoded = pcall(cjson.decode, row.metadata)
             if not ok or type(decoded) ~= "table" then return nil end
         end
+        retirement_rejection_phase = "queue"
         local domain = row.domain
         local keys = {"ft_monitors_" .. worker .. ":" .. domain, "ft_scrapes_" .. worker .. ":" .. domain,
             "monitors_" .. worker .. ":" .. domain, "scrapes_" .. worker .. ":" .. domain}
@@ -106,6 +117,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
                 if #edge >= 2 and not retirement_finite(tonumber(edge[2])) then return nil end
             end
         end
+        retirement_rejection_phase = "rate"
         if not retirement_type("ratelimit:" .. domain, "string") then return nil end
         local rate = redis.call("GET", "ratelimit:" .. domain)
         local rotation = redis.call("ZSCORE", "ready:rotation:" .. worker, domain)
@@ -114,6 +126,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         if (rate ~= false and not retirement_finite(tonumber(rate)))
             or (rotation ~= false and not retirement_finite(tonumber(rotation)))
             or (repair ~= false and not retirement_finite(tonumber(repair))) then return nil end
+        retirement_rejection_phase = "lease"
         local lease = redis.call("ZSCORE", "inflight:" .. worker, task)
         local token = redis.call("HGET", "inflight_tokens:" .. worker, task)
         if lease ~= false then

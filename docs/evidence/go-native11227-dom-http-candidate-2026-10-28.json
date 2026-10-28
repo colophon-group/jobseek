@@ -1,0 +1,115 @@
+{
+  "schema": "jobseek.go-lightpanda.grouped-candidate/v1",
+  "observed_at_utc": "2026-10-28T09:56:33.731427+00:00",
+  "qualified_runtime_source": "3c6f8c10a642063c884d92983bb604b7e98e7b6e",
+  "lightpanda": {
+    "version": "1.1.0-nightly.11227+0eee96bf2",
+    "source_revision": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+    "immutable_OCI_index": "sha256:eaf3cdb7570d25a69cc130e4881e3e779b9ff899cf6739053fdfc19a42e0d23c",
+    "all_three_official_asset_digests_verified": true,
+    "both_OCI_platform_binaries_equal_official_assets": true,
+    "serve_flags_compatible": true,
+    "version_probe_command": [
+      "version"
+    ],
+    "local_tests": {
+      "passed": 175,
+      "skipped": 21,
+      "known_nonLinux_restricted_proxy_failures": 2,
+      "same_restricted_proxy_failures_reproduced_with_previous_pin": true,
+      "Linux_architecture_physical_CI_required": true
+    },
+    "current_publisher_physical_documents": 9
+  },
+  "contracts": [
+    {
+      "board": "emirates-group-dnata-catering-au",
+      "contract": "direct rendered DOM monitor",
+      "candidate_CSV_changes": "Disable proxy; remove obsolete stealth, channel, headless and transport-attempt controls. Preserve all extraction/filter/transform/resource-policy settings.",
+      "latest_engine_complete_original_inventory_URLs": 76,
+      "uncaptured_original_fixture_requests": 0,
+      "native_canonical_cases": 4,
+      "canonical_inventory_equal": true,
+      "modes": [
+        "success",
+        "503",
+        "publisher_reservation",
+        "incomplete_document"
+      ],
+      "failure_inventory_preserved": true,
+      "deadline_and_lease_settlement_equal": true
+    },
+    {
+      "board": "persistent-systems-careers",
+      "contract": "existing direct HTTP configured API monitor; no CSV edit",
+      "actual_origin_statuses": [
+        503,
+        503,
+        503
+      ],
+      "original_and_native_bounded_failure_retry_equal": true,
+      "live_successful_inventory_proved": false,
+      "explicit_synthetic_raw_schema_rows": 2,
+      "synthetic_nonempty_fields_equal": true,
+      "empty_optional_representation_equivalence": [
+        "metadata",
+        "extras",
+        "source_identity"
+      ],
+      "original_and_native_synthetic_canonical_acceptance": 0,
+      "synthetic_canonical_rejection": {
+        "bare_host": 2
+      },
+      "canonical_failure_and_guard_cases": 4,
+      "existing_content_liveness_deadlines_and_leases_preserved": true,
+      "classification": "Preserved current publisher error and configured canonical rejection; not positive live inventory or authoritative empty evidence."
+    }
+  ],
+  "prospective_dated_floor": {
+    "catalogue_source": "3c6f8c10a642063c884d92983bb604b7e98e7b6e",
+    "enabled_boards": 8138,
+    "monitors": 8117,
+    "details": 8128,
+    "retained_monitors": 8115,
+    "retained_details": 8128,
+    "retained_reference_URLs": 3281,
+    "unsupported_configurations": 0,
+    "B0_cdom_members_excluded": [
+      "algorized-careers",
+      "browser-use-careers",
+      "bunq-careers"
+    ],
+    "newer_main_catalogue_requires_recapture": true
+  },
+  "delivery_requirements": [
+    "Complete exact-head Required CI and Crawler Deploy Gate plus Linux renderer architecture qualification",
+    "Promote renderer using existing immutable-image workflow and independently verify version/mTLS/readiness",
+    "Original full crawler deployment owns publication of this mixed runtime/configuration revision; do not substitute the standalone CSV-only path.",
+    "Refresh actual published catalogue including newly added companies; bind whole selected plan/configurations and scheduled routes",
+    "Use unchanged original cutover; preserve publication guards, canonical schedules and all enabled boards",
+    "Strict postactivation, queue conservation, natural freshness and resource/cost proof remain required"
+  ],
+  "production_ownership_granted": false,
+  "ordinary_activation_status": "Previous1106 projection refusal recovered via original recover-pending; ordinary ownership remains inactive until a new verified handoff.",
+  "candidate_runtime_version": "0.13.1107",
+  "cold_publication_diagnostics": {
+    "fixed_conditions": [
+      "rows",
+      "worker-types",
+      "row",
+      "ordered-progress",
+      "adoption",
+      "deadline",
+      "cache",
+      "metadata",
+      "queue",
+      "rate",
+      "lease"
+    ],
+    "all_preflight_predicates_and_mutation_statements_unchanged": true,
+    "unknown_Redis_errors_reduced_to_generic_condition": true,
+    "no_config_URL_ID_or_credential_values_in_diagnostic": true,
+    "original_authority_loss_and_containment_preserved": true,
+    "real_cold_rejection_test_asserts_no_partial_Redis_or_canonical_effect": true
+  }
+}
