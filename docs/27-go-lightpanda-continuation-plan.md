@@ -65,6 +65,14 @@ admissions, without a successful or empty inventory claim. Tesco remains exclude
 the original treated a blocked response as empty while native Go safely rejected
 non-JSON inventory; its behavior is not yet qualified.
 
+A fresh authoritative read at 18:55 UTC sharpens the next batch: IHG and NTT
+still succeed naturally, retaining **400 / 405 active postings** respectively;
+keep their working legacy execution until complete replacement inventories pass.
+Agricultural Bank, Rothschild and Tesco also have recent successful checks but
+currently zero active postings. Several other sources have long-running failures;
+qualify their current failure/dormancy and retained-content behavior explicitly.
+Do not infer current success from undated `recent_discovered_counts` metadata.
+
 The prospective cohort retains every prior assignment and all **3,281** prior
 reference URLs, adds two actual HD references and validates **8,125 monitors /
 8,131 details**, with zero eligibility failures. After supported deployment and

@@ -54,6 +54,11 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			config["monitor_needs_browser"] = "1"
 			expectedWorker = Browser
 		}
+		if provider == "njoyn" {
+			if options, ok := metadata["scraper_config"].(map[string]any); ok && options["render"] == true {
+				config["scraper_needs_browser"] = "1"
+			}
+		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
 			if provider == "earcu" || provider == "computrabajo" || provider == "practicematch" {
@@ -119,7 +124,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			} else {
 				detail, e = InspectJSONLDDetail(profileBoardID, config, o.Board.JobURL(123), Simple)
 			}
-		case "talentbrew":
+		case "talentbrew", "njoyn":
 			detail, e = inspectDetailOwnership(profileBoardID, config)
 		case "computrabajo", "ycombinator":
 			o, err := api.NinthProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
