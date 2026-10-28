@@ -221,6 +221,8 @@ def backup(url_file: Path) -> dict:
                 HOST,
                 "--tag",
                 TAG,
+                "--path",
+                str(packet),
                 "--group-by",
                 "host,tags",
                 "--latest",

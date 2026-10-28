@@ -137,6 +137,11 @@ class SafetyTests(unittest.TestCase):
                 self.assertRaises(database.DatabaseError),
             ):
                 repository.backup_snapshot(json.dumps(invalid), packet)
+        prior = {**snapshot, "id": "b" * 64, "paths": ["/run/fixture/packet-0"]}
+        with self.assertRaises(database.DatabaseError):
+            repository.backup_snapshot(
+                json.dumps([{**group, "snapshots": [prior, snapshot]}]), packet
+            )
         for field, value in [
             ("id", "short"),
             ("paths", ["/old-packet"]),
@@ -146,6 +151,63 @@ class SafetyTests(unittest.TestCase):
             invalid = {**group, "snapshots": [{**snapshot, field: value}]}
             with self.subTest(field=field), self.assertRaises(database.DatabaseError):
                 repository.backup_snapshot(json.dumps([invalid]), packet)
+
+    def test_backup_snapshot_query_filters_the_exact_packet(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "status").mkdir()
+            packet = root / "packet-1000"
+            packet.mkdir()
+            manifest = {
+                "archive_bytes": 1,
+                "archive_sha256": "c" * 64,
+                "catalog": {"tables": ["fixture"]},
+                "fingerprints": {"tables": {"fixture": {"rows": 1}}},
+            }
+
+            def restic(*args):
+                if args[0] != "snapshots":
+                    return ""
+                self.assertIn("--path", args)
+                self.assertEqual(args[args.index("--path") + 1], str(packet))
+                return json.dumps(
+                    [
+                        {
+                            "group_key": {
+                                "hostname": repository.HOST,
+                                "paths": None,
+                                "tags": [repository.TAG],
+                            },
+                            "snapshots": [
+                                {
+                                    "id": "a" * 64,
+                                    "hostname": repository.HOST,
+                                    "tags": [repository.TAG],
+                                    "paths": [str(packet)],
+                                }
+                            ],
+                        }
+                    ]
+                )
+
+            with (
+                patch.object(repository, "ROOT", root),
+                patch.object(repository, "STATUS", root / "status"),
+                patch.object(repository, "restic", side_effect=restic),
+                patch.object(repository.time, "time", return_value=1000),
+                patch.object(
+                    database,
+                    "private_file",
+                    return_value="postgresql://u:p@supabase.example/db",
+                ),
+                patch.object(database, "Client"),
+                patch.object(database, "dump", return_value=manifest),
+            ):
+                result = repository.backup(root / "credential")
+            self.assertTrue(result["success"])
+            self.assertEqual(
+                result["last_success_details"]["repository_snapshot_id"], "a" * 64
+            )
 
     def test_failed_backup_packets_cannot_grow_without_bound(self):
         with tempfile.TemporaryDirectory() as directory:
