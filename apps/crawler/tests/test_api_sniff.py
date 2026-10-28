@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from unittest.mock import AsyncMock
+from urllib.parse import parse_qs, urlencode
 
 import httpx
 import pytest
@@ -880,6 +881,45 @@ class TestSetBodyParam:
         body = "action=get_offers&page=1"
         assert set_body_param(body, "nonce", "fresh") == body
 
+    @pytest.mark.parametrize("multipart", [False, True])
+    def test_nested_json_form_cursor_preserves_tenant_and_filters(self, multipart):
+        filters = {
+            "paginationStartNo": 0,
+            "sortCriteria": {"isAscending": False},
+            "search": r"café \d+",
+        }
+        fields = {"filterCri": json.dumps(filters), "companyId": "15955"}
+        if multipart:
+            body = (
+                "".join(
+                    f'------Boundary\r\nContent-Disposition: form-data; name="{key}"'
+                    f"\r\n\r\n{value}\r\n"
+                    for key, value in fields.items()
+                )
+                + "------Boundary--\r\n"
+            )
+        else:
+            body = urlencode(fields)
+
+        updated = set_body_param(body, "filterCri.paginationStartNo", 20)
+        if multipart:
+            cursor_field = _get_multipart_param(updated, "filterCri")
+            tenant = _get_multipart_param(updated, "companyId")
+        else:
+            parsed = parse_qs(updated)
+            cursor_field, tenant = parsed["filterCri"][0], parsed["companyId"][0]
+        assert json.loads(cursor_field) == {**filters, "paginationStartNo": 20}
+        assert tenant == "15955"
+
+    def test_nested_form_cursor_rejects_malformed_json(self):
+        with pytest.raises(json.JSONDecodeError):
+            set_body_param("filterCri=not-json", "filterCri.paginationStartNo", 20)
+
+    def test_literal_dotted_form_field_keeps_precedence(self):
+        body = urlencode({"filterCri.page": "0", "filterCri": "not-json"})
+        updated = parse_qs(set_body_param(body, "filterCri.page", 20))
+        assert updated == {"filterCri.page": ["20"], "filterCri": ["not-json"]}
+
 
 class TestMultipartHelpers:
     def test_is_multipart(self):
@@ -1086,6 +1126,38 @@ class TestFetchFactories:
 
 
 class TestPaginateAllWithFetchFn:
+    @pytest.mark.asyncio
+    async def test_paginates_json_cursor_inside_urlencoded_form(self):
+        rows = [{"id": i} for i in range(42)]
+        body = urlencode({"filterCri": json.dumps({"paginationStartNo": 0}), "companyId": "15955"})
+        calls = []
+
+        async def fetch(method, url, headers, post_body):
+            fields = parse_qs(post_body)
+            offset = json.loads(fields["filterCri"][0])["paginationStartNo"]
+            assert fields["companyId"] == ["15955"]
+            calls.append(offset)
+            return {"jobs": rows[offset : offset + 10], "totalCount": 42}
+
+        exchange = _make_exchange(
+            method="POST", post_data=body, body={"jobs": rows[:10], "totalCount": 42}
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=exchange, json_path="jobs", items=rows[:10]),
+            url_field=None,
+            total_count=42,
+            pagination=PaginationInfo(
+                param_name="filterCri.paginationStartNo",
+                style="offset",
+                start_value=0,
+                increment=10,
+                location="body",
+            ),
+        )
+
+        assert await paginate_all(fetch, result, max_pages=10) == rows
+        assert calls == [10, 20, 30, 40]
+
     @pytest.mark.asyncio
     async def test_formats_nested_pagination_parameter_value(self):
         page1_items = [{"id": index} for index in range(10)]
