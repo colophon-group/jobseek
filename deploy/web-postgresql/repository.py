@@ -91,6 +91,29 @@ def status(name: str, value: dict):
     database.atomic_json(STATUS / name, value)
 
 
+def backup_snapshot(payload: str, packet: Path) -> dict:
+    groups = json.loads(payload)
+    if (
+        not isinstance(groups, list)
+        or len(groups) != 1
+        or groups[0].get("group_key")
+        != {"hostname": HOST, "paths": None, "tags": [TAG]}
+    ):
+        raise database.DatabaseError("new full backup snapshot group is ambiguous")
+    snapshots = groups[0].get("snapshots", [])
+    if len(snapshots) != 1:
+        raise database.DatabaseError("new full backup snapshot is ambiguous")
+    snapshot = snapshots[0]
+    if (
+        not re.fullmatch(r"[0-9a-f]{64}", snapshot.get("id", ""))
+        or snapshot.get("hostname") != HOST
+        or snapshot.get("tags") != [TAG]
+        or snapshot.get("paths") != [str(packet)]
+    ):
+        raise database.DatabaseError("encrypted snapshot differs from the new packet")
+    return snapshot
+
+
 def clean_packets():
     packets = []
     for path in ROOT.iterdir():
@@ -191,7 +214,7 @@ def backup(url_file: Path) -> dict:
             "--keep-monthly",
             "12",
         )
-        snapshots = json.loads(
+        snapshot = backup_snapshot(
             restic(
                 "snapshots",
                 "--host",
@@ -203,13 +226,9 @@ def backup(url_file: Path) -> dict:
                 "--latest",
                 "1",
                 "--json",
-            )
+            ),
+            packet,
         )
-        if len(snapshots) != 1:
-            raise database.DatabaseError("new full backup snapshot is ambiguous")
-        snapshot = snapshots[0]
-        if not re.fullmatch(r"[0-9a-f]{64}", snapshot["id"]):
-            raise database.DatabaseError("invalid encrypted backup snapshot identity")
         details = {
             "packet_version": 4,
             "source_kind": "supabase"

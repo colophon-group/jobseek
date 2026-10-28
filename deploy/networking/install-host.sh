@@ -183,6 +183,9 @@ write_ufw_baseline() {
   if [[ "$ROLE" == "postgresql" ]]; then
     ufw allow from "$CRAWLER_PRIVATE_IP" to any port 5432 proto tcp \
       comment 'jobseek:crawler-postgresql' >/dev/null
+    if [[ -f /etc/jobseek-web-postgresql/postgresql.conf ]]; then
+      ufw allow 5433/tcp comment 'jobseek:web-postgresql-tls' >/dev/null
+    fi
   elif [[ "$ROLE" == "typesense" ]]; then
     ufw allow from "$CRAWLER_PRIVATE_IP" to any port 8108 proto tcp \
       comment 'jobseek:crawler-typesense' >/dev/null

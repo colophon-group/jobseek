@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import ipaddress
 import json
 import os
@@ -550,6 +551,7 @@ def main():
             "verify",
             "renew-tls",
             "confirm-consumers",
+            "verify-server",
         ],
     )
     args = parser.parse_args()
@@ -577,6 +579,33 @@ def main():
             copy_database(rehearsal=args.action == "rehearse")
         elif args.action == "renew-tls":
             renew_tls()
+        elif args.action == "verify-server":
+            path = (
+                Path(__file__).resolve().parents[2]
+                / "scripts/jobseek-ingress-conformance.py"
+            )
+            spec = importlib.util.spec_from_file_location(
+                "jobseek_web_ingress_conformance", path
+            )
+            if spec is None or spec.loader is None:
+                raise database.DatabaseError(
+                    "reviewed ingress conformance is unavailable"
+                )
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = module
+            spec.loader.exec_module(module)
+            state = module.audit("postgresql", config()["crawler_private_ipv4"])
+            if not state["compliant"]:
+                raise database.DatabaseError(
+                    "database host ingress contract is not compliant"
+                )
+            client = database.Client(owner_url(config()), RUNTIME)
+            try:
+                if client.sql("SELECT 1;") != "1":
+                    raise database.DatabaseError("database TLS/login check failed")
+            finally:
+                client.close()
+            print(json.dumps({"success": True, "web_database_tls_scram_ready": True}))
         else:
             cfg = config()
             client = database.Client(owner_url(cfg), RUNTIME)

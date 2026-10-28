@@ -86,6 +86,10 @@ class SafetyTests(unittest.TestCase):
             "WEB-POSTGRESQL-${ACTION^^}",
             "production-backup-operations",
             "deploy/ai-filter-refresh/pause-remote.sh",
+            "hetzner-ingress-production",
+            "verify-server",
+            "Prove external certificate verification and SCRAM login",
+            "deploy/web-postgresql/ingress.py rollback",
         ]:
             self.assertIn(boundary, workflow)
         host = (ROOT / "deploy/web-postgresql/host.py").read_text()
@@ -107,6 +111,41 @@ class SafetyTests(unittest.TestCase):
         ):
             repository.recover_repository()
             unlock.assert_called_once_with("unlock", timeout=180)
+
+    def test_grouped_restic_receipt_binds_the_new_packet(self):
+        packet = Path("/run/fixture/packet-1")
+        snapshot = {
+            "id": "a" * 64,
+            "hostname": repository.HOST,
+            "tags": [repository.TAG],
+            "paths": [str(packet)],
+        }
+        group = {
+            "group_key": {
+                "hostname": repository.HOST,
+                "paths": None,
+                "tags": [repository.TAG],
+            },
+            "snapshots": [snapshot],
+        }
+        self.assertEqual(
+            repository.backup_snapshot(json.dumps([group]), packet), snapshot
+        )
+        for invalid in [[], [snapshot], [group, group], [{**group, "snapshots": []}]]:
+            with (
+                self.subTest(invalid=invalid),
+                self.assertRaises(database.DatabaseError),
+            ):
+                repository.backup_snapshot(json.dumps(invalid), packet)
+        for field, value in [
+            ("id", "short"),
+            ("paths", ["/old-packet"]),
+            ("hostname", "other"),
+            ("tags", ["old-generation"]),
+        ]:
+            invalid = {**group, "snapshots": [{**snapshot, field: value}]}
+            with self.subTest(field=field), self.assertRaises(database.DatabaseError):
+                repository.backup_snapshot(json.dumps([invalid]), packet)
 
     def test_failed_backup_packets_cannot_grow_without_bound(self):
         with tempfile.TemporaryDirectory() as directory:

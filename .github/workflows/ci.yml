@@ -120,6 +120,10 @@ jobs:
       - name: Verify privileged Codex filesystem boundary
         run: sudo python3 scripts/test-codex-privilege-boundary.py
 
+      - name: Verify managed Hetzner ingress boundaries
+        working-directory: apps/crawler
+        run: uv run --frozen pytest -q tests/test_ingress_baseline.py
+
       - name: Verify bounded observation dispatch and timer activation
         run: |
           python3 scripts/test-company-selection-observation-dispatch.py

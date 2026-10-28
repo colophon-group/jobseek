@@ -5,7 +5,7 @@ umask 077
 revision=${1:-}
 action=${2:-}
 [[ "$revision" =~ ^[0-9a-f]{40}$ && "$(git rev-parse HEAD)" = "$revision" ]]
-[[ "$action" =~ ^(prepare|rehearse|copy|verify|backup-source|restore-source|recover-repository|activate-backup)$ ]]
+[[ "$action" =~ ^(prepare|rehearse|copy|verify|verify-server|backup-source|restore-source|recover-repository|activate-backup)$ ]]
 : "${TARGET_HOST:?}" "${SSH_PRIVATE_KEY:?}" "${SSH_KNOWN_HOSTS:?}" "${RUNNER_TEMP:?}"
 [[ "$TARGET_HOST" =~ ^[a-zA-Z0-9.:_-]+$ ]]
 stage=$(mktemp -d "$RUNNER_TEMP/web-postgresql.XXXXXX")
@@ -22,9 +22,9 @@ options=(-F /dev/null -i "$stage/id" -o BatchMode=yes -o IdentitiesOnly=yes
   -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
 release="/opt/jobseek-web-postgresql/releases/$revision"
 # Install a content-addressed bundle, then verify the same manifest remotely.
-find deploy/web-postgresql -type f ! -path '*/__pycache__/*' -print0 |
+find deploy/web-postgresql scripts/jobseek-ingress-conformance.py -type f ! -path '*/__pycache__/*' -print0 |
   sort -z | xargs -0 sha256sum > "$stage/SHA256SUMS"
-tar -czf "$stage/bundle.tar.gz" --exclude='__pycache__' deploy/web-postgresql
+tar -czf "$stage/bundle.tar.gz" --exclude='__pycache__' deploy/web-postgresql scripts/jobseek-ingress-conformance.py
 archive_sha=$(sha256sum "$stage/bundle.tar.gz" | cut -d' ' -f1)
 ssh "${options[@]}" "root@$TARGET_HOST" \
   "install -d -o root -g root -m 0700 $release && cat > $release/bundle.tar.gz" < "$stage/bundle.tar.gz"
@@ -52,7 +52,7 @@ print(json.dumps({
  'revision':os.environ['DEPLOY_REVISION']}))
 PY
     ;;
-  rehearse|copy|verify)
+  rehearse|copy|verify|verify-server)
     ssh "${options[@]}" "root@$TARGET_HOST" "python3 $helper/host.py $action"
     ;;
   backup-source|restore-source|recover-repository)

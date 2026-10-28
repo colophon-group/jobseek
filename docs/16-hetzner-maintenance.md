@@ -497,6 +497,16 @@ default-allow outbound:
 | PostgreSQL | TCP 5432 from the crawler's exact private IPv4 only |
 | Typesense | TCP 8108 from the crawler's exact private IPv4 only |
 
+The separate web PostgreSQL 17 service adds IPv4 TCP 5433 on the PostgreSQL
+host through the owned `jobseek-web-postgresql-ingress` firewall. Its protected
+`operate-web-postgresql.yml` `open-ingress` operation first proves the full host
+baseline and mandatory TLS/SCRAM, then requires an external certificate-verified
+login. It rolls back only that dedicated firewall on failure. The shared
+SSH/ICMP policy and private crawler PostgreSQL 16 listener remain separate.
+UFW maintenance preserves 5433 only when the protected web service configuration
+exists; full conformance also checks its trusted certificate and authentication.
+See the [retirement runbook](runbooks/web-postgresql-retirement.md).
+
 SSH is key-only, keeps `root` as the CI/CD break-glass identity, permits
 `deploy` only where it already has an authorized key, and disables forwarding,
 tunnels, and user-supplied environments. A public SSH allowlist is

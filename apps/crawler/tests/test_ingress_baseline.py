@@ -678,3 +678,141 @@ def test_ingress_transport_preserves_transactional_order_and_fail_closed_rollbac
         "jobseek-ingress-baseline rollback"
     )
     assert 'exit "$rollback_status"' in rollback
+
+
+def test_web_postgresql_firewall_is_separate_and_attaches_only_to_database_host(
+    tmp_path: Path,
+) -> None:
+    class WithBaseline(StatefulFirewallClient):
+        def __init__(self):
+            super().__init__()
+            self.baseline = {
+                "id": 88,
+                "name": firewall.FIREWALL_NAME,
+                "labels": {"owner": firewall.OWNER_LABEL},
+                "rules": firewall._desired_rules(),
+                "applied_to": [{"type": "server", "server": {"id": n}} for n in [1, 2, 3]],
+            }
+            self.requests = []
+
+        def request(self, method, path, **kwargs):
+            self.requests.append((method, path))
+            if method == "GET" and path == "/firewalls?per_page=50":
+                return {"firewalls": [self.baseline] + ([self.firewall] if self.firewall else [])}
+            return super().request(method, path, **kwargs)
+
+    client = WithBaseline()
+    import copy
+
+    before = copy.deepcopy(client.baseline)
+    policy = firewall.web_postgresql_policy()
+    state = tmp_path / "web.json"
+    result = firewall.apply(client, {"postgresql": {"id": 2}}, state, policy=policy)
+    assert (
+        result["target_count"] == 1
+        and result["desired_rules_exact"]
+        and result["target_coverage_exact"]
+    )
+    assert client.firewall["rules"] == [
+        {
+            "direction": "in",
+            "protocol": "tcp",
+            "port": "5433",
+            "source_ips": ["0.0.0.0/0"],
+            "description": "Jobseek web PostgreSQL TLS/SCRAM",
+        }
+    ]
+    assert client.firewall["applied_to"] == [{"type": "server", "server": {"id": 2}}]
+    with pytest.raises(firewall.IngressError, match="different firewall policy"):
+        firewall.rollback(client, state)
+    assert client.baseline == before
+    assert not any("/88" in path for _, path in client.requests)
+    firewall.rollback(client, state, policy=policy)
+    assert client.firewall is None and client.baseline == before
+
+
+def test_external_web_ingress_never_relaxes_private_crawler_database(monkeypatch):
+    targets = {
+        "crawler": _server(1, "crawler", "192.0.2.1", "10.0.0.2"),
+        "postgresql": _server(2, "postgresql", "192.0.2.2", "10.0.0.3"),
+        "typesense": _server(3, "typesense", "192.0.2.3", "10.0.0.4"),
+    }
+    monkeypatch.setattr(
+        firewall,
+        "_probe_port",
+        lambda address, port: port == 22 or (address == "192.0.2.2" and port == 5433),
+    )
+    assert firewall.verify_external(targets, web_postgresql=True)["compliant"]
+    with pytest.raises(firewall.IngressError):
+        firewall.verify_external(targets)
+    monkeypatch.setattr(
+        firewall,
+        "_probe_port",
+        lambda address, port: port == 22 or (address == "192.0.2.2" and port in [5432, 5433]),
+    )
+    with pytest.raises(firewall.IngressError):
+        firewall.verify_external(targets, web_postgresql=True)
+
+
+def test_host_policy_preserves_only_the_declared_web_tls_port():
+    status = "Status: active\nDefault: deny (incoming), allow (outgoing), disabled (routed)\n"
+    added = (
+        "ufw allow 22/tcp\nufw allow from 10.0.0.2 to any port 5432 proto tcp\nufw allow 5433/tcp\n"
+    )
+    crawler = conformance._private_address("10.0.0.2")
+    assert not conformance._ufw_state(status, added, "postgresql", crawler)["compliant"]
+    assert conformance._ufw_state(status, added, "postgresql", crawler, web_postgresql=True)[
+        "compliant"
+    ]
+    assert not conformance._ufw_state(
+        status, added + "ufw allow 5434/tcp\n", "postgresql", crawler, web_postgresql=True
+    )["compliant"]
+
+
+def test_crawler_database_selection_uses_its_exact_container_name(monkeypatch):
+    calls = []
+
+    def run(command):
+        calls.append(command)
+        assert command == ["docker", "inspect", "--format", "{{.State.Running}}", "postgres"]
+        return conformance.CommandResult(0, "true\n")
+
+    monkeypatch.setattr(conformance, "_run", run)
+    assert conformance._postgres_container() == "postgres"
+    assert len(calls) == 1
+
+
+def test_web_database_needs_verified_tls_and_strong_hba(monkeypatch):
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def sendall(self, data):
+            assert data == b"\x00\x00\x00\x08\x04\xd2\x16\x2f"
+
+        def recv(self, _):
+            return b"S"
+
+    class Context:
+        def wrap_socket(self, connection, *, server_hostname):
+            assert server_hostname == "web-postgres.jseek.co"
+            return connection
+
+    monkeypatch.setattr(conformance.ssl, "create_default_context", lambda: Context())
+    monkeypatch.setattr(
+        conformance.socket, "create_connection", lambda *args, **kwargs: Connection()
+    )
+    monkeypatch.setattr(conformance, "_run", lambda _: conformance.CommandResult(0, "t\n"))
+    assert conformance._web_postgresql_state()["compliant"]
+    monkeypatch.setattr(conformance, "_run", lambda _: conformance.CommandResult(0, "f\n"))
+    assert not conformance._web_postgresql_state()["compliant"]
+
+    def bad_certificate():
+        raise conformance.ssl.SSLError("fixture certificate invalid")
+
+    monkeypatch.setattr(conformance.ssl, "create_default_context", bad_certificate)
+    monkeypatch.setattr(conformance, "_run", lambda _: conformance.CommandResult(0, "t\n"))
+    assert not conformance._web_postgresql_state()["compliant"]

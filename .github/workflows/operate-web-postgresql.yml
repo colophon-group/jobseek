@@ -8,7 +8,7 @@ on:
         required: true
         default: verify
         type: choice
-        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup]
+        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup, open-ingress]
       revision:
         description: Exact current main SHA
         required: true
@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ inputs.action == 'copy' && 'deploy-web-production' || 'jobseek-web-postgresql-production' }}
+  group: ${{ inputs.action == 'copy' && 'deploy-web-production' || inputs.action == 'open-ingress' && 'hetzner-ingress-production' || 'jobseek-web-postgresql-production' }}
   cancel-in-progress: false
 
 jobs:
@@ -116,7 +116,55 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
         run: bash deploy/ai-filter-refresh/pause-remote.sh "$EXPECTED_SHA"
+      - name: Verify the separate TLS instance and the existing host ingress baseline
+        if: inputs.action == 'open-ingress'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" verify-server
+      - name: Apply only the dedicated web database provider boundary
+        if: inputs.action == 'open-ingress'
+        id: web-ingress
+        env:
+          HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+          HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+        run: python3 deploy/web-postgresql/ingress.py apply --state "$RUNNER_TEMP/web-postgresql-ingress.json"
+      - name: Prove external certificate verification and SCRAM login
+        if: inputs.action == 'open-ingress'
+        env:
+          PGHOST: web-postgres.jseek.co
+          PGPORT: '5433'
+          PGUSER: jobseek_web_owner
+          PGPASSWORD: ${{ secrets.WEB_POSTGRES_OWNER_PASSWORD }}
+          PGDATABASE: jobseek_web
+          PGSSLMODE: verify-full
+          PGSSLROOTCERT: system
+          PGCONNECT_TIMEOUT: '5'
+        run: |
+          set -euo pipefail
+          image=postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+          for _attempt in $(seq 1 12); do
+            if docker run --rm --network host --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+              -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE -e PGSSLMODE -e PGSSLROOTCERT -e PGCONNECT_TIMEOUT \
+              "$image" psql -X -w -A -t -q -c 'SELECT 1'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Restore the prior dedicated provider boundary if external verification fails
+        if: ${{ failure() && inputs.action == 'open-ingress' }}
+        env:
+          HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+        run: |
+          if test -f "$RUNNER_TEMP/web-postgresql-ingress.json"; then
+            python3 deploy/web-postgresql/ingress.py rollback --state "$RUNNER_TEMP/web-postgresql-ingress.json"
+          fi
       - name: Execute the bounded operation over pinned SSH
+        if: inputs.action != 'open-ingress'
         env:
           TARGET_HOST: ${{ contains(fromJSON('["backup-source","restore-source","recover-repository","activate-backup"]'), inputs.action) && secrets.HETZNER_TYPESENSE_HOST || secrets.HETZNER_POSTGRES_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
