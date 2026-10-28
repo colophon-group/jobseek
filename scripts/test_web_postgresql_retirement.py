@@ -3,19 +3,22 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import Mock, patch
 from urllib.parse import urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "deploy/web-postgresql"))
-import database  # noqa: E402
-import repository  # noqa: E402
+import database
+import host
+import repository
 
 
 class SafetyTests(unittest.TestCase):
@@ -119,6 +122,70 @@ class SafetyTests(unittest.TestCase):
                 repository.clean_packets()
             self.assertEqual(
                 sorted(p.name for p in root.iterdir()), ["packet-2", "packet-3"]
+            )
+
+    def test_repository_uses_the_existing_protected_password_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            password = root / "password"
+            password.write_text("fixture-secret")
+            password.chmod(0o600)
+            config = root / "repository.env"
+            config.write_text(
+                f'RESTIC_REPOSITORY=sftp:fixture\nRESTIC_PASSWORD_FILE={password}\nRESTIC_SFTP_COMMAND="ssh fixture"\n'
+            )
+            config.chmod(0o600)
+            with (
+                patch.object(repository, "ENV", config),
+                patch.dict(os.environ, {"RESTIC_PASSWORD": "ambient-value"}),
+            ):
+                environment = repository.repository_environment()
+                self.assertEqual(environment["RESTIC_PASSWORD_FILE"], str(password))
+                self.assertNotIn("RESTIC_PASSWORD", environment)
+                password.chmod(0o644)
+                with self.assertRaises(database.DatabaseError):
+                    repository.repository_environment()
+
+    def test_fence_commit_followed_by_transport_failure_is_unfenced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rehearsal.json").write_text('{"success":true}')
+
+            @contextmanager
+            def snapshot():
+                yield lambda _query: 0, "fixture"
+
+            source = Mock()
+            source.snapshot = snapshot
+            destination = Mock()
+            destination.sql.return_value = "0"
+
+            def fence(_client, *, remove=False):
+                if not remove:
+                    raise database.DatabaseError("transport failed after fence commit")
+
+            with (
+                patch.object(host, "STATE", root),
+                patch.object(host, "CONFIG", root),
+                patch.object(host, "RUNTIME", root),
+                patch.object(
+                    host,
+                    "__file__",
+                    "/opt/jobseek-web-postgresql/releases/"
+                    + "a" * 40
+                    + "/deploy/web-postgresql/host.py",
+                ),
+                patch.object(host, "config", return_value={}),
+                patch.object(database, "private_file", return_value="fixture"),
+                patch.object(database, "Client", side_effect=[source, destination]),
+                patch.object(database, "source_fence", side_effect=fence) as guarded,
+            ):
+                with self.assertRaises(database.DatabaseError):
+                    host.copy_database(rehearsal=False)
+                self.assertEqual(guarded.call_count, 2)
+                guarded.assert_called_with(source, remove=True)
+            self.assertFalse(
+                json.loads((root / "source-fence.json").read_text())["fenced"]
             )
 
 

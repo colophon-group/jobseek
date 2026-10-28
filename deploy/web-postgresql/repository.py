@@ -11,6 +11,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -33,12 +34,12 @@ def repository_environment() -> dict:
     if (
         not ENV.is_file()
         or ENV.is_symlink()
-        or metadata.st_uid != 0
+        or metadata.st_uid != os.getuid()
         or metadata.st_mode & 0o777 != 0o600
     ):
         raise database.DatabaseError("unsafe backup environment file")
     env = os.environ.copy()
-    allowed = {"RESTIC_REPOSITORY", "RESTIC_PASSWORD", "RESTIC_SFTP_COMMAND"}
+    allowed = {"RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "RESTIC_SFTP_COMMAND"}
     for line in ENV.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -54,6 +55,15 @@ def repository_environment() -> dict:
         env[key] = value
     if any(not env.get(key) for key in allowed):
         raise database.DatabaseError("required encrypted repository setting is missing")
+    password_file = Path(env["RESTIC_PASSWORD_FILE"])
+    password_metadata = password_file.lstat()
+    if (
+        not stat.S_ISREG(password_metadata.st_mode)
+        or password_metadata.st_uid != os.getuid()
+        or stat.S_IMODE(password_metadata.st_mode) not in (0o400, 0o600)
+    ):
+        raise database.DatabaseError("unsafe encrypted repository password file")
+    env.pop("RESTIC_PASSWORD", None)
     return env
 
 
@@ -69,7 +79,7 @@ def restic(*arguments: str, timeout: int = 3600) -> str:
         *arguments,
     ]
     p = subprocess.run(
-        command, env=env, capture_output=True, text=True, timeout=timeout
+        command, env=env, capture_output=True, text=True, timeout=timeout, check=False
     )
     if p.returncode:
         raise database.DatabaseError("encrypted repository operation failed")
@@ -113,6 +123,7 @@ def reap_restore_resources():
         capture_output=True,
         text=True,
         timeout=30,
+        check=False,
     )
     if listed.returncode:
         raise database.DatabaseError("cannot inspect isolated restore resources")
@@ -130,7 +141,10 @@ def reap_restore_resources():
         resources.append(fields[0])
     for resource in resources:
         if subprocess.run(
-            ["docker", "rm", "--force", resource], capture_output=True, timeout=60
+            ["docker", "rm", "--force", resource],
+            capture_output=True,
+            timeout=60,
+            check=False,
         ).returncode:
             raise database.DatabaseError("orphaned isolated restore cleanup failed")
     for path in ROOT.iterdir():
@@ -302,7 +316,9 @@ def restore_latest() -> dict:
             "POSTGRES_HOST_AUTH_METHOD=trust",
             database.IMAGE,
         ]
-        p = subprocess.run(command, capture_output=True, text=True, timeout=60)
+        p = subprocess.run(
+            command, capture_output=True, text=True, timeout=60, check=False
+        )
         if p.returncode:
             raise database.DatabaseError("isolated restore database did not start")
         created = True
@@ -338,7 +354,10 @@ def restore_latest() -> dict:
     finally:
         if created:
             removed = subprocess.run(
-                ["docker", "rm", "--force", container], capture_output=True, timeout=60
+                ["docker", "rm", "--force", container],
+                capture_output=True,
+                timeout=60,
+                check=False,
             )
             if removed.returncode:
                 raise database.DatabaseError(
@@ -350,7 +369,9 @@ def restore_latest() -> dict:
 def recover_repository():
     # Ordinary unlock removes only Restic's stale locks. Never use --remove-all.
     # Hold both consumer locks and reject any local live Restic process first.
-    process = subprocess.run(["pgrep", "-x", "restic"], capture_output=True, timeout=10)
+    process = subprocess.run(
+        ["pgrep", "-x", "restic"], capture_output=True, timeout=10, check=False
+    )
     if process.returncode != 1:
         raise database.DatabaseError(
             "repository recovery requires all local Restic processes quiet"
@@ -374,7 +395,9 @@ def activate(url_file: Path):
         ["systemctl", "disable", "--now", "jobseek-web-postgresql-backup.timer"],
         ["systemctl", "stop", "jobseek-web-postgresql-backup.service"],
     ]:
-        if subprocess.run(argv, capture_output=True, timeout=120).returncode:
+        if subprocess.run(
+            argv, capture_output=True, timeout=120, check=False
+        ).returncode:
             raise database.DatabaseError("legacy web backup could not be quiesced")
     rollback = URL.with_name("web-postgresql.supabase-rollback-url")
     if not rollback.exists():

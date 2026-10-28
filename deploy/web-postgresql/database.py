@@ -173,6 +173,7 @@ class Client:
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
         if completed.returncode:
             diagnostic = self.root / "operation-error.private.log"
@@ -201,65 +202,66 @@ class Client:
 
     @contextlib.contextmanager
     def snapshot(self):
-        error_file = tempfile.TemporaryFile(mode="w+")
-        process = subprocess.Popen(
-            self.command("psql", "-X", "-w", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"),
-            env=self.environment,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=error_file,
-            text=True,
-            bufsize=1,
-        )
-        assert process.stdin is not None and process.stdout is not None
-
-        def query(statement: str):
-            # json_agg pretty-separates records with literal newlines. Keep the
-            # protocol one line without altering escaped newlines in values.
-            process.stdin.write(
-                "SELECT replace((" + statement + ")::text, chr(10), '');\n"
+        with tempfile.TemporaryFile(mode="w+") as error_file:
+            process = subprocess.Popen(
+                self.command(
+                    "psql", "-X", "-w", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1"
+                ),
+                env=self.environment,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=error_file,
+                text=True,
+                bufsize=1,
             )
-            process.stdin.flush()
-            line = process.stdout.readline()
-            if not line:
-                error_file.seek(0)
-                diagnostic = self.root / "operation-error.private.log"
-                with diagnostic.open("w", encoding="utf-8") as stream:
-                    os.chmod(diagnostic, 0o600)
-                    stream.write(error_file.read())
-                raise DatabaseError("consistent database snapshot failed")
+            assert process.stdin is not None and process.stdout is not None
+
+            def query(statement: str):
+                # json_agg pretty-separates records with literal newlines. Keep the
+                # protocol one line without altering escaped newlines in values.
+                process.stdin.write(
+                    "SELECT replace((" + statement + ")::text, chr(10), '');\n"
+                )
+                process.stdin.flush()
+                line = process.stdout.readline()
+                if not line:
+                    error_file.seek(0)
+                    diagnostic = self.root / "operation-error.private.log"
+                    with diagnostic.open("w", encoding="utf-8") as stream:
+                        os.chmod(diagnostic, 0o600)
+                        stream.write(error_file.read())
+                    raise DatabaseError("consistent database snapshot failed")
+                try:
+                    return json.loads(line)
+                except json.JSONDecodeError:
+                    raise DatabaseError("invalid database snapshot response") from None
+
             try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                raise DatabaseError("invalid database snapshot response") from None
-
-        try:
-            process.stdin.write(
-                "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;\n"
-                "SET LOCAL statement_timeout='120s';\n"
-                "SET LOCAL idle_in_transaction_session_timeout='20min';\n"
-                "SET LOCAL timezone='UTC';\n"
-                "SET LOCAL extra_float_digits=3;\n"
-                "SET LOCAL datestyle='ISO, YMD';\n"
-                "SET LOCAL intervalstyle='postgres';\n"
-                "SET LOCAL bytea_output='hex';\n"
-            )
-            process.stdin.flush()
-            snapshot_id = query("SELECT to_json(pg_export_snapshot())")
-            if not re.fullmatch(r"[0-9A-Fa-f-]{1,128}", snapshot_id):
-                raise DatabaseError("invalid exported snapshot identity")
-            yield query, snapshot_id
-            process.stdin.write("COMMIT;\n\\q\n")
-            process.stdin.flush()
-            if process.wait(timeout=15):
-                raise DatabaseError("snapshot did not finish successfully")
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait(timeout=15)
-            process.stdin.close()
-            process.stdout.close()
-            error_file.close()
+                process.stdin.write(
+                    "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;\n"
+                    "SET LOCAL statement_timeout='120s';\n"
+                    "SET LOCAL idle_in_transaction_session_timeout='20min';\n"
+                    "SET LOCAL timezone='UTC';\n"
+                    "SET LOCAL extra_float_digits=3;\n"
+                    "SET LOCAL datestyle='ISO, YMD';\n"
+                    "SET LOCAL intervalstyle='postgres';\n"
+                    "SET LOCAL bytea_output='hex';\n"
+                )
+                process.stdin.flush()
+                snapshot_id = query("SELECT to_json(pg_export_snapshot())")
+                if not re.fullmatch(r"[0-9A-Fa-f-]{1,128}", snapshot_id):
+                    raise DatabaseError("invalid exported snapshot identity")
+                yield query, snapshot_id
+                process.stdin.write("COMMIT;\n\\q\n")
+                process.stdin.flush()
+                if process.wait(timeout=15):
+                    raise DatabaseError("snapshot did not finish successfully")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=15)
+                process.stdin.close()
+                process.stdout.close()
 
 
 def inventory(query) -> dict:
@@ -510,9 +512,11 @@ def source_fence(client: Client, *, remove: bool = False) -> None:
         statements += [
             f"CREATE SCHEMA IF NOT EXISTS {FENCE_SCHEMA};",
             f"REVOKE ALL ON SCHEMA {FENCE_SCHEMA} FROM PUBLIC;",
-            f"CREATE OR REPLACE FUNCTION {FENCE_SCHEMA}.reject_write() RETURNS trigger "
-            "LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN "
-            "RAISE EXCEPTION USING ERRCODE='25006',MESSAGE='Database migration in progress'; END $$;",
+            (
+                f"CREATE OR REPLACE FUNCTION {FENCE_SCHEMA}.reject_write() RETURNS trigger "
+                "LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN "
+                "RAISE EXCEPTION USING ERRCODE='25006',MESSAGE='Database migration in progress'; END $$;"
+            ),
         ]
     # Acquire every table lock in deterministic order in the same transaction.
     # Once committed, earlier writes have drained and every later DML is fenced.
