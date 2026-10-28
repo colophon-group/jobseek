@@ -70,6 +70,16 @@ the evidence. The custom archive is SHA-256-bound and encrypted off host by
 Restic. Restore proof reads the encrypted snapshot into a disposable, networkless
 PostgreSQL 17 instance, and checks cleanup.
 
+Database encoding, collation provider, locale and ICU rules are part of the
+packet and restore comparison. Supabase uses UTF-8 with ICU `en-US`; the default
+libc locale of a new container is not equivalent. Rehearsal and isolated recovery
+create a database with the recorded settings and rebuild its indexes there.
+Copy requires a successful rehearsal with that locale. Before fencing source
+writes it may replace only the still-pristine, idle managed destination: new
+connections are blocked before the complete user-object/session check, and no
+populated database or completed copy can take this path. A locale mismatch
+otherwise fails before restoring any schema or data.
+
 ## Cutover
 
 Preparation and rehearsals leave production on Supabase. Finish them before

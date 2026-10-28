@@ -359,6 +359,19 @@ def restore_latest() -> dict:
                 raise database.DatabaseError(
                     "isolated restore database did not become ready"
                 )
+            client.sql(
+                database.create_database_sql(
+                    "jobseek_full_restore_fixture",
+                    "postgres",
+                    manifest["catalog"]["database_locale"],
+                )
+            )
+            client.close()
+            client = database.Client(
+                "postgresql://postgres@localhost/jobseek_full_restore_fixture?sslmode=disable",
+                ROOT,
+                container=container,
+            )
             proof = database.restore(client, packet)
         finally:
             client.close()
