@@ -126,6 +126,15 @@ def cloudflare(cfg: dict, method: str, endpoint: str, data=None):
     return body["result"]
 
 
+def configure_worker_role():
+    admin(
+        "ALTER ROLE jobseek_narrowed_worker NOINHERIT CONNECTION LIMIT 6; "
+        "ALTER ROLE jobseek_narrowed_worker SET timezone='UTC'; "
+        "ALTER ROLE jobseek_narrowed_worker SET statement_timeout='45s'; "
+        "ALTER ROLE jobseek_narrowed_worker SET idle_in_transaction_session_timeout='15s';"
+    )
+
+
 def prepare_dns(cfg: dict):
     address = str(ipaddress.IPv4Address(cfg["public_ipv4"]))
     zones = cloudflare(cfg, "GET", "zones?name=jseek.co")
@@ -381,6 +390,7 @@ exec docker run --rm --name {CONTAINER} --label jobseek.service=web-postgresql \
         "ALTER ROLE jobseek_migration_auditor SET default_transaction_read_only=on; "
         "ALTER ROLE jobseek_narrowed_worker CONNECTION LIMIT 6;"
     )
+    configure_worker_role()
     exists = admin("SELECT count(*) FROM pg_database WHERE datname='jobseek_web';")
     if exists == "0":
         admin("CREATE DATABASE jobseek_web OWNER jobseek_web_owner TEMPLATE template0;")
@@ -576,6 +586,7 @@ def main():
         if args.action == "prepare":
             prepare()
         elif args.action in ("rehearse", "copy"):
+            configure_worker_role()
             copy_database(rehearsal=args.action == "rehearse")
         elif args.action == "renew-tls":
             renew_tls()

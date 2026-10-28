@@ -107,7 +107,10 @@ beginning the bounded write-maintenance window.
    receipt. Timeout or interruption after a successful copy leaves source
    writes fenced because an external update might already have committed.
 7. Activate Narrowed through its existing workflow using the new protected
-   database setting. It provisions/verifies its restricted role and holds the
+   database setting. The host prepares the worker's cluster-level login and
+   timeout settings before source fencing. Activation verifies those settings
+   when the application owner lacks role-administration privileges, then
+   provisions/verifies only the database grants and policies and holds the
    existing bundle/policy readiness lock in the new database. Preserve the
    cache HMAC and provider credentials; no AI identity rotation is needed.
 8. Dispatch the normal web production workflow with `rebuild=true`. Its migration

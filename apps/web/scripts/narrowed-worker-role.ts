@@ -12,20 +12,37 @@ export async function provisionNarrowedWorkerRole(admin: Sql, password: string) 
   if (!/^[A-Za-z0-9_-]{43,128}$/.test(password)) throw new Error("Invalid dedicated worker password");
   await admin.begin(async tx => {
     await tx`SELECT pg_advisory_xact_lock(830176421)`;
-    const [role] = await tx`SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls
+    const [role] = await tx`SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,
+      rolinherit,rolconnlimit,rolcanlogin,rolconfig
       FROM pg_roles WHERE rolname=${NARROWED_WORKER_ROLE}`;
-    if (role && Object.values(role).some(Boolean)) throw new Error("Worker role has elevated privileges");
+    if (role && [role.rolsuper, role.rolcreatedb, role.rolcreaterole, role.rolreplication, role.rolbypassrls].some(Boolean)) throw new Error("Worker role has elevated privileges");
     const [membership] = await tx`SELECT EXISTS(SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member
       WHERE r.rolname=${NARROWED_WORKER_ROLE}) AS present`;
     if (membership?.present) throw new Error("Worker role must not assume other roles");
-    if (!role) {
-      await tx.unsafe(`CREATE ROLE ${NARROWED_WORKER_ROLE} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 6 PASSWORD '${password}'`);
+    const [administrator] = await tx`SELECT rolsuper OR rolcreaterole AS can_manage_roles
+      FROM pg_roles WHERE rolname=current_user`;
+    if (administrator?.can_manage_roles) {
+      if (!role) {
+        await tx.unsafe(`CREATE ROLE ${NARROWED_WORKER_ROLE} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 6 PASSWORD '${password}'`);
+      }
+      await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} NOINHERIT CONNECTION LIMIT 6`);
+      // Reuse the original password on later deployments, keeping rollback credentials valid.
+      await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET timezone='UTC'`);
+      await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET statement_timeout='45s'`);
+      await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET idle_in_transaction_session_timeout='15s'`);
+    } else {
+      // The database host provisions cluster roles; the app owner only owns its schema.
+      const settings = new Map<string,string>((role?.rolconfig ?? []).map((entry: string) => {
+        const equals = entry.indexOf("=");
+        return [entry.slice(0, equals).toLowerCase(), entry.slice(equals + 1)];
+      }));
+      if (!role || !role.rolcanlogin || role.rolinherit || role.rolconnlimit !== 6 ||
+        settings.size !== 3 || settings.get("timezone") !== "UTC" ||
+        settings.get("statement_timeout") !== "45s" ||
+        settings.get("idle_in_transaction_session_timeout") !== "15s") {
+        throw new Error("The database administrator must preprovision the restricted worker role");
+      }
     }
-    await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} NOINHERIT CONNECTION LIMIT 6`);
-    // Reuse the original password on later deployments, keeping rollback credentials valid.
-    await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET timezone='UTC'`);
-    await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET statement_timeout='45s'`);
-    await tx.unsafe(`ALTER ROLE ${NARROWED_WORKER_ROLE} SET idle_in_transaction_session_timeout='15s'`);
     await tx.unsafe(`GRANT USAGE ON SCHEMA public TO ${NARROWED_WORKER_ROLE}`);
     for (const table of [...readTables, ...writeTables]) {
       const [exists] = await tx`SELECT to_regclass(${`public.${table}`}) IS NOT NULL AS present`;
