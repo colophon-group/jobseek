@@ -14,7 +14,8 @@ Detection pipeline
    same-origin chunks are checked when the legacy bundle has no config. Some
    current templates instead expose the config directly in the page's
    ``window.__LMC_CAREER_WIDGET__.push(...)`` bootstrap call, which is used as
-   the final config fallback.
+   the final config fallback. Locale-specific ``main-*`` widgets are selected
+   by the listing URL's path matching their ``pagePath``.
 3. Page-HTML scan for ``cdn.capybara.lmc.cz`` markers (fallback for
    custom-domain portals).
 
@@ -44,7 +45,13 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
+from src.core.monitors import (
+    BoardGoneError,
+    DiscoveredJob,
+    MonitorResult,
+    fetch_page_text,
+    register,
+)
 from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 from src.shared.truncation import truncated_rich_result
 
@@ -106,6 +113,7 @@ _HOST_RE = re.compile(r'data-host="([^"]+)"')
 # anchor on ``"widgets":{"main":{`` and then search a bounded window after the
 # anchor for each field individually — tolerant to nesting and reordering.
 _WIDGET_ANCHOR_RE = re.compile(r'"widgets"\s*:\s*\{\s*"main"\s*:\s*\{')
+_WIDGETS_OBJECT_RE = re.compile(r'"widgets"\s*:\s*(?=\{)')
 # Large enough to cover apiKey sitting behind a bulky ``themes`` / ``filters``
 # nested object. Empirically both fields are within ~100 bytes of the anchor
 # on current bundles (<300KB total); 64KB leaves ~4 orders of magnitude of
@@ -317,7 +325,7 @@ def _detail_url(host: str, detail_path: str, job_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _extract_widget_config(script_text: str) -> dict | None:
+def _extract_widget_config(script_text: str, *, page_path: str = "") -> dict | None:
     """Return ``{"id", "apiKey", "detail_path"}`` from a Capybara script bundle.
 
     The tenant's ``script.min.js`` embeds a JSON subtree with the widget
@@ -328,7 +336,42 @@ def _extract_widget_config(script_text: str) -> dict | None:
     """
     anchor = _WIDGET_ANCHOR_RE.search(script_text)
     if anchor is None:
-        return None
+        # Multilingual tenants (e.g. HELLA) use main-cs/main-en instead of
+        # main. Match the listing path, never guess the first locale's widget.
+        decoder = json.JSONDecoder()
+        matches = []
+        for widgets_anchor in _WIDGETS_OBJECT_RE.finditer(script_text):
+            window = script_text[widgets_anchor.end() : widgets_anchor.end() + _WIDGET_WINDOW_BYTES]
+            try:
+                widgets, _ = decoder.raw_decode(window)
+            except json.JSONDecodeError:
+                continue
+            for name, raw in widgets.items():
+                if not name.startswith("main-") or not isinstance(raw, dict):
+                    continue
+                path = raw.get("pagePath")
+                if (
+                    not page_path
+                    or not isinstance(path, str)
+                    or path.strip("/") != page_path.strip("/")
+                ):
+                    continue
+                widget_id, api_key = raw.get("id"), raw.get("apiKey")
+                if not isinstance(widget_id, str) or not _WIDGET_ID_VALUE_RE.fullmatch(widget_id):
+                    continue
+                if not isinstance(api_key, str) or not _API_KEY_VALUE_RE.fullmatch(api_key):
+                    continue
+                detail_path = raw.get("detailPath")
+                matches.append(
+                    {
+                        "id": widget_id,
+                        "apiKey": api_key,
+                        "detail_path": detail_path
+                        if isinstance(detail_path, str) and detail_path
+                        else "detail-pozice",
+                    }
+                )
+        return matches[0] if len(matches) == 1 else None
     start = anchor.end()
     window = script_text[start : start + _WIDGET_WINDOW_BYTES]
     id_match = _WIDGET_ID_RE.search(window)
@@ -403,6 +446,8 @@ class _WidgetConfigGone(Exception):
 async def _fetch_chunked_widget_config(
     host: str,
     client: httpx.AsyncClient,
+    *,
+    page_path: str = "",
 ) -> dict | None:
     """Return widget config from a hashed React chunk, if the tenant uses one."""
     loader_url = f"https://{host}/assets/js/react.min.js"
@@ -424,7 +469,7 @@ async def _fetch_chunked_widget_config(
             continue
         if response.status_code != 200:
             continue
-        config = _extract_widget_config(response.text)
+        config = _extract_widget_config(response.text, page_path=page_path)
         if config is not None:
             log.info(
                 "almacareer.widget_config_chunk_recovered",
@@ -453,6 +498,7 @@ async def _fetch_widget_config(
     host: str,
     client: httpx.AsyncClient,
     *,
+    page_path: str = "",
     retries: int = _CONFIG_RETRY_ATTEMPTS,
     base_delay: float = _CONFIG_RETRY_BASE_DELAY_S,
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
@@ -488,9 +534,9 @@ async def _fetch_widget_config(
                     return config
                 raise _WidgetConfigGone(host)
             if resp.status_code == 200:
-                config = _extract_widget_config(resp.text)
+                config = _extract_widget_config(resp.text, page_path=page_path)
                 if config is None:
-                    config = await _fetch_chunked_widget_config(host, client)
+                    config = await _fetch_chunked_widget_config(host, client, page_path=page_path)
                 if config is None:
                     config = await _fetch_inline_widget_config(host, client)
                 if config is not None:
@@ -811,7 +857,9 @@ async def _fetch_job_html(
 # ---------------------------------------------------------------------------
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
     """Fetch all AlmaCareer job ads for a board, paginating the GraphQL API."""
 
     metadata = board.get("metadata") or {}
@@ -833,7 +881,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     if not widget_id or not api_key:
         try:
-            config = await _fetch_widget_config(host, client)
+            config = await _fetch_widget_config(host, client, page_path=urlparse(board_url).path)
         except _WidgetConfigGone:
             raise BoardGoneError(
                 f"AlmaCareer tenant {host!r} returned 404 on script.min.js",
@@ -955,7 +1003,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         return result
 
     try:
-        config = await _fetch_widget_config(host, client)
+        config = await _fetch_widget_config(host, client, page_path=parsed.path)
     except (_WidgetConfigGone, httpx.HTTPError):
         # 404 or transport error — not an AlmaCareer tenant from this
         # vantage point. Collapse both to None at the detection layer;
