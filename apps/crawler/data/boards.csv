@@ -612,6 +612,7 @@ arnold-kl-mpen-gmbh-co-kg,arnold-kl-mpen-gmbh-co-kg-join,https://join.com/compan
 arondite,arondite-workable,https://apply.workable.com/arondite/,workable,"{""token"": ""arondite""}",workable,
 arqit,arqit-greenhouse-eu,https://job-boards.eu.greenhouse.io/arqitlimited,greenhouse,"{""token"": ""arqitlimited""}",skip,
 array-education,array-education-greenhouse,https://job-boards.greenhouse.io/arrayeducation,greenhouse,"{""token"": ""arrayeducation""}",skip,
+arrow-electronics,arrow-electronics-careers,https://arrow.wd1.myworkdayjobs.com/ac,workday,"{""company"": ""arrow"", ""wd_instance"": ""wd1"", ""site"": ""AC""}",workday,
 artefact,artefact-greenhouse,https://job-boards.greenhouse.io/artefact,greenhouse,"{""token"": ""artefact""}",skip,
 artera,artera-lever,https://jobs.lever.co/artera,lever,"{""token"": ""artera""}",skip,
 arthur-d-little,arthur-d-little-global-careers,https://careers-adlittle.icims.com/jobs/search?in_iframe=1,dom,"{""render"": false, ""url_filter"": ""/jobs/[0-9]+/"", ""pagination"": {""url_template"": ""https://careers-adlittle.icims.com/jobs/search?pr={page}&in_iframe=1"", ""start"": -1, ""increment"": 1, ""max_pages"": 100}}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Job Locations"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Posted Date"", ""offset"": 1, ""field"": ""date_posted"", ""regex"": ""\\(([^)]+)\\)"", ""optional"": true}, {""text"": ""Overview"", ""field"": ""description"", ""stop"": ""Options"", ""html"": true}]}"
