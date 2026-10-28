@@ -1,0 +1,47 @@
+{
+  "schema": "jobseek.native-eligibility-recovery-evidence/v1",
+  "observed_at_utc": "2026-10-28T21:57:36.560823+00:00",
+  "outgoing_runtime_revision": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "outgoing_epoch": 394,
+  "outgoing_version": "0.13.1110",
+  "candidate_version": "0.13.1111",
+  "incident": "Original ordinary retirement and original recover-pending refused eligibility/observation; writer fleet remains contained and protected retiring identity retained. Config-only six-detail PR10991 is unmerged.",
+  "original_query": {
+    "SQLSTATE": "57014",
+    "statement_timeout_reported": true,
+    "elapsed_seconds": 10.255,
+    "statement_timeout_ms": 10000
+  },
+  "retained_history": {
+    "plan_count": 114,
+    "active_fences": 1609,
+    "active_fence_epochs": 33,
+    "retired_plan_payload_bytes": 1027848732
+  },
+  "candidate_read_only_query": {
+    "all_active_epochs_checked": true,
+    "epochs": 33,
+    "total_seconds": 19.735,
+    "max_statement_seconds": 1.231,
+    "statement_timeout_ms": 10000,
+    "foreign_fences": 0
+  },
+  "semantics": "Every active fence epoch remains in the same cold snapshot. Historical plans keep their original monitor/detail/profile checks; current details still require canonical posting/board identity. Unrelated epochs/boards refuse. No receipt or history removal, deadline change or production ownership grant.",
+  "private_proof_sha256": {
+    "native1111-eligibility-query1.private.jsonl": "8841531385aa18b21586f7bca678ab4e76d102457e8c0b410a3ecc37aaf7d78b",
+    "native1111-eligibility-query3.private.jsonl": "4796cb9a0f88a9d59c9dc23d18954f240d1b42620e2be0c0cda4a755e6fc2018"
+  },
+  "canonical_tests": {
+    "native_migrations_passed": true,
+    "PG_Redis_race_returncode": 0,
+    "passed_test_and_subtest_entries": 81,
+    "skipped": 0,
+    "postgres_stopped": true,
+    "socket_removed": true,
+    "coverage": "Original ownership/retirement/cold SQL/history suites plus unrelated old monitor/detail fence refusals and legitimate old detail whose canonical posting has gone. Both activation and interrupted retirement exercised."
+  },
+  "production_recovery_completed": false,
+  "migration_completed": false,
+  "candidate_source_file_sha256": "fe838337468f25e9e6637642a7ddcad0a638a30eacd5e1ad7478979af1e05d1c",
+  "canonical_test_evidence_sha256": "cd214ccc306683efccf6e6cb25e230e33c67827d151ad45106ce377309bc48c8"
+}
