@@ -8,7 +8,7 @@ on:
         required: true
         default: verify
         type: choice
-        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup, open-ingress]
+        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup, open-ingress, prepare-worker-access]
       revision:
         description: Exact current main SHA
         required: true
@@ -95,7 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile deploy/web-postgresql/database.py deploy/web-postgresql/host.py deploy/web-postgresql/repository.py
-          bash -n deploy/web-postgresql/deploy-remote.sh
+          bash -n deploy/web-postgresql/*.sh
           python3 -m unittest discover -s scripts -p 'test_web_postgresql_retirement.py'
       - name: Require a successful full source backup before freezing writes
         if: inputs.action == 'copy'
@@ -109,6 +109,11 @@ jobs:
           bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" restore-source
       - name: Recheck main immediately before the protected operation
         run: test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Require the deployment runner can use the restricted worker login
+        if: inputs.action == 'copy'
+        env:
+          PGPASSWORD: ${{ secrets.NARROWED_WORKER_DATABASE_PASSWORD }}
+        run: bash deploy/web-postgresql/verify-worker-access.sh
       - name: Pause and verify the standalone matching process before source fencing
         if: inputs.action == 'copy'
         env:
@@ -177,3 +182,8 @@ jobs:
           CRAWLER_PRIVATE_IPV4: ${{ secrets.CRAWLER_PRIVATE_IPV4 }}
           CRAWLER_PUBLIC_IPV4: ${{ secrets.HETZNER_HOST }}
         run: bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" "$ACTION"
+      - name: Prove restricted worker login from the deployment runner
+        if: inputs.action == 'prepare-worker-access'
+        env:
+          PGPASSWORD: ${{ secrets.NARROWED_WORKER_DATABASE_PASSWORD }}
+        run: bash deploy/web-postgresql/verify-worker-access.sh

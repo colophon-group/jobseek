@@ -14,6 +14,7 @@ import re
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import time
@@ -31,6 +32,13 @@ UNIT = "jobseek-web-postgresql.service"
 DATA = Path("/mnt/jobseek-postings-postgresql/web-postgresql")
 DOMAIN = "web-postgres.jseek.co"
 PORT = 5433
+HBA = """local all postgres trust
+hostssl all jobseek_web_owner 0.0.0.0/0 scram-sha-256
+hostssl all jobseek_migration_auditor 0.0.0.0/0 scram-sha-256
+hostssl all jobseek_narrowed_worker 0.0.0.0/0 scram-sha-256
+host all all 0.0.0.0/0 reject
+host all all ::/0 reject
+"""
 
 
 def run(
@@ -127,6 +135,43 @@ def cloudflare(cfg: dict, method: str, endpoint: str, data=None):
 
 
 def configure_worker_role():
+    hba = CONFIG / "pg_hba.conf"
+    metadata = hba.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != 0
+        or stat.S_IMODE(metadata.st_mode) != 0o444
+    ):
+        raise database.DatabaseError("database authentication policy is not protected")
+    public_worker = """SELECT EXISTS(SELECT FROM pg_hba_file_rules
+      WHERE type='hostssl' AND user_name=ARRAY['jobseek_narrowed_worker']
+      AND address='0.0.0.0' AND netmask='0.0.0.0' AND auth_method='scram-sha-256')"""
+    if hba.read_text() != HBA or admin(public_worker) != "t":
+        if (STATE / "copy.json").exists() or admin(
+            "SELECT count(*) FROM pg_tables WHERE schemaname IN ('public','drizzle');",
+            name="jobseek_web",
+        ) != "0":
+            raise database.DatabaseError(
+                "authentication policy change requires an uncopied empty candidate"
+            )
+        write(hba, HBA, mode=0o444)
+        # A file bind mount keeps its old inode after atomic replacement. Restart
+        # only this empty candidate to pick up the verified policy file.
+        run(["systemctl", "restart", UNIT])
+        for _ in range(60):
+            try:
+                admin("SELECT 1;")
+                break
+            except database.DatabaseError:
+                time.sleep(1)
+        else:
+            raise database.DatabaseError(
+                "database did not become ready after policy update"
+            )
+        if admin(public_worker) != "t":
+            raise database.DatabaseError(
+                "running authentication policy differs from deployment policy"
+            )
     admin(
         "ALTER ROLE jobseek_narrowed_worker NOINHERIT CONNECTION LIMIT 6; "
         "ALTER ROLE jobseek_narrowed_worker SET timezone='UTC'; "
@@ -219,7 +264,8 @@ def prepare():
         if not re.fullmatch(r"[A-Za-z0-9_-]{43,128}", cfg[key]):
             raise database.DatabaseError("invalid protected database password")
     private = ipaddress.IPv4Address(cfg["crawler_private_ipv4"])
-    crawler_public = ipaddress.IPv4Address(cfg["crawler_public_ipv4"])
+    if not ipaddress.IPv4Address(cfg["crawler_public_ipv4"]).is_global:
+        raise database.DatabaseError("crawler public address must be globally routable")
     if not private.is_private:
         raise database.DatabaseError("worker address must be private")
     source = database.connection_environment(cfg["source_url"])
@@ -297,14 +343,7 @@ def prepare():
         )
     write(
         CONFIG / "pg_hba.conf",
-        f"""local all postgres trust
-hostssl all jobseek_web_owner 0.0.0.0/0 scram-sha-256
-hostssl all jobseek_migration_auditor 0.0.0.0/0 scram-sha-256
-hostssl all jobseek_narrowed_worker {private}/32 scram-sha-256
-hostssl all jobseek_narrowed_worker {crawler_public}/32 scram-sha-256
-host all all 0.0.0.0/0 reject
-host all all ::/0 reject
-""",
+        HBA,
         mode=0o444,
     )
     write(
@@ -622,6 +661,7 @@ def main():
             "renew-tls",
             "confirm-consumers",
             "verify-server",
+            "prepare-worker-access",
         ],
     )
     args = parser.parse_args()
@@ -645,6 +685,9 @@ def main():
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.action == "prepare":
             prepare()
+        elif args.action == "prepare-worker-access":
+            configure_worker_role()
+            print(json.dumps({"success": True, "worker_access_prepared": True}))
         elif args.action in ("rehearse", "copy"):
             configure_worker_role()
             copy_database(rehearsal=args.action == "rehearse")
