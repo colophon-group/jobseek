@@ -8,7 +8,8 @@ and its deployment/backup contract remain separate.
 
 The reviewed implementation is `deploy/web-postgresql/`. All production
 operations use `operate-web-postgresql.yml` on exact current main as the owner.
-They require `WEB-POSTGRESQL-` plus the action in uppercase, including its
+Mutating operations retain the existing `production-backup-operations` environment
+approval boundary before obtaining production credentials. They require `WEB-POSTGRESQL-` plus the action in uppercase, including its
 hyphen, as the confirmation. No credentials, host addresses, row contents, or
 provider response bodies belong in logs or commits.
 

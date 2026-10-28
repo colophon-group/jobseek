@@ -390,6 +390,11 @@ exec docker run --rm --name {CONTAINER} --label jobseek.service=web-postgresql \
 
 def copy_database(*, rehearsal: bool):
     cfg = config()
+    revision = Path(__file__).resolve().parents[2].name
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise database.DatabaseError(
+            "operation must run from an immutable revision bundle"
+        )
     source = CONFIG / "source.url"
     if rehearsal:
         name = "jobseek_rehearsal_" + str(int(time.time()))
@@ -420,7 +425,7 @@ def copy_database(*, rehearsal: bool):
             with src.snapshot() as (query, _):
                 workers = query(
                     "SELECT to_json(count(*)) FROM pg_stat_activity "
-                    "WHERE usename='jobseek_narrowed_worker'"
+                    "WHERE usename='jobseek_narrowed_worker' AND state='active'"
                 )
             if workers:
                 raise database.DatabaseError(
@@ -448,7 +453,7 @@ def copy_database(*, rehearsal: bool):
             dst_catalog = database.inventory(query)
         result.update(
             {
-                "revision": cfg["revision"],
+                "revision": revision,
                 "created_unix": int(time.time()),
                 "source_fenced": fenced,
                 "database": name,

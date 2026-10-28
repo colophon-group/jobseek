@@ -26,7 +26,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_SHA: ${{ inputs.revision }}
+      ACTION: ${{ inputs.action }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_SHA: ${{ github.sha }}
+      DISPATCH_REF: ${{ github.ref }}
+      ACTOR: ${{ github.actor }}
+      TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting backup approval
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$DISPATCH_SHA"
+          test "$CONFIRMATION" = "WEB-POSTGRESQL-${ACTION^^}"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+
+  backup-authorization:
+    needs: authorize
+    if: inputs.action != 'verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-backup-operations
+    steps:
+      - name: Preserve the existing protected backup operation approval boundary
+        run: 'true'
+
   operate:
+    needs: [authorize, backup-authorization]
+    if: ${{ always() && needs.authorize.result == 'success' && (needs['backup-authorization'].result == 'success' || needs['backup-authorization'].result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -73,6 +109,13 @@ jobs:
           bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" restore-source
       - name: Recheck main immediately before the protected operation
         run: test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Pause and verify the standalone matching process before source fencing
+        if: inputs.action == 'copy'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: bash deploy/ai-filter-refresh/pause-remote.sh "$EXPECTED_SHA"
       - name: Execute the bounded operation over pinned SSH
         env:
           TARGET_HOST: ${{ contains(fromJSON('["backup-source","restore-source","recover-repository","activate-backup"]'), inputs.action) && secrets.HETZNER_TYPESENSE_HOST || secrets.HETZNER_POSTGRES_HOST }}

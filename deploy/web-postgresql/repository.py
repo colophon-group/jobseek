@@ -81,6 +81,66 @@ def status(name: str, value: dict):
     database.atomic_json(STATUS / name, value)
 
 
+def clean_packets():
+    packets = []
+    for path in ROOT.iterdir():
+        if not re.fullmatch(r"packet-[0-9]+", path.name):
+            continue
+        metadata = path.lstat()
+        if path.is_symlink() or not path.is_dir() or metadata.st_uid != os.getuid():
+            raise database.DatabaseError("unsafe backup staging packet")
+        packets.append(path)
+    for index, path in enumerate(
+        sorted(packets, key=lambda p: p.stat().st_mtime, reverse=True)
+    ):
+        if index >= 2 or time.time() - path.stat().st_mtime > 48 * 3600:
+            shutil.rmtree(path)
+
+
+def reap_restore_resources():
+    # The held deployment/service locks prove no other protected restore is
+    # active. A killed parent can leave only these networkless owned drills.
+    listed = subprocess.run(
+        [
+            "docker",
+            "ps",
+            "--all",
+            "--filter",
+            "label=jobseek.backup.service=web-postgresql-full-restore",
+            "--format",
+            "{{.ID}} {{.Names}}",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if listed.returncode:
+        raise database.DatabaseError("cannot inspect isolated restore resources")
+    resources = []
+    for line in listed.stdout.splitlines():
+        fields = line.split()
+        if (
+            len(fields) != 2
+            or not re.fullmatch(r"[0-9a-f]{12,64}", fields[0])
+            or not re.fullmatch(r"jobseek-web-postgresql-drill-[0-9]+", fields[1])
+        ):
+            raise database.DatabaseError(
+                "unexpected resource uses the restore ownership label"
+            )
+        resources.append(fields[0])
+    for resource in resources:
+        if subprocess.run(
+            ["docker", "rm", "--force", resource], capture_output=True, timeout=60
+        ).returncode:
+            raise database.DatabaseError("orphaned isolated restore cleanup failed")
+    for path in ROOT.iterdir():
+        if re.fullmatch(r"restore-[a-z0-9_]{8}", path.name):
+            metadata = path.lstat()
+            if path.is_symlink() or not path.is_dir() or metadata.st_uid != os.getuid():
+                raise database.DatabaseError("unsafe isolated restore directory")
+            shutil.rmtree(path)
+
+
 def backup(url_file: Path) -> dict:
     previous_path = STATUS / "web-postgresql.json"
     previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
@@ -108,6 +168,8 @@ def backup(url_file: Path) -> dict:
             HOST,
             "--tag",
             TAG,
+            "--group-by",
+            "host,tags",
             "--keep-daily",
             "30",
             "--keep-weekly",
@@ -116,7 +178,18 @@ def backup(url_file: Path) -> dict:
             "12",
         )
         snapshots = json.loads(
-            restic("snapshots", "--host", HOST, "--tag", TAG, "--latest", "1", "--json")
+            restic(
+                "snapshots",
+                "--host",
+                HOST,
+                "--tag",
+                TAG,
+                "--group-by",
+                "host,tags",
+                "--latest",
+                "1",
+                "--json",
+            )
         )
         if len(snapshots) != 1:
             raise database.DatabaseError("new full backup snapshot is ambiguous")
@@ -292,6 +365,10 @@ def activate(url_file: Path):
         raise database.DatabaseError(
             "backup activation requires the Hetzner web database"
         )
+    status(
+        "web-postgresql-complete-runtime.json",
+        {"state": "activating", "packet_version": 4},
+    )
     # The old timer is quiesced before replacing either its credential or unit.
     for argv in [
         ["systemctl", "disable", "--now", "jobseek-web-postgresql-backup.timer"],
@@ -350,6 +427,14 @@ WantedBy=multi-user.target
         check=True,
         capture_output=True,
     )
+    status(
+        "web-postgresql-complete-runtime.json",
+        {
+            "state": "active",
+            "packet_version": 4,
+            "archive_sha256": proof["archive_sha256"],
+        },
+    )
     print(
         json.dumps(
             {
@@ -385,6 +470,9 @@ def main():
         ]:
             lock = stack.enter_context(Path("/run/" + name + ".lock").open("w"))
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        clean_packets()
+        if args.action != "recover-repository":
+            reap_restore_resources()
         if args.action == "backup":
             result = backup(args.url_file)
             details = result["last_success_details"]

@@ -37,6 +37,13 @@ if ! flock -w "$LOCK_TIMEOUT_S" 9; then
   exit 1
 fi
 
+if [[ "$SERVICE" == web-postgresql && \
+  ( -e /var/lib/jobseek-backup/web-postgresql-complete-runtime.json || \
+    -L /var/lib/jobseek-backup/web-postgresql-complete-runtime.json ) ]]; then
+  echo "ERROR: complete web backups own this service; use Operate Hetzner Web PostgreSQL" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=deploy/backups/typesense/credential-rotation.sh
 source "$REPO_ROOT/deploy/backups/typesense/credential-rotation.sh"

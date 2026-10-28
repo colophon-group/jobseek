@@ -81,6 +81,8 @@ class SafetyTests(unittest.TestCase):
             "restore-source",
             "cancel-in-progress: false",
             "WEB-POSTGRESQL-${ACTION^^}",
+            "production-backup-operations",
+            "deploy/ai-filter-refresh/pause-remote.sh",
         ]:
             self.assertIn(boundary, workflow)
         host = (ROOT / "deploy/web-postgresql/host.py").read_text()
@@ -102,6 +104,22 @@ class SafetyTests(unittest.TestCase):
         ):
             repository.recover_repository()
             unlock.assert_called_once_with("unlock", timeout=180)
+
+    def test_failed_backup_packets_cannot_grow_without_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for n in range(4):
+                path = root / f"packet-{n}"
+                path.mkdir()
+                os.utime(path, (1000 + n, 1000 + n))
+            with (
+                patch.object(repository, "ROOT", root),
+                patch.object(repository.time, "time", return_value=1100),
+            ):
+                repository.clean_packets()
+            self.assertEqual(
+                sorted(p.name for p in root.iterdir()), ["packet-2", "packet-3"]
+            )
 
 
 @unittest.skipUnless(
