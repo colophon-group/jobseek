@@ -1,26 +1,33 @@
 # Go and Lightpanda migration delivery plan
 
-## Current handoff and six-detail candidate — October 28, 2026, 20:55 UTC
+## Verified 1110 serving checkpoint and six-detail candidate — October 28, 2026, 21:40 UTC
 
 Runtime **0.13.1110** is deployed from
 `dfdb4d9d094f5133d207bec53a0d0e593a746bf0` after
 [PR #10986](https://github.com/colophon-group/jobseek/pull/10986). The original
 [crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40758947071)
-and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40759073784)+succeeded. Independent checks verify the exact runtime/data images, complete
+and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40759073784)
+succeeded. Independent checks verify the exact runtime/data images, complete
 restored stack and health endpoints. Lightpanda remains
 **1.1.0-nightly.11227+0eee96bf2**; all seven official nightly assets were
 rechecked unchanged at 20:02 UTC. Execution stays strictly Lightpanda and Go HTTP.
 
-**B0 is accepted at epoch 394. Ordinary activation is in progress.** The original
-staging process and independent whole-plan checks validate **8,125 monitors /
-8,131 details**, retaining every prior assignment. The incoming SDK checks
-**2,035,137 scheduled routes**, zero cache mismatches and zero wrong-lane residue.
-Its **14** snapshot gaps have fresh dispositions: **11** inactive/unscheduled and
-**three** eligible for the original activation's first-time reconstruction;
-**zero** are unexplained. The normal 16-partition Typesense repair finished before
-ordinary staging retried. No maintenance, timer, lease or ownership guard was
-bypassed. Independent ordinary acceptance, strict postactivation routes and whole
-queue conservation remain required; the preceding serving proof below is historical.
+**Ordinary Go ownership is active at epoch 394: 8,125 monitors / 8,131 details.**
+The original activation succeeded at 21:11 UTC. Independent readback verifies the
+exact runtime/data images, both protected receipts, SQL owner, full staged Redis
+projection, all ten actors and eight health endpoints. B0 remains separately active.
+All **8,140 enabled boards** remain configured.
+
+The strict postactivation SDK validates **2,037,459 scheduled routes**, zero cache
+mismatches, zero wrong-lane residue and **zero scheduled queue gaps**. Whole queue
+conservation compares **3,435,508** outgoing unique identities with **3,443,518**
+after activation. All **271 removals** are classified: **251** inactive/disabled
+and **20** unscheduled, with **zero unexplained identities**. The full unfiltered
+baseline is preserved. The initial local comparison script refused a previous
+batch's baseline before remote observation; correcting its directory preserved
+all assertions. No manual queue, receipt, lease, budget or SQL repair occurred.
+The normal 16-partition Typesense repair completed before staging retried.
+See the [verified serving evidence](evidence/go-native1110-serving-2026-10-28.json).
 
 The next group changes **six detail configurations** using existing contracts:
 Indeed, Zenline, Alten Sweden, Firehawk, Hotel Loewen and McDonald's Taiwan.

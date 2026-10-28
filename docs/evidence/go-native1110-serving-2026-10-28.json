@@ -1,0 +1,45 @@
+{
+  "schema": "jobseek.go-native-serving-evidence/v1",
+  "observed_at_utc": "2026-10-28T21:35:07.512804+00:00",
+  "runtime_revision": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "data_revision": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "runtime_version": "0.13.1110",
+  "epoch": 394,
+  "monitors": 8125,
+  "details": 8131,
+  "enabled_boards": 8140,
+  "original_activation_returncode": 0,
+  "independent_readback_passed": true,
+  "complete_staged_projection_matched": true,
+  "actor_count": 10,
+  "http_health_endpoint_count": 8,
+  "scheduled_routes": 2037459,
+  "cache_mismatches": 0,
+  "scheduled_unqueued_gaps": 0,
+  "wrong_lane_residue": 0,
+  "queue_conservation": {
+    "before_unique": 3435508,
+    "after_unique": 3443518,
+    "removed": 271,
+    "added": 8281,
+    "SDK_gaps": 0,
+    "classes": {
+      "canonical_inactive_or_disabled": 251,
+      "canonical_unscheduled": 20
+    },
+    "unexplained": 0,
+    "all_dispositions_accounted": true
+  },
+  "private_proof_sha256": {
+    "native1110-after-ordinary-active2.private.json": "c2ccee1723f4a31f66929dd803dadd9b2494308045440e8a69cd2de962ba799d",
+    "admission/native1110-postactivation1-full-sdk1.json": "951bef6e113a00f312a55db025f4da1ef3ee19d3b2b28953d4db757baaa38697",
+    "queue-conservation1110-1/conservation-summary2.json": "4a0cf3ebdf652af2738dee784e2fdcad839d91657e12ec36b102e235d089fc36"
+  },
+  "backend_constraint": "Strictly latest self-hosted Lightpanda and proven Go HTTP/API",
+  "full_migration_complete": false,
+  "remaining_ordinary_contracts": {
+    "monitors": 12,
+    "details": 6
+  },
+  "sustained_freshness_stability_resources_cost_and_final_reversal_window": "required; not established by this handoff"
+}
