@@ -1,0 +1,101 @@
+{
+  "schema": "jobseek.go-migration.qualified-candidate/v1",
+  "date": "2026-10-28",
+  "runtime_version": "0.13.1109",
+  "migration_complete": false,
+  "production_ownership_granted": false,
+  "captured_runtime_and_data_source": "c8583b8f4f739160fbd9ee948ab3e6916e5e8704",
+  "candidate_base": "d0129b45f686ee3f724b024da2918861d1855be2",
+  "backend_constraint": "Self-hosted Lightpanda and verified Go HTTP/API only",
+  "latest_lightpanda": {
+    "version": "1.1.0-nightly.11227+0eee96bf2",
+    "upstream_source": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+    "official_asset_recheck_utc": "2026-10-28T14:13:37Z",
+    "all_seven_assets_unchanged": true
+  },
+  "contracts": {
+    "rendered_RSS_and_API_replay": "Same-origin warmup before real navigation in one disposable target; DOM-content-loaded with original 30-second navigation bound",
+    "physical_fixture": {
+      "engine": "Pinned official macOS ARM64 Lightpanda",
+      "cases_passed": 6,
+      "complete_browser_tasks": 8,
+      "http_and_javascript_cookie_retention": true,
+      "cross_task_cookie_isolation": true,
+      "blocked_and_reserved_warmups_prevent_inventory": true,
+      "warmup_content_excluded_from_inventory": true,
+      "existing_child_and_port_cleanup_proven": true,
+      "both_Linux_architecture_CI_suites_include_fixture": true
+    },
+    "HTTP_only_warmup_metadata": "Rejected",
+    "immutable_ownership_binding": "Includes original warmup URL"
+  },
+  "configurations": {
+    "changed_monitor_configs": [
+      "tesla-careers",
+      "beth-israel-lahey-health-exeter",
+      "indeed-careers"
+    ],
+    "changed_detail_configs": 0,
+    "Tesla_API_match": "Restricted to the configured API host; configured endpoint remains matched",
+    "legacy_browser_launch_and_proxy_settings": "Removed from only the three qualified monitor configurations"
+  },
+  "source_evidence": {
+    "Tesla": {
+      "complete_inventory_jobs": 8237,
+      "truncated": false,
+      "with_title_source_id_and_department": 8237,
+      "with_configured_locations": 8223,
+      "descriptions": "Not configured in listing; existing detail extraction retained",
+      "later_publisher_failures_observed": true,
+      "sustained_reliability_proven": false
+    },
+    "rendered_RSS": {
+      "actual_response": "Non-XML HTML",
+      "unchanged_original_reader": "RssFeedNotXml; zero jobs emitted",
+      "native_reader": "Failure; prior inventory and missing counts retained",
+      "successful_or_authoritative_empty_inventory": false
+    },
+    "Indeed": {
+      "complete_reference_URLs": 4,
+      "original_and_native_URL_sets_match": true,
+      "real_canonical_race_cases_passed": 4
+    }
+  },
+  "real_native_canonical_verification": {
+    "fresh_native_Go_schema_migrations_passed": true,
+    "local_PostgreSQL_and_private_Redis": true,
+    "real_native_rich_preparer": true,
+    "race_detector": true,
+    "cases_passed": 6,
+    "complete_Tesla_canonical_identity_set": 8237,
+    "API_failure_partial_and_reservation_preserve_inventory": true,
+    "RSS_actual_failure_and_incomplete_response_preserve_inventory": true,
+    "canonical_deadline_and_lease_settlement": true,
+    "local_PostgreSQL_stopped_and_socket_removed": true
+  },
+  "runtime_proxy_browser_dispatch": {
+    "reachable_active_monitor_count": 1,
+    "defect": "Proxy monitor branch omitted the installed renderer",
+    "fix": "Retain the installed renderer for every monitor transport",
+    "real_owned_claim_race_regression": "Prior invocation reproduces startup configuration refusal; corrected invocation publishes rendered inventory and settles canonical deadline/lease",
+    "historical_restart_attribution": "Incomplete; do not conflate this reachable defect with proof of the exact historical failed claim"
+  },
+  "prospective_whole_floor": {
+    "enabled_boards": 8140,
+    "retained_monitors": 8119,
+    "retained_details": 8130,
+    "candidate_monitors": 8122,
+    "candidate_details": 8130,
+    "retained_detail_references_validated": 3281,
+    "retained_detail_execution_profiles_unchanged": true,
+    "B0_overlap": 0,
+    "eligibility_failures": 0,
+    "remaining_after_supported_activation": {"monitors": 15, "details": 7}
+  },
+  "required_next": [
+    "Required CI, Crawler Deploy Gate and physical Linux suites on exact candidate head",
+    "Original complete renderer/crawler deployment and supported ownership handoff",
+    "Actual published catalogue/configuration binding, full routes and queue conservation",
+    "Remaining grouped contracts, natural stability/freshness/resources/cost, supported reversal and production Python retirement"
+  ]
+}

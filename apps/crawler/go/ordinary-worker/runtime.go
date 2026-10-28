@@ -465,6 +465,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)
 		}
+		monitorRenderer, _ := renderer.(renderedMonitorClient)
 		if skip && claim.Descriptor().Kind == queue.Scrape {
 			return RunDetail(ctx, authority, claim, skipSSLHTTP2, preparer.Processor, circuits, renderer)
 		}
@@ -474,7 +475,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 				if provider := claim.Descriptor().Config["crawler_type"]; provider == "sitemap" || provider == "workday" {
 					transport = skipSSLHTTP2
 				}
-				return RunGreenhouseClaim(ctx, authority, claim, transport, preparer, circuits)
+				return RunGreenhouseClaim(ctx, authority, claim, transport, preparer, circuits, monitorRenderer)
 			}
 		}
 
@@ -482,12 +483,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 			if claim.Descriptor().Kind == queue.Scrape {
 				return RunDetail(ctx, authority, claim, proxyHTTP, preparer.Processor, circuits, renderer)
 			}
-			return RunGreenhouseClaim(ctx, authority, claim, proxyHTTP, preparer, circuits)
+			return RunGreenhouseClaim(ctx, authority, claim, proxyHTTP, preparer, circuits, monitorRenderer)
 		}
 		if claim.Descriptor().Kind == queue.Scrape {
 			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits, renderer)
 		}
-		monitorRenderer, _ := renderer.(renderedMonitorClient)
 		client := directMonitorHTTP(claim.Descriptor().Config["crawler_type"], httpClient, workdayHTTP)
 		return RunGreenhouseClaim(ctx, authority, claim, client, preparer, circuits, monitorRenderer)
 	}}

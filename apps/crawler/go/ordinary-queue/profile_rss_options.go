@@ -32,6 +32,18 @@ func RSSOptions(config map[string]string) (string, *RSSPagination, map[string]an
 			options[key] = v
 		}
 	}
+	if raw, present := md["warmup_url"]; present {
+		var warmup, endpoint string
+		if json.Unmarshal(raw, &warmup) != nil || warmup == "" || json.Unmarshal(md["feed_url"], &endpoint) != nil || endpoint == "" {
+			return "", nil, nil, ErrUnsupportedProfile
+		}
+		w, err := url.Parse(warmup)
+		f, other := url.Parse(endpoint)
+		if err != nil || other != nil || len(warmup) > 8192 || strings.ContainsAny(warmup, "\x00\r\n\t ") || w.Scheme != "https" || w.Host != f.Host || w.Hostname() == "" || w.User != nil || w.Fragment != "" || w.Opaque != "" || options["render"] != true {
+			return "", nil, nil, ErrUnsupportedProfile
+		}
+		options["warmup_url"] = warmup
+	}
 	if raw, present := md["render"]; present && string(raw) != "true" && string(raw) != "false" {
 		return "", nil, nil, ErrUnsupportedProfile
 	}
