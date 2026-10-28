@@ -1,0 +1,23 @@
+[Unit]
+Description=Jobseek isolated web PostgreSQL 17
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/jobseek-postings-postgresql
+ConditionPathExists=/etc/jobseek-web-postgresql/postgresql.conf
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/bash /usr/local/sbin/jobseek-web-postgresql-launch
+ExecStop=/usr/bin/docker stop --time=60 jobseek-web-postgresql
+ExecReload=/usr/bin/docker kill --signal=HUP jobseek-web-postgresql
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=90
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

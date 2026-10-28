@@ -2265,12 +2265,41 @@ jobs:
           BASE_REF: ${{ needs.changes.outputs.base_ref }}
         run: uv run python ../../scripts/probe-new-boards.py --base-ref "origin/$BASE_REF"
 
+  test-web-postgresql-retirement:
+    name: Test Web PostgreSQL Retirement
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Test complete transfer, source fencing, role grants, and failure paths
+        env:
+          WEB_DB_TEST_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts -p 'test_web_postgresql_retirement.py' -v
+          bash -n deploy/web-postgresql/deploy-remote.sh
+          systemd-analyze verify deploy/web-postgresql/jobseek-web-postgresql.service
+
   required-ci:
     name: Required CI
     if: always()
     needs:
       - dependency-review
       - workflow-security
+      - test-web-postgresql-retirement
       - changes
       - test-go-http-pilot
       - test-go-b0-supervisor
@@ -2338,6 +2367,7 @@ jobs:
           }
 
           requireSuccess("workflow-security");
+          requireSuccess("test-web-postgresql-retirement");
           requireSuccess("changes");
           requireSuccess("data-validation");
           requireSuccess("test-company-reference", companyReference);

@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-28",
+  "scope": "local predeployment PostgreSQL 17 production-data restore rehearsal",
+  "success": true,
+  "table_count": 54,
+  "row_count": 784784,
+  "archive_bytes": 26159417,
+  "archive_sha256": "e92f2529420e200a99b1dffc34f922c4d0a7f1fe773f9613056f9902ab4c8c85",
+  "verified": [
+    "all public and drizzle tables",
+    "per-table count and two 64-bit multiset fingerprints",
+    "sequence values within consistent-backup bounds",
+    "exact restricted-role table and sequence grants",
+    "constraints and indexes restored successfully",
+    "UTC and normalized float serialization"
+  ],
+  "production_cutover": false
+}

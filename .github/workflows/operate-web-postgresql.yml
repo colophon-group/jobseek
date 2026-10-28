@@ -1,0 +1,131 @@
+name: Operate Hetzner Web PostgreSQL
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Exact staged web database operation; copy fences source writes
+        required: true
+        default: verify
+        type: choice
+        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup]
+      revision:
+        description: Exact current main SHA
+        required: true
+        type: string
+      confirmation:
+        description: WEB-POSTGRESQL followed by a hyphen and the uppercase action
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ inputs.action == 'copy' && 'deploy-web-production' || 'jobseek-web-postgresql-production' }}
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_SHA: ${{ inputs.revision }}
+      ACTION: ${{ inputs.action }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_SHA: ${{ github.sha }}
+      DISPATCH_REF: ${{ github.ref }}
+      ACTOR: ${{ github.actor }}
+      TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+    steps:
+      - name: Reject unauthorized dispatches before requesting backup approval
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$DISPATCH_SHA"
+          test "$CONFIRMATION" = "WEB-POSTGRESQL-${ACTION^^}"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+
+  backup-authorization:
+    needs: authorize
+    if: inputs.action != 'verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-backup-operations
+    steps:
+      - name: Preserve the existing protected backup operation approval boundary
+        run: 'true'
+
+  operate:
+    needs: [authorize, backup-authorization]
+    if: ${{ always() && needs.authorize.result == 'success' && (needs['backup-authorization'].result == 'success' || needs['backup-authorization'].result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_SHA: ${{ inputs.revision }}
+      ACTION: ${{ inputs.action }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      DISPATCH_SHA: ${{ github.sha }}
+      DISPATCH_REF: ${{ github.ref }}
+      ACTOR: ${{ github.actor }}
+      TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+    steps:
+      - name: Bind owner authorization to the current main revision and operation
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$DISPATCH_SHA"
+          test "$CONFIRMATION" = "WEB-POSTGRESQL-${ACTION^^}"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Validate reviewed deployment tools
+        run: |
+          set -euo pipefail
+          python3 -m py_compile deploy/web-postgresql/database.py deploy/web-postgresql/host.py deploy/web-postgresql/repository.py
+          bash -n deploy/web-postgresql/deploy-remote.sh
+          python3 -m unittest discover -s scripts -p 'test_web_postgresql_retirement.py'
+      - name: Require a successful full source backup before freezing writes
+        if: inputs.action == 'copy'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          # A fresh isolated restore is a hard precondition, not a checklist.
+          bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" restore-source
+      - name: Recheck main immediately before the protected operation
+        run: test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Pause and verify the standalone matching process before source fencing
+        if: inputs.action == 'copy'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: bash deploy/ai-filter-refresh/pause-remote.sh "$EXPECTED_SHA"
+      - name: Execute the bounded operation over pinned SSH
+        env:
+          TARGET_HOST: ${{ contains(fromJSON('["backup-source","restore-source","recover-repository","activate-backup"]'), inputs.action) && secrets.HETZNER_TYPESENSE_HOST || secrets.HETZNER_POSTGRES_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+          DATABASE_URL_UNPOOLED: ${{ contains(fromJSON('["prepare","activate-backup"]'), inputs.action) && secrets.DATABASE_URL_UNPOOLED || '' }}
+          WEB_POSTGRES_OWNER_PASSWORD: ${{ inputs.action == 'prepare' && secrets.WEB_POSTGRES_OWNER_PASSWORD || '' }}
+          WEB_POSTGRES_AUDITOR_PASSWORD: ${{ inputs.action == 'prepare' && secrets.WEB_POSTGRES_AUDITOR_PASSWORD || '' }}
+          NARROWED_WORKER_DATABASE_PASSWORD: ${{ inputs.action == 'prepare' && secrets.NARROWED_WORKER_DATABASE_PASSWORD || '' }}
+          CLOUDFLARE_DNS_API_TOKEN: ${{ inputs.action == 'prepare' && secrets.CLOUDFLARE_DNS_API_TOKEN || '' }}
+          CRAWLER_PRIVATE_IPV4: ${{ secrets.CRAWLER_PRIVATE_IPV4 }}
+          CRAWLER_PUBLIC_IPV4: ${{ secrets.HETZNER_HOST }}
+        run: bash deploy/web-postgresql/deploy-remote.sh "$EXPECTED_SHA" "$ACTION"
