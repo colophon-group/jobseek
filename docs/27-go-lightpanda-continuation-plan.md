@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery and next batch — October 27, 2026
+## Current delivery and next batch — October 28, 2026
 
 The full migration remains **active and incomplete**. Keep every enabled board,
 canonical content and publisher policy. Replacement execution must use **the
@@ -8,7 +8,49 @@ latest self-hosted Lightpanda and proven Go HTTP/API only**, by explicit operato
 decision. Do not add a Chromium or Playwright fallback. Ship several compatible
 contracts per batch; retain useful isolated offline Python tooling.
 
-**Production runtime 0.13.1105 is active at epoch 386.**
+**Runtime 0.13.1106 is deployed; ordinary ownership was safely recovered.**
+[PR #10943](https://github.com/colophon-group/jobseek/pull/10943) passed Required CI
+and Crawler Deploy Gate. The [original full deployment](https://github.com/colophon-group/jobseek/actions/runs/40608725673)
+promoted runtime/data source `3c6f8c10a642063c884d92983bb604b7e98e7b6e`.
+The exact staged plan passed configuration binding for **8,115 monitors /
+8,128 details**, retaining every previous assignment. Its original activation
+then refused Redis projection publication with `phase=projection reason=authority`.
+SQL never activated the ordinary owner, and its Redis projection was absent.
+The original B0 namespace audit passed. The unchanged `recover-pending` workflow
+completed and independent readback confirms all nine expected actors restored,
+B0 active at epoch **388**, and no ordinary ownership receipt or active SQL plan.
+Production is serving through the restored legacy lanes plus native B0 while the
+publication rejection is investigated. Do not report the staged floor as current
+ordinary Go coverage. The 500 missing first-time schedules also remain pending
+strict post-activation proof. No manual queue, receipt, lease or SQL repair is
+permitted. See the [cutover and recovery checkpoint](evidence/go-native1106-cutover-recovery-2026-10-28.json).
+
+**Continue the current goal in shared batches.** Diagnose the rejected projection
+with read-only evidence or isolated replay before another original cutover.
+The newest upstream nightly is now **1.1.0-nightly.11227+0eee96bf2**, source
+`0eee96bf27e2d1dccee59cfcba1a99028a43534e`. All three official asset digests and
+both immutable OCI platform binaries match. Its `serve` flags remain compatible;
+version probing uses `lightpanda version`. Local physical and Linux architecture
+qualification must pass before the original renderer promotion workflow. The
+currently deployed renderer still uses nightly 11169 until that promotion. The
+full local run passes 175 tests; the two restricted-proxy failures also reproduce
+with the old pin because that child is Linux-only. Retain those architecture
+limits and require both Linux physical suites.
+
+The next source work includes Dnata's proved direct DOM inventory and Persistent
+Systems' existing HTTP API contract. The latest-engine DOM check retains all 76
+Dnata URLs. Eight local PostgreSQL/Redis cases under the race detector preserve
+its inventory and both monitors' existing failure/policy/deadline behavior. See
+the [combined candidate evidence](evidence/go-native11227-dom-http-candidate-2026-10-28.json). Preserve Persistent's actual HTTP 503 failure
+and retry behavior explicitly; synthetic schema checks are not live successful
+inventory evidence. Bunq already belongs to the native B0 `cdom` cohort with
+Algorized and Browser Use. Its additional field-parity checks do not authorize an
+overlapping ordinary owner. Reconcile the **20 remaining ordinary monitors /
+7 details** using that actual B0 boundary, including Indeed, and retain all enabled
+boards. Finish sustained freshness/resource/cost evidence and supported reversal
+before removing production Python, Playwright and Chromium.
+
+**Earlier verified ordinary checkpoint: runtime 0.13.1105, epoch 386.**
 [PR #10942](https://github.com/colophon-group/jobseek/pull/10942) passed Required CI
 and Crawler Deploy Gate at `e52a8d0909b38fe1ad7fde5a28bf60a72f2c8079`.
 The [original full workflow](https://github.com/colophon-group/jobseek/actions/runs/40588968005)

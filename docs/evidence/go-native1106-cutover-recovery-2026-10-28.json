@@ -1,0 +1,56 @@
+{
+  "schema": "jobseek.go-lightpanda.cutover-recovery/v1",
+  "observed_at_utc": "2026-10-28T09:37:05.176467+00:00",
+  "runtime_version": "0.13.1106",
+  "source_revision": "3c6f8c10a642063c884d92983bb604b7e98e7b6e",
+  "data_revision": "3c6f8c10a642063c884d92983bb604b7e98e7b6e",
+  "deployment_workflow": 40608725673,
+  "deployment_and_promotion": "success",
+  "B0_epoch": 388,
+  "ordinary_staged": {
+    "monitors": 8115,
+    "details": 8128,
+    "all_current_configuration_bindings_verified": true,
+    "retained_monitors": 8112,
+    "retained_details": 8128
+  },
+  "ordinary_activation": {
+    "original_wrapper_returncode": 1,
+    "rejection_phase": "projection",
+    "rejection_reason": "authority",
+    "active_SQL_plans_after_failure": 0,
+    "Redis_owner_projection_present_after_failure": false,
+    "pending_identity_retained": true,
+    "writers_contained": true,
+    "root_cause": "under investigation; no speculative repair"
+  },
+  "original_B0_audit": "accepted/audit_ok",
+  "recovery": {
+    "method": "unchanged ordinary-go-cutover.sh recover-pending",
+    "returncode": 0,
+    "independent_readback_passed": true,
+    "restored_running_actors": 9,
+    "ordinary_active_SQL_plans": 0,
+    "ordinary_receipt_present": false,
+    "B0_active_same_epoch": true,
+    "serving_authority": "Restored legacy lanes and existing native B0; no ordinary Go serving grant"
+  },
+  "first_time_reconstruction": {
+    "identities": 500,
+    "original_cold_reconstruction_contract_only": true,
+    "strict_postactivation_proof_complete": false
+  },
+  "constraints": [
+    "Lightpanda and Go HTTP/API replacements only",
+    "Preserve every enabled board and canonical content",
+    "No manual production queue, receipt, SQL, lease or budget repair",
+    "Use original full supported publication, cutover and recovery workflows"
+  ],
+  "next": [
+    "Diagnose exact projection refusal read-only or in isolated replay",
+    "Qualify and promote latest official11227 renderer through existing architecture CI and workflow",
+    "Batch supported remaining contracts; separate actual publisher errors from successful inventory evidence",
+    "Require whole staged/current routes, strict postactivation and queue conservation before coverage claims",
+    "Complete freshness, matched resources/cost and supported reversal before retiring production Python"
+  ]
+}
