@@ -125,9 +125,7 @@ def _sshd_state(output: str) -> dict[str, Any]:
         key, separator, value = line.partition(" ")
         if separator:
             values.setdefault(key, []).append(value.strip())
-    allow_users = {
-        user for directive in values.get("allowusers", []) for user in directive.split()
-    }
+    allow_users = {user for directive in values.get("allowusers", []) for user in directive.split()}
     exact_values = {
         "authenticationmethods": "publickey",
         "passwordauthentication": "no",
@@ -172,9 +170,7 @@ def _ufw_state(
     lines = [line.strip().lower() for line in output.splitlines()]
     active = "status: active" in lines
     defaults = any(
-        line.startswith("default:")
-        and "deny (incoming)" in line
-        and "allow (outgoing)" in line
+        line.startswith("default:") and "deny (incoming)" in line and "allow (outgoing)" in line
         for line in lines
     )
     commands = [
@@ -187,9 +183,7 @@ def _ufw_state(
     expected_commands = 1
     if role == "postgresql":
         service_allowed = any(
-            command.startswith(
-                f"ufw allow from {crawler_ip} to any port 5432 proto tcp"
-            )
+            command.startswith(f"ufw allow from {crawler_ip} to any port 5432 proto tcp")
             for command in commands
         )
         expected_commands = 2
@@ -200,9 +194,7 @@ def _ufw_state(
             expected_commands += 1
     elif role == "typesense":
         service_allowed = any(
-            command.startswith(
-                f"ufw allow from {crawler_ip} to any port 8108 proto tcp"
-            )
+            command.startswith(f"ufw allow from {crawler_ip} to any port 8108 proto tcp")
             for command in commands
         )
         expected_commands = 2
@@ -213,22 +205,14 @@ def _ufw_state(
         "ssh_allowed": ssh_allowed,
         "required_private_service_allowed": service_allowed,
         "exact_managed_rules": exact_rules,
-        "compliant": active
-        and defaults
-        and ssh_allowed
-        and service_allowed
-        and exact_rules,
+        "compliant": active and defaults and ssh_allowed and service_allowed and exact_rules,
     }
 
 
 def _postgres_container() -> str | None:
     # The separate web instance must never be mistaken for crawler truth.
     result = _run(["docker", "inspect", "--format", "{{.State.Running}}", "postgres"])
-    return (
-        "postgres"
-        if result.returncode == 0 and result.stdout.strip() == "true"
-        else None
-    )
+    return "postgres" if result.returncode == 0 and result.stdout.strip() == "true" else None
 
 
 def _web_postgresql_configured() -> bool:
@@ -286,9 +270,7 @@ def _web_postgresql_state() -> dict[str, Any]:
         with socket.create_connection(("127.0.0.1", 5433), timeout=3) as connection:
             connection.sendall(struct.pack("!II", 8, 80877103))
             if connection.recv(1) == b"S":
-                with context.wrap_socket(
-                    connection, server_hostname="web-postgres.jseek.co"
-                ):
+                with context.wrap_socket(connection, server_hostname="web-postgres.jseek.co"):
                     tls = True
     except (OSError, ssl.SSLError):
         pass
@@ -300,21 +282,15 @@ def _web_postgresql_state() -> dict[str, Any]:
     }
 
 
-def _postgres_state(
-    container: str, crawler_ip: ipaddress.IPv4Address
-) -> dict[str, Any]:
-    shared_memory = _run(
-        ["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container]
-    )
+def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[str, Any]:
+    shared_memory = _run(["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container])
     log_config_result = _run(
         ["docker", "inspect", "--format", "{{json .HostConfig.LogConfig}}", container]
     )
     shared_memory_mount = _run(["docker", "exec", container, "df", "-B1", "/dev/shm"])
     try:
         shared_memory_bytes = int(shared_memory.stdout.strip())
-        shared_memory_capacity_bytes = int(
-            shared_memory_mount.stdout.splitlines()[-1].split()[1]
-        )
+        shared_memory_capacity_bytes = int(shared_memory_mount.stdout.splitlines()[-1].split()[1])
     except (IndexError, ValueError):
         shared_memory_bytes = 0
         shared_memory_capacity_bytes = 0
@@ -365,9 +341,7 @@ def _postgres_state(
     parsed_settings = dict(
         line.split("|", 1) for line in settings.stdout.splitlines() if "|" in line
     )
-    listeners = {
-        item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")
-    }
+    listeners = {item.strip() for item in parsed_settings.get("listen_addresses", "").split(",")}
     private_listeners = set()
     for item in listeners - {"127.0.0.1"}:
         try:
@@ -376,9 +350,7 @@ def _postgres_state(
             continue
         if isinstance(address, ipaddress.IPv4Address) and address.is_private:
             private_listeners.add(address)
-    listen_match = (
-        "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
-    )
+    listen_match = "127.0.0.1" in listeners and len(listeners) == 2 and len(private_listeners) == 1
     config_match = False
     try:
         config_value = POSTGRES_NETWORK_CONFIG.read_text(encoding="utf-8").strip()
@@ -474,9 +446,7 @@ def _postgres_state(
     }
 
 
-def audit(
-    role: str, crawler_private_ip: str, *, host_only: bool = False
-) -> dict[str, Any]:
+def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dict[str, Any]:
     crawler_ip = _private_address(crawler_private_ip)
     web = role == "postgresql" and _web_postgresql_configured()
     ufw_status = _run(["ufw", "status", "verbose"])
@@ -546,9 +516,7 @@ def audit(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--role", required=True, choices=("crawler", "postgresql", "typesense")
-    )
+    parser.add_argument("--role", required=True, choices=("crawler", "postgresql", "typesense"))
     parser.add_argument("--crawler-private-ip", required=True)
     parser.add_argument(
         "--host-only",
