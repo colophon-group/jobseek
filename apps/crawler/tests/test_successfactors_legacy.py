@@ -242,6 +242,19 @@ class TestIdentity:
 
 
 class TestSafeDwrParser:
+    def test_empty_callback_can_include_literal_information(self):
+        response = _initial_response(0).replace(
+            "{payload:s0}", '{payload:s0,info:"No jobs match your selections"}'
+        )
+        root = legacy._parse_dwr(response, batch=0, initial=True)
+        assert root["results"]["postingCount"] == 0
+
+    @pytest.mark.parametrize("info", ["alert(1)", '"text",extra:s0', '"bad\\x00escape"'])
+    def test_information_does_not_allow_executable_or_extra_callback_values(self, info):
+        response = _initial_response(0).replace("{payload:s0}", f"{{payload:s0,info:{info}}}")
+        with pytest.raises(legacy.SuccessFactorsLegacyProtocolError):
+            legacy._parse_dwr(response, batch=0, initial=True)
+
     def test_parses_nested_assignments_without_execution(self):
         root = legacy._parse_dwr(_initial_response(2), batch=0, initial=True)
         assert root["results"]["postingCount"] == 2
@@ -276,6 +289,56 @@ class TestSafeDwrParser:
 
 
 class TestDiscovery:
+    async def test_object_locations_and_listing_date_locale(self):
+        def handler(request: httpx.Request):
+            if request.method == "GET":
+                return _bootstrap_response()
+            if request.url.path.endswith("getInitialJobSearchData.dwr"):
+                response = _initial_response(1)
+            else:
+                response = _search_response(1, 1, [1])
+            return httpx.Response(
+                200,
+                text=response.replace("filter2", "location_obj")
+                .replace(_quote("Zurich - CH"), _quote('["Work Location",1,"Cranbury, NJ"]'))
+                .replace(_quote("03/08/2026"), _quote("10/28/2026"))
+                .replace("rcm_site_locale=en_GB", "rcm_site_locale=en_US"),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await legacy.discover_legacy(_board(), client)
+        assert result.jobs_by_url is not None
+        job = next(iter(result.jobs_by_url.values()))
+        assert job.locations == ["Cranbury, NJ"]
+        assert job.metadata is not None
+        assert job.metadata["fields"]["Duty Station"] == "Cranbury, NJ"
+        assert job.metadata["default_locale"] == "en_GB"
+        assert job.date_posted == "2026-10-28"
+
+    @pytest.mark.parametrize(
+        "display",
+        [
+            "[broken",
+            '["Work Location",1]',
+            '["Work Location",true,"Cranbury"]',
+            '["Work Location",1,""]',
+            '["Work Location",1,{"city":"Cranbury"}]',
+        ],
+    )
+    def test_malformed_object_location_fails_closed(self, display):
+        with pytest.raises(legacy.SuccessFactorsLegacyProtocolError, match="location display"):
+            list(legacy._field_values({"fieldId": "location_obj", "shortVal": display}))
+
+    def test_plain_location_and_unrelated_json_are_preserved(self):
+        assert list(
+            legacy._field_values(
+                [
+                    {"fieldId": "location_obj", "shortVal": "Dundalk, IRL"},
+                    {"fieldId": "filter2", "shortVal": '["Department",1,"Quality"]'},
+                ]
+            )
+        ) == [("location_obj", "Dundalk, IRL"), ("filter2", '["Department",1,"Quality"]')]
+
     async def test_complete_two_page_stream_is_hybrid_and_enrichment_safe(self):
         requests: list[httpx.Request] = []
 
@@ -342,11 +405,17 @@ class TestDiscovery:
         assert result.hybrid is True
         assert len(result.urls) == 1
 
-    async def test_authoritative_empty_board_yields_success_batch(self):
+    @pytest.mark.parametrize("with_info", [False, True])
+    async def test_authoritative_empty_board_yields_success_batch(self, with_info):
         def handler(request: httpx.Request):
             if request.method == "GET":
                 return _bootstrap_response()
-            return httpx.Response(200, text=_initial_response(0))
+            response = _initial_response(0)
+            if with_info:
+                response = response.replace(
+                    "{payload:s0}", '{payload:s0,info:"No jobs match your selections"}'
+                )
+            return httpx.Response(200, text=response)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             batches = [batch async for batch in discover_stream(_board(), client)]

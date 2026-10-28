@@ -58,14 +58,15 @@ _ASSIGN_RE = re.compile(
 )
 _CALLBACK_RE = re.compile(
     r"dwr\.engine\._remoteHandleCallback\('(?P<batch>\d+)',\s*'0',\s*"
-    r"(?P<root>\{(?:payload:s\d+|filters:s\d+,results:s\d+)\})\s*\);"
+    r'(?P<root>\{(?:payload:s\d+(?:,info:"(?:\\.|[^"\\])*")?'
+    r"|filters:s\d+,results:s\d+)\})\s*\);"
 )
 _PRELUDE_RE = re.compile(
     r"\A\s*(?:throw\s+'allowScriptTagRemoting is false\.';\s*//#DWR-INSERT\s*)?"
     r"//#DWR-REPLY\s*"
 )
 _WHITESPACE_RE = re.compile(r"\s*")
-_INITIAL_ROOT_RE = re.compile(r"\{payload:(s\d+)\}")
+_INITIAL_ROOT_RE = re.compile(r'\{payload:(s\d+)(?:,info:("(?:\\.|[^"\\])*"))?\}')
 _SEARCH_ROOT_RE = re.compile(r"\{filters:(s\d+),results:(s\d+)\}")
 _GROUPED_COUNT_RE = re.compile(r"[1-9]\d{0,2}(?:,\d{3})+")
 _LOCATION_LABEL_RE = re.compile(
@@ -407,6 +408,8 @@ def _parse_dwr(response: str, *, batch: int, initial: bool) -> dict:
     if root_match is None:
         raise SuccessFactorsLegacyProtocolError("DWR callback had an unexpected result shape")
     if initial:
+        if root_match.group(2) is not None:
+            _decode_js_string(root_match.group(2))
         root = objects.get(root_match.group(1))
         if not isinstance(root, dict):
             raise SuccessFactorsLegacyProtocolError("DWR initial payload was not an object")
@@ -504,6 +507,23 @@ def _field_values(value: object, *, depth: int = 0) -> Iterable[tuple[str, str]]
     short_value = value.get("shortVal")
     text = long_value if isinstance(long_value, str) and long_value.strip() else short_value
     if isinstance(field_id, str) and isinstance(text, str) and text.strip():
+        # Object-based locations carry a JSON display tuple, not a place name.
+        # Decode only the provider's exact shape; never evaluate source text.
+        if field_id == "location_obj" and text.lstrip().startswith("["):
+            try:
+                display = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise SuccessFactorsLegacyProtocolError("invalid location display tuple") from exc
+            if (
+                not isinstance(display, list)
+                or len(display) != 3
+                or not isinstance(display[0], str)
+                or type(display[1]) is not int
+                or not isinstance(display[2], str)
+                or not display[2].strip()
+            ):
+                raise SuccessFactorsLegacyProtocolError("invalid location display tuple")
+            text = display[2]
         yield field_id, " ".join(text.split())
 
 
@@ -627,7 +647,9 @@ def _parse_jobs(
                 url=url,
                 title=title,
                 locations=locations or None,
-                date_posted=_parse_posting_date(posting_date, locale),
+                # The listing's locale formats dates; defaultLocale describes
+                # the posting's content language, which can differ.
+                date_posted=_parse_posting_date(posting_date, prefix_locale or locale),
                 language=locale[:2].casefold() if locale else None,
                 metadata=metadata,
             )
