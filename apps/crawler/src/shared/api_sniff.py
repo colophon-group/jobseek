@@ -889,7 +889,7 @@ def _set_multipart_param(body_str: str, param: str, value: object) -> str:
     replacement = (
         boundary + '\r\nContent-Disposition: form-data; name="' + param + '"\r\n\r\n' + str(value)
     )
-    new_body, count = pattern.subn(replacement, body_str, count=1)
+    new_body, count = pattern.subn(lambda _match: replacement, body_str, count=1)
     return new_body if count else body_str
 
 
@@ -918,28 +918,49 @@ def _is_multipart(body_str: str) -> bool:
     return body_str.startswith("----") if body_str else False
 
 
+def _set_json_body_param(body_str: str, param: str, value: object) -> str:
+    body = json.loads(body_str)
+    obj = body
+    parts = param.split(".")
+    for part in parts[:-1]:
+        obj = obj[part]
+    obj[parts[-1]] = value
+    return json.dumps(body)
+
+
 def set_body_param(body_str: str, param: str, value: object) -> str:
-    """Set a single field in a JSON, multipart, or URL-encoded POST body."""
+    """Set a field, including a dotted JSON path inside a form field."""
+    field, separator, nested_path = param.partition(".")
     if _is_multipart(body_str):
+        if separator and _get_multipart_param(body_str, param) is None:
+            current = _get_multipart_param(body_str, field)
+            if current is not None:
+                updated = _set_json_body_param(current, nested_path, value)
+                return _set_multipart_param(body_str, field, updated)
         return _set_multipart_param(body_str, param, value)
     try:
-        body = json.loads(body_str)
+        json.loads(body_str)
     except (json.JSONDecodeError, TypeError):
         try:
             fields = parse_qsl(body_str, keep_blank_values=True, max_num_fields=1_024)
         except ValueError:
             return body_str
-        if not fields or param not in {key for key, _value in fields}:
+        keys = {key for key, _value in fields}
+        if param not in keys and separator and field in keys:
+            return urlencode(
+                [
+                    (key, _set_json_body_param(current, nested_path, value))
+                    if key == field
+                    else (key, current)
+                    for key, current in fields
+                ]
+            )
+        if not fields or param not in keys:
             return body_str
         return urlencode(
             [(key, str(value) if key == param else current) for key, current in fields]
         )
-    parts = param.split(".")
-    obj = body
-    for part in parts[:-1]:
-        obj = obj[part]
-    obj[parts[-1]] = value
-    return json.dumps(body)
+    return _set_json_body_param(body_str, param, value)
 
 
 def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] | None:
