@@ -249,11 +249,14 @@ def _web_postgresql_state() -> dict[str, Any]:
         AND current_setting('password_encryption')='scram-sha-256'
         AND current_setting('ssl_min_protocol_version') IN ('TLSv1.2','TLSv1.3')
         AND NOT EXISTS(SELECT FROM pg_hba_file_rules WHERE error IS NOT NULL OR NOT (
-          auth_method='reject' OR (type='local' AND user_name=ARRAY['postgres'] AND auth_method='trust') OR
+          auth_method='reject' OR
+          (type='local' AND user_name=ARRAY['postgres'] AND auth_method='trust') OR
           (type='hostssl' AND auth_method='scram-sha-256' AND user_name <@
             ARRAY['jobseek_web_owner','jobseek_migration_auditor','jobseek_narrowed_worker']::text[])))
-        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl' AND user_name=ARRAY['jobseek_web_owner'])
-        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl' AND user_name=ARRAY['jobseek_migration_auditor'])"""
+        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl'
+          AND user_name=ARRAY['jobseek_web_owner'])
+        AND EXISTS(SELECT FROM pg_hba_file_rules WHERE type='hostssl'
+          AND user_name=ARRAY['jobseek_migration_auditor'])"""
     result = _run(
         [
             "docker",
