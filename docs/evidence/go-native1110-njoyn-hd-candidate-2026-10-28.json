@@ -1,0 +1,86 @@
+{
+  "schema": "jobseek.go-lightpanda-candidate/v1",
+  "observed_at_utc": "2026-10-28T19:00:11.236894+00:00",
+  "runtime_version": "0.13.1110",
+  "base_source": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+  "production_ownership_granted": false,
+  "backend_constraint": "latest Lightpanda and proven Go HTTP/API only",
+  "changes": [
+    "Njoyn browser-monitor scoped default 20-minute task and inventory deadline",
+    "Njoyn direct Lightpanda configuration, preserving two-pass inventory and four-second pacing",
+    "HD direct Lightpanda DOM configuration using existing header/range options",
+    "Admit two unchanged Swiss Confederation HTTP monitors with current original/native explicit-failure parity"
+  ],
+  "Njoyn": {
+    "complete_inventory_sizes": [
+      3132,
+      3130
+    ],
+    "first_complete_duration_seconds": 1060.41,
+    "safe_failures_also_observed": true,
+    "sustained_reliability_proven": false,
+    "canonical_cases": [
+      "complete exact 3132 URL set",
+      "failed",
+      "reserved",
+      "partial"
+    ],
+    "owned_claim_heartbeat_canonical_regression_passed": true,
+    "other_provider_limits_and_operator_caps_preserved": true
+  },
+  "HD": {
+    "actual_role_samples": 2,
+    "raw_original_native_all_fields_equal": true,
+    "description_characters": [
+      4474,
+      4561
+    ],
+    "raw_locations_per_sample": [
+      1,
+      1
+    ],
+    "canonical_cases_passed": 5,
+    "canonical_policy_failure_content_deadline_lease_checks_passed": true,
+    "parser_extension": false
+  },
+  "prospective_floor": {
+    "enabled_boards": 8140,
+    "monitors": 8125,
+    "details": 8131,
+    "retained_monitors": 8122,
+    "retained_details": 8130,
+    "reference_URLs": 3283,
+    "eligibility_failures": 0,
+    "conditional_remaining_monitors": 12,
+    "conditional_remaining_details": 6
+  },
+  "physical_engine": "1.1.0-nightly.11227+0eee96bf2",
+  "upstream_revision": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+  "full_migration_complete": false,
+  "remaining_gates": [
+    "actual published source/config bindings and whole-route cache/queue proof",
+    "original supported deployment/ownership activation and conservation",
+    "sustained natural work/freshness",
+    "comparable whole-service resources/cost",
+    "maintenance and CSV/deployment consumers",
+    "supported reversal and rollback window",
+    "retire production Python/Playwright/Chromium assets"
+  ],
+  "Swiss_HTTP": {
+    "sources": 2,
+    "actual_native_and_original_failure_parity": true,
+    "exact_native_responses_consumed_by_original": 6,
+    "canonical_cases_passed": 6,
+    "inventory_or_empty_success_claimed": false,
+    "configurations_changed": false,
+    "inherited_failure_semantics_preserved": true
+  },
+  "current_serving_checkpoint": "go-native1109-serving-2026-10-28.json",
+  "local_existing_HD_config_contract_tests": 4,
+  "CI_obsolete_HD_proxy_assertion_fixed": true,
+  "registry_and_census_race_tests": "passed after covering Njoyn direct monitor and its independently rendered JSON-LD detail in the existing registry fixture",
+  "CI_existing_fixture_corrections": [
+    "HD direct rendered detail configuration/range assertion",
+    "Njoyn registry fixture rendered-detail flag and ownership case after removing its proxy early-exit"
+  ]
+}

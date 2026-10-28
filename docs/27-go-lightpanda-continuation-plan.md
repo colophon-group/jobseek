@@ -1,6 +1,91 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery and next batch — October 28, 2026
+## Current handoff and grouped candidate — October 28, 2026, 18:22 UTC
+
+Runtime **0.13.1109** is deployed from
+`0766fc017af4b5981c4ffbd1f9dc6eef12745299` after
+[PR #10957](https://github.com/colophon-group/jobseek/pull/10957). The original
+[crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40719928348)
+and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40720025782)
+succeeded. The renderer runs **1.1.0-nightly.11227+0eee96bf2**; the official
+nightly's seven assets remain unchanged at 17:45 UTC. Execution remains strictly
+Lightpanda and proven Go HTTP/API, by operator instruction.
+
+**Ordinary Go ownership is active at epoch 392: 8,122 monitors / 8,130 details.**
+The original activation succeeded at 18:06 UTC. Independent readback verifies the
+exact runtime/data images, both protected receipts, SQL owner, full staged Redis
+projection, all ten actors and eight health endpoints. B0 `cdom` stays separate.
+All 8,140 enabled boards remain configured.
+
+The strict postactivation SDK validates **2,030,799 scheduled routes**, zero cache
+mismatches and zero wrong-lane residue. Its **five** snapshot gaps are all
+accounted for by fresh canonical/queue dispositions. Whole queue conservation
+starts with **3,425,351 unique identities** and finishes with **3,435,369**.
+All **382 removals plus five snapshot gaps** are classified: **348**
+inactive/disabled, **37** unscheduled and **two** currently queued in the expected
+lane. There are **zero unexplained identities**. No manual queue, receipt, lease,
+budget or SQL repair occurred. See the [verified serving checkpoint](evidence/go-native1109-serving-2026-10-28.json).
+
+The first activation refused `projection / authority / adoption`; original
+`recover-pending` restored the full legacy/B0 stack before the second original
+attempt. Its exact historical cause remains unattributed. Successful retry does
+not establish a cause. Full migration, sustained freshness/stability, whole-service
+resources/cost and final supported reversal/window remain incomplete. Earlier
+serving proofs below are historical.
+
+**Grouped candidate 0.13.1110 adds Njoyn, two Swiss HTTP monitors and HD details.**
+Njoyn's complete two-pass, four-second-paced traversal needs more than ten minutes:
+a complete latest-Lightpanda capture returned **3,132 URLs in 1,060 seconds**;
+a subsequent candidate capture returned **3,130 URLs**. Intervening sessions failed
+safely, so sustained reliability remains unproved. Give only Njoyn browser-monitor
+claims and their inventory protocol a default **20-minute** bound. Explicit operator
+task caps, heartbeat, cancellation and the global stall watchdog remain effective;
+other claims retain their existing bound. The private migrated PostgreSQL/Redis
+suite verifies the entire captured URL set and complete/failure/partial/reserved
+settlement. A committed real owned-claim regression verifies heartbeats across the
+ordinary task deadline and canonical publication.
+
+HD needs existing DOM options, without a parser extension: include header content
+for location and start the description after the share control through the end.
+Two actual latest-Lightpanda role pages match the unchanged original Python and
+native Go parsers across every raw field, including **4,474 / 4,561-character**
+descriptions and one location each. Five real canonical cases verify both complete
+pages plus failed, incomplete and publisher-reserved documents, source identity,
+pending description upload, deadlines and cleared leases. Other probed blocked,
+gone, empty-body and dormant sources remain unqualified.
+
+The two unchanged Swiss Confederation HTTP monitor configurations already fit
+existing native contracts. Current direct Go and original Python reads both fail
+on the same three redirect responses per source. Offline unchanged Python replay
+consumes those exact six captured responses and reproduces both failures. Six
+real canonical cases verify inherited failure, transport failure and publisher
+reservation for each source: retained visibility/missing counts, no new postings,
+correct failures/policy, deadlines and leases. These are inherited-failure
+admissions, without a successful or empty inventory claim. Tesco remains excluded:
+the original treated a blocked response as empty while native Go safely rejected
+non-JSON inventory; its behavior is not yet qualified.
+
+A fresh authoritative read at 18:55 UTC sharpens the next batch: IHG and NTT
+still succeed naturally, retaining **400 / 405 active postings** respectively;
+keep their working legacy execution until complete replacement inventories pass.
+Agricultural Bank, Rothschild and Tesco also have recent successful checks but
+currently zero active postings. Several other sources have long-running failures;
+qualify their current failure/dormancy and retained-content behavior explicitly.
+Do not infer current success from undated `recent_discovered_counts` metadata.
+
+The prospective cohort retains every prior assignment and all **3,281** prior
+reference URLs, adds two actual HD references and validates **8,125 monitors /
+8,131 details**, with zero eligibility failures. After supported deployment and
+activation, the conditional remainder is **12 monitors / 6 details**. This candidate
+confers no production ownership. See the [candidate evidence](evidence/go-native1110-njoyn-hd-candidate-2026-10-28.json).
+
+Continue porting compatible types together, then prove natural freshness/stability,
+whole-service resources/cost, maintenance and later CSV publication consumers,
+and supported cold reversal. Retire production Python, Playwright and Chromium
+only after replacement coverage and the rollback window; useful isolated offline
+Python tools may remain. The full migration is active and incomplete.
+
+## Earlier delivery and next batch — October 28, 2026
 
 The full migration remains **active and incomplete**. Keep every enabled board,
 canonical content and publisher policy. Replacement execution must use **the

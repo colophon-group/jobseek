@@ -81,3 +81,25 @@ func TestDetailOperationCannotPublishInventoryOrPartialData(t *testing.T) {
 		t.Fatal("mixed inventory/detail accepted")
 	}
 }
+
+func TestLongInventoryBudgetIsConfinedToNjoyn(t *testing.T) {
+	r := Request{Protocol: Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), BoardURL: "https://example.test/listing", Metadata: json.RawMessage(`{}`), TimeoutMS: MaxDurationMS + 1}
+	for _, provider := range []string{"", "darwinbox", "bytedance", "brassring", "njoyn"} {
+		r.Provider = provider
+		if r.Valid() != (provider == "njoyn") {
+			t.Fatal("provider deadline boundary changed", provider)
+		}
+	}
+	r.Provider, r.TimeoutMS = "njoyn", NjoynMaxDurationMS
+	if !r.Valid() {
+		t.Fatal("bounded two-pass traversal rejected")
+	}
+	r.TimeoutMS++
+	if r.Valid() {
+		t.Fatal("Njoyn escaped its own bound")
+	}
+	r.TimeoutMS, r.Operation = NjoynMaxDurationMS, "detail"
+	if r.Valid() {
+		t.Fatal("inventory budget admitted a provider detail operation")
+	}
+}

@@ -20,6 +20,18 @@ const RequestLimit = 128 << 10
 const ResponseLimit = 16 << 20
 const MaxDurationMS = 600000
 
+// Njoyn traverses the listing twice with the publisher's four-second pacing.
+// Large boards need this separate bound; other inventory and detail requests
+// retain their existing ten-minute limit.
+const NjoynMaxDurationMS = 1200000
+
+func MaxDurationForProvider(provider string) uint64 {
+	if provider == "njoyn" {
+		return NjoynMaxDurationMS
+	}
+	return MaxDurationMS
+}
+
 var ErrProtocol = errors.New("invalid API replay request or response")
 var digest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
@@ -44,7 +56,7 @@ func (r Request) Valid() bool {
 		return false
 	}
 	u, err := url.Parse(r.BoardURL)
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.BoardURL) <= 8192 && err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Opaque == "" && len(r.Metadata) > 1 && len(r.Metadata) <= 64<<10 && json.Valid(r.Metadata) && bytes.HasPrefix(bytes.TrimSpace(r.Metadata), []byte("{")) && r.TimeoutMS > 0 && r.TimeoutMS <= MaxDurationMS
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.BoardURL) <= 8192 && err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Opaque == "" && len(r.Metadata) > 1 && len(r.Metadata) <= 64<<10 && json.Valid(r.Metadata) && bytes.HasPrefix(bytes.TrimSpace(r.Metadata), []byte("{")) && r.TimeoutMS > 0 && r.TimeoutMS <= MaxDurationForProvider(r.Provider)
 }
 
 type Reservation struct {

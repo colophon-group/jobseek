@@ -102,7 +102,7 @@ def test_sage_http_route_retains_the_complete_api_projection() -> None:
     }
 
 
-def test_hd_centre_browser_paths_retry_blocked_proxy_exits() -> None:
+def test_hd_centre_retains_monitor_proxy_and_complete_direct_detail_range() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         row = next(
@@ -115,5 +115,12 @@ def test_hd_centre_browser_paths_retry_blocked_proxy_exits() -> None:
     scraper_config = json.loads(row["scraper_config"])
     assert monitor_config["proxy"] is True
     assert monitor_config["transport_attempts"] == 3
-    assert scraper_config["proxy"] is True
-    assert scraper_config["transport_attempts"] == 3
+    assert scraper_config["render"] is True
+    assert scraper_config["proxy"] is False
+    assert {"stealth", "transport_attempts"}.isdisjoint(scraper_config)
+    assert scraper_config["include_header_content"] is True
+    description = next(step for step in scraper_config["steps"] if step["field"] == "description")
+    assert description["text"] == "Share"
+    assert description["offset"] == 1
+    assert description["to_end"] is True
+    assert "stop" not in description

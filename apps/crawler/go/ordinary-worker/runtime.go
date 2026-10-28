@@ -49,7 +49,7 @@ func settleClaim(ctx context.Context, fn func() error) error {
 }
 
 func runLeasedClaim(parent context.Context, c RuntimeConfig, s runtimeServices, claim *queue.Claim, m *runtimeMetrics) (*GreenhouseClaimResult, error) {
-	ctx, cancel := context.WithTimeout(parent, c.taskTimeout)
+	ctx, cancel := context.WithTimeout(parent, runtimeClaimTimeout(c, claim.Descriptor()))
 	defer cancel()
 	guard := &claimLeaseGuard{}
 	ctx = context.WithValue(ctx, claimLeaseGuardKey{}, guard)
