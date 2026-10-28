@@ -1,6 +1,74 @@
 # Go and Lightpanda migration delivery plan
 
-## Current handoff and grouped candidate — October 28, 2026, 18:22 UTC
+## Current handoff and six-detail candidate — October 28, 2026, 20:55 UTC
+
+Runtime **0.13.1110** is deployed from
+`dfdb4d9d094f5133d207bec53a0d0e593a746bf0` after
+[PR #10986](https://github.com/colophon-group/jobseek/pull/10986). The original
+[crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40758947071)
+and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40759073784)+succeeded. Independent checks verify the exact runtime/data images, complete
+restored stack and health endpoints. Lightpanda remains
+**1.1.0-nightly.11227+0eee96bf2**; all seven official nightly assets were
+rechecked unchanged at 20:02 UTC. Execution stays strictly Lightpanda and Go HTTP.
+
+**B0 is accepted at epoch 394. Ordinary activation is in progress.** The original
+staging process and independent whole-plan checks validate **8,125 monitors /
+8,131 details**, retaining every prior assignment. The incoming SDK checks
+**2,035,137 scheduled routes**, zero cache mismatches and zero wrong-lane residue.
+Its **14** snapshot gaps have fresh dispositions: **11** inactive/unscheduled and
+**three** eligible for the original activation's first-time reconstruction;
+**zero** are unexplained. The normal 16-partition Typesense repair finished before
+ordinary staging retried. No maintenance, timer, lease or ownership guard was
+bypassed. Independent ordinary acceptance, strict postactivation routes and whole
+queue conservation remain required; the preceding serving proof below is historical.
+
+The next group changes **six detail configurations** using existing contracts:
+Indeed, Zenline, Alten Sweden, Firehawk, Hotel Loewen and McDonald's Taiwan.
+Firehawk also moves its existing API monitor to direct HTTP. No parser or backend
+extension is needed, and the runtime contract stays unchanged.
+
+Firehawk's configured inventory returns **36 URLs**. Its public detail API returns
+**31 complete jobs / five HTTP 403 failures**. The unchanged field mappings match
+Python, and the original description-only enrichment remains selected. Separately,
+all **16 retained canonical URLs**, including all **13 scheduled** URLs, were
+checked: **two** return job data and **14** return 404. The API scraper preserves
+the original empty-result failure behavior for those 404s. Real PostgreSQL/Redis
+tests cover **38 current-detail**, **18 retained-detail** and **four monitor** cases,
+including content/hash retention, pending upload, publisher policy, deadlines and
+leases. These counts describe separate captures, with overlapping source URLs.
+
+All **16** current retained role URLs for Indeed, Alten Sweden and Hotel Loewen
+were tested in the latest Lightpanda. Alten has one positive page whose complete
+ten-field output matches Python, including the retained title, a **3,078-character**
+description and one location. Its other results are **three 404s / two transport
+failures**; all **seven** Indeed roles return 403. Hotel's **three** active,
+unscheduled roles return 200 without job fields. **18** real canonical cases
+verify the positive output, failure retention, original navigation-404 tombstones,
+publisher reservation and incomplete output. No blocked or empty page establishes
+a positive job or successful empty inventory.
+
+Zenline and McDonald's Taiwan are explicitly dormant: **zero active / scheduled**
+postings, with **three / zero** retained inactive records. Their existing DOM
+extraction remains intact. Zenline's removed evaluation only writes diagnostic
+class names to `document.title`; configured extraction skips header content.
+Dormancy does not establish future publisher access or positive role coverage.
+
+The prospective SDK retains **8,125 monitors / 8,131 details** and validates
+**8,125 monitors / 8,137 details** across **3,513 reference URLs**, excluding all
+three B0 boards. The conditional ordinary remainder is **12 monitors / zero
+details**. Original sync fingerprint/browser decisions match all six candidate
+CSV rows. Publish through the documented CSV workflow after the current handoff
+and supported outgoing boundary; verify the actual runtime/data pair and complete
+queues again before ownership. No production ownership is conferred by this
+candidate. See the [candidate evidence](evidence/go-native-final-details-candidate-2026-10-28.json).
+
+Full migration remains incomplete: finish monitor coverage, natural freshness and
+stability, comparable whole-service resources/cost, and the final supported
+reversal/window before retiring production Python. Keep useful offline Python
+tools isolated. Continue in groups using existing contracts; preserve the working
+IHG and NTT inventories until complete replacement inventories pass.
+
+## Historical 1109 handoff and 1110 candidate — October 28, 2026, 18:22 UTC
 
 Runtime **0.13.1109** is deployed from
 `0766fc017af4b5981c4ffbd1f9dc6eef12745299` after

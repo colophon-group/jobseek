@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8140,
-    "boards_sha256": "0467968750e59dcb90033cc7e508fb77a4a0072d0a61bf65843c68754884c91b",
+    "boards_sha256": "80e56efa49b010dbdcafaf70ee0a05fbaad537d1c59bb5322b3947bd6a9c9ade",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "0d0e1c78c180f237e189970af2108357e3e280e8ec3d9faafff6414732ffe727",
+  "manifest_sha256": "b5950f0369d98423f1dbdf6f84d5458322ea1f4900ae6a9fc9921dcb3f8f5931",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -624,12 +624,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "480f4561fa7d361e2182ac7c62ed3a98ca51bbba625ccb54d85cadfb74ecb8ea",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "c4d2a7ff0bf1572f52a12a38d6d2201cab8b664c9fdb6fb17d26fa4d1d8e91db",
+      "digest_sha256": "cd6d0ba1c2e13866bdfb270814ee3823ec953a8775973b40b39d9f97d5f29227",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.monitor.api_sniffer.6fabb5f77034d9e9",
       "profile_kind": "configured",
-      "source_count": 2,
-      "source_refs_sha256": "fd97b3a6ebc8efd6945b2d7c096e1fcefb540f0e09ca50e557ff66c9b57b2810",
+      "source_count": 1,
+      "source_refs_sha256": "85b37e99607f7bd214735f0cda631e2bf6989be050068784a6b4e24df4647a09",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -5368,12 +5368,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "89b3a28848c473aa9731287020de7f85c76acc49d48b109afd45e4ea92dd5e28",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "21e297e133f1b63ec76f51eb6b4065d9da0d1a1c8b30e3d5143e7ca612280f7c",
+      "digest_sha256": "b0f9214d6461f1796aeb8fbe5bce704aae15270e8ea535f5d2b0d7a3e25b2329",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.scraper.api_sniffer.d28c026eba6d4777",
       "profile_kind": "configured",
-      "source_count": 3,
-      "source_refs_sha256": "d66019ca9c6eda3cf9e2ba86b1c96e5df9558eb90a45cf060a699b68fc99d4cd",
+      "source_count": 2,
+      "source_refs_sha256": "6419c05452a88171f42bc93e5047212b8b05132192d73f40fb6cceb6693acc81",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -5721,6 +5721,28 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "28229576eeed4bbd54f5c61abcd65421f0552a94c6bedc41714bc93ef28411ff",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.domcontentloaded"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "83f4d2eccebce01f8adb97d5aeebb5164d5e12a1707ac02f22a4373ef55602d3",
+      "crawler_type": "dom",
+      "digest_sha256": "61ba9d06fda3867f0df5d288997bb7411a48f39e3646b8eb1c76fe63292224cc",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.scraper.dom.39298861cd1094f8",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "23fb2eb4cc016322d61294a03c6611d0976fe8dd3c263162d6d3719ee7830a52",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -6134,6 +6156,28 @@
       "capabilities": [
         "cdp.navigation",
         "dom.snapshot",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "d44582e16a4e52b0d898c1afc138a49b0246c87da5a8a38b213b20f6f66659b9",
+      "crawler_type": "dom",
+      "digest_sha256": "085b2d6be356b3f0b040533996c17fca50701ce41b77ad3bb71e1a8db0c38fc5",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.scraper.dom.74fe74679500edd3",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "c7d175a93eaf15abe757fe977b5a908addf47826fd6b7dce5dc91989bb9a849d",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
         "navigation.wait.domcontentloaded"
       ],
       "chain_role": "primary",
@@ -6170,31 +6214,6 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "7a503ad61469bb3be4030db83fb217b8159116b882ce2f8bd5bff0a5a3ec9519",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "action.evaluate",
-        "action.wait",
-        "cdp.navigation",
-        "dom.snapshot",
-        "javascript.evaluate",
-        "navigation.wait.domcontentloaded"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "javascript_execution",
-      "config_shape_sha256": "0fe23a2ffa687bf18e13631eae572c5ba8136ca53e348b7683dd8aa89303c2e5",
-      "crawler_type": "dom",
-      "digest_sha256": "a7a67926f33f27db61a06012f112527a0a0d9efe8741bd590bce9cc1f9afeef4",
-      "fixture": "synthetic.javascript_execution.v1",
-      "id": "profile.scraper.dom.7f7b8737da720a0d",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "2d99ffb0187016d5f3912ee2ad5cfc7e95643690391f67491398c1c200c37986",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -6284,12 +6303,12 @@
       "compatibility_class": "browser_identity",
       "config_shape_sha256": "b3dd74efbdbbce220fab64861a5fe66d238e271a38e1db9c7f75899622918eb9",
       "crawler_type": "dom",
-      "digest_sha256": "62dc937b30ca514465fb8d8518a4a30692364c6be2319c53155bea348fd6197a",
+      "digest_sha256": "40ab564559425228253149767e7051db735917edbef0172e9218d4d0f0006d3d",
       "fixture": "synthetic.browser_identity.v1",
       "id": "profile.scraper.dom.96137f9468186d57",
       "profile_kind": "configured",
-      "source_count": 2,
-      "source_refs_sha256": "bc163ad8a798ca75e1fe89369cfa298fa3c3f4b1c44f70681f285010e8330d0d",
+      "source_count": 1,
+      "source_refs_sha256": "409d5054743b3d98d4c8fb8fec25bbf8bb35a4bbb58c32f5bd4b6409f5e98a01",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -6793,12 +6812,12 @@
       "compatibility_class": "interactive_dom",
       "config_shape_sha256": "f3465eada522da684efa4405fa2b71a418f3258797096f12000ed78b9933b7f9",
       "crawler_type": "dom",
-      "digest_sha256": "72b47864bf1ec1f587e0b26adb9922ab7cffa9ebb2665e2c8b927585e54c45a9",
+      "digest_sha256": "6edc8610e7ec8b4655d3d249842926470a51c34278b9fc5c74abfd0e90be21a2",
       "fixture": "synthetic.interactive_dom.v1",
       "id": "profile.scraper.dom.e34a1e59d96fc048",
       "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "d0648d0e40baf3d129c91f159e69e2ca0d01c6f8d13127644b6ce6d86cf05836",
+      "source_count": 2,
+      "source_refs_sha256": "0e8f1deaf8544c26a4080408a8c3a294580c97f0fde7ca8fc02b2889dc96fec9",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -6822,29 +6841,6 @@
       "profile_kind": "configured",
       "source_count": 2,
       "source_refs_sha256": "abc8510dd0fed9fd5a7ba0ea934224f78d5b6c751b359b8206fc120c726fa801",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait_fallback",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "abc599c13e61e71b6f5fb1f2e2f81d4133a52305f023816195145dd453dc4657",
-      "crawler_type": "dom",
-      "digest_sha256": "5915326d232ad723ce60cdb2233b4e7f0cf25b7ea3ffbc4de6ca656469319fc6",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.dom.eb3dfa1985af00b4",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "c7d175a93eaf15abe757fe977b5a908addf47826fd6b7dce5dc91989bb9a849d",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -7001,35 +6997,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "f597d717cb7be666c0a8a6d97836789b41d68a18828110477822a95b7ffacbb8",
       "crawler_type": "json-ld",
-      "digest_sha256": "3c789c83f43b18ad47ed3434b02579ed4c57d8329bb4bc39e9e21627e5bde3b4",
+      "digest_sha256": "60180729b469bdd37aba88fb853be60ffda5de030409db95999f7ec9537c2f61",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "profile.scraper.json-ld.08baa6ced3a16949",
       "profile_kind": "configured",
-      "source_count": 2,
-      "source_refs_sha256": "fafcb11b0d92b9b60739f8701091b64a5d323720720cdc96776b8d3e759a9791",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait_fallback",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "1bd7864bb14f356e7bb96a6a6aceced675bdbbaef91f130ffb00f41736d081c4",
-      "crawler_type": "json-ld",
-      "digest_sha256": "a0f3b164dd65bc6eb74f91538aa2cf8e787496e583ccaa12edbb83fbe536eebe",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.json-ld.0be0b2e629cf847a",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "d08fcb531de1195ec25924540f80b2cce84770f2d0ae40323d3689ee795e76fa",
+      "source_count": 3,
+      "source_refs_sha256": "8ea08b20303ba2d78a483d756db9d468bae2bb1ca39a8835aa11fb9eeda7fddc",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -7219,6 +7192,30 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "action.wait",
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.commit",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "interactive_dom",
+      "config_shape_sha256": "d4908b1b1484d040b82b7281202e56b5adcf87dab1389eaa17334bb9397463ec",
+      "crawler_type": "json-ld",
+      "digest_sha256": "f3edcfe6c81117feb5bb36ca1335d167a29d8f34c3960e75e7f7a6c4fcd8997a",
+      "fixture": "synthetic.interactive_dom.v1",
+      "id": "profile.scraper.json-ld.b6fba710f17c39c8",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "cac0dc718b081094f61bd4f2004d6219781b0122de6c0184efa13a85ab8a16b0",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "cdp.navigation",
         "dom.snapshot",
         "navigation.wait.load"
@@ -7276,35 +7273,6 @@
       "source_count": 1,
       "source_refs_sha256": "b443e4ca3cf40c6f5313adfea0f18809281f8f0d6de62fce9af0d88e27adb9d3",
       "status": "chain_context_only",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "action.wait",
-        "browser.channel",
-        "browser.headful",
-        "browser.persistent_context",
-        "browser.stealth",
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait.commit",
-        "navigation.wait_fallback",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "9fc72061992fabcf07b2c7937aea63254cbd0cd7af23a6173f8713ac69b8c272",
-      "crawler_type": "json-ld",
-      "digest_sha256": "eb949e3ecbf5af957fc4aac02f724447bc0c1951be7334881e44f487e129d01d",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.json-ld.e7cd600d9f4a9422",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "cac0dc718b081094f61bd4f2004d6219781b0122de6c0184efa13a85ab8a16b0",
-      "status": "pending_replay",
       "surface": "scraper"
     },
     {
@@ -7784,12 +7752,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 518,
-    "browser_required_step_count": 671,
-    "configured_profile_occurrence_count": 672,
-    "configured_record_count": 313,
+    "browser_board_count": 517,
+    "browser_required_step_count": 669,
+    "configured_profile_occurrence_count": 670,
+    "configured_record_count": 312,
     "registry_record_count": 17,
-    "total_record_count": 330,
+    "total_record_count": 329,
     "zero_browser_config_registry_count": 1
   }
 }
