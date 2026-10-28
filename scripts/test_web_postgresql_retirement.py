@@ -189,6 +189,36 @@ class TransferIntegrationTests(unittest.TestCase):
             self.target.sql("SELECT count(*) FROM stripe_subscription;"), "1"
         )
 
+    def test_destination_owner_needs_no_superuser_or_role_creation_privilege(self):
+        role = self.prefix + "_owner"
+        self.admin.sql(
+            f"CREATE ROLE {database.identifier(role)} LOGIN NOSUPERUSER NOCREATEDB "
+            "NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD 'fixture-password';"
+        )
+        client = None
+        try:
+            self.admin.sql(
+                f"ALTER DATABASE {database.identifier(self.names[1])} OWNER TO {database.identifier(role)};"
+            )
+            parsed = urlsplit(os.environ["WEB_DB_TEST_URL"])
+            connection = parsed._replace(
+                netloc=f"{role}:fixture-password@{parsed.hostname}:{parsed.port or 5432}",
+                path="/" + self.names[1],
+            )
+            client = database.Client(
+                urlunsplit(connection), self.root, native_bin=self.native
+            )
+            database.dump(self.source, self.root / "packet")
+            self.assertTrue(database.restore(client, self.root / "packet")["success"])
+        finally:
+            if client:
+                client.close()
+            self.admin.sql(
+                f"DROP DATABASE {database.identifier(self.names[1])} WITH (FORCE);"
+            )
+            self.admin.sql(f"DROP ROLE {database.identifier(role)};")
+            self.admin.sql(f"CREATE DATABASE {database.identifier(self.names[1])};")
+
     def test_source_fence_is_not_carried_to_destination(self):
         database.source_fence(self.source)
         try:
