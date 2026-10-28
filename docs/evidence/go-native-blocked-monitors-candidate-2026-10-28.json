@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.native-blocked-monitor-candidate/v1",
+  "runtime_base": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+  "runtime_version": "0.13.1111",
+  "captured_runtime_and_data_base": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "runtime_changes": false,
+  "monitor_configuration_changes": false,
+  "admissions": [
+    {
+      "label": "tesco-careers-sk",
+      "profile": "api_sniffer.http-items/v1",
+      "actual_responses": "301/307/200nonJSON sequence repeated3times",
+      "canonical_cases": 3,
+      "behavior": "Native explicit nonJSON failure preserves inventory; original empty result is not accepted as valid publisher-empty proof."
+    },
+    {
+      "label": "syneos-health-all-careers",
+      "profile": "dom.rendered-urls/v1",
+      "actual_response_status": 403,
+      "original_navigation_guard_rejects": true,
+      "canonical_cases": 4,
+      "behavior": "Unchanged original navigation and native parsing reject current403. Failure/transport/incomplete retain content and missing counts; reservation follows original policy."
+    }
+  ],
+  "all_private_canonical_tests_passed": true,
+  "all_private_databases_stopped_and_sockets_removed": true,
+  "positive_or_verified_empty_inventory_claim": false,
+  "prospective_source1110_floor": {
+    "monitors": 8127,
+    "details": 8137,
+    "retained_qualified_monitors": 8125,
+    "retained_qualified_details": 8131,
+    "captured_reference_URLs": 3513,
+    "failures": []
+  },
+  "new_main_board": "Preserved unchanged; actual publication catalogue/SDK qualification required before ownership. Expected8141enabled /8128M8138D /10remaining monitors is conditional.",
+  "proof_sha256": {
+    "tesco-safe-failure-qualification1.json": "29ff3adfa8840dad3e2f602a989b667cf6e2259d253ea616183a7ffe3762d0b5",
+    "syneos-safe-failure-qualification1.json": "d5ad5d9409abb4596034975b54bf61910a2c9e62110975e10e00be904430dfd0"
+  },
+  "combined_floor_report_sha256": "3985e8cac9f2cc920b578a9b109fcaaa8d72f58602bcc83cf1e1e19838b1aa7f",
+  "production_ownership_granted": false,
+  "migration_complete": false
+}

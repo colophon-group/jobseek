@@ -1,6 +1,91 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1110 serving checkpoint and six-detail candidate — October 28, 2026, 21:35 UTC
+## Combined recovery and next native batch — October 28, 2026, 22:36 UTC
+
+[Hotfix #10992](https://github.com/colophon-group/jobseek/pull/10992) is merged as
+`019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, runtime **0.13.1111**, after
+Required CI, Crawler Deploy Gate and both native suites passed. The original
+[full crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40780616828)
+is building its immutable images. **Production is still the contained 1110
+source at epoch 394 with its retiring ordinary receipt.** No hotfix runtime or
+recovery success is claimed yet. Scheduled Typesense reconciliation finished
+normally. The official nightly's seven assets remain unchanged; latest
+Lightpanda stays **1.1.0-nightly.11227+0eee96bf2**.
+
+Use the successful source-bound build and original admin-prepull workflow, then
+the installed wrapper's exact newer-admin `recover-pending` path. Require
+independent complete old-stack restoration, ordinary SQL retirement and absent
+ordinary receipt before the normal B0 rollback and selector clearing. Deploy
+the complete hotfix through its original workflow and verify its actual
+runtime/data pair. Keep native ownership inactive through the grouped CSV
+publication below; perform one incoming B0/ordinary activation after both are
+qualified. Preserve the entire **3,443,518-ID** outgoing queue baseline.
+
+[Data candidate #10991](https://github.com/colophon-group/jobseek/pull/10991)
+combines **six detail configurations** and **two unchanged monitor admissions**.
+The six detail changes and Firehawk's HTTP monitor adjustment are described
+below. The additional monitor contracts are Tesco Go HTTP and Syneos Lightpanda
+DOM. Tesco's current three redirect/HTML attempts are explicitly rejected as
+non-JSON, preserving inventory instead of treating the original empty result
+as a valid empty inventory. Three real PostgreSQL/Redis cases prove retained
+visibility/missing counts, policy, deadlines and leases. Syneos' actual complete
+403 is rejected by both the unchanged original navigation guard and native
+rendered parsing. Four real canonical cases cover that failure, transport,
+incomplete output and publisher reservation. Neither is positive access or a
+verified empty inventory. See [monitor admission evidence](evidence/go-native-blocked-monitors-candidate-2026-10-28.json).
+
+The source-1110 prospective corpus, checked through the merged hotfix runtime,
+retains **8,125 monitors / 8,131 details** and validates **8,127 / 8,137** across
+all **3,513 reference URLs**, with zero constructor failures and no B0 overlap.
+This historical catalogue excludes the later main addition: Gray Media is
+preserved unchanged, yielding **8,141 CSV boards**. Qualify it and every current
+assignment from the actual published catalogue before staging; expected full
+coverage is conditional **8,128 monitors / 8,138 details**, leaving **10 ordinary
+monitors / zero details**. No candidate evidence itself grants ownership.
+
+Publish the data group only with the unchanged hotfix runtime contract, then
+verify the actual runtime/data source pair, full canonical/cache/reference
+corpus, every snapshot gap and retained assignments. Use original incoming
+wrappers, independent full-stack acceptance, strict postactivation routes and
+whole queue conservation. Preserve working IHG and NTT until complete positive
+replacement inventories pass. Full migration still requires natural freshness,
+stability, comparable resources/cost and the final supported reversal/window
+before retiring the four remaining Python worker/browser processes and
+legacy runtime assets. Execution stays strictly Lightpanda and Go HTTP/API.
+
+## Historical eligibility timeout and merged recovery fix — October 28, 2026, 21:58 UTC
+
+The original 1110 ordinary retirement and `recover-pending` both refused
+`eligibility / observation`. The writer fleet is contained, with its exact
+epoch-394 SQL owner, retiring receipt and separate B0 identity retained.
+**PR #10991 remains unmerged.** Scheduled Typesense reconciliation runs through
+its normal wrapper; do not cancel it or bypass containment.
+
+Read-only replay of the exact source query confirms PostgreSQL `57014` at the
+unchanged **10-second statement limit**. Retained history contains **114 plans**,
+**1,609 active fences** and **33 active fence epochs**. Runtime candidate
+**0.13.1111** checks those epochs separately inside the same original cold
+snapshot and joins their ownership sets without correlated history rescans.
+It preserves every fence and all source, epoch, board, profile, posting and
+exclusive ownership checks. The original statement, snapshot and host deadlines
+stay unchanged. The candidate's complete read-only check takes **19.735 seconds**
+over all 33 epochs; its slowest statement takes **1.231 seconds**.
+
+Native migrations and real PostgreSQL/Redis race tests pass: **81 test/subtest
+entries**, zero skips, including foreign historical monitor/detail refusal and
+legitimate retained details whose canonical posting no longer exists. Both private
+database runs stopped and removed their sockets. Required CI and
+Crawler Deploy Gate remain required. Merge with fresh exact-head authority, build the immutable
+source-bound image, and use the original admin-prepull workflow and installed
+wrapper's exact newer-admin `recover-pending` path. Verify complete old-runtime
+restoration independently before B0 rollback and full rollout. No ad hoc SQL,
+Redis, receipt, lease, deadline or partial-stack repair is authorized. Resume the
+six-detail CSV batch after reconciling its runtime/data frontier, then the twelve
+remaining monitors and final freshness, stability, resources and reversal proof.
+Execution remains strictly latest Lightpanda and proven Go HTTP/API.
+See [recovery evidence](evidence/go-native-eligibility-timeout-2026-10-28.json).
+
+## Historical verified 1110 checkpoint and six-detail candidate — October 28, 2026, 21:35 UTC
 
 Runtime **0.13.1110** is deployed from
 `dfdb4d9d094f5133d207bec53a0d0e593a746bf0` after

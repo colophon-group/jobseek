@@ -1,8 +1,8 @@
 {
   "schema": "jobseek.go-lightpanda-candidate/v1",
   "observed_at_utc": "2026-10-28T20:57:44.391651+00:00",
-  "runtime_base": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
-  "runtime_version": "0.13.1110",
+  "runtime_base": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+  "runtime_version": "0.13.1111",
   "runtime_changes": false,
   "backend_constraint": "Strict Lightpanda and proven Go HTTP/API",
   "engine": "1.1.0-nightly.11227+0eee96bf2",
@@ -111,12 +111,16 @@
   "production_ownership_granted": false,
   "full_migration_complete": false,
   "main_reconciliation": {
-    "base": "77e8399097747e05d0afec7ab5ca3101152c8c28",
+    "base": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
     "preserved_main_additions": 1,
     "candidate_CSV_board_rows": 8141,
     "migration_rows_changed_relative_to_main": 6,
     "runtime_contract_unchanged": true,
     "affected_python_tests_passed": 66,
-    "prospective_floor_scope": "Serving1110 canonical catalogue plus six exact migration proposals. New main board requires actual postpublication catalogue/SDK qualification before ownership."
-  }
+    "prospective_floor_scope": "Serving1110 canonical catalogue plus six exact migration proposals. New main board requires actual postpublication catalogue/SDK qualification before ownership.",
+    "runtime_contract": "2a0b01f332e0192f9b98f57ff6cd06f00e51346b212499f5806b89d95692d85a"
+  },
+  "captured_evidence_runtime_base": "dfdb4d9d094f5133d207bec53a0d0e593a746bf0",
+  "parser_and_monitor_implementation_unchanged_since_capture": true,
+  "combined_monitor_admissions": "TescoHTTP and SyneosLP current explicit-failure cases; see go-native-blocked-monitors-candidate-2026-10-28.json. Actual source/data incoming qualification remains required."
 }

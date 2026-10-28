@@ -118,16 +118,37 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 			for _, detail := range plan.document.Details {
 				detailIDs = append(detailIDs, detail.BoardID)
 			}
-			var foreign bool
 			// Interrupted attempts remain retained after retirement. Admit an
 			// older monitor only when its immutable, retired plan owned it;
 			// unrelated old attempts and current/future foreign work still refuse.
-			// Expand each immutable historical plan once. Correlated JSON expansion
-			// per receipt exceeds the ten-second admin statement budget at fleet scale.
-			if err := tx.QueryRow(ctx, `WITH old_plans AS MATERIALIZED (
+			// Preserve every active fence, checking one retained epoch per SQL
+			// statement. Expanding the complete fleet history together can exceed
+			// the unchanged ten-second statement cap. The cold snapshot still
+			// covers the whole operation; no history or receipt is discarded.
+			rows, err := tx.Query(ctx, "SELECT DISTINCT routing_epoch FROM public.ordinary_worker_write_fence WHERE state='active' ORDER BY routing_epoch")
+			if err != nil {
+				return err
+			}
+			epochs := []int64{}
+			for rows.Next() {
+				var retained int64
+				if err := rows.Scan(&retained); err != nil {
+					rows.Close()
+					return err
+				}
+				epochs = append(epochs, retained)
+			}
+			err = rows.Err()
+			rows.Close()
+			if err != nil {
+				return err
+			}
+			for _, retained := range epochs {
+				var foreign bool
+				if err := tx.QueryRow(ctx, `WITH old_plans AS MATERIALIZED (
  SELECT p.routing_epoch,p.payload::jsonb AS payload
  FROM public.ordinary_worker_ownership_plan p
- WHERE p.state='retired' AND p.routing_epoch<$1
+ WHERE p.state='retired' AND p.routing_epoch<$1 AND p.routing_epoch=$4
  AND EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
    WHERE f.state='active' AND f.routing_epoch=p.routing_epoch)
 ), old_monitors AS MATERIALIZED (
@@ -142,19 +163,24 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
  OR (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1','embedded.rendered-detail/v1','api_sniffer.browser-detail/v1','skip.browser-unscheduled-detail/v1','detail.ordered-browser/v1'))
 )
 SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
- WHERE f.state='active' AND NOT (
+ LEFT JOIN old_monitors m ON f.task_kind='monitor' AND f.routing_epoch<$1
+   AND m.routing_epoch=f.routing_epoch AND m.board_id=f.board_id::text
+ LEFT JOIN old_details d ON f.task_kind='scrape' AND f.routing_epoch<$1
+   AND d.routing_epoch=f.routing_epoch AND d.board_id=f.board_id::text
+ LEFT JOIN public.job_posting jp ON f.task_kind='scrape' AND f.routing_epoch=$1
+   AND jp.id=f.task_id AND jp.board_id=f.board_id
+ WHERE f.state='active' AND f.routing_epoch=$4 AND NOT (
  (f.task_kind='monitor' AND f.task_id=f.board_id AND (
    (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
-   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM old_monitors m
-     WHERE m.routing_epoch=f.routing_epoch AND m.board_id=f.board_id::text)))) OR
+   (f.routing_epoch<$1 AND m.board_id IS NOT NULL))) OR
  (f.task_kind='scrape' AND (
-   (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
-   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM old_details d
-     WHERE d.routing_epoch=f.routing_epoch AND d.board_id=f.board_id::text))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
-				return err
-			}
-			if foreign {
-				return ErrAuthorityLost
+   (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND jp.id IS NOT NULL) OR
+   (f.routing_epoch<$1 AND d.board_id IS NOT NULL)))))`, epoch, ids, detailIDs, retained).Scan(&foreign); err != nil {
+					return err
+				}
+				if foreign {
+					return ErrAuthorityLost
+				}
 			}
 		}
 		var snapshots map[string]boardConfigPair
