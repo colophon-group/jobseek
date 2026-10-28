@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1110 serving checkpoint and six-detail candidate — October 28, 2026, 21:40 UTC
+## Verified 1110 serving checkpoint and six-detail candidate — October 28, 2026, 21:35 UTC
 
 Runtime **0.13.1110** is deployed from
 `dfdb4d9d094f5133d207bec53a0d0e593a746bf0` after
