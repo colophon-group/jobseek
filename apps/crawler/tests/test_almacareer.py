@@ -90,6 +90,62 @@ class TestDetailUrl:
 
 
 class TestExtractWidgetConfig:
+    @pytest.mark.parametrize(
+        ("page_path", "expected_id", "expected_detail"),
+        [
+            ("/volna-mista/", "11111111-1111-4111-8111-111111111111", "detail-pozice"),
+            ("/vacancies", "22222222-2222-4222-8222-222222222222", "vacancy-detail"),
+        ],
+    )
+    def test_localized_widgets_match_listing_path(self, page_path, expected_id, expected_detail):
+        script = json.dumps(
+            {
+                "widgets": {
+                    "main-cs": {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "apiKey": "a" * 64,
+                        "pagePath": "volna-mista",
+                        "detailPath": "detail-pozice",
+                    },
+                    "main-en": {
+                        "id": "22222222-2222-4222-8222-222222222222",
+                        "apiKey": "b" * 64,
+                        "pagePath": "vacancies",
+                        "detailPath": "vacancy-detail",
+                    },
+                }
+            }
+        )
+        config = _extract_widget_config(script, page_path=page_path)
+        assert config is not None
+        assert config["id"] == expected_id
+        assert config["detail_path"] == expected_detail
+
+    @pytest.mark.parametrize("page_path", ["", "/unknown", "/vacancies"])
+    def test_localized_widget_does_not_guess_or_mix_identity(self, page_path):
+        script = json.dumps(
+            {
+                "widgets": {
+                    "main-cs": {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "apiKey": "a" * 64,
+                        "pagePath": "volna-mista",
+                    },
+                    "main-en": {"id": "invalid", "apiKey": "b" * 64, "pagePath": "vacancies"},
+                }
+            }
+        )
+        assert _extract_widget_config(script, page_path=page_path) is None
+
+    def test_ambiguous_localized_widgets_fail_closed(self):
+        widget = {
+            "id": "11111111-1111-4111-8111-111111111111",
+            "apiKey": "a" * 64,
+            "pagePath": "jobs",
+        }
+        script = json.dumps({"widgets": {"main-cs": widget, "main-en": widget}})
+        assert _extract_widget_config(script, page_path="/jobs") is None
+
     def test_mcdonalds_cz(self):
         script = (
             'var x = { "widgets":{"main":{"id":"dcc74a07-bcb5-444e-a185-2bf060a49aab",'
@@ -198,6 +254,26 @@ class TestFetchWidgetConfig:
         # homepage bootstrap before the second legacy-bundle fetch recovers.
         assert attempts == 4
         sleep.assert_awaited_once()
+
+    async def test_localized_config_uses_requested_listing_path(self):
+        script = json.dumps(
+            {
+                "widgets": {
+                    "main-cs": {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "apiKey": "a" * 64,
+                        "pagePath": "volna-mista",
+                        "detailPath": "detail-pozice",
+                    }
+                }
+            }
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=script))
+        ) as client:
+            config = await _fetch_widget_config("hella.jobs.cz", client, page_path="/volna-mista")
+        assert config is not None
+        assert config["id"] == "11111111-1111-4111-8111-111111111111"
 
     async def test_finds_config_in_hashed_react_chunk(self):
         requested_paths: list[str] = []
@@ -611,10 +687,24 @@ class TestDiscover:
             }
         }
 
-    async def test_cz_full_flow(self):
+    @pytest.mark.parametrize("localized", [False, True])
+    async def test_cz_full_flow(self, localized):
         widget_id = "11111111-2222-3333-4444-555555555555"
         api_key = "a" * 64
         script = self._build_script(widget_id, api_key, "detail-pozice")
+        if localized:
+            script = json.dumps(
+                {
+                    "widgets": {
+                        "main-cs": {
+                            "id": widget_id,
+                            "apiKey": api_key,
+                            "detailPath": "detail-pozice",
+                            "pagePath": "volna-mista",
+                        }
+                    }
+                }
+            )
 
         ad = {
             "id": "42",
@@ -995,7 +1085,8 @@ class TestDiscover:
 
 
 class TestCanHandle:
-    async def test_url_match_triggers_probe(self):
+    @pytest.mark.parametrize("localized", [False, True])
+    async def test_url_match_triggers_probe(self, localized):
         widget_id = "11111111-2222-3333-4444-555555555555"
         api_key = "a" * 64
         script = (
@@ -1005,6 +1096,20 @@ class TestCanHandle:
             + api_key
             + '","detailPath":"detail-pozice"}'
         )
+
+        if localized:
+            script = json.dumps(
+                {
+                    "widgets": {
+                        "main-cs": {
+                            "id": widget_id,
+                            "apiKey": api_key,
+                            "detailPath": "detail-pozice",
+                            "pagePath": "volna-mista",
+                        }
+                    }
+                }
+            )
 
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/assets/js/script.min.js":

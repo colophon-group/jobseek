@@ -3440,6 +3440,8 @@ heig-vd,heig-vd-jobup,https://www.jobup.ch/fr/societes/6585-heig-vd/,dom,"{""ren
 heim-marketing,heim-marketing-join,https://join.com/companies/heimmarketingde,join,"{""slug"": ""heimmarketingde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 heizm-ller-gmbh,heizm-ller-gmbh-join,https://join.com/companies/heizmuellerde,join,"{""slug"": ""heizmuellerde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 helium-10,helium-10-greenhouse,https://job-boards.greenhouse.io/helium10,greenhouse,"{""token"": ""helium10""}",skip,
+hella,hella-careers,https://hella.csod.com/ux/ats/careersite/3/home?c=hella,cornerstone,"{""tenant"": ""hella"", ""site_id"": 3, ""corp"": ""hella""}",skip,
+hella,hella-careers-cz,https://hella.jobs.cz/volna-mista,almacareer,"{""slug"": ""hella"", ""country"": ""cz""}",skip,
 hello-heart,hello-heart-greenhouse,https://job-boards.greenhouse.io/helloheart,greenhouse,"{""token"": ""helloheart""}",skip,
 hellofresh,hellofresh-greenhouse,https://job-boards.greenhouse.io/hellofresh,greenhouse,"{""token"": ""hellofresh""}",skip,
 help-scout,help-scout-ashby,https://jobs.ashbyhq.com/helpscout,ashby,"{""token"": ""helpscout""}",skip,
