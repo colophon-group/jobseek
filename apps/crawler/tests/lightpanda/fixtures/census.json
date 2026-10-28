@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 8140,
-    "boards_sha256": "188268b95088d7b167c534cf3efa2c22f9e8d6f0b9ee7fe93c28791654d5ff33",
+    "boards_sha256": "0467968750e59dcb90033cc7e508fb77a4a0072d0a61bf65843c68754884c91b",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "28a1e284ffcb05659b97197cf1986987a3a2606d8127114c1d83aa216f165e2d",
+  "manifest_sha256": "0d0e1c78c180f237e189970af2108357e3e280e8ec3d9faafff6414732ffe727",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -5096,23 +5096,18 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
-        "browser.channel",
-        "browser.headful",
-        "browser.persistent_context",
-        "browser.stealth",
         "cdp.navigation",
         "dom.snapshot",
         "navigation.wait.domcontentloaded",
-        "network.proxy",
         "provider.browser_session"
       ],
       "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "9effebd23122bacaa799df0b6e82425b66eb9d8d77d9a68304cfec5f78b5c985",
+      "compatibility_class": "network_session",
+      "config_shape_sha256": "8b098bb54d4d8634daa671ac1a4cc07c940cdde7ea9749558ad92f743edbde97",
       "crawler_type": "njoyn",
-      "digest_sha256": "55011478e931428f18b40f6f1e30c32d99c6f0a03c4a2af7add2750630b013ae",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.monitor.njoyn.6503429879325be5",
+      "digest_sha256": "8120c5b1b95b6dc7efc36f5c2113e9af6c97506915cff36f1e8f90e69651d41a",
+      "fixture": "synthetic.network_session.v1",
+      "id": "profile.monitor.njoyn.3c767e849bdb67e3",
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "6aa0082ce1618a8d3e56c2729ca76e1825395c6d40ede1091fa54bd2ac19b272",
@@ -6137,6 +6132,28 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.domcontentloaded"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "ad36932782e033d0b55118ddcab6ff6944690488253e1e918f4ea1f7e2d4d8fd",
+      "crawler_type": "dom",
+      "digest_sha256": "57c871f16568571b4c347a97cc99b66925162ffc2e9b74234199c4e0e15e281d",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.scraper.dom.77f5d11ef34fe0fb",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "9e98b55a515ff2f06192c6a702c6cdcbba712adbb186cd2eb7ee37c378485810",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "action.wait_for",
         "cdp.navigation",
         "dom.snapshot",
@@ -6250,30 +6267,6 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "0a18889dec3de12d1c1ecb81470361aead9e2cde705d2e8e74aa58ebf6ce8fa2",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "browser.stealth",
-        "cdp.navigation",
-        "dom.snapshot",
-        "navigation.wait.domcontentloaded",
-        "network.proxy"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "bf6acda238980dc8648a3626fcf902cede25306b69c5967eaa8abf57732fcc08",
-      "crawler_type": "dom",
-      "digest_sha256": "5267e54b2cc8cd8f72612e7e503f6bf726fd58f518b452b996f054f24c502173",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.dom.8c6239549c670ac0",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "9e98b55a515ff2f06192c6a702c6cdcbba712adbb186cd2eb7ee37c378485810",
       "status": "pending_replay",
       "surface": "scraper"
     },

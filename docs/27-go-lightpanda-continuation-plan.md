@@ -1,6 +1,62 @@
 # Go and Lightpanda migration delivery plan
 
-## Current delivery and next batch — October 28, 2026
+## Current handoff and grouped candidate — October 28, 2026, 17:47 UTC
+
+Runtime **0.13.1109** is deployed from
+`0766fc017af4b5981c4ffbd1f9dc6eef12745299` after
+[PR #10957](https://github.com/colophon-group/jobseek/pull/10957). The original
+[crawler workflow](https://github.com/colophon-group/jobseek/actions/runs/40719928348)
+and [renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/40720025782)
+succeeded. The renderer runs **1.1.0-nightly.11227+0eee96bf2**; the official
+nightly's seven assets remain unchanged at 17:45 UTC. Execution remains strictly
+Lightpanda and proven Go HTTP/API, by operator instruction.
+
+The first original ordinary activation refused `projection / authority / adoption`.
+Original `recover-pending` succeeded; independent readback then verified B0
+active at epoch **392**, **zero active ordinary SQL plans**, exact runtime/data
+images, protected receipts, serving actors and health endpoints. No manual queue,
+lease, receipt or SQL repair occurred. A bounded read-only inflight census found
+zero wrong-lane/live/expired entries; it does not establish the historical cause.
+All eight incoming snapshot gaps are currently canonically unscheduled/inactive.
+A second attempt through the unchanged original activation workflow is in progress.
+Do not claim ordinary activation until its result, independent readback, whole-route
+SDK and whole-queue conservation pass. The staged cohort is **8,122 monitors /
+8,130 details**. Previous serving proofs below are historical.
+
+**Grouped candidate 0.13.1110 adds Njoyn monitoring and HD rendered details.**
+Njoyn's complete two-pass, four-second-paced traversal needs more than ten minutes:
+a complete latest-Lightpanda capture returned **3,132 URLs in 1,060 seconds**;
+a subsequent candidate capture returned **3,130 URLs**. Intervening sessions failed
+safely, so sustained reliability remains unproved. Give only Njoyn browser-monitor
+claims and their inventory protocol a default **20-minute** bound. Explicit operator
+task caps, heartbeat, cancellation and the global stall watchdog remain effective;
+other claims retain their existing bound. The private migrated PostgreSQL/Redis
+suite verifies the entire captured URL set and complete/failure/partial/reserved
+settlement. A committed real owned-claim regression verifies heartbeats across the
+ordinary task deadline and canonical publication.
+
+HD needs existing DOM options, without a parser extension: include header content
+for location and start the description after the share control through the end.
+Two actual latest-Lightpanda role pages match the unchanged original Python and
+native Go parsers across every raw field, including **4,474 / 4,561-character**
+descriptions and one location each. Five real canonical cases verify both complete
+pages plus failed, incomplete and publisher-reserved documents, source identity,
+pending description upload, deadlines and cleared leases. Other probed blocked,
+gone, empty-body and dormant sources remain unqualified.
+
+The prospective cohort retains every prior assignment and all **3,281** prior
+reference URLs, adds two actual HD references and validates **8,123 monitors /
+8,131 details**, with zero eligibility failures. After supported deployment and
+activation, the conditional remainder is **14 monitors / 6 details**. This candidate
+confers no production ownership. See the [candidate evidence](evidence/go-native1110-njoyn-hd-candidate-2026-10-28.json).
+
+Continue porting compatible types together, then prove natural freshness/stability,
+whole-service resources/cost, maintenance and later CSV publication consumers,
+and supported cold reversal. Retire production Python, Playwright and Chromium
+only after replacement coverage and the rollback window; useful isolated offline
+Python tools may remain. The full migration is active and incomplete.
+
+## Earlier delivery and next batch — October 28, 2026
 
 The full migration remains **active and incomplete**. Keep every enabled board,
 canonical content and publisher policy. Replacement execution must use **the

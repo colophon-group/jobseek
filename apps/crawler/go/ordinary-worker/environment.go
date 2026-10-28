@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
@@ -37,6 +38,7 @@ type RuntimeConfig struct {
 	epoch                                                                                         int64
 	concurrency, monitorConcurrency                                                               int
 	leaseTTL, heartbeat, taskTimeout, shutdownGrace, cancellationGrace, idleBackoff, stallTimeout time.Duration
+	njoynTaskTimeout                                                                              time.Duration
 	delay                                                                                         float64
 	maxDomains                                                                                    int
 	internalHosts                                                                                 []string
@@ -139,6 +141,10 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 			return RuntimeConfig{}, err
 		}
 		*option.dest = time.Duration(value) * time.Second
+	}
+	c.njoynTaskTimeout = c.taskTimeout
+	if getenv("ORDINARY_GO_TASK_TIMEOUT_SECONDS") == "" {
+		c.njoynTaskTimeout = replay.NjoynMaxDurationMS * time.Millisecond
 	}
 	if c.heartbeat+15*time.Second >= c.leaseTTL {
 		return RuntimeConfig{}, ErrStartup

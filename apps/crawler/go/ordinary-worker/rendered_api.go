@@ -134,7 +134,7 @@ func (r *NativeRenderedDetails) fetchNativeBrowserProvider(ctx context.Context, 
 		return empty, ctx.Err()
 	}
 	id := sha256.Sum256([]byte(profile.BoardID + "|" + profile.EffectiveConfigSHA256 + "|" + listing))
-	request := replay.Request{Protocol: replay.Protocol, RequestID: hex.EncodeToString(id[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, BoardURL: listing, Metadata: json.RawMessage(config["metadata"]), Provider: profile.Provider, TimeoutMS: replay.MaxDurationMS}
+	request := replay.Request{Protocol: replay.Protocol, RequestID: hex.EncodeToString(id[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, BoardURL: listing, Metadata: json.RawMessage(config["metadata"]), Provider: profile.Provider, TimeoutMS: replay.MaxDurationForProvider(profile.Provider)}
 	if !request.Valid() {
 		return empty, queue.ErrConfiguration
 	}
