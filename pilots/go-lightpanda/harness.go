@@ -1015,6 +1015,22 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
 
+	warmup := ""
+	if task.Feed != nil {
+		warmup = task.Feed.request.WarmupURL
+	} else if task.APIReplay != nil {
+		warmup = task.APIReplay.options.WarmupURL
+	}
+	if warmup != "" {
+		// Bind the CDP connection to the whole conversation before the warmup's
+		// child context closes. Cookies remain in this one disposable target.
+		if err := chromedp.Run(targetCtx); err != nil {
+			return Result{}, errSessionWarmup
+		}
+		if err := executeSessionWarmup(ctx, targetCtx, warmup); err != nil {
+			return Result{}, err
+		}
+	}
 	if task.Feed != nil {
 		// chromedp binds its first CDP connection to the context of its first
 		// Run. Initialize at session scope so page-listener cancellation does

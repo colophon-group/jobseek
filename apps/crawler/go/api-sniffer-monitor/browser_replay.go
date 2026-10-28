@@ -54,6 +54,7 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 // alone never authorize a browser profile or replace its legacy owner.
 type BrowserReplayOptions struct {
 	BootstrapURL        string // Code-owned navigation alias; never a metadata override.
+	WarmupURL           string // Same-origin navigation in the same disposable target.
 	LiveURLMatch        string
 	ResponseBodyLimit   int // Fixed native provider factory only; never metadata-controlled.
 	Inventory           Options
@@ -79,6 +80,17 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	m, ok := d.Value.(map[string]any)
 	if !ok || m["browser"] != true {
 		return o, ErrOptions
+	}
+	if value, present := m["warmup_url"]; present {
+		warmup, ok := value.(string)
+		w, err := url.Parse(warmup)
+		board, other := url.Parse(boardURL)
+		if !ok || !validURL(warmup) || err != nil || other != nil || w.Scheme != "https" || w.Host != board.Host || w.Fragment != "" {
+			return o, ErrOptions
+		}
+		o.WarmupURL = warmup
+		delete(m, "warmup_url")
+		d.order[reflect.ValueOf(m)] = slices.DeleteFunc(d.order[reflect.ValueOf(m)], func(key string) bool { return key == "warmup_url" })
 	}
 	// Trip.com's hash is a client-side listing route, not a network resource.
 	// Its same-origin root establishes the affine session for the explicit API.

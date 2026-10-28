@@ -54,6 +54,7 @@ func (r *NativeRenderedDetails) fetchRSS(ctx context.Context, profile queue.Gree
 	}
 	hash := sha256.Sum256([]byte(profile.BoardID + "|" + profile.EffectiveConfigSHA256 + "|" + profile.Endpoint))
 	request := feed.Request{Protocol: feed.Protocol, RequestID: hex.EncodeToString(hash[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, FeedURL: profile.Endpoint, PageParameter: param, Start: start, Increment: increment, MaxPages: maxPages, Wait: wait, WaitFallback: fallbackWait, NavigationTimeoutMS: timeout, TimeoutMS: feed.MaxDurationMS}
+	request.WarmupURL, _ = options["warmup_url"].(string)
 	if !request.Valid() {
 		return empty, queue.ErrConfiguration
 	}

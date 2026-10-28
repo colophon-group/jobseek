@@ -73,6 +73,38 @@ reference. Persistent's actual HTTP 503 and retry/failure behavior is preserved;
 it is not claimed as successful live inventory. The benchmark and current
 serving/queue proofs do not establish whole-service cost or freshness parity.
 
+**Grouped candidate 0.13.1109: API/RSS warmup, Tesla and Indeed.** Same-origin
+warmup now runs before the real API or feed navigation in the same disposable
+Lightpanda target. Physical tests verify HTTP and JavaScript cookies, isolation
+between tasks, blocked/reserved warmups, inventory provenance and cleanup for
+both contracts. Both Linux architecture suites include this fixture. HTTP-only
+discovery still refuses warmup metadata.
+
+Tesla's explicit API match is narrowed to its configured host. One complete
+Lightpanda read returns **8,237 jobs**, all with titles, source IDs and departments;
+8,223 have configured locations. Later probes also encounter publisher failures,
+so sustained reliability remains unproved. Real native migrated PostgreSQL and
+private Redis checks publish every identity and exercise failure, partial-result
+and publisher-reservation protection with the real rich preparer. The RSS source
+returns non-XML HTML: the unchanged original reader and native reader both reject
+it, preserve inventory and settle failure/backoff. This is failure qualification,
+not a successful empty feed. Indeed retains its four-URL complete reference and
+four earlier canonical cases. Only these three monitor configurations change;
+their detail configurations stay intact.
+
+The prospective whole floor retains **8,119 monitors / 8,130 details** and all
+**3,281** detail references, adding three monitors for **8,122 / 8,130** with zero
+eligibility failures. Production still serves 1107 until the original full
+renderer/crawler deployment and ownership handoff pass. After activation the
+conditional remainder is **15 monitors / 7 details**. See the
+[candidate evidence](evidence/go-native1109-api-rss-warmup-candidate-2026-10-28.json).
+
+Subsequent natural observation of 1107 records one worker restart at 13:20 UTC
+with `detail_terminal: authority_lost` on `dom.direct-detail/v1`, no OOM and no
+further restart through 13:48 UTC. Claim errors last occur at 13:31 UTC in that
+observation. Its exact cause remains unattributed. Preserve the authority guards;
+the successful rollout checks do not establish sustained stability.
+
 **Earlier verified ordinary checkpoint: runtime 0.13.1105, epoch 386.**
 [PR #10942](https://github.com/colophon-group/jobseek/pull/10942) passed Required CI
 and Crawler Deploy Gate at `e52a8d0909b38fe1ad7fde5a28bf60a72f2c8079`.

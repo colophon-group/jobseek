@@ -201,6 +201,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "personio":
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
+		allowed["warmup_url"] = true
 		allowed["rescrape_policy"] = true
 		allowed["resolve_job_invite_identity"] = true
 		allowed["preset"], allowed["feed_url"] = true, true
@@ -273,6 +274,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "api_sniffer":
+		allowed["warmup_url"] = true
 		allowed["api_url_match"] = true
 		allowed["require_pdf_pattern"], allowed["require_unexpired_pdf"] = true, true
 		allowed["url_transform"] = true

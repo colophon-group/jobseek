@@ -28,6 +28,7 @@ type Request struct {
 	RequestID           string        `json:"request_id"`
 	ConfigFingerprint   string        `json:"config_fingerprint"`
 	FeedURL             string        `json:"feed_url"`
+	WarmupURL           string        `json:"warmup_url,omitempty"`
 	PageParameter       string        `json:"page_parameter"`
 	Start               int           `json:"start"`
 	Increment           int           `json:"increment"`
@@ -57,7 +58,16 @@ func (r Request) Valid() bool {
 		return false
 	}
 	u, e := url.Parse(r.FeedURL)
-	return e == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Fragment == "" && u.Opaque == ""
+	if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" || u.Opaque != "" {
+		return false
+	}
+	if r.WarmupURL != "" {
+		w, err := url.Parse(r.WarmupURL)
+		if err != nil || len(r.WarmupURL) > 8192 || strings.ContainsAny(r.WarmupURL, "\x00\r\n\t ") || w.Scheme != u.Scheme || w.Host != u.Host || w.User != nil || w.Fragment != "" || w.Opaque != "" {
+			return false
+		}
+	}
+	return true
 }
 func (r Request) PageURL(page int) (string, error) {
 	if !r.Valid() || page < r.Start || (page-r.Start)%r.Increment != 0 || (page-r.Start)/r.Increment >= r.MaxPages {
