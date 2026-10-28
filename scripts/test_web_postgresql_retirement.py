@@ -57,9 +57,33 @@ class SafetyTests(unittest.TestCase):
             patch.object(host, "STATE", Path(directory)),
         ):
             for identity, objects in [
-                ({"owned": False, "sessions": 0}, "0"),
-                ({"owned": True, "sessions": 1}, "0"),
-                ({"owned": True, "sessions": 0}, "1"),
+                (
+                    {
+                        "owned": False,
+                        "sessions": 0,
+                        "connection_limit": -1,
+                        "network_roles_safe": True,
+                    },
+                    "0",
+                ),
+                (
+                    {
+                        "owned": True,
+                        "sessions": 1,
+                        "connection_limit": -1,
+                        "network_roles_safe": True,
+                    },
+                    "0",
+                ),
+                (
+                    {
+                        "owned": True,
+                        "sessions": 0,
+                        "connection_limit": -1,
+                        "network_roles_safe": True,
+                    },
+                    "1",
+                ),
             ]:
                 with patch.object(
                     host, "admin", side_effect=[json.dumps(identity), objects, ""]
@@ -71,10 +95,10 @@ class SafetyTests(unittest.TestCase):
                     )
                     if objects == "1":
                         self.assertIn(
-                            "ALLOW_CONNECTIONS false", admin.call_args_list[1].args[0]
+                            "CONNECTION LIMIT 0", admin.call_args_list[1].args[0]
                         )
                         self.assertIn(
-                            "ALLOW_CONNECTIONS true", admin.call_args_list[-1].args[0]
+                            "CONNECTION LIMIT -1", admin.call_args_list[-1].args[0]
                         )
 
     def test_no_remote_plaintext_or_transaction_pooler(self):
@@ -491,6 +515,45 @@ class TransferIntegrationTests(unittest.TestCase):
         self.assertEqual(proof["database_locale"], locale)
         ordering = "SELECT json_agg(value ORDER BY value) FROM words"
         self.assertEqual(client.sql(ordering), self.target.sql(ordering))
+
+    def test_candidate_admission_denies_owner_but_preserves_local_admin_audit(self):
+        role = self.prefix + "_limited"
+        self.admin.sql(
+            f"CREATE ROLE {database.identifier(role)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD 'fixture';"
+        )
+        self.extra_roles.append(role)
+        target = self.names[1]
+        self.admin.sql(
+            f"ALTER DATABASE {database.identifier(target)} OWNER TO {database.identifier(role)};"
+        )
+        parsed = urlsplit(os.environ["WEB_DB_TEST_URL"])
+        limited_url = urlunsplit(
+            parsed._replace(
+                netloc=f"{role}:fixture@{parsed.hostname}:{parsed.port or 5432}",
+                path="/" + target,
+            )
+        )
+        limited = database.Client(limited_url, self.root, native_bin=self.native)
+        self.clients.append(limited)
+        # Exercise the exact current-database SQL that failed with ALLOW_CONNECTIONS.
+        self.target.sql(
+            f"ALTER DATABASE {database.identifier(target)} CONNECTION LIMIT 0;"
+        )
+        try:
+            with self.assertRaises(database.DatabaseError):
+                limited.sql("SELECT 1;")
+            self.assertEqual(self.target.sql("SELECT 1;"), "1")
+            self.assertEqual(
+                self.target.sql(
+                    "SELECT count(*) FROM pg_tables WHERE schemaname='public';"
+                ),
+                "0",
+            )
+        finally:
+            self.admin.sql(
+                f"ALTER DATABASE {database.identifier(target)} CONNECTION LIMIT -1;"
+            )
+        self.assertEqual(limited.sql("SELECT 1;"), "1")
 
     def test_complete_roundtrip_preserves_new_tables_constraints_roles_and_sequence(
         self,

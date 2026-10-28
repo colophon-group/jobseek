@@ -453,20 +453,27 @@ def prepare_empty_database_locale(name: str, locale: dict):
     identity = json.loads(
         admin("""SELECT json_build_object(
       'owned',pg_get_userbyid(datdba)='jobseek_web_owner',
+      'connection_limit',datconnlimit,
+      'network_roles_safe',NOT EXISTS(SELECT FROM pg_roles WHERE rolsuper AND rolname IN
+        ('jobseek_web_owner','jobseek_migration_auditor','jobseek_narrowed_worker')),
       'sessions',(SELECT count(*) FROM pg_stat_activity WHERE datname='jobseek_web'))
       FROM pg_database WHERE datname='jobseek_web'""")
     )
-    if not identity["owned"] or identity["sessions"]:
+    if (
+        not identity["owned"]
+        or identity["sessions"]
+        or not identity["network_roles_safe"]
+    ):
         raise database.DatabaseError(
             "locale replacement requires a pristine idle managed candidate"
         )
-    # Fence new connections before checking the entire candidate for user objects.
-    # Existing sessions prevent replacement; the public endpoint never gains a
-    # check/drop race in which newly written data could be discarded.
+    # Zero denies every network login (all are nonsuperusers), while retaining
+    # the local administrator's inspection session. PostgreSQL rejects setting
+    # ALLOW_CONNECTIONS=false from the current database.
     disabled = True
     try:
         objects = admin(
-            """ALTER DATABASE jobseek_web ALLOW_CONNECTIONS false;
+            """ALTER DATABASE jobseek_web CONNECTION LIMIT 0;
       SELECT (
       (SELECT count(*) FROM pg_namespace WHERE nspname NOT IN ('public','information_schema')
         AND nspname !~ '^pg_') +
@@ -488,7 +495,19 @@ def prepare_empty_database_locale(name: str, locale: dict):
         admin(database.create_database_sql(name, "jobseek_web_owner", locale))
     finally:
         if disabled:
-            admin("ALTER DATABASE jobseek_web ALLOW_CONNECTIONS true;")
+            limit = identity["connection_limit"]
+            if not isinstance(limit, int) or limit < -1:
+                raise database.DatabaseError("invalid candidate connection limit")
+            admin(f"ALTER DATABASE jobseek_web CONNECTION LIMIT {limit};")
+
+
+def source_database_locale() -> dict:
+    client = database.Client(database.private_file(CONFIG / "source.url"), RUNTIME)
+    try:
+        with client.snapshot() as (query, _):
+            return database.validate_locale(query(database.locale_query()))
+    finally:
+        client.close()
 
 
 def copy_database(*, rehearsal: bool):
@@ -499,12 +518,7 @@ def copy_database(*, rehearsal: bool):
             "operation must run from an immutable revision bundle"
         )
     source = CONFIG / "source.url"
-    locale_client = database.Client(database.private_file(source), RUNTIME)
-    try:
-        with locale_client.snapshot() as (query, _):
-            source_locale = database.validate_locale(query(database.locale_query()))
-    finally:
-        locale_client.close()
+    source_locale = source_database_locale()
     if rehearsal:
         name = "jobseek_rehearsal_" + str(int(time.time()))
         admin(database.create_database_sql(name, "jobseek_web_owner", source_locale))
@@ -662,6 +676,7 @@ def main():
             "confirm-consumers",
             "verify-server",
             "prepare-worker-access",
+            "prepare-locale",
         ],
     )
     args = parser.parse_args()
@@ -685,6 +700,17 @@ def main():
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.action == "prepare":
             prepare()
+        elif args.action == "prepare-locale":
+            expected = source_database_locale()
+            actual = json.loads(admin(database.locale_query(), name="jobseek_web"))
+            if actual != expected:
+                prepare_empty_database_locale("jobseek_web", expected)
+            if (
+                json.loads(admin(database.locale_query(), name="jobseek_web"))
+                != expected
+            ):
+                raise database.DatabaseError("candidate database locale did not align")
+            print(json.dumps({"success": True, "candidate_locale_prepared": True}))
         elif args.action == "prepare-worker-access":
             configure_worker_role()
             print(json.dumps({"success": True, "worker_access_prepared": True}))

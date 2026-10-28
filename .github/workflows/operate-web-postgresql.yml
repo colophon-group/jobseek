@@ -8,7 +8,7 @@ on:
         required: true
         default: verify
         type: choice
-        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup, open-ingress, prepare-worker-access]
+        options: [prepare, rehearse, copy, verify, backup-source, restore-source, recover-repository, activate-backup, open-ingress, prepare-worker-access, prepare-locale]
       revision:
         description: Exact current main SHA
         required: true

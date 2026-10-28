@@ -5,7 +5,7 @@ umask 077
 revision=${1:-}
 action=${2:-}
 [[ "$revision" =~ ^[0-9a-f]{40}$ && "$(git rev-parse HEAD)" = "$revision" ]]
-[[ "$action" =~ ^(prepare|rehearse|copy|verify|verify-server|prepare-worker-access|backup-source|restore-source|recover-repository|activate-backup)$ ]]
+[[ "$action" =~ ^(prepare|rehearse|copy|verify|verify-server|prepare-worker-access|prepare-locale|backup-source|restore-source|recover-repository|activate-backup)$ ]]
 : "${TARGET_HOST:?}" "${SSH_PRIVATE_KEY:?}" "${SSH_KNOWN_HOSTS:?}" "${RUNNER_TEMP:?}"
 [[ "$TARGET_HOST" =~ ^[a-zA-Z0-9.:_-]+$ ]]
 stage=$(mktemp -d "$RUNNER_TEMP/web-postgresql.XXXXXX")
@@ -52,7 +52,7 @@ print(json.dumps({
  'revision':os.environ['DEPLOY_REVISION']}))
 PY
     ;;
-  rehearse|copy|verify|verify-server|prepare-worker-access)
+  rehearse|copy|verify|verify-server|prepare-worker-access|prepare-locale)
     ssh "${options[@]}" "root@$TARGET_HOST" "python3 $helper/host.py $action"
     ;;
   backup-source|restore-source|recover-repository)
