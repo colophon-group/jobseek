@@ -182,7 +182,7 @@ func OpenAuthority(ctx context.Context, dsn string, client *Client, epoch int64)
 	}
 	authority := &Authority{queue: client, pool: pool, epoch: epoch}
 	if err := authority.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, "SELECT task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host FROM public.ordinary_worker_write_fence WHERE false")
+		rows, err := tx.Query(ctx, "SELECT task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host,stable_config_sha256 FROM public.ordinary_worker_write_fence WHERE false")
 		if err != nil {
 			return err
 		}
@@ -398,6 +398,14 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 			}
 		}
 		nextState := "active"
+		var stableConfig *string
+		if a.defaultOwner && task.Kind == Monitor {
+			profile, err := InspectRichMonitor(task.ID, task.Config)
+			if err != nil {
+				return err
+			}
+			stableConfig = &profile.EffectiveConfigSHA256
+		}
 		var retainedDue *time.Time
 		var retainedHost *string
 		var retainedStep *int16
@@ -411,11 +419,11 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 			retainedHash = oldHash
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO public.ordinary_worker_write_fence
-   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host,next_detail_step,next_detail_at,next_detail_description_hash)
-   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host,next_detail_step,next_detail_at,next_detail_description_hash,stable_config_sha256)
+   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
    ON CONFLICT(task_kind,task_id) DO UPDATE SET board_id=EXCLUDED.board_id,
    routing_epoch=EXCLUDED.routing_epoch,claim_token=EXCLUDED.claim_token,
-   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,learned_egress_host=EXCLUDED.learned_egress_host,next_detail_step=EXCLUDED.next_detail_step,next_detail_at=EXCLUDED.next_detail_at,next_detail_description_hash=EXCLUDED.next_detail_description_hash,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue, retainedHost, retainedStep, retainedStepAt, retainedHash)
+   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,learned_egress_host=EXCLUDED.learned_egress_host,next_detail_step=EXCLUDED.next_detail_step,next_detail_at=EXCLUDED.next_detail_at,next_detail_description_hash=EXCLUDED.next_detail_description_hash,stable_config_sha256=EXCLUDED.stable_config_sha256,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue, retainedHost, retainedStep, retainedStepAt, retainedHash, stableConfig)
 		if err != nil {
 			return err
 		}

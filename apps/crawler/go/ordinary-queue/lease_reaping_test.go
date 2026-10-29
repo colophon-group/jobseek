@@ -84,13 +84,13 @@ func TestRealCommittedLeaseReapingRechecksAtomicObservation(t *testing.T) {
 }
 
 func TestRealCommittedLeaseReapingPreservesSuccessfulDeadline(t *testing.T) {
-	for _, mode := range []string{"future", "already-due", "stale-queued", "repair", "metadata-change", "learned-host", "last-strike", "default"} {
+	for _, mode := range []string{"future", "already-due", "stale-queued", "repair", "metadata-change", "learned-host", "last-strike", "default", "default-metadata-change"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
 			var p firstOwnerFixture
 			var a *Authority
 			var claim *Claim
-			if mode == "default" {
+			if strings.HasPrefix(mode, "default") {
 				p.f = greenhouseAuthorityFixture(t)
 				var err error
 				a, err = OpenDefaultAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch)
@@ -135,7 +135,7 @@ func TestRealCommittedLeaseReapingPreservesSuccessfulDeadline(t *testing.T) {
 				if err := p.f.client.redis.HSet(ctx, "monitor_repair_due:simple", task, number(seconds(want))).Err(); err != nil {
 					t.Fatal(err)
 				}
-			case "metadata-change":
+			case "metadata-change", "default-metadata-change":
 				if err := p.f.client.redis.HSet(ctx, "board:"+p.f.task.ID, "egress_host", "changed.greenhouse.io").Err(); err != nil {
 					t.Fatal(err)
 				}
@@ -159,7 +159,7 @@ func TestRealCommittedLeaseReapingPreservesSuccessfulDeadline(t *testing.T) {
 			if mode == "learned-host" && p.f.client.redis.HGet(ctx, "board:"+p.f.task.ID, "egress_host").Val() != host {
 				t.Fatal("committed learned host lost")
 			}
-			if mode == "metadata-change" && p.f.client.redis.HGet(ctx, "board:"+p.f.task.ID, "egress_host").Val() != "changed.greenhouse.io" {
+			if strings.HasSuffix(mode, "metadata-change") && p.f.client.redis.HGet(ctx, "board:"+p.f.task.ID, "egress_host").Val() != "changed.greenhouse.io" {
 				t.Fatal("stale learned host replayed")
 			}
 			before := snapshot(t, p.f.client)
@@ -207,6 +207,39 @@ func TestRealCommittedLeaseReapingRefusesChangedAuthorityBeforeEffects(t *testin
 				t.Fatal("refused sweep had effects")
 			}
 		})
+	}
+}
+
+func TestDefaultCommittedReapingRejectsChangedCrawlerConfiguration(t *testing.T) {
+	p := firstOwnerFixture{f: greenhouseAuthorityFixture(t)}
+	ctx := context.Background()
+	a, err := OpenDefaultAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(a.Close)
+	claim, err := a.Claim(ctx, Simple)
+	if err != nil || claim == nil {
+		t.Fatal("default claim unavailable", err)
+	}
+	if _, err := a.Write(ctx, claim, true, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "UPDATE job_board SET next_check_at=$2 WHERE id=$1::uuid", p.f.task.ID, futureDue())
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.f.observer.Exec(ctx, "UPDATE job_board SET check_interval_minutes=61 WHERE id=$1::uuid", p.f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.f.client.redis.HSet(ctx, "board:"+p.f.task.ID, "check_interval_minutes", "61").Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.f.client.redis.ZAdd(ctx, "inflight:simple", redis.Z{Member: inflight(p.f.task), Score: 1}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, p.f.client)
+	if _, err := reapCommittedFixture(t, p); err == nil || !reflect.DeepEqual(before, snapshot(t, p.f.client)) {
+		t.Fatal("changed stable configuration granted receipt recovery", err)
 	}
 }
 

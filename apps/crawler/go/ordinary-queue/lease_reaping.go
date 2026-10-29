@@ -135,10 +135,11 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 			continue
 		}
 		var token, configSHA, learned string
+		var stableConfig *string
 		var due *time.Time
-		err := tx.QueryRow(ctx, `SELECT claim_token,config_sha256,next_due_at,COALESCE(learned_egress_host,'')
+		err := tx.QueryRow(ctx, `SELECT claim_token,config_sha256,next_due_at,COALESCE(learned_egress_host,''),stable_config_sha256
  FROM public.ordinary_worker_write_fence WHERE task_kind='monitor' AND task_id=$1::uuid
- AND routing_epoch=$2 AND state='completed'`, member.BoardID, epoch).Scan(&token, &configSHA, &due, &learned)
+ AND routing_epoch=$2 AND state='completed'`, member.BoardID, epoch).Scan(&token, &configSHA, &due, &learned, &stableConfig)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
@@ -152,7 +153,7 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		if err != nil || !defaultOwner && profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 			return "", ErrAuthorityLost
 		}
-		if defaultOwner && (profile.Domain != parts[1] || (config["monitor_needs_browser"] == "1") != (worker == "browser") || configSHA != configDigest(config)) {
+		if defaultOwner && (stableConfig == nil || *stableConfig != profile.EffectiveConfigSHA256 || profile.Domain != parts[1] || (config["monitor_needs_browser"] == "1") != (worker == "browser")) {
 			return "", ErrAuthorityLost
 		}
 		var canonicalDue *time.Time

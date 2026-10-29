@@ -19,6 +19,14 @@ orphan tokens, descriptor changes and queued duplicates still refuse before
 effects. Default-mode committed results retain their successful deadlines when
 an expired attempt is recovered, rather than becoming failed retries.
 
+Additive migration **0041** stores the default monitor's effective configuration
+hash separately from its exact runtime snapshot. Recovery tolerates mutable
+egress metadata while requiring the same actual crawler configuration, token,
+epoch, canonical deadline and ownership guards. The nullable column preserves
+the retained runtime's existing SQL column ABI. A changed runtime snapshot never
+replays a stale learned host. Actual PostgreSQL/Redis tests cover both harmless
+metadata drift and refusal of changed crawler configuration.
+
 The next rollout must pass Required CI and Crawler Deploy Gate, restore complete
 processing through the original full workflow, and prove the complete cold
 reversal before final Go acceptance. Then verify fleet output, natural freshness,
