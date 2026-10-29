@@ -1,6 +1,74 @@
 # Go and Lightpanda migration delivery plan
 
-## Current handoff and new Lightpanda candidate — October 29, 2026, 03:00 UTC
+## Verified serving checkpoint — October 29, 2026, 05:01 UTC
+
+Runtime **0.13.1113**, source/data
+`7a3f6fab1c6d9e54825b6674da5768661b09eb7d`, is active at **epoch 398** after
+its original full deployment and supported B0/ordinary handoff. Independent
+readback verifies both immutable runtime images, exact receipts, active SQL plan,
+complete staged Redis projection, **ten running actors and eight health endpoints**.
+All **8,142 enabled boards** remain configured.
+
+**Go owns 8,138 ordinary monitors / 8,139 details**, retaining every previous
+8,128 / 8,138 assignment and including the grouped nine-monitor migration plus
+the newly published Arcis Golf board. The three B0 boards remain separately owned.
+One ordinary monitor, **IHG Kimpton Americas**, still needs a proved replacement.
+
+The renderer runs the latest verified official
+**1.1.0-nightly.11275+78bbb64db** from the same Jobseek source. Both Linux
+physical architecture suites and installed-image parity passed. Its original
+deployment and independent immutable source/image, binary hash/version,
+**1 GB memory, zero swap and mTLS readiness** checks passed. All eight synthetic
+ARM64 B0 matched pairs pass; this does not establish production-wide savings.
+The Mac proxy-fixture startup failures remain recorded.
+
+Strict postactivation SDK verification passes **all 2,039,274 scheduled routes**,
+with zero cache mismatches and zero wrong-lane residue. Whole queue accounting
+compares **3,448,369 unfiltered outgoing unique identities** with **3,452,777**
+after activation: **301 removals / 4,709 additions**. Every removal and the one
+non-atomic snapshot gap have current dispositions: 204 inactive/disabled canonical
+records, 95 unscheduled canonical records and two currently queued identities.
+There are **zero unexplained identities**. The original outgoing baseline was
+only sorted/deduplicated; no cohort or canonical filtering replaced it.
+
+The active configuration capture preserves all configured routing/parser fields.
+Its comparison accounts for typed Eightfold timestamp/default updates and UKG
+listing metadata only when it resolves to the original URL identity. The actual
+Go SDK independently validates every captured current canonical/cache route.
+See [the current serving evidence](evidence/go-native1113-serving-2026-10-29.json)
+and [the renderer qualification](evidence/lightpanda-nightly11275-candidate-2026-10-29.json).
+
+## Continue to full delivery
+
+Execution stays **strictly Lightpanda and proved Go HTTP/API**, with no Chromium
+fallback. Keep the full migration goal active. Deliver the remaining contracts
+and runtime consumers in shared batches; avoid another type-by-type rollout.
+
+| Work | Completion evidence |
+|---|---|
+| Finish IHG | Complete positive publisher inventory, canonical fields, failure behavior and bounded Linux renderer resources. Its retained route succeeded at 04:47 UTC with 402 active records; preserve it until replacement qualification. |
+| Restore freshness | Measure and remove claim/settlement overhead, then sustain natural monitor/detail deadlines and queue conservation. Do not force runs or change deadlines to manufacture progress. |
+| Complete native lifecycle and consumers | Make new supported catalogue entries acquire validated Go ownership through the committed workflow, reconcile B0/ordinary lifecycle, and replace remaining production Python operational entrypoints. |
+| Retire the old runtime | Prove comparable whole-lane CPU/RAM/density and attributable cost, exercise the final supported cold reversal and recovery window, then remove production Python, Playwright, Chromium and obsolete runtime assets. Keep useful isolated offline Python. |
+
+Freshness is **not accepted**. At 05:00 UTC, 3,247 boards are over an hour overdue
+and 19 over a day. A 726-second natural counter interval completed 126 native
+monitors, about 625/hour, below the 8,142 hourly board workload. The first sample's
+mean monitor task time is about 39 seconds versus two seconds in discovery;
+this narrows the investigation but does not attribute the remaining time to a
+specific cause. Heartbeat loss remains zero in these samples.
+
+IHG's latest local Lightpanda test hits the existing 128 MB child heap cap. A
+private 256 MB diagnostic clears that failure but still does not yield a job
+inventory, even with longer bootstrap time or fresh anonymous public context.
+The public root, career-site, client and CX settings return successfully; tested
+public search calls still fail. An analytics script's 404 also occurs over HTTP
+and no actual chunk-load error was observed. These are diagnostic failures, not
+replacement or production-memory-change authority. Keep source/configuration,
+policy, identity and ownership guards intact while identifying the missing
+bootstrap behavior. Freshness, whole-lane cost and final retirement remain open.
+
+## Historical handoff and new Lightpanda candidate — October 29, 2026, 03:00 UTC
 
 [PR #10996](https://github.com/colophon-group/jobseek/pull/10996) is merged as
 `5dce82878ef815df610f7f2f8610c9c23fae1119` after both required gates and native

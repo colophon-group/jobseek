@@ -36,15 +36,20 @@
     }
   ],
   "Mac_binary_sha256": "e22ffe3c4f0aaec04a25b963d5cb3e946c71a97867f621c7b27b905283842b74",
-  "qualified_for_production": false,
-  "deployment_status": "Candidate only; both Linux physical CI suites and supported exact-source renderer deployment/readback required.",
+  "qualified_for_production": true,
+  "deployment_status": "Original exact-main renderer workflow 40811645914 succeeded. Independent deployed source/image/binary/version, cgroup 1GB/swap0/noOOM and mTLS readiness passed. This grants renderer acceptance, not full migration completion.",
   "local_validation": {
     "renderer_contract_tests": {
       "passed": 101,
       "skipped": 24,
       "scope": "Existing deployment/proxy contract tests."
     },
-    "Mac_full_race_suite": "Running; proxy fixtures exit before readiness. Preserve failures and require actual Linux architecture suites. No tests weakened or skipped to grant promotion.",
+    "Mac_full_race_suite": {
+      "pass_entries": 498,
+      "explicit_skips": 21,
+      "failed_entries": 13,
+      "failure_scope": "All failure entries are Mac proxy-fixture startup before readiness. Preserved; actual Linux amd64 and arm64 physical CI jobs both pass at qualified head6a1497765c49f73f1e1ce7462ef3cb9e4d8aadc5."
+    },
     "Go_unit_race": {
       "passed_entries": 421,
       "failed": 0,
@@ -52,6 +57,27 @@
       "scope": "Physical opt-in tests skipped in unit-only run; separate physical run and both Linux CI suites remain required."
     }
   },
-  "runtime_handoff": "PR10996 merged as5dce82878ef815df610f7f2f8610c9c23fae1119. Original ordinary retirement successful; independent P/dataQ epoch396 cold ordinary/full9actors7endpoints verified. Original B0 rollback running. Incoming1112 deployment/admission not yet accepted.",
-  "scope": "Official OCI index, platform, config, layer and extracted binary hashes verified independently. Both Linux executables equal official GitHub asset digests. Mac executable version verified; moving nightly Git tag is not executable source authority."
+  "runtime_handoff": "Original source/data1113 rollout and supported B0/ordinary handoff succeeded. Independently verified epoch398,8138 ordinary monitors/8139 details,10 running actors/8 healthy endpoints. Strict postactivation SDK and unfiltered wholequeue accounting passed; full migration remains open.",
+  "scope": "Official OCI index, platform, config, layer and extracted binary hashes verified independently. Both Linux executables equal official GitHub asset digests. Mac executable version verified; moving nightly Git tag is not executable source authority.",
+  "deployed_renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:4361f406e77fc0bd2fab56533e0bab51b56773e2c398cdbd78fd1e7b7c707805",
+  "deployed_source": "7a3f6fab1c6d9e54825b6674da5768661b09eb7d",
+  "Linux_physical_CI": {
+    "qualified_head": "6a1497765c49f73f1e1ce7462ef3cb9e4d8aadc5",
+    "amd64_job": 123237103487,
+    "arm64_job": 123237103196,
+    "both_conclusions": "success",
+    "log_count_claim": "Job statuses are authoritative; returned log tails are truncated, so no total test-count claim."
+  },
+  "installed_image_parity": {
+    "job_id": 123238134777,
+    "qualified_head": "6a1497765c49f73f1e1ce7462ef3cb9e4d8aadc5",
+    "conclusion": "success"
+  },
+  "synthetic_ARM64_density": {
+    "job_id": 123237103972,
+    "matched_pairs": 8,
+    "conclusion": "success",
+    "admitted": true,
+    "scope": "Synthetic B0 matched work; not full-production whole-lane cost acceptance."
+  }
 }
