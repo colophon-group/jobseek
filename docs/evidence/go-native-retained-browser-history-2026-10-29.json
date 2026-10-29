@@ -1,0 +1,27 @@
+{
+  "schema": "jobseek.native-migration-evidence/v1",
+  "status": "local candidate; not deployed",
+  "runtime_version": "0.13.1112",
+  "base_data_revision": "7169c1a1adcb8994f8d1b0322755912b6664f32d",
+  "base_runtime_revision": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+  "problem": "A later interrupted owner could not retire while a retained, retired BrassRing or Njoyn plan still had an interrupted monitor receipt. Their existing browser profiles were missing from the historical ownership allowlist.",
+  "profiles": [
+    "brassring.session-items/v1",
+    "njoyn.session-urls/v1"
+  ],
+  "change": "Recognize these two existing profiles only when the older retired immutable plan owned the same monitor board. Keep the existing epoch, task identity, plan state and foreign-fence checks.",
+  "regression": {
+    "test": "TestRealFirstOwnershipFreshEpochRetainsRetiredOwnerAndInterruptedReceipt",
+    "provider_cases": ["brassring", "njoyn"],
+    "before": "Both fail when the current interrupted owner retires with legitimate retained history.",
+    "after": "Both pass against migrated isolated PostgreSQL and real Redis with the race detector.",
+    "broader_ownership_suite": {
+      "passed_test_entries": 83,
+      "failed_test_entries": 0,
+      "skipped_test_entries": 0,
+      "postgres_stopped": true,
+      "temporary_socket_removed": true
+    }
+  },
+  "limits": "This candidate does not migrate another publisher, establish production freshness or change deployed ownership. Include it with the next grouped monitor batch; required CI and supported deployment remain outstanding."
+}

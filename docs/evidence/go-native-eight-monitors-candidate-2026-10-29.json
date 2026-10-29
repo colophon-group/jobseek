@@ -1,0 +1,77 @@
+{
+  "schema": "jobseek.go-native-monitor-candidate/v1",
+  "candidate_runtime_version": "0.13.1112",
+  "candidate_base": "7169c1a1adcb8994f8d1b0322755912b6664f32d",
+  "status": "Local candidate; CI, immutable build, supported cutover and actual published catalogue verification remain required.",
+  "execution": "Strictly self-hosted latest Lightpanda and Go HTTP/API.",
+  "changed_monitor_rows": [
+    "agricultural-bank-of-china-careers",
+    "alten-belgium",
+    "bae-systems-malloy-aeronautics",
+    "banner-health-provider-opportunities",
+    "liebherr-hotel-loewen",
+    "mcdonalds-tw",
+    "rothschild-and-co-students-tal-stable",
+    "skechers-israel-corporate"
+  ],
+  "canonical_cases": {
+    "four_DOM": 16,
+    "two_inline": 8,
+    "Alten_DOM": 4,
+    "Banner_HTTP": 4,
+    "total": 32
+  },
+  "observations": [
+    "Two actual HTTP200 challenge structures explicitly fail and retain inventory; ordinary titles or isolated iframe markers remain ordinary.",
+    "Agricultural Bank and McDonalds current filtered URL sets are empty; captures do not establish future positive access or a verified publisher-empty inventory.",
+    "Skechers current extraction fails; BAE requires zero proof, so a document without role or explicit zero evidence fails.",
+    "Alten complete HTTP403, transport failure, incomplete output and publisher reservation preserve canonical inventory. Held pagination remains rendered.",
+    "Banner configured POST HTTP403 previously became an empty result; non-probe401/403 now fail before inventory effects. Optional probes and publisher priority remain intact."
+  ],
+  "detail_retention": {
+    "Alten": "Explicitly remove only the inert detail stealth flag. Preserve proxy=true, transport_attempts=3, scope, ordered steps, wait, timeout and resource policy. All other profile fields equal after expected configuration digest change.",
+    "other_boards": "All retained detail profiles unchanged after expected configuration digest changes."
+  },
+  "prospective_floor": {
+    "enabled_boards": 8141,
+    "monitors": 8136,
+    "details": 8138,
+    "retained_monitors": 8128,
+    "retained_details": 8138,
+    "captured_reference_URLs": 3513,
+    "failures": 0,
+    "remaining_monitors": [
+      "IHG",
+      "NTT"
+    ],
+    "B0_overlap": false
+  },
+  "validation": {
+    "real_canonical_PostgreSQL_Redis_cases": 32,
+    "retained_history_real_entries": 83,
+    "retained_history_skips": 0,
+    "broader_API_real_suite": "pass with race detector and required PostgreSQL/Redis fixtures",
+    "CSV_validator": "pass",
+    "Python_CSV_census_tests": "pass",
+    "Go_registry_census": "pass; environment-dependent fixture skips are covered separately by the required real history/API suites",
+    "full_Go_DOM_race": "pass",
+    "census_records": 326,
+    "census_browser_boards": 517
+  },
+  "qualification_boundaries": [
+    "Current blocked/dormant captures prove failure and retention behavior, not healthy publisher access or complete empty inventories.",
+    "No runtime ownership follows from candidate qualification; exact published runtime/data identities and original cold wrappers remain required.",
+    "Healthy IHG and NTT inventories stay with their existing route until complete positive replacements pass.",
+    "Natural freshness, comparable resources/cost, final supported reversal/window and production Python retirement remain outstanding."
+  ],
+  "private_evidence_sha256": {
+    "last-four-dom-canonical-effects2.private.json": "f075e6cb012f92fe4218747bd0f853331b5b79ee1ab77921cd79d8cb30c221ad",
+    "last-inline-canonical-effects1.private.json": "568efaadfb64dc48dafea663d78e4d76ea4db6fc4db05ff64dd7465382440c74",
+    "alten-canonical-effects1.json": "3d62e4614f45b5de317c13e79b95166959721883903f9d5f553f273ea0c14256",
+    "banner-http-canonical-effects2.json": "b78b7990489e69ddc3fcf0cb8243769b353e64393e9ecad571d97b3bd4f2301f",
+    "prospective-floor-sdk2.json": "5088576f01e05a7cb74ae09168421677e0ebf6c8a68d3bcb882fea2ecc009492",
+    "history-full-validation1.json": "530204c23a66ac9fcee57a6a7336dcce3a889c816978933b1ff938a87bdf7206",
+    "final-api-validation1.json": "b8ba252247c77eb5cd4e263ad63f85b66d85791f1dd895281b622ed2e8002818",
+    "local-validation2.json": "e0d0564c9f5bede48e39731c844e53ba04b58bf1dd8e17f695d6d35c4bdea3e6"
+  }
+}

@@ -55,6 +55,8 @@ func classifyDocument(html string, config Object, finalURL string, limit int) (O
 	}
 	challenge := any("/.well-known/captcha", "/.well-known/sgcaptcha", "<title>just a moment") ||
 		(all("/cdn-cgi/challenge-platform/") && any("enable javascript and cookies", "sorry, you have been blocked")) ||
+		all("<title>quick check needed</title>", "/cdn-cgi/challenge-platform/") ||
+		all("<title>challenge validation</title>", `id="sec-cpt-if"`, `name="verify-url"`) ||
 		any("please wait while your request is being verified") ||
 		all(`id="main-iframe"`, "/_incapsula_resource?cwudnsai=") ||
 		any("validate.perfdrive.com", "<title>radware captcha page", "botmanager_support@radware.com", "captcha.perfdrive.com/captcha-public/") ||

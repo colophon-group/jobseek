@@ -1,0 +1,76 @@
+{
+  "schema": "jobseek.native-migration-evidence/v1",
+  "status": "deployed and independently verified; full migration incomplete",
+  "runtime_version": "0.13.1111",
+  "runtime_revision": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+  "data_revision": "7169c1a1adcb8994f8d1b0322755912b6664f32d",
+  "runtime_contract_sha256": "2a0b01f332e0192f9b98f57ff6cd06f00e51346b212499f5806b89d95692d85a",
+  "full_rollout_workflow": 40780616828,
+  "full_rollout_attempt": 2,
+  "CSV_publication_workflow": 40786341623,
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:8d66f4fb371a86b026a2753e24b5a0b59fdde73d204058609800f7f0925710e2",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:09df1fa50eccadc27897f22fb24f1907ebf05caa58e5edaa1eb896ba6a02c9ef"
+  },
+  "ownership": {
+    "routing_epoch": 396,
+    "enabled_boards": 8141,
+    "ordinary_monitors": 8128,
+    "ordinary_details": 8138,
+    "separate_B0_boards": 3,
+    "remaining_ordinary_monitors": 10,
+    "remaining_ordinary_details": 0,
+    "activation_completed_at_utc": "2026-10-29T00:06:01.940189+00:00"
+  },
+  "independent_acceptance": {
+    "completed_at_utc": "2026-10-29T00:06:04.458381+00:00",
+    "actors": 10,
+    "HTTP_health_endpoints": 8,
+    "exact_SQL_plan": true,
+    "protected_receipts": true,
+    "complete_staged_Redis_projection": true,
+    "original_restart_policies": true
+  },
+  "postactivation": {
+    "scheduled_routes": 2039482,
+    "cache_mismatches": 0,
+    "wrong_lane_residue": 0,
+    "non_atomic_snapshot_gaps": 2,
+    "strict_all_route_SDK_passed": true,
+    "queue_conservation": {
+      "unfiltered_before_unique": 3443518,
+      "unfiltered_after_unique": 3448232,
+      "removed": 130,
+      "added": 4844,
+      "dispositions_for_removals_and_snapshot_gaps": {
+        "canonical_inactive_or_disabled": 112,
+        "canonical_unscheduled": 19,
+        "currently_queued_expected": 1
+      },
+      "unexplained": 0,
+      "all_dispositions_accounted": true
+    }
+  },
+  "original_cold_reconstruction": {
+    "qualified_first_time_absent_caches": 5,
+    "qualified_recurring_absent_caches": 26,
+    "unchanged_original_Lua_EVAL_RO_inspect_passed": true,
+    "canonical_hashes_and_deadlines_preserved": true,
+    "ad_hoc_production_repair": false
+  },
+  "Lightpanda": {
+    "engine": "1.1.0-nightly.11227+0eee96bf2",
+    "upstream_revision": "0eee96bf27e2d1dccee59cfcba1a99028a43534e",
+    "ARM64_binary_sha256": "b335058c35e78a8ddf6315145bc573eb48d793018d620fb3c4a8b731a4838e01",
+    "official_assets_rechecked_unchanged": true,
+    "deployed_binary_independently_verified": true
+  },
+  "outstanding": [
+    "Ten remaining monitor contracts, preserving working IHG and NTT inventories",
+    "Natural freshness and stability",
+    "Comparable whole-lane CPU, memory, density and attributable cost",
+    "Remaining runtime maintenance and deployment consumers",
+    "Final supported reversal and rollback window",
+    "Retirement of four production Python worker/browser processes and legacy runtime assets"
+  ]
+}
