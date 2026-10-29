@@ -142,6 +142,17 @@ func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
 // reject its heartbeat and settlement; the token stays private to this library.
 // This does not admit a profile or authorize a PostgreSQL transaction.
 func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, error) {
+	return c.claimFenced(ctx, worker, false)
+}
+
+// ClaimFencedDetails leaves monitors queued when all monitor slots are occupied.
+// The atomic pop still enforces global priority, fairness, throttle and leases.
+// It rejects an installed ownership projection and grants no SQL authority.
+func (c *Client) ClaimFencedDetails(ctx context.Context, worker WorkerType) (*Task, error) {
+	return c.claimFenced(ctx, worker, true)
+}
+
+func (c *Client) claimFenced(ctx context.Context, worker WorkerType, detailsOnly bool) (*Task, error) {
 	if !validWorker(worker) {
 		return nil, ErrConfiguration
 	}
@@ -149,7 +160,11 @@ func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, err
 	if _, err := rand.Read(token[:]); err != nil {
 		return nil, ErrObservation
 	}
-	return c.claimTask(ctx, worker, hex.EncodeToString(token[:]))
+	var binding []any
+	if detailsOnly {
+		binding = []any{"", "", "", "", "", "", "", "", "details"}
+	}
+	return c.claimTaskBound(ctx, worker, hex.EncodeToString(token[:]), binding)
 }
 
 func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string) (*Task, error) {

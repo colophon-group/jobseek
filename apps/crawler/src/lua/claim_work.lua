@@ -6,6 +6,7 @@
 -- ARGV[4] = max_domains_to_check (int)
 -- ARGV[5] = lease_ttl (float seconds; lease set on claim — see #3159 / #3173)
 -- ARGV[6] = optional 32-character lowercase hex claim token (native callers)
+-- ARGV[15] = optional "details" filter for fenced, unplanned native callers
 --
 -- Returns: {task_id, source_type, domain[, claim_token, leased_until]} or nil
 --
@@ -37,6 +38,12 @@ local token_key = "inflight_tokens:" .. wtype
 -- cannot bypass an installed projection; planned callers never fall back when
 -- the entire Redis database or this projection is lost.
 local owner_role = ARGV[7] or ""
+local detail_filter = ARGV[15] or ""
+if detail_filter ~= "" and
+    (detail_filter ~= "details" or owner_role ~= "" or claim_token == "") then
+    return redis.error_reply("ordinary detail filter is invalid")
+end
+local details_only = detail_filter == "details"
 local owner_key = "ordinary:ownership:active"
 local owner_type = redis.call("TYPE", owner_key)["ok"]
 local owner_members = nil
@@ -432,6 +439,10 @@ for _, tier in ipairs(tier_order) do
     -- Get candidate domains with score <= now (due or overdue)
     local candidates = redis.call("ZRANGEBYSCORE", ready_key, "-inf", tostring(now), "LIMIT", 0, max_check)
 
+    -- Occupied monitor slots do not authorize spending a monitor's fairness
+    -- turn on recurring details. Leave both queues and the shared streak alone.
+    if details_only and tier == 1 and #candidates > 0 then return nil end
+
     for _, domain in ipairs(candidates) do
         -- Check shared rate limit
         local rl_key = "ratelimit:" .. domain
@@ -449,7 +460,10 @@ for _, tier in ipairs(tier_order) do
                 tier == 2 and recurring_monitor_streak >= max_recurring_monitor_streak
 
             -- 1. First-time monitors (unconditional pop)
-            local ft_mon = redis.call("ZPOPMIN", "ft_monitors_" .. wtype .. ":" .. domain, 1)
+            local ft_mon = {}
+            if not details_only then
+                ft_mon = redis.call("ZPOPMIN", "ft_monitors_" .. wtype .. ":" .. domain, 1)
+            end
             if #ft_mon >= 2 then
                 task_id = ft_mon[1]
                 source_type = "monitor"
@@ -483,7 +497,7 @@ for _, tier in ipairs(tier_order) do
             -- 3. Recurring monitors (only if due). An armed tier-2 pass is
             -- scrape-only: a stale tier-2 marker must be rebuilt rather than
             -- spending the fairness turn on a ninth monitor from that domain.
-            if not task_id and tier ~= 0 and not fairness_scrape_first then
+            if not task_id and tier ~= 0 and not fairness_scrape_first and not details_only then
                 local items = redis.call("ZRANGEBYSCORE", "monitors_" .. wtype .. ":" .. domain, "-inf", tostring(now), "LIMIT", 0, 1)
                 if #items > 0 then
                     redis.call("ZREM", "monitors_" .. wtype .. ":" .. domain, items[1])

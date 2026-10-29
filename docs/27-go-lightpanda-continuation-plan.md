@@ -1,6 +1,54 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1114 deployment and final monitor candidate — October 29, 2026
+## Default Go runtime and catalogue lifecycle candidate — October 29, 2026
+
+PR **#11004** merged the final IHG Go HTTP route as runtime **0.13.1115**,
+source `1a7c8cfbedcaee0c70c1a6717b23c31724a9839b`, after Required CI,
+Crawler Deploy Gate, full native queue/worker execution and image parity passed.
+Its original full deployment is in progress; the last independent production
+readback remains the 1114 cold checkpoint below.
+
+Candidate **0.13.1116** supplies the remaining application contracts for a
+default Go worker and native catalogue publication together:
+
+- Protected `ORDINARY_GO_WORKER_MODE=default` uses the installed executable's
+  source and an explicit routing epoch. It refuses leftover plan/source selectors,
+  active SQL ownership, Redis projections or B0 guards. Startup verifies the
+  whole enabled canonical/cache catalogue and initializes rendered/proxy clients.
+  New boards use the existing token, SQL, lease and configuration fences without
+  staging another migration plan. Mixed-owner mode remains available for recovery.
+- Detail-only claims leave monitors queued while monitor slots are occupied.
+  The original atomic priority, eight-monitor fairness turn, throttles and leases
+  still apply to both simple and browser queues.
+- `go-typesense-exporter --sync-registry --require-native` validates the actual
+  canonical IDs and merged metadata inside the registry transaction, before
+  commit or Redis publication. Unsupported configurations roll back the whole
+  transaction. This check requires canonical transaction state and cannot be
+  combined with `--dry-run`.
+
+Real migrated PostgreSQL/Redis tests cover new-board adoption, returning ownership
+guards, stale cache rejection, fenced claims, fairness and registry rollback.
+All **8,142** actual board configurations, including all three B0 boards, pass
+the shared validator. **107** existing Python queue tests pass against the
+extended Lua ABI. These are application contracts; default Compose/image and
+host publication/reversal wiring are still required before selecting this mode.
+See [the default runtime evidence](evidence/go-native-default-runtime-candidate-2026-10-29.json).
+
+The new outgoing 1114 capture validates **2,035,949 scheduled routes**, with no
+cache mismatches or lane differences, and preserves **3,454,662 unfiltered unique
+queue identities**. Bounded current observations explain the removals except
+**374 active scheduled SmartRecruiters postings** whose caches/queues are absent.
+Their original deadlines and identities are retained. The existing cold detail
+projection explicitly reconstructs wholly absent scheduled caches during the
+supported activation; verify every affected identity after that operation before
+granting conservation acceptance. Do not repair them through ad hoc commands.
+
+Next: complete the original 1115 deployment and current catalogue/queue handoff;
+measure native freshness and stability; wire the default Go image and complete
+publication/deploy/cold-reversal consumers; then retire production Python after
+the verified recovery window. The complete migration goal remains active.
+
+## Historical verified 1114 deployment and final monitor candidate — October 29, 2026
 
 Runtime **0.13.1114**, source/data
 `b4757167f00a9a801650e9e04793e167abe776ca`, is deployed through the original
