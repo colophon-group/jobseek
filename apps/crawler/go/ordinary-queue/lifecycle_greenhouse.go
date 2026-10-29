@@ -77,7 +77,7 @@ func (c *GreenhouseCycle) InvalidateInventory() {
 }
 
 func (a *Authority) BeginGreenhouseCycle(ctx context.Context, claim *Claim) (*GreenhouseCycle, error) {
-	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil {
+	if a == nil || !a.valid(claim) || !claim.OwnershipBound() || claim.task.Kind != Monitor || claim.recovered != nil {
 		return nil, ErrConfiguration
 	}
 	claim.cycleMu.Lock()

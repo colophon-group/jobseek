@@ -90,21 +90,34 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 	err = tx.QueryRow(ctx, `SELECT p.payload,p.plan_sha256 FROM public.ordinary_worker_ownership_plan p
  JOIN public.lightpanda_b0_routing_epoch_seq e ON e.is_called AND e.last_value=p.routing_epoch
  WHERE p.state='active'`).Scan(&body, &digest)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
+	defaultOwner := errors.Is(err, pgx.ErrNoRows)
 	if err != nil {
-		return "", err
+		if !defaultOwner {
+			return "", err
+		}
 	}
-	plan, err := decodeOwnership(body, digest)
-	if err != nil {
-		return "", err
+	var plan *OwnershipPlan
+	var epoch int64
+	members := make(map[string]ownershipMember)
+	if defaultOwner {
+		err := tx.QueryRow(ctx, "SELECT last_value FROM public.lightpanda_b0_routing_epoch_seq WHERE is_called").Scan(&epoch)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		if err != nil {
+			return "", err
+		}
+	} else {
+		plan, err = decodeOwnership(body, digest)
+		if err != nil {
+			return "", err
+		}
+		epoch = plan.Epoch()
+		for _, member := range plan.document.Members {
+			members[member.BoardID] = member
+		}
 	}
-	members := make(map[string]ownershipMember, len(plan.document.Members))
-	for _, member := range plan.document.Members {
-		members[member.BoardID] = member
-	}
-	a := &Authority{queue: &Client{redis: client}, epoch: plan.Epoch(), ownership: plan}
+	a := &Authority{queue: &Client{redis: client}, epoch: epoch, ownership: plan, defaultOwner: defaultOwner}
 	for _, task := range observation.Expired {
 		currentToken, tokenized := tokens[task]
 		if !tokenized {
@@ -115,14 +128,17 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 			continue
 		}
 		member, owned := members[parts[2]]
-		if !owned || string(member.Worker) != worker || parts[1] != member.Domain {
+		if defaultOwner {
+			member.BoardID = parts[2]
+		}
+		if !defaultOwner && (!owned || string(member.Worker) != worker || parts[1] != member.Domain) {
 			continue
 		}
 		var token, configSHA, learned string
 		var due *time.Time
 		err := tx.QueryRow(ctx, `SELECT claim_token,config_sha256,next_due_at,COALESCE(learned_egress_host,'')
  FROM public.ordinary_worker_write_fence WHERE task_kind='monitor' AND task_id=$1::uuid
- AND routing_epoch=$2 AND state='completed'`, member.BoardID, plan.Epoch()).Scan(&token, &configSHA, &due, &learned)
+ AND routing_epoch=$2 AND state='completed'`, member.BoardID, epoch).Scan(&token, &configSHA, &due, &learned)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
@@ -133,7 +149,10 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 			continue
 		}
 		profile, config, err := a.observeGreenhouseMonitor(ctx, tx, member.BoardID)
-		if err != nil || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+		if err != nil || !defaultOwner && profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+			return "", ErrAuthorityLost
+		}
+		if defaultOwner && (profile.Domain != parts[1] || (config["monitor_needs_browser"] == "1") != (worker == "browser") || configSHA != configDigest(config)) {
 			return "", ErrAuthorityLost
 		}
 		var canonicalDue *time.Time
@@ -155,6 +174,12 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 	}
 	if len(observation.Receipts) == 0 {
 		return "", nil
+	}
+	if defaultOwner {
+		if err := a.requireOwnership(ctx, tx, nil); err != nil {
+			return "", err
+		}
+		return "default", nil
 	}
 	return plan.ProjectionSHA1(), nil
 }

@@ -130,6 +130,13 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) == 2 && os.Args[1] == "--drain-expired-leases" {
+		if err := runLeaseReaperMode(true); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if len(os.Args) == 2 && os.Args[1] == "--inspect-deadletters" {
 		if err := runDeadletters([]string{"inspect"}); err != nil {

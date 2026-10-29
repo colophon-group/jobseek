@@ -40,7 +40,7 @@ const urlOnlyInsertSQL = `INSERT INTO job_posting
 // the board and settlement to its cycle. Detail intents are returned only after
 // commit; a missing-content touch repairs a lost enqueue on the next inventory.
 func (a *Authority) WriteURLOnlyBatch(ctx context.Context, claim *Claim, urls []string) (*URLOnlyBatchResult, error) {
-	if !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || len(urls) < 1 || len(urls) > 500 {
+	if !a.valid(claim) || !claim.OwnershipBound() || claim.task.Kind != Monitor || len(urls) < 1 || len(urls) > 500 {
 		return nil, ErrConfiguration
 	}
 	seen := make(map[string]bool, len(urls))

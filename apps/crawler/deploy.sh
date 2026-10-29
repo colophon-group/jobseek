@@ -223,7 +223,7 @@ case "$EXERCISE_COLD_ROLLBACK" in
 esac
 case "$CRAWLER_RUNTIME_BACKEND" in
   go)
-    CRAWLER_STACK_SERVICES=(redis ordinary-go exporter drain alloy)
+    CRAWLER_STACK_SERVICES=(redis ordinary-go lease-reaper exporter drain alloy)
     ORDINARY_GO_WORKER_MODE=default
     ORDINARY_GO_RENDERED_DETAILS=enabled
     ORDINARY_GO_RESTART_POLICY=unless-stopped
@@ -1283,6 +1283,13 @@ repair_umantis_identity_cutover() {
 }
 
 repair_worker_route_cutover() {
+  # Full writer quiescence precedes this command in both directions. Recover
+  # expired opaque attempts with the existing SQL receipt/Redis CAS protocol;
+  # never erase live tokens or move them between provider lanes.
+  docker run --rm -e LOCAL_DATABASE_URL -e REDIS_URL \
+    --network host "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label "com.docker.compose.service=$1-reap-expired" \
+    "$CRAWLER_IMAGE_REF" go-typesense-exporter --drain-expired-leases || return $?
   docker run --rm -e LOCAL_DATABASE_URL -e REDIS_URL \
     -e CRAWLER_DB_ROLE="$1" --network host \
     "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
@@ -1431,7 +1438,7 @@ wait_for_rollback_core_services() {
   local restored_backend
   restored_backend="$(sed -n 's/^CRAWLER_RUNTIME_BACKEND=//p' "$ENV_FILE")" || return 1
   case "$restored_backend" in
-    go) services=(redis ordinary-go exporter drain alloy) ;;
+    go) services=(redis ordinary-go lease-reaper exporter drain alloy) ;;
     ''|legacy) ;;
     *) echo "ERROR: restored runtime topology is invalid" >&2; return 1 ;;
   esac
@@ -1554,7 +1561,7 @@ rollback_deploy() {
     # spec. Starting old and new generations together would violate the same
     # budget that this rollback is responsible for preserving.
     candidate_compose \
-      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain
+      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
     command_status=$?
     if ((command_status == 0 && candidate_claimant_quiesced)); then
       quiesce_complete=1
@@ -1657,7 +1664,7 @@ rollback_deploy() {
       rollback_status=$command_status
       service_discovery_status=$command_status
     elif [[ "$restored_backend" == go ]]; then
-      rollback_stack_services=(redis ordinary-go exporter drain alloy)
+      rollback_stack_services=(redis ordinary-go lease-reaper exporter drain alloy)
       service_discovery_status=1
     else
       rollback_compose_defines_service lightpanda-claimant
@@ -1986,7 +1993,7 @@ verify_deployed_image_identity() {
   verify_compose_service_image redis "$REDIS_IMAGE"
   local services=(worker-1 worker-2 worker-3 exporter drain lightpanda-claimant)
   if [[ "$CRAWLER_RUNTIME_BACKEND" == go ]]; then
-    services=(ordinary-go exporter drain)
+    services=(ordinary-go lease-reaper exporter drain)
   fi
   for service in "${services[@]}"; do
     verify_compose_service_image "$service" "$CRAWLER_IMAGE_REF"
@@ -2207,7 +2214,7 @@ docker compose up -d redis
 # matches the app's 30s bounded drain with headroom before Docker sends
 # SIGKILL. Redis and Alloy remain available throughout.
 docker compose stop --timeout 30 lightpanda-claimant
-docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain
+docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
 
 # ── Run native migrations on local Postgres ─────────────────────────
 docker run --rm \

@@ -113,9 +113,9 @@ func (claim *Claim) Descriptor() Task {
 }
 
 // OwnershipBound reports how this opaque claim was installed, not current
-// permission. Writes/settlement still revalidate the exact plan and epoch.
+// permission. Writes/settlement still revalidate the installed owner and epoch.
 func (claim *Claim) OwnershipBound() bool {
-	return claim != nil && claim.owner != nil && claim.owner.ownership != nil
+	return claim != nil && claim.owner != nil && (claim.owner.ownership != nil || claim.owner.defaultOwner)
 }
 func cloneConfig(config map[string]string) map[string]string {
 	copy := make(map[string]string, len(config))

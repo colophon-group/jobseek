@@ -39,7 +39,7 @@ func (a *Authority) FinishGreenhouseReservation(ctx context.Context, claim *Clai
 // while binding its original request to the installed token profile. A nil
 // observation remains the pre-existing durable opt-out path with no fetch.
 func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, claim *Claim, initialEndpoint string, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
-	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil {
+	if a == nil || !a.valid(claim) || !claim.OwnershipBound() || claim.task.Kind != Monitor || claim.recovered != nil {
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)

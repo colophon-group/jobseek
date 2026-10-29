@@ -10,7 +10,16 @@ import (
 )
 
 func TestRealProxyBrowserMonitorRetainsRendererAndCanonicalSettlement(t *testing.T) {
+	realProxyBrowserMonitorSettlement(t, false)
+}
+func TestRealDefaultProxyBrowserMonitorRetainsRendererAndCanonicalSettlement(t *testing.T) {
+	realProxyBrowserMonitorSettlement(t, true)
+}
+func realProxyBrowserMonitorSettlement(t *testing.T, defaultOwner bool) {
 	f := privateRichPipelineFixture(t, "dom", `{"render":true,"proxy":true,"url_filter":"/jobs/","scraper_type":"skip"}`, queue.Browser)
+	if defaultOwner {
+		useDefaultPipelineAuthority(t, &f)
+	}
 	ctx := context.Background()
 	claim, err := f.a.Claim(ctx, queue.Browser)
 	if err != nil || claim == nil {

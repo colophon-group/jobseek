@@ -55,7 +55,7 @@ func TestDefaultAuthorityAcceptsNewBoardWithoutMigrationPlan(t *testing.T) {
 	seen := map[string]bool{}
 	for range 2 {
 		claim, err := a.Claim(ctx, Simple)
-		if err != nil || claim == nil || !claim.task.Fenced() {
+		if err != nil || claim == nil || !claim.task.Fenced() || !claim.OwnershipBound() {
 			t.Fatal("default canonical claim failed", err)
 		}
 		seen[claim.boardID] = true

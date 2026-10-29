@@ -2454,7 +2454,8 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "ACTIVE_RELEASE_MANIFEST" in script
     assert 'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"' in script
     quiesce = rollback.index(
-        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain"
+        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
+        "ordinary-go lease-reaper exporter drain"
     )
     assert 'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"' in script
     release_restore = rollback.index(

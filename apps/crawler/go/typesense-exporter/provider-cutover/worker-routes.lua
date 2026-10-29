@@ -44,17 +44,31 @@ for offset=5,#ARGV,6 do
  -- must not replace that lifecycle value with a newer SQL export hash.
  if redis.call("EXISTS",key)==1 then hash=redis.call("HGET",key,"description_r2_hash") or hash end
  local ft,rec=nil,nil
+ local leased=false
  for _,lane in ipairs({"simple","browser"}) do
   local member="scrape|"..domain.."|"..id
-  if redis.call("ZSCORE","inflight:"..lane,member) or redis.call("HEXISTS","inflight_tokens:"..lane,member)==1 then
-   return redis.error_reply("worker route scrape is inflight")
+  local deadline=redis.call("ZSCORE","inflight:"..lane,member)
+  local token=redis.call("HGET","inflight_tokens:"..lane,member)
+  if deadline or token then
+   -- Reapplying an unchanged route must preserve a compatible opaque attempt.
+   -- Any lane/identity change, orphan token or duplicate queue membership still
+   -- refuses the complete batch before effects.
+   if leased or lane~=worker or not deadline or not token or #token~=32
+    or string.find(token,"[^0-9a-f]") or redis.call("HGET",key,"source_url")~=url then
+    return redis.error_reply("worker route scrape is inflight")
+   end
+   leased=true
   end
   local f=redis.call("ZSCORE","ft_scrapes_"..lane..":"..domain,id)
   local r=redis.call("ZSCORE","scrapes_"..lane..":"..domain,id)
   if f and (not ft or tonumber(f)<tonumber(ft)) then ft=f end
   if r and (not rec or tonumber(r)<tonumber(rec)) then rec=r end
  end
- selected[#selected+1]={id=id,url=url,hash=hash,first=ft~=nil or first,score=ft or (first and "0") or rec or sqlscore}
+ if leased then
+  if ft or rec then return redis.error_reply("worker route scrape is inflight") end
+ else
+  selected[#selected+1]={id=id,url=url,hash=hash,first=ft~=nil or first,score=ft or (first and "0") or rec or sqlscore}
+ end
 end
 local function repair(enqueue, refresh)
  local changed=0

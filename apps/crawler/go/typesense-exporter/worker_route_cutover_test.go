@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -164,6 +165,25 @@ func testWorkerRouteTargetContract(t *testing.T, target workerRouteTarget) {
 	if err != nil || again.Repaired != 0 {
 		t.Fatal("retry changed routes", again, err)
 	}
+	// Complete rollback can reapply the same lane while a stopped worker's
+	// unexpired attempt awaits the normal reaper. Preserve its exact token,
+	// deadline and descriptor; do not enqueue a concurrent copy.
+	member := "scrape|" + target.Domain + "|" + ids[2]
+	c.ZRem(ctx, "scrapes_simple:"+target.Domain, ids[2])
+	c.ZAdd(ctx, "inflight:simple", redis.Z{Member: member, Score: float64(time.Now().Unix() + 600)})
+	c.HSet(ctx, "inflight_tokens:simple", member, strings.Repeat("a", 32))
+	beforeLive := c.HGetAll(ctx, "scrape:"+ids[2]).Val()
+	liveDeadline := c.ZScore(ctx, "inflight:simple", member).Val()
+	if live, err := repairWorkerRouteCutover(ctx, conn, c); err != nil || live.Repaired != 0 || !reflect.DeepEqual(beforeLive, c.HGetAll(ctx, "scrape:"+ids[2]).Val()) || c.ZScore(ctx, "inflight:simple", member).Val() != liveDeadline || c.HGet(ctx, "inflight_tokens:simple", member).Val() != strings.Repeat("a", 32) || c.ZScore(ctx, "scrapes_simple:"+target.Domain, ids[2]).Err() != redis.Nil {
+		t.Fatal("unchanged route lost compatible inflight attempt", err)
+	}
+	c.ZAdd(ctx, "scrapes_simple:"+target.Domain, redis.Z{Member: ids[2], Score: 125})
+	duplicate := workerRouteSnapshot(t, c, ctx)
+	if _, err := repairWorkerRouteCutover(ctx, conn, c); err == nil || workerRouteSnapshot(t, c, ctx) != duplicate {
+		t.Fatal("inflight route accepted a queued duplicate")
+	}
+	c.ZRem(ctx, "inflight:simple", member)
+	c.HDel(ctx, "inflight_tokens:simple", member)
 	cfg = map[string]any{"scraper_type": target.LegacyType, "scraper_config": map[string]any{"fields": map[string]any{"description": "description"}}}
 	if target.LegacyType == "dom" {
 		cfg["scraper_config"] = map[string]any{"render": true, "steps": []any{map[string]any{"field": "description"}}}

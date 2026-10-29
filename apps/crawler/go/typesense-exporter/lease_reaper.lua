@@ -138,7 +138,12 @@ if ARGV[7] ~= nil then
         end
         count = count + 1
     end
-    if count > 0 then
+    if count > 0 and ARGV[8] == "default" then
+        if redis.call("EXISTS", "ordinary:ownership:active") ~= 0
+            or redis.call("HLEN", b0_guard_key) ~= 0 then
+            return redis.error_reply("ordinary ownership projection changed")
+        end
+    elseif count > 0 then
         if not compatible("ordinary:ownership:active", "string") then return redis.error_reply("ordinary ownership projection changed") end
         local projection = redis.call("GET", "ordinary:ownership:active")
         if projection == false or redis.sha1hex(projection) ~= ARGV[8]

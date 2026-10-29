@@ -133,7 +133,12 @@ supervised child per worker. Go owns both lane sweeps and the 30-second loop;
 the Python worker forwards its events to the existing metrics and reaps it
 on shutdown. An unexpected child exit triggers the pipeline's existing early
 exit/drain behavior. Failed PostgreSQL lifecycle observation does not stop
-Redis lease recovery.
+Redis lease recovery. The default Go topology runs one independent native
+`lease-reaper` service instead of the Python supervisors. Complete deployments
+stop it with the writers and use `--drain-expired-leases` before provider route
+repair in either direction. That bounded operation preserves the normal clock,
+batch, strikes, committed SQL receipts and Redis compare-and-set fences; live
+leases are never erased or moved.
 
 `claim_work.lua` moves claimed tasks into `inflight:<wtype>` with a lease deadline. Workers clear the lease when they reschedule or complete the task, and the reaper moves expired leases back to the appropriate per-domain queue. If the same task expires too many times (`redis_reaper_max_strikes`), the reaper stops retrying it and parks the descriptor in `deadletter:<wtype>`.
 

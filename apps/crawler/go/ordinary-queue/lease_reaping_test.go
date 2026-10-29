@@ -84,11 +84,28 @@ func TestRealCommittedLeaseReapingRechecksAtomicObservation(t *testing.T) {
 }
 
 func TestRealCommittedLeaseReapingPreservesSuccessfulDeadline(t *testing.T) {
-	for _, mode := range []string{"future", "already-due", "stale-queued", "repair", "metadata-change", "learned-host", "last-strike"} {
+	for _, mode := range []string{"future", "already-due", "stale-queued", "repair", "metadata-change", "learned-host", "last-strike", "default"} {
 		t.Run(mode, func(t *testing.T) {
-			p := firstOwnershipFixture(t)
-			a, claim := firstRetirementClaim(t, p)
 			ctx := context.Background()
+			var p firstOwnerFixture
+			var a *Authority
+			var claim *Claim
+			if mode == "default" {
+				p.f = greenhouseAuthorityFixture(t)
+				var err error
+				a, err = OpenDefaultAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(a.Close)
+				claim, err = a.Claim(ctx, Simple)
+				if err != nil || claim == nil {
+					t.Fatal("default claim unavailable", err)
+				}
+			} else {
+				p = firstOwnershipFixture(t)
+				a, claim = firstRetirementClaim(t, p)
+			}
 			due := futureDue()
 			if mode == "already-due" {
 				due = time.Now().UTC().Add(-time.Minute).Truncate(time.Microsecond)

@@ -24,6 +24,46 @@ type reaperFixtureBackend struct {
 	failSweep, failClassify bool
 }
 
+type drainReaperFixture struct {
+	reaperFixtureBackend
+	remaining map[string]int64
+	batch     int64
+	fail      bool
+}
+
+func (f *drainReaperFixture) Depths(_ context.Context, lane string) (int64, int64, error) {
+	return f.remaining[lane], 0, nil
+}
+func (f *drainReaperFixture) Sweep(_ context.Context, lane string) (leaseReapResult, error) {
+	f.calls = append(f.calls, lane)
+	if f.fail {
+		return leaseReapResult{}, errors.New("unacknowledged sweep")
+	}
+	n := min(f.batch, f.remaining[lane])
+	f.remaining[lane] -= n
+	return leaseReapResult{Reenqueued: n}, nil
+}
+
+func TestDeployDrainUsesBoundedSweepsAndStopsOnFailure(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		f := &drainReaperFixture{remaining: map[string]int64{"simple": 5, "browser": 3}, batch: 2, fail: fail}
+		err := drainExpiredLeases(context.Background(), f, 2, func(leaseReaperEvent) error { return nil })
+		if fail {
+			if err == nil || !reflect.DeepEqual(f.calls, []string{"simple"}) || f.remaining["simple"] != 5 {
+				t.Fatal("failed drain replayed or hid failure")
+			}
+		} else if err != nil || f.remaining["simple"] != 0 || f.remaining["browser"] != 0 || !reflect.DeepEqual(f.calls, []string{"simple", "simple", "simple", "browser", "browser"}) {
+			t.Fatal("bounded drain lost a batch", err)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	f := &drainReaperFixture{remaining: map[string]int64{"simple": 1}, batch: 1}
+	if err := drainExpiredLeases(ctx, f, 1, func(leaseReaperEvent) error { return nil }); !errors.Is(err, context.Canceled) || len(f.calls) != 0 {
+		t.Fatal("cancelled drain swept leases")
+	}
+}
+
 func (f *reaperFixtureBackend) Sweep(_ context.Context, wtype string) (leaseReapResult, error) {
 	f.calls = append(f.calls, wtype)
 	if f.failSweep && wtype == "simple" {

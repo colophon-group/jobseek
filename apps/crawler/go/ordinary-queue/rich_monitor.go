@@ -88,7 +88,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 }
 
 func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, batch []GreenhouseRichPosting, completeUnisante bool) (*GreenhouseRichBatchResult, error) {
-	if !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || len(batch) < 1 || len(batch) > 500 {
+	if !a.valid(claim) || !claim.OwnershipBound() || claim.task.Kind != Monitor || len(batch) < 1 || len(batch) > 500 {
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)

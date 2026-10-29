@@ -250,7 +250,39 @@ func privateRichPipelineFixtureURL(t *testing.T, provider, metadata, configuredU
 }
 
 func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.T) {
+	realPipelineNativePreparation(t, false)
+}
+
+func TestRealDefaultPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.T) {
+	realPipelineNativePreparation(t, true)
+}
+
+func useDefaultPipelineAuthority(t *testing.T, f *nativePipelineFixture) {
+	t.Helper()
+	ctx := context.Background()
+	var epoch int64
+	if err := f.pg.QueryRow(ctx, "SELECT last_value FROM public.lightpanda_b0_routing_epoch_seq").Scan(&epoch); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pg.Exec(ctx, "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.r.Del(ctx, "ordinary:ownership:active").Err(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := queue.OpenDefaultAuthority(ctx, f.dsn, f.client, epoch)
+	if err != nil {
+		t.Fatal("default fixture startup failed", err)
+	}
+	t.Cleanup(a.Close)
+	f.a = a
+}
+
+func realPipelineNativePreparation(t *testing.T, defaultOwner bool) {
 	f := privatePipelineFixture(t)
+	if defaultOwner {
+		useDefaultPipelineAuthority(t, &f)
+	}
 	ctx := context.Background()
 	nativeDSN := privatePipelineReferenceDSN(t, f)
 	store, err := executor.OpenOrdinaryLookupStore(ctx, nativeDSN)
@@ -275,6 +307,12 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	claim, err := f.a.Claim(ctx, queue.Simple)
 	if err != nil || claim == nil {
 		t.Fatal("owned pipeline claim unavailable")
+	}
+	if proxy, err := runtimeClaimUsesProxy(ctx, f.a, claim); err != nil || proxy {
+		t.Fatal("canonical runtime transport selection failed", err)
+	}
+	if skip, err := runtimeClaimSkipsSSL(ctx, f.a, claim); err != nil || skip {
+		t.Fatal("canonical runtime TLS selection failed", err)
 	}
 	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 	if err != nil {
