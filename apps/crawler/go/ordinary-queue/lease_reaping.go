@@ -14,6 +14,7 @@ import (
 
 type committedReapReceipt struct {
 	Worker      string            `json:"worker,omitempty"`
+	Domain      string            `json:"domain,omitempty"`
 	Token       string            `json:"token"`
 	Due         string            `json:"due"`
 	Config      map[string]string `json:"config"`
@@ -154,7 +155,7 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		if err != nil || !defaultOwner && profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 			return "", ErrAuthorityLost
 		}
-		if defaultOwner && (stableConfig == nil || *stableConfig != profile.EffectiveConfigSHA256 || profile.Domain != parts[1]) {
+		if defaultOwner && (stableConfig == nil || *stableConfig != profile.EffectiveConfigSHA256 || !validPart(parts[1]) || len(parts[1]) > 253) {
 			return "", ErrAuthorityLost
 		}
 		var canonicalDue *time.Time
@@ -175,6 +176,12 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		receipt := committedReapReceipt{Token: token, Due: number(seconds(*due)), Config: config, LearnedHost: learned}
 		if defaultOwner && string(MonitorWorker(profile)) != worker {
 			receipt.Worker = string(MonitorWorker(profile))
+		}
+		if defaultOwner && profile.Domain != parts[1] {
+			// The exact completed fence/token binds this old member. Publish
+			// only its freshly validated canonical route, preserving any newer
+			// target attempt. An active ownership plan never changes domains.
+			receipt.Domain = profile.Domain
 		}
 		observation.Receipts[task] = receipt
 	}

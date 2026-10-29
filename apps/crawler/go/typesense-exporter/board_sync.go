@@ -143,7 +143,7 @@ func applyBoardSync(ctx context.Context, client *redis.Client, input boardSyncIn
 			return errors.New("board removal batch was not fully acknowledged")
 		}
 	}
-	return nil
+	return retirePreviousMonitorRoutes(ctx, client, input.Schedules, laneSHA)
 }
 
 func runBoardSync() error {

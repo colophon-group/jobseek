@@ -38,11 +38,21 @@ func missingScheduleAuthority(ctx context.Context, pool *pgxpool.Pool, c *redis.
 	return epoch, nil
 }
 
-func missingSchedulePage(ctx context.Context, pool *pgxpool.Pool, o capacityOptions) ([]capacitySchedule, error) {
+func missingScheduleSQL(afterID string) string {
 	// Retain the documented canonical rebuild eligibility; additionally exclude
 	// disabled/reserved boards and unresolved live SQL attempts.
 	query := strings.Replace(capacityRebuildSQL, "jb.scraper_needs_browser", "jb.scraper_needs_browser, COALESCE(jb.scrape_interval_hours,24)", 1)
 	query = strings.Replace(query, "WHERE jp.is_active", "WHERE jp.is_active AND jb.is_enabled AND NOT jb.tdm_reserved AND (jp.leased_until IS NULL OR jp.leased_until<=now())", 1)
+	if afterID != "" {
+		// A cached generic plan cannot turn the nullable OR into an index
+		// bound. Keep subsequent pages as an explicit primary-key seek.
+		query = strings.Replace(query, "($1::uuid IS NULL OR jp.id > $1::uuid)", "jp.id > $1::uuid", 1)
+	}
+	return query
+}
+
+func missingSchedulePage(ctx context.Context, pool *pgxpool.Pool, o capacityOptions) ([]capacitySchedule, error) {
+	query := missingScheduleSQL(o.AfterID)
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return nil, errors.New("open missing schedule snapshot failed")

@@ -115,18 +115,34 @@ if ARGV[7] ~= nil then
             fields = fields + 1
         end
         if fields == 0 or fields ~= redis.call("HLEN", board) then return redis.error_reply("ordinary committed config changed") end
-        local workers = {wtype}
+        local routes = {{worker = wtype, domain = domain, member = member}}
         if receipt.worker ~= nil then
             if ARGV[8] ~= "default" or (receipt.worker ~= "simple" and receipt.worker ~= "browser")
                 or receipt.worker == wtype
                 or (receipt.config.monitor_needs_browser == "1") ~= (receipt.worker == "browser") then
                 return redis.error_reply("ordinary committed route changed")
             end
-            workers[#workers + 1] = receipt.worker
         end
-        for _, worker in ipairs(workers) do
+        if receipt.domain ~= nil then
+            if ARGV[8] ~= "default" or type(receipt.domain) ~= "string"
+                or #receipt.domain == 0 or #receipt.domain > 253
+                or string.find(receipt.domain, "[%c|]") ~= nil or receipt.domain == domain
+                or receipt.config.domain ~= receipt.domain or receipt.config.throttle_key ~= receipt.domain then
+                return redis.error_reply("ordinary committed domain changed")
+            end
+        end
+        if receipt.worker ~= nil or receipt.domain ~= nil then
+            local target_worker, target_domain = receipt.worker or wtype, receipt.domain or domain
+            if (receipt.config.monitor_needs_browser == "1") ~= (target_worker == "browser") then
+                return redis.error_reply("ordinary committed route changed")
+            end
+            routes[#routes + 1] = {worker = target_worker, domain = target_domain,
+                member = "monitor|" .. target_domain .. "|" .. task_id}
+        end
+        for index, route in ipairs(routes) do
+            local worker, route_domain, route_member = route.worker, route.domain, route.member
             for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
-                local key = prefix .. worker .. ":" .. domain
+                local key = prefix .. worker .. ":" .. route_domain
                 if not compatible(key, "zset") then return redis.error_reply("ordinary committed queue is corrupt") end
                 for _, position in ipairs({0, -1}) do
                     local edge = redis.call("ZRANGE", key, position, position, "WITHSCORES")
@@ -141,19 +157,19 @@ if ARGV[7] ~= nil then
                 or not compatible("monitor_repair_due:" .. worker, "hash")
                 or not compatible("ready:rotation:" .. worker, "zset")
                 or not compatible("deadletter:" .. worker, "zset")
-                or not compatible("ratelimit:" .. domain, "string") then
+                or not compatible("ratelimit:" .. route_domain, "string") then
                 return redis.error_reply("ordinary committed recovery index is corrupt")
             end
-            local rate = redis.call("GET", "ratelimit:" .. domain)
-            local rotation = redis.call("ZSCORE", "ready:rotation:" .. worker, domain)
-            local repair = redis.call("HGET", "monitor_repair_due:" .. worker, member)
+            local rate = redis.call("GET", "ratelimit:" .. route_domain)
+            local rotation = redis.call("ZSCORE", "ready:rotation:" .. worker, route_domain)
+            local repair = redis.call("HGET", "monitor_repair_due:" .. worker, route_member)
             if (rate ~= false and not finite(tonumber(rate))) or (rotation ~= false and not finite(tonumber(rotation)))
                 or (repair ~= false and not finite(tonumber(repair))) then
                 return redis.error_reply("ordinary committed recovery deadline is corrupt")
             end
-            if worker ~= wtype then
-                local lease = redis.call("ZSCORE", "inflight:" .. worker, member)
-                local token = redis.call("HGET", "inflight_tokens:" .. worker, member)
+            if index > 1 then
+                local lease = redis.call("ZSCORE", "inflight:" .. worker, route_member)
+                local token = redis.call("HGET", "inflight_tokens:" .. worker, route_member)
                 if (lease ~= false and not finite(tonumber(lease)))
                     or (token ~= false and (lease == false or #token ~= 32 or string.find(token, "[^0-9a-f]") ~= nil)) then
                     return redis.error_reply("ordinary committed target attempt changed")
@@ -335,17 +351,18 @@ for _, member in ipairs(expired) do
                         local due = tonumber(receipt.due)
                         if repair_due ~= false then due = math.min(due, tonumber(repair_due)) end
                         redis.call("ZREM", "ft_monitors_" .. wtype .. ":" .. domain, task_id)
-                        if receipt.worker ~= nil then
+                        if receipt.worker ~= nil or receipt.domain ~= nil then
                             -- The source attempt completed under the same exact
                             -- fence. Retire its stale lane without overwriting a
                             -- newer target schedule, live attempt or disposition.
                             redis.call("ZREM", queue_key, task_id)
-                            local target = receipt.worker
-                            if redis.call("ZSCORE", "ft_monitors_" .. target .. ":" .. domain, task_id) == false
-                                and redis.call("ZSCORE", "monitors_" .. target .. ":" .. domain, task_id) == false
-                                and redis.call("ZSCORE", "inflight:" .. target, member) == false
-                                and redis.call("ZSCORE", "deadletter:" .. target, member) == false then
-                                redis.call("ZADD", "monitors_" .. target .. ":" .. domain, tonumber(receipt.due), task_id)
+                            local target, target_domain = receipt.worker or wtype, receipt.domain or domain
+                            local target_member = "monitor|" .. target_domain .. "|" .. task_id
+                            if redis.call("ZSCORE", "ft_monitors_" .. target .. ":" .. target_domain, task_id) == false
+                                and redis.call("ZSCORE", "monitors_" .. target .. ":" .. target_domain, task_id) == false
+                                and redis.call("ZSCORE", "inflight:" .. target, target_member) == false
+                                and redis.call("ZSCORE", "deadletter:" .. target, target_member) == false then
+                                redis.call("ZADD", "monitors_" .. target .. ":" .. target_domain, tonumber(receipt.due), task_id)
                             end
                         else
                             redis.call("ZADD", queue_key, due, task_id)
@@ -353,7 +370,7 @@ for _, member in ipairs(expired) do
                         redis.call("HDEL", monitor_repair_key, member)
                         -- A reroute may coexist with a newer target claim. Preserve
                         -- its exact runtime cache as well as its token/deadline.
-                        if receipt.worker == nil and receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
+                        if receipt.worker == nil and receipt.domain == nil and receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
                     elseif repair_due ~= false then
                         local due = math.min(retry_score, tonumber(repair_due))
                         local queued_due = redis.call("ZSCORE", queue_key, task_id)
@@ -366,7 +383,9 @@ for _, member in ipairs(expired) do
                     end
 
                     refresh_ready(wtype, domain)
-                    if receipt ~= nil and receipt.worker ~= nil then refresh_ready(receipt.worker, domain) end
+                    if receipt ~= nil and (receipt.worker ~= nil or receipt.domain ~= nil) then
+                        refresh_ready(receipt.worker or wtype, receipt.domain or domain)
+                    end
 
                     -- Remove the in-flight entry — the task is back
                     -- on the per-domain queue, available for any
