@@ -13,6 +13,7 @@ import (
 )
 
 type committedReapReceipt struct {
+	Worker      string            `json:"worker,omitempty"`
 	Token       string            `json:"token"`
 	Due         string            `json:"due"`
 	Config      map[string]string `json:"config"`
@@ -153,7 +154,7 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		if err != nil || !defaultOwner && profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 			return "", ErrAuthorityLost
 		}
-		if defaultOwner && (stableConfig == nil || *stableConfig != profile.EffectiveConfigSHA256 || profile.Domain != parts[1] || (config["monitor_needs_browser"] == "1") != (worker == "browser")) {
+		if defaultOwner && (stableConfig == nil || *stableConfig != profile.EffectiveConfigSHA256 || profile.Domain != parts[1]) {
 			return "", ErrAuthorityLost
 		}
 		var canonicalDue *time.Time
@@ -171,7 +172,11 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		if learned != "" && (!validPart(learned) || len(learned) > 253) {
 			return "", ErrAuthorityLost
 		}
-		observation.Receipts[task] = committedReapReceipt{token, number(seconds(*due)), config, learned}
+		receipt := committedReapReceipt{Token: token, Due: number(seconds(*due)), Config: config, LearnedHost: learned}
+		if defaultOwner && string(MonitorWorker(profile)) != worker {
+			receipt.Worker = string(MonitorWorker(profile))
+		}
+		observation.Receipts[task] = receipt
 	}
 	if len(observation.Receipts) == 0 {
 		return "", nil
