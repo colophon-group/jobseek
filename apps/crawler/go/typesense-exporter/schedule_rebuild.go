@@ -28,6 +28,7 @@ type capacitySchedule struct {
 	Hash           *string
 	Due            time.Time
 	Browser        bool
+	IntervalHours  int
 }
 
 type capacityRebuildReport struct {
@@ -56,12 +57,22 @@ func capacityScheduleValues(s capacitySchedule) (string, float64, map[string]str
 	if math.IsNaN(score) || math.IsInf(score, 0) {
 		return "", 0, nil, errors.New("invalid canonical schedule time")
 	}
-	return domain, score, map[string]string{"source_url": s.URL, "board_id": s.Board, "description_r2_hash": hash, "scrape_step": "0"}, nil
+	config := map[string]string{"source_url": s.URL, "board_id": s.Board, "description_r2_hash": hash, "scrape_step": "0"}
+	if s.IntervalHours != 0 {
+		if s.IntervalHours < 1 || s.IntervalHours > 2562047 {
+			return "", 0, nil, errors.New("invalid canonical scrape interval")
+		}
+		config["scrape_interval_hours"] = strconv.Itoa(s.IntervalHours)
+	}
+	return domain, score, config, nil
 }
 
 // The producer authenticates every row before any legacy pipeline executes.
 // Only its literal legacy decision authorizes the original enqueue script.
 func capacityRebuildSchedules(ctx context.Context, c *redis.Client, rows []capacitySchedule, o capacityOptions, producer capacityProducer, delay deadletterDelays) (capacityRebuildReport, error) {
+	if o.Action == "repair-missing" && producer.mode != "" && producer.mode != "off" {
+		return capacityRebuildReport{}, errors.New("missing schedule repair cannot use mixed ownership")
+	}
 	report := capacityRebuildReport{DryRun: !o.Apply, Selected: len(rows), Complete: len(rows) < o.Limit}
 	if o.AfterID != "" {
 		cursor := o.AfterID
@@ -100,7 +111,11 @@ func capacityRebuildSchedules(ctx context.Context, c *redis.Client, rows []capac
 	if len(legacy) == 0 {
 		return report, nil
 	}
-	sha, err := c.ScriptLoad(ctx, deadletterEnqueueLua).Result()
+	program := deadletterEnqueueLua
+	if o.Action == "repair-missing" {
+		program = missingScheduleProgram()
+	}
+	sha, err := c.ScriptLoad(ctx, program).Result()
 	if err != nil {
 		return report, errors.New("load original schedule enqueue failed")
 	}
@@ -126,7 +141,14 @@ func capacityRebuildSchedules(ctx context.Context, c *redis.Client, rows []capac
 			for _, field := range []string{"source_url", "board_id", "description_r2_hash", "scrape_step"} {
 				args = append(args, field, config[field])
 			}
-			commands = append(commands, pipe.EvalSha(ctx, sha, nil, args...))
+			var keys []string
+			if o.Action == "repair-missing" {
+				keys = []string{"apply", strconv.FormatFloat(delay.forDomain(domain), 'f', -1, 64)}
+			}
+			if interval, ok := config["scrape_interval_hours"]; ok {
+				args = append(args, "scrape_interval_hours", interval)
+			}
+			commands = append(commands, pipe.EvalSha(ctx, sha, keys, args...))
 			domains[domain] = true
 		}
 		ordered := make([]string, 0, len(domains))
@@ -135,6 +157,9 @@ func capacityRebuildSchedules(ctx context.Context, c *redis.Client, rows []capac
 		}
 		sort.Strings(ordered)
 		for _, domain := range ordered {
+			if o.Action == "repair-missing" {
+				continue
+			}
 			pipe.Set(ctx, "delay:"+domain, strconv.FormatFloat(delay.forDomain(domain), 'f', -1, 64), 0)
 		}
 		if _, err := pipe.Exec(ctx); err != nil {

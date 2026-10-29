@@ -40,7 +40,7 @@ func parseCapacityOptions(args []string) (capacityOptions, error) {
 		return o, errors.New("capacity action required")
 	}
 	o.Action = args[0]
-	if o.Action != "summary" && o.Action != "inspect" && o.Action != "prune" && o.Action != "rebuild" {
+	if o.Action != "summary" && o.Action != "inspect" && o.Action != "prune" && o.Action != "rebuild" && o.Action != "repair-missing" {
 		return o, errors.New("unsupported capacity action")
 	}
 	f := flag.NewFlagSet("redis-capacity", flag.ContinueOnError)
@@ -447,6 +447,9 @@ func runCapacity(args []string) error {
 	options.ContextTimeoutEnabled = true
 	c := redis.NewClient(options)
 	defer c.Close()
+	if o.Action == "repair-missing" {
+		return runMissingScheduleRepair(ctx, c, o)
+	}
 	if o.Action == "rebuild" {
 		return runCapacityRebuild(ctx, c, o)
 	}
