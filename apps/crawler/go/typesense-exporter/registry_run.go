@@ -35,6 +35,10 @@ func loadRegistryTables(directory string) (map[string]registryTable, error) {
 // Database transaction only; callers receive effects after an acknowledged
 // commit. A failed or ambiguous commit never authorizes downstream publication.
 func commitRegistry(ctx context.Context, conn registryTransactionConnection, tables map[string]registryTable, plan registryPlan, boards []registryBoard) (boardSyncInput, error) {
+	return commitRegistryWithNativeEligibility(ctx, conn, tables, plan, boards, false)
+}
+
+func commitRegistryWithNativeEligibility(ctx context.Context, conn registryTransactionConnection, tables map[string]registryTable, plan registryPlan, boards []registryBoard, requireNative bool) (boardSyncInput, error) {
 	var empty boardSyncInput
 	tx, err := conn.Begin(ctx)
 	if err != nil {
@@ -55,6 +59,11 @@ func commitRegistry(ctx context.Context, conn registryTransactionConnection, tab
 	if err != nil {
 		return empty, err
 	}
+	if requireNative {
+		if err := validateNativeRegistrySchedules(effects.Schedules); err != nil {
+			return empty, err
+		}
+	}
 	count, err := resolveRegistryMisses(ctx, tx, tables)
 	if err != nil {
 		return empty, err
@@ -71,8 +80,12 @@ func runRegistry(args []string) error {
 	flags.SetOutput(io.Discard)
 	source := flags.String("source-data-dir", "", "verified checkout CSV directory")
 	dry := flags.Bool("dry-run", false, "prepare without database or queue writes")
+	requireNative := flags.Bool("require-native", false, "require native monitor and detail support before publication")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
-		return errors.New("usage: --sync-registry [--source-data-dir DIR] [--dry-run]")
+		return errors.New("usage: --sync-registry [--source-data-dir DIR] [--dry-run] [--require-native]")
+	}
+	if *requireNative && *dry {
+		return errors.New("native eligibility requires the canonical registry transaction; --require-native cannot use --dry-run")
 	}
 	directory, err := registryDataDirectory(*source)
 	if err != nil {
@@ -99,6 +112,11 @@ func runRegistry(args []string) error {
 	boards, err := prepareRegistryBoards(tables["boards"])
 	if err != nil {
 		return err
+	}
+	if *requireNative {
+		if len(boards) != len(tables["boards"].Rows) {
+			return errors.New("native registry requires every input board to be valid")
+		}
 	}
 	if *dry {
 		slog.Info("sync.registry.dry_run", "engine", "go", "companies", len(tables["companies"].Rows), "boards", len(boards), "statements", len(plan))
@@ -151,7 +169,7 @@ func runRegistry(args []string) error {
 			return err
 		}
 	}
-	effects, err := commitRegistry(ctx, conn, tables, plan, boards)
+	effects, err := commitRegistryWithNativeEligibility(ctx, conn, tables, plan, boards, *requireNative)
 	if err != nil {
 		return err
 	}

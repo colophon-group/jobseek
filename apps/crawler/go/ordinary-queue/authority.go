@@ -81,6 +81,7 @@ type Authority struct {
 	pool                *pgxpool.Pool
 	epoch               int64
 	ownership           *OwnershipPlan
+	defaultOwner        bool
 	ownershipCursors    map[WorkerType]int
 	detailCursors       map[WorkerType]int
 	detailPostingCursor map[string]string
@@ -309,9 +310,6 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 // ClaimDetails preserves the complete ownership/receipt/lease barriers while
 // leaving monitor work queued when the runtime's monitor capacity is occupied.
 func (a *Authority) ClaimDetails(ctx context.Context, worker WorkerType) (*Claim, error) {
-	if a.ownership == nil {
-		return nil, ErrConfiguration
-	}
 	return a.claim(ctx, worker, true)
 }
 
@@ -324,7 +322,11 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 		var task *Task
 		var err error
 		if a.ownership == nil {
-			task, err = a.queue.ClaimFenced(ctx, worker)
+			if detailsOnly {
+				task, err = a.queue.ClaimFencedDetails(ctx, worker)
+			} else {
+				task, err = a.queue.ClaimFenced(ctx, worker)
+			}
 		} else {
 			task, err = a.claimOwnedFiltered(ctx, tx, worker, detailsOnly)
 		}

@@ -25,7 +25,8 @@ def test_crawler_services_require_immutable_production_images() -> None:
     assert "BROWSER_IMAGE_REF must be an immutable GHCR digest" in compose
     assert "CRAWLER_IMAGE_TAG:-latest" not in compose
     assert "id: build-slim" in workflow
-    assert "id: build-browser" in workflow
+    assert "target: native" in workflow
+    assert "browser_digest: ${{ steps.build-slim.outputs.digest }}" in workflow
     assert (
         "CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@"
         "${{ needs.build.outputs.slim_digest }}" in workflow

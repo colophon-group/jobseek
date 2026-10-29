@@ -63,6 +63,11 @@ set +a
 # The deploy .env escapes JSON for Compose. Sourcing it through Bash removes
 # those escapes, so let Compose read this one list directly from its .env file.
 unset WEBSHARE_PROXY_URLS
+if [[ "${CRAWLER_RUNTIME_BACKEND:-legacy}" == go ]]; then
+  echo "ERROR: default Go runtime uses complete release rollback, not B0 cutover" >&2
+  exit 1
+fi
+
 
 : "${LIGHTPANDA_B0_QUEUE_NAMESPACE:?required}"
 : "${LIGHTPANDA_B0_SHARD_ID:?required}"

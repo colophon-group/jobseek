@@ -1,6 +1,62 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1114 deployment and final monitor candidate — October 29, 2026
+## Current Go-only deployment candidate — October 29, 2026
+
+Runtime **0.13.1115**, source/data
+`1a7c8cfbedcaee0c70c1a6717b23c31724a9839b`, completed the original full
+workflow and supported B0/ordinary activation at **epoch 400**. Independent
+readback verifies both receipts, the active SQL plan, the full staged Redis
+projection, ten running actors and eight healthy endpoints. All **8,142 boards**
+remain enabled. The postactivation capture sees **2,032,221 scheduled routes**,
+zero missing scheduled caches/queues and zero cache configuration mismatches.
+Complete source-exact SDK, identity conservation and natural freshness acceptance
+are still being checked; this is not final migration acceptance.
+
+Candidate **0.13.1117** combines the default worker/catalogue lifecycle from
+PR **#11005** with the complete Go-only production deployment:
+
+- `ORDINARY_GO_WORKER_MODE=default` uses the installed executable's source,
+  an explicit routing epoch and existing token/lease/configuration fences.
+  It refuses migration ownership guards and validates the entire enabled
+  canonical/cache catalogue. All **8,142** current configurations pass the
+  validator, including the three B0 boards.
+- `--sync-registry --require-native` validates actual canonical identities and
+  merged configuration inside the SQL transaction before commit/publication.
+  Unsupported new catalogue configurations roll back the transaction.
+- The `native` image contains Go workers, exporter, drain and maintenance
+  commands, document conversion/OCR dependencies, models and CSV data. It has
+  no Python, uv, Playwright or Chromium runtime. The production workflow builds
+  it once under both immutable release repository identities.
+- Full deploy starts Redis, ordinary Go, exporter, drain and Alloy. Legacy
+  processors stay behind an explicit recovery profile. First transition reserves
+  an epoch through the original allocator while writers are quiesced; subsequent
+  Go releases attest and retain the fence so the exact prior environment can
+  restart during complete release rollback.
+- Full rollback selects the prior authenticated environment's service topology
+  and restores its exact image, specs, CSV generation and bounded pools. Manual
+  workflow input `exercise_cold_rollback` verifies candidate readiness and then
+  invokes that same complete rollback before publishing a new generation.
+  Image promotion is skipped for this explicit exercise.
+- Old B0/ordinary migration wrappers reject the default Go runtime. Its reversal
+  belongs to the full release workflow.
+
+The deployed renderer remains **1.1.0-nightly.11275+78bbb64db**, matching the
+latest October 29 upstream Linux assets. Keep its reviewed heap, concurrency,
+response and container limits. Use strictly Lightpanda and proven Go HTTP/API;
+there is no Chromium fallback.
+
+Next: finish current route/conservation proof, complete required CI and installed
+native-image parity, then perform the supported ordinary retirement/B0 rollback
+before the full Go-only release. Verify natural progress, resource use, complete
+cold reversal and the recovery window before retiring production Python assets.
+The complete migration goal remains active.
+
+Do not retain historical local evidence. Keep only the current cutover inputs,
+one current conservation boundary, latest qualification and required rollback
+state. Delete superseded captures, archives, test databases and compiled test
+binaries after each completed batch. Do not alter production generation retention.
+
+## Historical verified 1114 deployment and final monitor candidate — October 29, 2026
 
 Runtime **0.13.1114**, source/data
 `b4757167f00a9a801650e9e04793e167abe776ca`, is deployed through the original

@@ -33,6 +33,7 @@ var ErrStartup = errors.New("ordinary worker startup rejected")
 var ErrDrainTimeout = errors.New("ordinary worker cancellation drain expired")
 
 type RuntimeConfig struct {
+	defaultOwner                                                                                  bool
 	rendered                                                                                      bool
 	databaseURL, redisURL, source, plan, projection, metricsAddress, dataDirectory                string
 	epoch                                                                                         int64
@@ -77,7 +78,14 @@ func InstalledBuildRevision(linked string) (string, error) {
 // cohort, adopt an allocator epoch or accept board-derived network authority.
 func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (RuntimeConfig, error) {
 	var c RuntimeConfig
-	if getenv == nil || getenv("ORDINARY_GO_WORKER_MODE") != "enabled" || !sourcePattern.MatchString(installedRevision) {
+	if getenv == nil || !sourcePattern.MatchString(installedRevision) {
+		return c, ErrStartup
+	}
+	switch getenv("ORDINARY_GO_WORKER_MODE") {
+	case "enabled":
+	case "default":
+		c.defaultOwner = true
+	default:
 		return c, ErrStartup
 	}
 	mode := getenv("ORDINARY_GO_RENDERED_DETAILS")
@@ -88,8 +96,15 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 	c.source = getenv("ORDINARY_OWNERSHIP_SOURCE_REVISION")
 	c.plan = getenv("ORDINARY_OWNERSHIP_PLAN_SHA256")
 	c.projection = getenv("ORDINARY_OWNERSHIP_PROJECTION_SHA1")
-	if c.source != installedRevision || !planPattern.MatchString(c.plan) || !sourcePattern.MatchString(c.projection) {
-		return RuntimeConfig{}, ErrStartup
+	if c.defaultOwner {
+		if c.source != "" || c.plan != "" || c.projection != "" || !c.rendered {
+			return RuntimeConfig{}, ErrStartup
+		}
+		c.source = installedRevision
+	} else {
+		if c.source != installedRevision || !planPattern.MatchString(c.plan) || !sourcePattern.MatchString(c.projection) {
+			return RuntimeConfig{}, ErrStartup
+		}
 	}
 	integer := func(key string, fallback, min, max int64) (int64, error) {
 		raw := getenv(key)

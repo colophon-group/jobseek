@@ -47,6 +47,7 @@ func (h *runtimeHistogram) write(b *strings.Builder, name, labels string) {
 }
 
 type runtimeMetrics struct {
+	defaultOwner                                    bool
 	source, plan                                    string
 	epoch                                           int64
 	ready                                           atomic.Bool
@@ -190,6 +191,9 @@ func (m *runtimeMetrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Jobseek-Ordinary-Source", m.source)
 		w.Header().Set("Jobseek-Ordinary-Plan", m.plan)
 		w.Header().Set("Jobseek-Ordinary-Epoch", strconv.FormatInt(m.epoch, 10))
+		if m.defaultOwner {
+			w.Header().Set("Jobseek-Ordinary-Mode", "default")
+		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

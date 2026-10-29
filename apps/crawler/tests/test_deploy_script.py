@@ -352,7 +352,9 @@ def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     sync_host = CSV_SYNC_HOST.read_text()
 
     forward = script[script.index("FORWARD_SYNC_STARTED=1") :]
-    assert "go-typesense-exporter --sync-registry\n" in forward
+    assert "forward_sync_command=(go-typesense-exporter --sync-registry)" in script
+    assert '"${forward_sync_command[@]}"' in forward
+    assert "forward_sync_command+=(--require-native)" in script
     assert "uv run --no-sync crawler sync\n" not in forward
     assert "command_args=(go-typesense-exporter --sync-registry)" in sync_host
     assert "command_args=(uv run --no-sync crawler sync)" in sync_host
@@ -2452,7 +2454,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "ACTIVE_RELEASE_MANIFEST" in script
     assert 'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"' in script
     quiesce = rollback.index(
-        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain"
+        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain"
     )
     assert 'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"' in script
     release_restore = rollback.index(
@@ -2497,7 +2499,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "repair_umantis_identity_cutover rollback-umantis-identity-cutover 1" in rollback_sync
     assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
-        "go-typesense-exporter --sync-registry", script.index("FORWARD_SYNC_STARTED=1")
+        '"${forward_sync_command[@]}"', script.index("FORWARD_SYNC_STARTED=1")
     )
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
         script

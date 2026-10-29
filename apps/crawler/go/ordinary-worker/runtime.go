@@ -292,7 +292,7 @@ func runtimeStartupFailure(stage string) error {
 // health/metrics listener. No activation or production scheduling occurs here.
 // Callers must exit on error; uncooperative cancellation skips blocking cleanup.
 func Run(ctx context.Context, c RuntimeConfig) error {
-	if c.source == "" || c.plan == "" || c.epoch < 1 || c.databaseURL == "" || c.redisURL == "" || c.concurrency < 1 {
+	if !runtimeAuthorityConfigured(c) || c.databaseURL == "" || c.redisURL == "" || c.concurrency < 1 {
 		return runtimeStartupFailure("configuration")
 	}
 	startup, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -335,7 +335,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 		_ = client.Close()
 	}
-	authority, err = queue.OpenOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source)
+	if c.defaultOwner {
+		authority, err = queue.OpenDefaultAuthority(startup, c.databaseURL, client, c.epoch)
+	} else {
+		authority, err = queue.OpenOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source)
+	}
 	if err != nil {
 		cleanup()
 		return runtimeStartupFailure("ownership")
@@ -345,9 +349,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		return runtimeStartupFailure("rendered_mode")
 	}
 	// The separately installed SHA1 is what the legacy owner also receives.
-	if err = authority.AttestOwnershipProjection(startup, c.projection); err != nil {
-		cleanup()
-		return runtimeStartupFailure("projection")
+	if !c.defaultOwner {
+		if err = authority.AttestOwnershipProjection(startup, c.projection); err != nil {
+			cleanup()
+			return runtimeStartupFailure("projection")
+		}
 	}
 	lookup, err = executor.OpenOrdinaryLookupStore(startup, c.databaseURL)
 	if err != nil {
@@ -428,6 +434,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	}
 	m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
 	m.source, m.plan, m.epoch = c.source, c.plan, c.epoch
+	m.defaultOwner = c.defaultOwner
 	m.ready.Store(true)
 	server := &http.Server{Handler: m, ReadHeaderTimeout: time.Second, ReadTimeout: 3 * time.Second, WriteTimeout: 3 * time.Second, IdleTimeout: 5 * time.Second}
 	serving := make(chan error, 1)
@@ -521,9 +528,19 @@ func directMonitorHTTP(provider string, http1, http2 *VerifiedHTTP) *VerifiedHTT
 // CheckHealth interrogates the installed process without creating another DB
 // pool or loading taxonomy/location assets. Identity and live claim-loop progress
 // must match this binary's protected startup binding.
+func runtimeAuthorityConfigured(c RuntimeConfig) bool {
+	if c.source == "" || c.epoch < 1 {
+		return false
+	}
+	if c.defaultOwner {
+		return c.plan == "" && c.projection == "" && c.rendered
+	}
+	return c.plan != ""
+}
+
 func CheckHealth(ctx context.Context, c RuntimeConfig) error {
 	host, port, err := net.SplitHostPort(c.metricsAddress)
-	if err != nil || c.source == "" || c.plan == "" || c.epoch < 1 {
+	if err != nil || !runtimeAuthorityConfigured(c) {
 		return ErrStartup
 	}
 	if host == "0.0.0.0" {
@@ -546,6 +563,9 @@ func CheckHealth(ctx context.Context, c RuntimeConfig) error {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusNoContent || response.Header.Get("Jobseek-Ordinary-Source") != c.source || response.Header.Get("Jobseek-Ordinary-Plan") != c.plan || response.Header.Get("Jobseek-Ordinary-Epoch") != strconv.FormatInt(c.epoch, 10) {
+		return errors.New("ordinary worker health identity rejected")
+	}
+	if c.defaultOwner && response.Header.Get("Jobseek-Ordinary-Mode") != "default" {
 		return errors.New("ordinary worker health identity rejected")
 	}
 	return nil

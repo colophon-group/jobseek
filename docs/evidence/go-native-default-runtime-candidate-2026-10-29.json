@@ -1,0 +1,37 @@
+{
+  "schema": "jobseek.go-native-default-runtime-candidate/v1",
+  "date": "2026-10-29",
+  "candidate_runtime": "0.13.1116",
+  "base_revision": "1a7c8cfbedcaee0c70c1a6717b23c31724a9839b",
+  "backend_constraint": "Self-hosted Lightpanda and proven Go HTTP/API only",
+  "latest_verified_lightpanda": "1.1.0-nightly.11275+78bbb64db",
+  "contracts": [
+    "Opt-in whole-catalogue Go authority with explicit existing epoch and installed source",
+    "No active mixed SQL/Redis ownership or B0 guard adoption",
+    "Whole enabled canonical/cache catalogue verification before readiness",
+    "New-board execution through existing opaque token, SQL, configuration and lease fences",
+    "Detail-only simple/browser claims preserve monitor capacity and atomic fairness",
+    "Canonical registry eligibility before commit or queue publication",
+    "Native publication rejection rolls back prior board disable and invalid board insertion"
+  ],
+  "validation": {
+    "complete_actual_catalogue_boards": 8142,
+    "catalogue_constructor_failures": 0,
+    "includes_three_B0_boards": true,
+    "real_postgres_migrations": "passed",
+    "real_postgres_redis_default_authority": "passed",
+    "real_postgres_registry_commit_rollback": "passed",
+    "real_redis_fairness_and_rejected_binding_controls": "passed",
+    "legacy_python_queue_tests_passed": 107,
+    "runtime_environment_tests": "passed"
+  },
+  "operational_limits": {
+    "host_compose_image_default_selection_wired": false,
+    "production_default_mode_selected": false,
+    "production_python_retired": false,
+    "whole_lane_freshness_accepted": false,
+    "whole_lane_resource_cost_accepted": false,
+    "final_cold_reversal_and_recovery_window_complete": false
+  },
+  "migration_complete": false
+}

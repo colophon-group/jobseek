@@ -133,6 +133,9 @@ func ProfileRequiresProxy(profile string) bool {
 }
 
 func (a *Authority) RequiresProxyHTTP() bool {
+	if a != nil && a.defaultOwner {
+		return true
+	}
 	if a == nil || a.ownership == nil {
 		return false
 	}

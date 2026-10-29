@@ -38,6 +38,9 @@ func OpenOwnedAuthority(ctx context.Context, dsn string, client *Client, epoch i
 // RequiresRenderedDetails describes the immutable, already attested plan.
 // It never grants authority or reads a mutable service selector.
 func (a *Authority) RequiresRenderedDetails() bool {
+	if a != nil && a.defaultOwner {
+		return true
+	}
 	if a == nil || a.ownership == nil {
 		return false
 	}
@@ -87,7 +90,13 @@ func (c *Client) ClaimLegacyBound(ctx context.Context, worker WorkerType, plan *
 
 func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Claim) error {
 	if a.ownership == nil {
-		return requireUnselectedAuthority(ctx, tx)
+		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+			return err
+		}
+		if a.defaultOwner {
+			return a.verifyDefaultProjection(ctx)
+		}
+		return nil
 	}
 	plan := a.ownership
 	// Startup already validates every member and the exact payload hash. The
