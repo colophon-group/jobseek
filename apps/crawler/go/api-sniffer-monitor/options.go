@@ -40,6 +40,7 @@ type Options struct {
 	Enrichment                             []string
 	ResponseDecrypt                        *responseDecrypt
 	PostDataRefresh                        *postDataRefresh
+	RequestHeaderRefresh                   *requestHeaderRefresh
 	Convergence                            *PaginationConvergence
 	PDFProof                               *dom.PDFListingProof
 	collectRows                            func([]inventorySourceRow)
@@ -48,7 +49,7 @@ type Options struct {
 	domURLs                                map[string]string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "pagination_convergence", "url_field_match", "max_items", "max_pages", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "pagination_convergence", "url_field_match", "max_items", "max_pages", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh", "request_header_refresh"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -482,6 +483,10 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		}
 	}
 	o.PostDataRefresh, err = parsePostDataRefresh(m["post_data_refresh"], o, d)
+	if err != nil {
+		return o, err
+	}
+	o.RequestHeaderRefresh, err = parseRequestHeaderRefresh(m["request_header_refresh"], o)
 	if err != nil {
 		return o, err
 	}

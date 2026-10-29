@@ -202,6 +202,23 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	if fetch == nil || join == nil {
 		return result, ErrOptions
 	}
+	if o.RequestHeaderRefresh != nil {
+		root, err := fetch(ctx, Request{Method: http.MethodGet, URL: o.BoardURL})
+		if err != nil {
+			return result, err
+		}
+		if root == nil {
+			return result, ErrInventory
+		}
+		source, err := fetch(ctx, Request{Method: http.MethodGet, URL: o.RequestHeaderRefresh.source})
+		if err != nil {
+			return result, err
+		}
+		o, err = o.refreshedRequestHeaders(source)
+		if err != nil {
+			return result, err
+		}
+	}
 	if o.PostDataRefresh != nil {
 		source, err := fetch(ctx, Request{Method: http.MethodGet, URL: o.PostDataRefresh.source})
 		if err != nil {

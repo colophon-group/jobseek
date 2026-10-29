@@ -109,6 +109,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 		delete(m, "api_url_match")
 		d.order[reflect.ValueOf(m)] = slices.DeleteFunc(d.order[reflect.ValueOf(m)], func(key string) bool { return key == "api_url_match" })
 	}
+	if _, present := m["request_header_refresh"]; present {
+		return o, ErrOptions
+	}
 	if _, present := m["post_data_refresh"]; present {
 		return o, ErrOptions
 	}

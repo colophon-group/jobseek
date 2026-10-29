@@ -2844,6 +2844,113 @@ def _matches_explicit_empty_response(data: object, config: object) -> bool:
     return True
 
 
+class _HeaderRefreshClient:
+    """Keep refreshed public context on exact requests without mutating the shared client."""
+
+    def __init__(self, client: httpx.AsyncClient) -> None:
+        self._client = client
+
+    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        kwargs["follow_redirects"] = False
+        response = await self._client.request(method, url, **kwargs)
+        if 300 <= response.status_code < 400:
+            await response.aclose()
+            raise ValueError("public header refresh redirect refused")
+        return response
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+
+async def _refresh_request_headers(
+    client: httpx.AsyncClient,
+    board_url: str,
+    api_url: str,
+    headers: dict[str, str],
+    refresh: object,
+) -> dict[str, str]:
+    """Read public JSON context into operation-local headers for cold recovery."""
+    if refresh is None:
+        return headers
+    from urllib.parse import urlsplit
+
+    import jmespath
+
+    if not isinstance(refresh, dict) or set(refresh) != {"source_url", "fields"}:
+        raise ValueError("invalid request_header_refresh")
+    source = refresh["source_url"]
+    fields = refresh["fields"]
+    if not isinstance(source, str) or not isinstance(fields, dict) or not 1 <= len(fields) <= 16:
+        raise ValueError("invalid public header refresh source or fields")
+    base, target = urlsplit(board_url), urlsplit(source)
+    if (
+        base.scheme != "https"
+        or target.scheme != base.scheme
+        or target.netloc != base.netloc
+        or not base.hostname
+        or base.username is not None
+        or target.username is not None
+        or base.fragment
+        or target.fragment
+        or source in {board_url, api_url}
+        or target.port not in {None, 443}
+        or len(source) > 8192
+        or any(c in source + board_url for c in "\r\n\x00")
+    ):
+        raise ValueError("public header refresh origin differs")
+    denied = {
+        "host",
+        "cookie",
+        "set-cookie",
+        "connection",
+        "content-length",
+        "transfer-encoding",
+        "accept-encoding",
+        "origin",
+        "referer",
+    }
+    names: set[str] = set()
+    for name, path in fields.items():
+        if (
+            not isinstance(name, str)
+            or not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]{1,256}", name)
+            or name.lower() in denied | names
+            or any(k.lower() == name.lower() for k in headers)
+            or not isinstance(path, str)
+            or not 1 <= len(path.encode("utf-8")) <= 512
+            or "\x00" in path
+        ):
+            raise ValueError("invalid public header refresh field")
+        names.add(name.lower())
+    payload = None
+    for url in (board_url, source):
+        body = await fetch_text_page_with_retry(
+            client,
+            url,
+            timeout=30,
+            follow_redirects=False,
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_bytes=_MAX_REFRESH_PAGE_BYTES,
+            log_event="api_sniffer.refresh_page_backoff",
+        )
+        if body is None:
+            raise RuntimeError("public header refresh returned no content")
+        if url == source:
+            payload = json.loads(body)
+    refreshed = dict(headers)
+    for name, path in fields.items():
+        value = jmespath.search(path, payload)
+        if (
+            not isinstance(value, str)
+            or not 1 <= len(value.encode("utf-8")) <= 8192
+            or any(ord(c) < 32 or ord(c) == 127 for c in value)
+        ):
+            raise ValueError("invalid public header refresh value")
+        refreshed[name] = value
+    return refreshed
+
+
 async def _discover_http(
     board: dict,
     client: httpx.AsyncClient,
@@ -2927,6 +3034,13 @@ async def _discover_http(
         config.get("post_data_refresh"),
     )
     headers = clean_headers(request_headers)
+    if config.get("request_header_refresh") is not None:
+        if config.get("post_data_refresh") is not None:
+            raise ValueError("public header and POST refresh cannot be combined")
+        headers = await _refresh_request_headers(
+            client, board_url, api_url, headers, config["request_header_refresh"]
+        )
+        client = cast(httpx.AsyncClient, _HeaderRefreshClient(client))
 
     # -- first page --------------------------------------------------------
     # Strict variant raises on persistent transient (5xx, network) so the

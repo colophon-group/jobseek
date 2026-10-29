@@ -94,6 +94,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "persistent_context",
             "post_data",
             "post_data_refresh",
+            "request_header_refresh",
             "proxy",
             "render",
             "request_headers",
