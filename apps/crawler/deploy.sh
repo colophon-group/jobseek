@@ -1289,6 +1289,22 @@ drain_expired_worker_leases() {
     "$CRAWLER_IMAGE_REF" go-typesense-exporter --drain-expired-leases
 }
 
+repair_default_missing_schedules() {
+  [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || return 0
+  local phase
+  for phase in inspect apply; do
+    local -a arguments=(--redis-capacity repair-missing --limit 50000)
+    [[ "$phase" != apply ]] || arguments+=(--apply)
+    docker run --rm -e LOCAL_DATABASE_URL -e REDIS_URL \
+      -e CRAWLER_DB_ROLE=deploy-missing-schedules \
+      -e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_MAX=1 \
+      -v jobseek-lightpanda-b0-producer-socket:/run/jobseek-lightpanda-producer:ro \
+      --network host "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+      --label "com.docker.compose.service=deploy-missing-schedules-$phase" \
+      "$CRAWLER_IMAGE_REF" go-typesense-exporter "${arguments[@]}" || return $?
+  done
+}
+
 repair_worker_route_cutover() {
   # Full writer quiescence precedes this command in both directions. Recover
   # expired opaque attempts with the existing SQL receipt/Redis CAS protocol;
@@ -2307,6 +2323,7 @@ docker run --rm \
 repair_umantis_identity_cutover deploy-umantis-identity-cutover
 repair_worker_route_cutover deploy-worker-route-cutover
 prepare_default_go_epoch
+repair_default_missing_schedules
 
 # ── Start the crawler stack on the freshly seeded Redis state ────────
 # Explicit service targets preserve the stopped legacy Murmur containers for
