@@ -600,6 +600,17 @@ def new(
                 slug=board_slug,
                 url=brow.get("board_url", ""),
             )
+            if brow.get("monitor_type"):
+                # Keep the registry configuration as the starting point for
+                # review, without claiming it has been tested in this run.
+                board.active_config = "registry"
+                board.configs["registry"] = {
+                    "monitor_type": brow["monitor_type"],
+                    "monitor_config": json.loads(brow.get("monitor_config") or "{}"),
+                    "scraper_type": brow.get("scraper_type") or None,
+                    "scraper_config": json.loads(brow.get("scraper_config") or "{}"),
+                    "status": "selected",
+                }
             save_board(slug, board)
             ws.active_board = alias
             out.info("reconfig", f"Loaded board: {alias} — {board.url}")

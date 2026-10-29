@@ -7668,6 +7668,10 @@ class TestNewIdempotent:
         assert [(board.alias, board.url) for board in list_boards("acme")] == [
             ("careers", "https://acme.example/jobs")
         ]
+        restored = load_board("acme", "careers")
+        assert restored.monitor_type == "greenhouse"
+        assert restored.scraper_type == "skip"
+        assert not restored.ready
 
     def test_new_keeps_fresh_stub_local_until_submit(self, tmp_path, monkeypatch):
         """Normal bootstrap writes the stub but publishes no commit or PR."""
@@ -7721,12 +7725,42 @@ class TestNewIdempotent:
         push.assert_not_called()
         create_pr.assert_not_called()
 
-    def test_reconfig_preserves_existing_board_and_adds_inventory_seed(self, tmp_path, monkeypatch):
+    @pytest.mark.parametrize(
+        ("monitor_type", "monitor_config", "scraper_type", "scraper_config"),
+        [
+            (
+                "dom",
+                {"render": False, "pagination": {"max_pages": 100}},
+                "dom",
+                {"steps": [{"tag": "h1", "field": "title"}]},
+            ),
+            ("rss", {"feed_url": "https://acme.example/jobs.xml"}, "skip", {}),
+            ("oracle_hcm", {}, "", {}),
+        ],
+    )
+    def test_reconfig_preserves_existing_board_and_adds_inventory_seed(
+        self, tmp_path, monkeypatch, monitor_type, monitor_config, scraper_type, scraper_config
+    ):
+        import csv
+        import io
+
         _patch_all(monkeypatch, tmp_path)
+        board_rows = io.StringIO()
+        csv.writer(board_rows).writerow(
+            [
+                "acme",
+                "acme-careers",
+                "https://acme.example/jobs",
+                monitor_type,
+                json.dumps(monitor_config) if monitor_config else "",
+                scraper_type,
+                json.dumps(scraper_config) if scraper_config else "",
+            ]
+        )
         _setup_csvs(
             tmp_path,
             companies="acme,Acme,https://acme.example,,,\n",
-            boards=("acme,acme-careers,https://acme.example/jobs,dom,{},dom,{}\n"),
+            boards=board_rows.getvalue(),
         )
 
         with ExitStack() as stack:
@@ -7744,7 +7778,16 @@ class TestNewIdempotent:
             "careers",
             "inventory-careers",
         }
-        assert load_board("acme", "careers").url == "https://acme.example/jobs"
+        existing = load_board("acme", "careers")
+        assert existing.url == "https://acme.example/jobs"
+        assert existing.monitor_type == monitor_type
+        assert existing.monitor_config == monitor_config
+        assert existing.scraper_type == (scraper_type or None)
+        assert existing.scraper_config == scraper_config
+        assert existing.configs[existing.active_config]["status"] == "selected"
+        assert not existing.monitor_run
+        assert not existing.scraper_run
+        assert not existing.ready
         seeded = load_board("acme", "inventory-careers")
         assert seeded.url == "https://boards.greenhouse.io/acme"
         assert seeded.active_config == "inventory-seed"
@@ -7929,7 +7972,11 @@ class TestNewIdempotent:
 
     def test_reconfig_defers_pr_until_submit(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
-        _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.com,,,\n",
+            boards="acme,acme-careers,https://acme.example/jobs,greenhouse,{},skip,\n",
+        )
 
         with ExitStack() as stack:
             add_files, commit, push, create_pr, _, _, sync_branch, _ = self._git_mocks(
@@ -7947,6 +7994,12 @@ class TestNewIdempotent:
         reconfig = load_workspace("acme")
         assert reconfig.pr is None
         assert reconfig.branch == "fix-crawler/acme"
+        restored = load_board("acme", "careers")
+        assert restored.monitor_type == "greenhouse"
+        assert restored.monitor_config == {}
+        assert restored.scraper_type == "skip"
+        assert restored.scraper_config == {}
+        assert not restored.ready
 
     def test_reconfig_refuses_to_delete_branch_owned_by_another_issue(self, tmp_path, monkeypatch):
         """Two issues that resolve to one company must not replace each other's PR."""
