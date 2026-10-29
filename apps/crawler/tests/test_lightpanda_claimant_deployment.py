@@ -3033,7 +3033,7 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
         "candidate-discover",
         "candidate:stop --timeout 30 lightpanda-claimant",
         "candidate:stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
-        "ordinary-go exporter drain",
+        "ordinary-go lease-reaper exporter drain",
         "rollback-discover",
         (
             "rollback:up -d redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy "
@@ -3048,7 +3048,7 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
         assert events == legacy_events
     else:
         assert events == legacy_events[:3] + [
-            "rollback:up -d redis ordinary-go exporter drain alloy",
+            "rollback:up -d redis ordinary-go lease-reaper exporter drain alloy",
             "core-ready",
         ]
 
