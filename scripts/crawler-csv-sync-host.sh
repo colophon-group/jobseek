@@ -373,7 +373,7 @@ sync_release_data() {
   # Normal publication has passed the exact runtime-contract gate and uses
   # the installed Go synchronizer directly. Bootstrap/recovery may select a
   # historical image; inspect that exact image for its supported recovery CLI.
-  local command_args=(uv run --no-sync crawler sync)
+  local command_args=(uv run --no-sync crawler sync) runtime_backend
   if [[ "$role" == csv-sync ]]; then
     maintenance_backend=native
     command_args=(go-typesense-exporter --sync-registry)
@@ -382,6 +382,14 @@ sync_release_data() {
     if [[ "$maintenance_backend" == native ]]; then
       command_args=(go-typesense-exporter --sync-registry)
     fi
+  fi
+  runtime_backend="$(crawler_image_runtime_backend "$image")" || return 1
+  if [[ "$runtime_backend" == go ]]; then
+    [[ "$maintenance_backend" == native ]] || {
+      echo "ERROR: default Go runtime lacks native registry support" >&2
+      return 1
+    }
+    command_args+=(--require-native)
   fi
   build_runtime_env "$release" "$maintenance_backend"
   NAME="crawler-csv-data-sync-${BASHPID}"

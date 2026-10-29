@@ -5,6 +5,11 @@ on:
   # rerun preserves the original run's secret snapshot and cannot roll a new
   # value into production.
   workflow_dispatch:
+    inputs:
+      exercise_cold_rollback:
+        description: Start the candidate, verify readiness, then restore the complete prior release
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -88,7 +93,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.version.outputs.image_tag }}
       slim_digest: ${{ steps.build-slim.outputs.digest }}
-      browser_digest: ${{ steps.build-browser.outputs.digest }}
+      browser_digest: ${{ steps.build-slim.outputs.digest }}
       reconciliation_wrapper_sha256: ${{ steps.reconciliation.outputs.wrapper_sha256 }}
       runtime_contract_sha256: ${{ steps.runtime-contract.outputs.runtime_contract_sha256 }}
       data_contract_sha256: ${{ steps.runtime-contract.outputs.data_contract_sha256 }}
@@ -169,33 +174,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push slim image (worker, exporter, drain)
+      - name: Build and push Go crawler runtime
         id: build-slim
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/crawler
-          target: slim
+          target: native
           build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
           platforms: linux/amd64
           push: true
+          # Both immutable repository identities remain part of the release
+          # contract; they now resolve to the same Go-only runtime image.
           tags: |
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler:${{ steps.version.outputs.image_tag }}
-          cache-from: type=gha,scope=crawler-slim
-          cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
-
-      - name: Build and push browser image (full)
-        id: build-browser
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: apps/crawler
-          target: full
-          build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
-          platforms: linux/amd64
-          push: true
-          tags: |
             ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:${{ steps.version.outputs.image_tag }}
-          cache-from: type=gha,scope=crawler-browser
-          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
+          cache-from: type=gha,scope=crawler-native
+          cache-to: type=gha,mode=max,scope=crawler-native,ignore-error=true
 
       # Dry-run setup-typesense against an ephemeral Typesense before
       # touching prod. Running it twice is the key bit — the second run
@@ -443,7 +437,7 @@ jobs:
           # 3.7M documents on the fixed 2-vCPU node. The action defaults to a
           # much shorter command timeout than the deploy job itself.
           command_timeout: 3h
-          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID,JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL
+          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,JOBSEEK_CRAWLER_RUNTIME_BACKEND,JOBSEEK_EXERCISE_COLD_ROLLBACK,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID,JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -452,6 +446,8 @@ jobs:
           # expires, so it cannot be a durable prerequisite for later deploys.
           GHCR_PULL_USERNAME: ${{ github.actor }}
           GHCR_PULL_TOKEN: ${{ github.token }}
+          JOBSEEK_CRAWLER_RUNTIME_BACKEND: go
+          JOBSEEK_EXERCISE_COLD_ROLLBACK: ${{ inputs.exercise_cold_rollback && 'true' || 'false' }}
           CRAWLER_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ needs.build.outputs.slim_digest }}
           BROWSER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser@${{ needs.build.outputs.browser_digest }}
@@ -531,6 +527,7 @@ jobs:
           JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
 
   promote:
+    if: ${{ !inputs.exercise_cold_rollback }}
     needs: [build, deploy]
     runs-on: ubuntu-latest
     permissions:

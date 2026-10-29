@@ -245,6 +245,30 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-ats-inventory .
 
+# ── Target: native (default Go workers and maintenance) ─────────────
+FROM docker.io/library/alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f AS native
+WORKDIR /app
+RUN apk add --no-cache ca-certificates antiword poppler-utils \
+      tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-deu \
+    && install -d --owner=10001 --group=10001 --mode=0700 \
+      /run/jobseek-lightpanda-executor /run/jobseek-lightpanda-producer
+COPY VERSION ./
+COPY data/ data/
+COPY --from=go-ordinary-worker-build /out/go-ordinary-worker /usr/local/bin/go-ordinary-worker
+COPY --from=go-ordinary-worker-build /out/go-pdf-text /usr/local/bin/go-pdf-text
+COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
+COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
+COPY --from=go-ats-inventory-build /out/go-ats-inventory /usr/local/bin/go-ats-inventory
+COPY --from=lightpanda-b0-build /out/go-lightpanda-claimant-credentials /usr/local/bin/go-lightpanda-claimant-credentials
+COPY --chmod=0755 scripts/native-exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
+COPY go/job-enrichment/models/ /usr/local/share/jobseek/language-model/
+COPY go/job-enrichment/licenses/ /usr/local/share/jobseek/go-enrichment-licenses/
+LABEL org.jobseek.crawler.native-maintenance="v1"
+LABEL org.jobseek.crawler.native-ats-inventory="v1"
+LABEL org.jobseek.crawler.native-ats-host-tools="v1"
+LABEL org.jobseek.crawler.default-native-runtime="v1"
+CMD ["go-ordinary-worker"]
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM docker.io/library/python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 

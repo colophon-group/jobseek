@@ -210,6 +210,35 @@ jobs:
       - name: Build slim crawler image
         run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
 
+      - name: Build Python-free native crawler image
+        run: docker build --target native --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:native-runtime-v1 apps/crawler
+
+      - name: Verify native runtime assets and installed source
+        run: |
+          set -euo pipefail
+          docker run --rm --read-only --network none --entrypoint /bin/sh \
+            jobseek-crawler:native-runtime-v1 -eu -c '
+              for name in python python3 uv crawler playwright chromium chromium-browser google-chrome; do
+                if command -v "$name" >/dev/null 2>&1; then exit 1; fi
+              done
+              test ! -e /app/.venv
+              test ! -e /app/src
+              for name in go-ordinary-worker go-typesense-exporter go-r2-drain go-ats-inventory go-pdf-text antiword pdftotext tesseract; do
+                command -v "$name" >/dev/null
+              done
+              test -f /app/data/boards.csv
+            '
+          docker run --rm --read-only --network none \
+            --entrypoint /usr/local/bin/go-ordinary-worker \
+            jobseek-crawler:native-runtime-v1 --identity \
+            | jq -e --arg revision "$GITHUB_SHA" '.source_revision == $revision'
+
+      - name: Verify native image document conversion
+        run: |
+          python3 apps/crawler/go/pdf-text/verify-installed.py \
+            apps/crawler/go/api-sniffer-monitor/testdata/python_pdf_binary.json \
+            --container-image jobseek-crawler:native-runtime-v1
+
       - name: Import the installed contract surface from the image
         run: |
           docker run --rm \

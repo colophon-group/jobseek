@@ -60,3 +60,20 @@ crawler_image_maintenance_backend() {
     *) echo "ERROR: maintenance image capability is unsupported" >&2; return 1 ;;
   esac
 }
+
+# Select the process topology from the exact image's advertised contract.
+# Native maintenance alone also exists in historical Python worker images.
+crawler_image_runtime_backend() {
+  local image="$1" capability
+  [[ "$image" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: runtime image must be immutable" >&2; return 1;
+  }
+  capability="$(docker image inspect --format '{{index .Config.Labels "org.jobseek.crawler.default-native-runtime"}}' "$image")" || {
+    echo "ERROR: runtime image capability is unavailable" >&2; return 1;
+  }
+  case "$capability" in
+    v1) printf '%s\n' go ;;
+    ''|'<no value>') printf '%s\n' legacy ;;
+    *) echo "ERROR: runtime image capability is unsupported" >&2; return 1 ;;
+  esac
+}

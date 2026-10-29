@@ -129,6 +129,7 @@ services:
   # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
   # cap monitors at five; paginating monitors must stream bounded batches.
   worker-1:
+    profiles: [legacy]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
@@ -160,6 +161,7 @@ services:
     cpus: 1.0
 
   worker-2:
+    profiles: [legacy]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
@@ -189,6 +191,7 @@ services:
     cpus: 1.0
 
   worker-3:
+    profiles: [legacy]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
@@ -222,13 +225,14 @@ services:
     profiles: [ordinary-go]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
-    restart: "no"
+    restart: ${ORDINARY_GO_RESTART_POLICY:-no}
     network_mode: host
     stop_grace_period: 45s
     command: ["/usr/local/bin/go-ordinary-worker"]
     environment:
       <<: *common-env
-      ORDINARY_GO_WORKER_MODE: enabled
+      ORDINARY_GO_WORKER_MODE: ${ORDINARY_GO_WORKER_MODE:-enabled}
+      ORDINARY_GO_RENDERED_DETAILS: ${ORDINARY_GO_RENDERED_DETAILS:-}
       METRICS_PORT: "9104"
       # Replace the aggregate capacity of all three HTTP workers, rather than
       # one worker's capacity. Per-host throttle and monitor slots still apply.
@@ -237,6 +241,37 @@ services:
       # Collect before the 1 GiB container limit; leave room for response
       # buffers, native/SQLite memory and transient concurrent inventories.
       GOMEMLIMIT: 512MiB
+    volumes:
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/ca.pem
+        target: /run/lightpanda/ca.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/client.pem
+        target: /run/lightpanda/client.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/client-key.pem
+        target: /run/lightpanda/client-key.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/ca.sha256
+        target: /run/lightpanda/ca.sha256
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/server-leaf.sha256
+        target: /run/lightpanda/server-leaf.sha256
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/server-spki.sha256
+        target: /run/lightpanda/server-spki.sha256
+        read_only: true
+        bind: {create_host_path: false}
     depends_on:
       redis:
         condition: service_healthy
@@ -303,6 +338,7 @@ services:
 
   # -- Browser -----------------------------------------------------
   browser-1:
+    profiles: [legacy]
     image: ${BROWSER_IMAGE_REF:?BROWSER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
@@ -345,6 +381,7 @@ services:
   # Dark startup reads no authority configuration and opens no socket; the
   # networkless container publishes only a local, exact Go readiness marker.
   lightpanda-claimant:
+    profiles: [legacy]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped

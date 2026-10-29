@@ -114,6 +114,11 @@ if [[ -e "$ORDINARY_GO_RECEIPT" || -L "$ORDINARY_GO_RECEIPT" ]]; then
   echo "ERROR: native ordinary ownership is active or pending; use its supported cold retirement before deploy" >&2
   exit 1
 fi
+if [[ "${JOBSEEK_CRAWLER_RUNTIME_BACKEND:-legacy}" == go &&
+      ( -e "$DEPLOY_DIR/.lightpanda-b0-active-v1" || -L "$DEPLOY_DIR/.lightpanda-b0-active-v1" ) ]]; then
+  echo "ERROR: retire B0 ownership through its supported cold rollback before selecting the default Go runtime" >&2
+  exit 1
+fi
 LIGHTPANDA_B0_ACTIVE_RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"
 if [[ -e "$LIGHTPANDA_B0_ACTIVE_RECEIPT" || -L "$LIGHTPANDA_B0_ACTIVE_RECEIPT" ]]; then
   echo "ERROR: Go Lightpanda B0 is active; ordinary crawler deploy is held until the explicit cold rollback removes ${LIGHTPANDA_B0_ACTIVE_RECEIPT}" >&2
@@ -207,6 +212,31 @@ export COMPOSE_PROJECT_NAME
 CRAWLER_STACK_SERVICES=(
   redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant alloy
 )
+CRAWLER_RUNTIME_BACKEND="${JOBSEEK_CRAWLER_RUNTIME_BACKEND:-legacy}"
+EXERCISE_COLD_ROLLBACK="${JOBSEEK_EXERCISE_COLD_ROLLBACK:-false}"
+case "$EXERCISE_COLD_ROLLBACK" in
+  false) ;;
+  true) [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || {
+    echo "ERROR: cold rollback exercise requires the default Go candidate" >&2; exit 1;
+  } ;;
+  *) echo "ERROR: cold rollback exercise selection is invalid" >&2; exit 1 ;;
+esac
+case "$CRAWLER_RUNTIME_BACKEND" in
+  go)
+    CRAWLER_STACK_SERVICES=(redis ordinary-go exporter drain alloy)
+    ORDINARY_GO_WORKER_MODE=default
+    ORDINARY_GO_RENDERED_DETAILS=enabled
+    ORDINARY_GO_RESTART_POLICY=unless-stopped
+    CRAWLER_COMPOSE_PROFILES=ordinary-go
+    ;;
+  legacy)
+    ORDINARY_GO_WORKER_MODE=enabled
+    ORDINARY_GO_RENDERED_DETAILS=""
+    ORDINARY_GO_RESTART_POLICY=no
+    CRAWLER_COMPOSE_PROFILES=""
+    ;;
+  *) echo "ERROR: incoming crawler runtime backend is unsupported" >&2; exit 1 ;;
+esac
 MAINTENANCE_OPERATION=crawler-deploy
 MAINTENANCE_ISSUE=3409
 MAINTENANCE_BUDGET_SECONDS=1800
@@ -1260,6 +1290,46 @@ repair_worker_route_cutover() {
     "$CRAWLER_IMAGE_REF" go-typesense-exporter --repair-worker-route-cutover
 }
 
+# The first Go-only rollout advances the existing routing fence after writer
+# quiescence. Later Go rollouts retain the verified epoch so the exact prior
+# environment remains usable by full cold rollback.
+prepare_default_go_epoch() {
+  [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || return 0
+  local previous_image previous_backend epoch_record epoch temporary
+  previous_image="$(read_exact_release_value "$ROLLBACK_ENV_FILE" CRAWLER_IMAGE_REF)" || return 1
+  previous_backend="$(crawler_image_runtime_backend "$previous_image")" || return 1
+  if [[ "$previous_backend" == go ]]; then
+    epoch="$(read_exact_release_value "$ROLLBACK_ENV_FILE" ORDINARY_OWNERSHIP_ROUTING_EPOCH)" || return 1
+    [[ "$epoch" =~ ^[1-9][0-9]{0,12}$ ]] || return 1
+    epoch_record="$(docker run --rm -e LOCAL_DATABASE_URL \
+      -e CRAWLER_DB_ROLE=deploy-default-go-epoch \
+      -e "LIGHTPANDA_B0_ROUTING_EPOCH=$epoch" --network host \
+      "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+      --label com.docker.compose.service=deploy-default-go-epoch \
+      "$CRAWLER_IMAGE_REF" go-typesense-exporter --b0-epoch attest-epoch)" || return 1
+    [[ "$epoch_record" == "{\"current\":true,\"routing_epoch\":$epoch}" ]] || return 1
+  else
+    epoch_record="$(docker run --rm -e LOCAL_DATABASE_URL \
+      -e CRAWLER_DB_ROLE=deploy-default-go-epoch --network host \
+      "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+      --label com.docker.compose.service=deploy-default-go-epoch \
+      "$CRAWLER_IMAGE_REF" go-typesense-exporter --b0-epoch reserve-epoch)" || return 1
+    [[ "$epoch_record" =~ ^\{\"routing_epoch\":([1-9][0-9]{0,12})\}$ ]] || return 1
+    epoch="${BASH_REMATCH[1]}"
+  fi
+  temporary="$(mktemp "${ENV_FILE}.native-epoch.XXXXXX")" || return 1
+  if ! awk -v epoch="$epoch" '
+    /^ORDINARY_OWNERSHIP_ROUTING_EPOCH=/ {count++; print "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" epoch; next}
+    {print}
+    END {if (count != 1) exit 1}
+  ' "$ENV_FILE" >"$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  chmod 600 "$temporary"
+  mv "$temporary" "$ENV_FILE"
+}
+
 rollback_sync_previous_config() {
   local crawler_ref restored_web_database_url status maintenance_backend
   local -a sync_command=(uv run --no-sync crawler sync)
@@ -1279,6 +1349,9 @@ rollback_sync_previous_config() {
   maintenance_backend="$(crawler_image_maintenance_backend "$crawler_ref")" || return 1
   if [[ "$maintenance_backend" == native ]]; then
     sync_command=(go-typesense-exporter --sync-registry)
+    if [[ "$(crawler_image_runtime_backend "$crawler_ref")" == go ]]; then
+      sync_command+=(--require-native)
+    fi
   fi
   # The first rollout after retiring public-watchlist indexing may still need
   # to roll back to an older image whose sync command opens WEB_DATABASE_URL.
@@ -1353,6 +1426,15 @@ rollback_compose_service_ready() {
 
 wait_for_rollback_core_services() {
   local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)
+  # The restored env is authenticated by the selected release generation.
+  # Releases before the native topology field use the legacy service set.
+  local restored_backend
+  restored_backend="$(sed -n 's/^CRAWLER_RUNTIME_BACKEND=//p' "$ENV_FILE")" || return 1
+  case "$restored_backend" in
+    go) services=(redis ordinary-go exporter drain alloy) ;;
+    ''|legacy) ;;
+    *) echo "ERROR: restored runtime topology is invalid" >&2; return 1 ;;
+  esac
   local deadline=$((SECONDS + ${ROLLBACK_HEALTH_TIMEOUT_SECONDS:-180}))
   local service
   local missing=()
@@ -1443,7 +1525,7 @@ rollback_deploy() {
   if ((command_status != 0)); then
     rollback_status=$command_status
   fi
-  echo "Deploy failed — restoring crawler containers on previous image" >&2
+  echo "Restoring crawler containers on previous image" >&2
 
   cd "$DEPLOY_DIR"
   command_status=$?
@@ -1472,7 +1554,7 @@ rollback_deploy() {
     # spec. Starting old and new generations together would violate the same
     # budget that this rollback is responsible for preserving.
     candidate_compose \
-      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain
     command_status=$?
     if ((command_status == 0 && candidate_claimant_quiesced)); then
       quiesce_complete=1
@@ -1564,8 +1646,23 @@ rollback_deploy() {
     echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
-    rollback_compose_defines_service lightpanda-claimant
-    service_discovery_status=$?
+    local restored_backend
+    restored_backend="$(sed -n 's/^CRAWLER_RUNTIME_BACKEND=//p' "$ENV_FILE")"
+    command_status=$?
+    case "$restored_backend" in
+      ''|legacy|go) ;;
+      *) command_status=1 ;;
+    esac
+    if ((command_status != 0)); then
+      rollback_status=$command_status
+      service_discovery_status=$command_status
+    elif [[ "$restored_backend" == go ]]; then
+      rollback_stack_services=(redis ordinary-go exporter drain alloy)
+      service_discovery_status=1
+    else
+      rollback_compose_defines_service lightpanda-claimant
+      service_discovery_status=$?
+    fi
     if ((service_discovery_status == 0)); then
       rollback_stack_services+=(lightpanda-claimant)
       rollback_claimant_defined=1
@@ -1711,7 +1808,7 @@ compose_service_ready() {
 }
 
 wait_for_core_services() {
-  local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant alloy)
+  local services=("${CRAWLER_STACK_SERVICES[@]}")
   local deadline=$((SECONDS + 180))
   local missing=()
 
@@ -1887,10 +1984,16 @@ verify_deployed_image_identity() {
   local service
 
   verify_compose_service_image redis "$REDIS_IMAGE"
-  for service in worker-1 worker-2 worker-3 exporter drain lightpanda-claimant; do
+  local services=(worker-1 worker-2 worker-3 exporter drain lightpanda-claimant)
+  if [[ "$CRAWLER_RUNTIME_BACKEND" == go ]]; then
+    services=(ordinary-go exporter drain)
+  fi
+  for service in "${services[@]}"; do
     verify_compose_service_image "$service" "$CRAWLER_IMAGE_REF"
   done
-  verify_compose_service_image browser-1 "$BROWSER_IMAGE_REF"
+  if [[ "$CRAWLER_RUNTIME_BACKEND" == legacy ]]; then
+    verify_compose_service_image browser-1 "$BROWSER_IMAGE_REF"
+  fi
   verify_compose_service_image alloy "$ALLOY_IMAGE"
 }
 
@@ -2026,6 +2129,15 @@ docker rm "${legacy_containers[@]}" 2>/dev/null || true
 
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
+CRAWLER_RUNTIME_BACKEND=${CRAWLER_RUNTIME_BACKEND}
+COMPOSE_PROFILES=${CRAWLER_COMPOSE_PROFILES}
+ORDINARY_GO_WORKER_MODE=${ORDINARY_GO_WORKER_MODE}
+ORDINARY_GO_RENDERED_DETAILS=${ORDINARY_GO_RENDERED_DETAILS}
+ORDINARY_GO_RESTART_POLICY=${ORDINARY_GO_RESTART_POLICY}
+ORDINARY_OWNERSHIP_SOURCE_REVISION=
+ORDINARY_OWNERSHIP_ROUTING_EPOCH=
+ORDINARY_OWNERSHIP_PLAN_SHA256=
+ORDINARY_OWNERSHIP_PROJECTION_SHA1=
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
 CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
 BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
@@ -2076,6 +2188,11 @@ fi
 ensure_deploy_disk_headroom
 
 pull_deploy_images
+actual_runtime_backend="$(crawler_image_runtime_backend "$CRAWLER_IMAGE_REF")"
+[[ "$actual_runtime_backend" == "$CRAWLER_RUNTIME_BACKEND" ]] || {
+  echo "ERROR: incoming process topology differs from its immutable image capability" >&2
+  exit 1
+}
 prepare_claimant_credential_generation
 finalize_claimant_credential_generation
 prepare_forward_data_snapshot
@@ -2090,7 +2207,7 @@ docker compose up -d redis
 # matches the app's 30s bounded drain with headroom before Docker sends
 # SIGKILL. Redis and Alloy remain available throughout.
 docker compose stop --timeout 30 lightpanda-claimant
-docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go exporter drain
 
 # ── Run native migrations on local Postgres ─────────────────────────
 docker run --rm \
@@ -2126,6 +2243,10 @@ docker run --rm \
   go-typesense-exporter --setup-schemas
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
+forward_sync_command=(go-typesense-exporter --sync-registry)
+if [[ "$CRAWLER_RUNTIME_BACKEND" == go ]]; then
+  forward_sync_command+=(--require-native)
+fi
 FORWARD_SYNC_STARTED=1
 docker run --rm \
   -e LOCAL_DATABASE_URL \
@@ -2141,7 +2262,7 @@ docker run --rm \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
   "$CRAWLER_IMAGE_REF" \
-  go-typesense-exporter --sync-registry
+  "${forward_sync_command[@]}"
 
 # Revision 0021 is idempotent, but Alembic records it only once. If an earlier
 # forward attempt reached the migration and then rolled back, the restored
@@ -2166,6 +2287,7 @@ docker run --rm \
 # schedules before that runtime may restart.
 repair_umantis_identity_cutover deploy-umantis-identity-cutover
 repair_worker_route_cutover deploy-worker-route-cutover
+prepare_default_go_epoch
 
 # ── Start the crawler stack on the freshly seeded Redis state ────────
 # Explicit service targets preserve the stopped legacy Murmur containers for
@@ -2185,6 +2307,10 @@ docker compose up -d --force-recreate alloy
 wait_for_core_services
 reconciliation_wrapper_is_compatible
 verify_deployed_image_identity
+if [[ "$EXERCISE_COLD_ROLLBACK" == true ]]; then
+  echo "Candidate is ready; exercising the complete prior-release cold rollback" >&2
+  rollback_deploy 0
+fi
 stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────

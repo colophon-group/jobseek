@@ -767,6 +767,7 @@ def _compose_model(*, enabled: bool = False, routing_epoch: str | None = "7") ->
     environment = {
         "PATH": os.environ["PATH"],
         "COMPOSE_PROJECT_NAME": "claimant-contract",
+        "COMPOSE_PROFILES": "legacy",
         "CRAWLER_IMAGE_REF": f"ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}",
         "BROWSER_IMAGE_REF": f"ghcr.io/colophon-group/jobseek-crawler-browser@sha256:{'b' * 64}",
         "LIGHTPANDA_B0_CREDENTIAL_DIR": "/credentials",
@@ -863,8 +864,20 @@ def test_ordinary_rendered_consumer_is_dark_and_credentials_are_scoped() -> None
     # The full owner must collect below its hard container boundary.
     assert base["ordinary-go"]["mem_limit"] == "1g"
     assert base["ordinary-go"]["environment"]["GOMEMLIMIT"] == "512MiB"
-    assert "ORDINARY_GO_RENDERED_DETAILS" not in base["ordinary-go"]["environment"]
-    assert "volumes" not in base["ordinary-go"]
+    assert (
+        base["ordinary-go"]["environment"]["ORDINARY_GO_RENDERED_DETAILS"]
+        == "${ORDINARY_GO_RENDERED_DETAILS:-}"
+    )
+    assert (
+        base["ordinary-go"]["environment"]["ORDINARY_GO_WORKER_MODE"]
+        == "${ORDINARY_GO_WORKER_MODE:-enabled}"
+    )
+    mounts = base["ordinary-go"]["volumes"]
+    assert len(mounts) == 6
+    for mount in mounts:
+        assert mount["read_only"] is True
+        assert mount["bind"]["create_host_path"] is False
+        assert mount["target"].startswith("/run/lightpanda/")
     rendered = overlay["ordinary-go"]
     assert rendered["depends_on"]["lightpanda-claimant"] == {"condition": "service_healthy"}
     assert rendered["environment"] == {"ORDINARY_GO_RENDERED_DETAILS": "enabled"}
@@ -2905,7 +2918,7 @@ def test_remote_archive_cleanup_is_armed_for_preflight_signals_and_rollback(
 
     rollback = source[source.index("rollback_deploy() {") : source.index("arm_deploy_rollback() {")]
     assert rollback.index("cleanup_claimant_credential_archive") < rollback.index(
-        'echo "Deploy failed'
+        'echo "Restoring crawler containers'
     )
 
 
@@ -2953,8 +2966,10 @@ def test_workflow_always_removes_exact_run_scoped_remote_archive() -> None:
     )
 
 
+@pytest.mark.parametrize("restored_backend", ["legacy", "go"])
 def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
     tmp_path: Path,
+    restored_backend: str,
 ) -> None:
     script = DEPLOY.read_text(encoding="utf-8")
     rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
@@ -3003,7 +3018,9 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
         )
     )
     (tmp_path / ".env").write_text("candidate\n", encoding="utf-8")
-    (tmp_path / ".env.rollback").write_text("old\n", encoding="utf-8")
+    (tmp_path / ".env.rollback").write_text(
+        f"CRAWLER_RUNTIME_BACKEND={restored_backend}\n", encoding="utf-8"
+    )
     result = subprocess.run(
         ["bash", "-c", harness],
         check=False,
@@ -3012,10 +3029,11 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
     )
     assert result.returncode == 23, result.stderr
     events = (tmp_path / "events.log").read_text(encoding="utf-8").splitlines()
-    assert events == [
+    legacy_events = [
         "candidate-discover",
         "candidate:stop --timeout 30 lightpanda-claimant",
-        "candidate:stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain",
+        "candidate:stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
+        "ordinary-go exporter drain",
         "rollback-discover",
         (
             "rollback:up -d redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy "
@@ -3025,6 +3043,14 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
         "claimant-ready",
         "claimant-image",
     ]
+
+    if restored_backend == "legacy":
+        assert events == legacy_events
+    else:
+        assert events == legacy_events[:3] + [
+            "rollback:up -d redis ordinary-go exporter drain alloy",
+            "core-ready",
+        ]
 
 
 @pytest.mark.parametrize(
