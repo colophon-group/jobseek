@@ -1,6 +1,55 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified serving checkpoint — October 29, 2026, 05:01 UTC
+## Verified 1114 deployment and final monitor candidate — October 29, 2026
+
+Runtime **0.13.1114**, source/data
+`b4757167f00a9a801650e9e04793e167abe776ca`, is deployed through the original
+full workflow after PR #11003 passed both required gates and the complete native
+queue/worker suites. Supported ordinary retirement, B0 rollback and approved
+selector clearing completed first. Independent readback verifies the exact images,
+runtime/data contracts, **seven serving actors and six health endpoints**.
+The restored legacy writers serve all **8,142 enabled boards**; native ownership
+is inactive at **epoch 399**. The selection fix is deployed but has no accepted
+native throughput result yet. Latest verified Lightpanda remains
+**1.1.0-nightly.11275+78bbb64db** with its original production heap and limits.
+
+Candidate **0.13.1115** finishes the remaining monitor, **IHG Kimpton Americas**,
+through Go HTTP. Each discovery reads its public page and declared public JSON
+bootstrap, then applies the fresh context only to the configured inventory
+requests. No context value is stored in configuration or evidence. Root, context
+and API publisher policy remain enforced; invalid context, incomplete data,
+transport/status errors and redirects preserve inventory. Cold Python recovery
+supports the same option. The existing field mappings and detail configuration
+remain unchanged; matched 100-row pages and offsets reduce the actual complete
+396-job discovery to **11.6 seconds**. No renderer compatibility or heap change
+is needed for this route.
+
+The same response corpus matches the unchanged original Python URL/field
+projector: **396 jobs, zero field differences**. **Thirteen real PostgreSQL/Redis
+cases** verify all 396 canonical URL/title rows, visibility/missing counts,
+deadlines, leases and failure/publisher/redirect controls. The prospective full
+catalogue retains **8,138 monitors / 8,139 details** and validates
+**8,139 monitors / 8,139 details**, with unchanged retained detail execution and
+**3,513 reference URLs**. All three B0 boards remain separate. CSV validation
+passes; census is **325 records / 516 browser boards**. This is candidate
+qualification, not production ownership.
+See [the final monitor evidence](evidence/go-native-ihg-public-context-candidate-2026-10-29.json).
+
+Keep the complete 1114 serving stack available while this final candidate passes
+required CI. Combine the IHG admission and selection fix in the next native
+activation to avoid an intervening activation/retirement pair. After the supported
+1115 deployment, requalify the actual published catalogue, all scheduled routes,
+every snapshot gap and the unfiltered queues before original B0/ordinary handoff.
+Preserve the complete outgoing baseline and account for every removal.
+
+Full migration remains **incomplete**. Accept natural freshness without counter
+resets, stability and comparable whole-lane resources/cost; complete default
+native catalogue lifecycle and remaining runtime consumers; then exercise the
+final supported cold reversal and recovery window before retiring production
+Python, Playwright, Chromium and obsolete runtime assets. Useful isolated offline
+Python may remain. Execution stays strictly Lightpanda and proved Go HTTP/API.
+
+## Historical verified 1113 serving checkpoint — October 29, 2026, 05:01 UTC
 
 Runtime **0.13.1113**, source/data
 `7a3f6fab1c6d9e54825b6674da5768661b09eb7d`, is active at **epoch 398** after

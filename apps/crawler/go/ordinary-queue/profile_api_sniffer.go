@@ -111,5 +111,5 @@ func APISnifferMonitorResourceMatches(p GreenhouseMonitorProfile, config map[str
 		return err == nil && p.Provider == "api_sniffer" && p.Endpoint == config["board_url"] && (endpoint == p.Endpoint || endpoint == o.BootstrapURL || o.Inventory.ResourceMatches(endpoint) || o.LiveURLMatches(endpoint, o.Inventory.Method))
 	}
 	o, err := APISnifferMonitorOptions(config)
-	return err == nil && p.Provider == "api_sniffer" && (p.Profile == "api_sniffer.http-items/v1" || p.Profile == "api_sniffer.proxy-http-items/v1") && p.Endpoint == o.Endpoint && o.ResourceMatches(endpoint)
+	return err == nil && p.Provider == "api_sniffer" && (p.Profile == "api_sniffer.http-items/v1" || p.Profile == "api_sniffer.proxy-http-items/v1") && p.Endpoint == o.Endpoint && (o.ResourceMatches(endpoint) || o.IsRequestHeaderRefreshRequest(apisniffer.Request{Method: "GET", URL: endpoint}))
 }

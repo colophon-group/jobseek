@@ -18,7 +18,8 @@ import (
 type apiPostRefreshScope struct{ options apisniffer.Options }
 
 func (s apiPostRefreshScope) ResourceMatches(raw string) bool {
-	return s.options.IsPostDataRefreshRequest(apisniffer.Request{Method: http.MethodGet, URL: raw})
+	r := apisniffer.Request{Method: http.MethodGet, URL: raw}
+	return s.options.IsPostDataRefreshRequest(r) || s.options.IsRequestHeaderRefreshRequest(r)
 }
 func (apiPostRefreshScope) AcceptSuccess2xx() bool        { return true }
 func (apiPostRefreshScope) RequestTimeout() time.Duration { return 30 * time.Second }
@@ -36,12 +37,15 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 	if err != nil {
 		return result, err
 	}
+	if o.RequestHeaderRefresh != nil {
+		operationClient.CheckRedirect = func(*http.Request, []*http.Request) error { return queue.ErrConfiguration }
+	}
 	var normal, probe, reserved *GreenhouseResponse
 	fetch := func(ctx context.Context, r apisniffer.Request) (*apisniffer.Document, error) {
 		if reserved != nil {
 			return nil, &DiscoveryError{Kind: "publisher_reserved", Status: reserved.status}
 		}
-		if o.IsPostDataRefreshRequest(r) {
+		if o.IsPostDataRefreshRequest(r) || o.IsRequestHeaderRefreshRequest(r) {
 			var failure error
 			for attempt := 0; attempt < 3; attempt++ {
 				raw, _, observed, err := fetchLastHTTPOnce(ctx, &operationClient, apiPostRefreshScope{o}, r, 2000000)
@@ -51,6 +55,13 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 					return nil, err
 				}
 				if err == nil {
+					if o.IsRequestHeaderRefreshRequest(r) && r.URL != o.BoardURL {
+						document, decodeErr := apisniffer.Decode(raw)
+						if decodeErr != nil {
+							return nil, &DiscoveryError{Kind: "invalid_inventory"}
+						}
+						return document, nil
+					}
 					return &apisniffer.Document{Value: jsonld.DecodeDocument(raw, observed.contentType)}, nil
 				}
 				if ctx.Err() != nil {

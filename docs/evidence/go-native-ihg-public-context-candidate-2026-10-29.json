@@ -1,0 +1,80 @@
+{
+  "schema": "jobseek.native-ihg-public-context-candidate/v1",
+  "observed_at_utc": "2026-10-29T08:09:24.186386+00:00",
+  "runtime_version": "0.13.1115",
+  "candidate_base": "b4757167f00a9a801650e9e04793e167abe776ca",
+  "production_ownership_granted": false,
+  "backend": "verified Go HTTP; fresh anonymous public JSON context; no renderer change",
+  "monitor": "ihg-kimpton-americas",
+  "enabled_boards": 8142,
+  "changed_CSV_rows": 1,
+  "public_context": {
+    "values_persisted_in_configuration_or_evidence": false,
+    "scope": "Per discovery headers; root and same-origin public JSON GET precede API inventory; redirects refused; source/field/value bounds and publisher policy retained."
+  },
+  "positive_inventory": {
+    "jobs": 396,
+    "truncated": false,
+    "actual_direct_implementation_ms": 11642,
+    "page_size": 100,
+    "offset_increment": 100,
+    "original_same_response_field_differences": {},
+    "original_URL_set_matches": true,
+    "original_field_projector_AST_unchanged_from_base": true
+  },
+  "canonical": {
+    "real_migrated_PostgreSQL_and_Redis": true,
+    "cases": 13,
+    "positive_URL_title_rows_verified": 396,
+    "controls": [
+      "HTTP400",
+      "HTTP403",
+      "missing context",
+      "malformed context",
+      "incomplete inventory",
+      "transport failure",
+      "root publisher reservation",
+      "context publisher reservation",
+      "API publisher reservation",
+      "root redirect",
+      "context redirect",
+      "API redirect"
+    ],
+    "deadlines_leases_visibility_and_missing_counts_verified": true
+  },
+  "prospective_catalogue": {
+    "captured_source": "7a3f6fab1c6d9e54825b6674da5768661b09eb7d",
+    "captured_data_tree_equals_current_base_before_IHG_change": true,
+    "retained_monitors": 8138,
+    "retained_details": 8139,
+    "candidate_monitors": 8139,
+    "candidate_details": 8139,
+    "reference_URLs": 3513,
+    "B0_boards_excluded": 3,
+    "retained_detail_execution_unchanged": true,
+    "constructor_failures": 0,
+    "scope": "Constructor and reference qualification with the sole future IHG override. Actual published catalogue, scheduled URLs and queues must be qualified again before activation."
+  },
+  "checks": {
+    "full_Go_API_race_suite": "pass",
+    "cold_Python_API_suite": {
+      "passed": 287
+    },
+    "cold_header_tests": {
+      "passed": 10
+    },
+    "CSV_validation": "pass",
+    "browser_census": {
+      "records": 325,
+      "browser_boards": 516
+    }
+  },
+  "still_required": [
+    "Required CI and Crawler Deploy Gate for immutable head",
+    "Original full deployment and actual published catalogue/queue qualification",
+    "Supported B0 and ordinary activation",
+    "Natural freshness, whole-lane resource/cost and stability evidence",
+    "Default native catalogue lifecycle and remaining consumers",
+    "Final supported cold reversal/window and production Python retirement"
+  ]
+}
