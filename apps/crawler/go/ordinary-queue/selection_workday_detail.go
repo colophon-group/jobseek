@@ -17,6 +17,13 @@ const detailPostingCursorQuery = "SELECT id::text,source_url FROM job_posting WH
 // resolves the actual SQL posting and full canonical board before original Lua
 // checks priority, fairness, throttle, configuration and exclusive ownership.
 func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64, worker WorkerType) ([]ownershipCandidate, error) {
+	return a.detailCandidatesForTier(ctx, tx, now, worker, -1)
+}
+
+func (a *Authority) detailCandidatesForTier(ctx context.Context, tx pgx.Tx, now float64, worker WorkerType, selectedTier int) ([]ownershipCandidate, error) {
+	if selectedTier != -1 && selectedTier != 0 && selectedTier != 2 {
+		return nil, ErrConfiguration
+	}
 	details, bindings := a.ownership.detailSelection(worker)
 	if len(details) == 0 {
 		return nil, nil
@@ -37,6 +44,16 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 	observations := map[string]boardObservation{}
 	visited := map[string]bool{}
 	selectedPostings := map[string]bool{}
+	rates := map[string]*redis.Cmd{}
+	available := func(domain string) (bool, error) {
+		command := rates[domain]
+		if command == nil {
+			command = a.queue.redis.EvalRO(ctx, domainRateLimitObservation, []string{"ratelimit:" + domain})
+			rates[domain] = command
+		}
+		future, err := futureDomainRateLimit(command, now)
+		return !future, err
+	}
 	add := func(id, board, source, domain string, score float64, tier int, cached map[string]string) error {
 		if selectedPostings[id] {
 			return nil
@@ -97,11 +114,21 @@ priority:
 		tier                int
 		readySuffix, prefix string
 	}{{0, ":0", "ft_scrapes_"}, {2, ":2", "scrapes_"}} {
+		if selectedTier >= 0 && source.tier != selectedTier {
+			continue
+		}
 		domains, err := a.queue.redis.ZRangeByScore(ctx, "ready:"+string(worker)+source.readySuffix, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: 8}).Result()
 		if err != nil {
 			return nil, ErrObservation
 		}
 		for _, domain := range domains {
+			ready, err := available(domain)
+			if err != nil {
+				return nil, err
+			}
+			if !ready {
+				continue
+			}
 			rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, source.prefix+string(worker)+":"+domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
 			if err != nil {
 				return nil, ErrObservation
@@ -193,6 +220,9 @@ priority:
 				if err != nil {
 					continue
 				}
+				if rates[domain] == nil {
+					rates[domain] = pipe.EvalRO(ctx, domainRateLimitObservation, []string{"ratelimit:" + domain})
+				}
 				q := queuedPosting{posting: p, domain: domain, config: pipe.HGetAll(ctx, "scrape:"+p.id)}
 				for index, prefix := range []string{"ft_scrapes_" + string(worker) + ":", "scrapes_" + string(worker) + ":"} {
 					q.scores[index] = pipe.ZScore(ctx, prefix+domain, p.id)
@@ -207,7 +237,23 @@ priority:
 				if err != nil {
 					return nil, ErrObservation
 				}
+				for _, command := range p.scores {
+					if _, err := command.Result(); err != nil && !errors.Is(err, redis.Nil) {
+						return nil, ErrObservation
+					}
+				}
+				ready, err := available(p.domain)
+				if err != nil {
+					return nil, err
+				}
+				if !ready {
+					continue
+				}
 				for index, command := range p.scores {
+					tier := index * 2
+					if selectedTier >= 0 && tier != selectedTier {
+						continue
+					}
 					score, err := command.Result()
 					if errors.Is(err, redis.Nil) {
 						continue
@@ -217,10 +263,6 @@ priority:
 					}
 					if score > now {
 						continue
-					}
-					tier := 0
-					if index == 1 {
-						tier = 2
 					}
 					if err := add(p.id, detail.BoardID, p.source, p.domain, score, tier, cached); err != nil {
 						return nil, err
@@ -237,7 +279,18 @@ priority:
 			continue
 		}
 		visited[detail.Domain] = true
+		ready, err := available(detail.Domain)
+		if err != nil {
+			return nil, err
+		}
+		if !ready {
+			continue
+		}
 		for index, prefix := range []string{"ft_scrapes_" + string(worker) + ":", "scrapes_" + string(worker) + ":"} {
+			tier := index * 2
+			if selectedTier >= 0 && tier != selectedTier {
+				continue
+			}
 			rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, prefix+detail.Domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
 			if err != nil {
 				return nil, ErrObservation
@@ -259,10 +312,6 @@ priority:
 				source := cached["source_url"]
 				if strings.ContainsRune(source, 0) {
 					continue
-				}
-				tier := 0
-				if index == 1 {
-					tier = 2
 				}
 				if err := add(id, board, source, detail.Domain, row.Score, tier, cached); err != nil {
 					return nil, err
