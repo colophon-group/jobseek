@@ -1,6 +1,40 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1111 serving checkpoint — October 29, 2026, 01:16 UTC
+## Current handoff and new Lightpanda candidate — October 29, 2026, 03:00 UTC
+
+[PR #10996](https://github.com/colophon-group/jobseek/pull/10996) is merged as
+`5dce82878ef815df610f7f2f8610c9c23fae1119` after both required gates and native
+suites passed. Its nine-monitor batch has immutable runtime images. The original
+full deployment refused active ordinary ownership as designed. The supported
+newer-admin normal retirement succeeded; independent readback verifies outgoing
+1111/data `7169c1a1adcb8994f8d1b0322755912b6664f32d`, epoch 396, absent ordinary
+receipt, zero active ordinary SQL plans, nine restored actors and seven health
+endpoints. B0 rollback is in progress. Incoming 1112 deployment and ownership
+remain unaccepted until the full supported handoff and actual catalogue pass.
+The outgoing strict SDK covers **2,039,989 scheduled routes**, with zero cache,
+lane or queue gaps. Preserve the complete **3,448,369 unfiltered unique queue
+identities** as the incoming conservation baseline. Qualify the added Arcis Golf
+board from actual publication before granting ownership; the conditional floor
+is **8,138 ordinary monitors / 8,139 details**, leaving IHG alone.
+
+Upstream published **1.1.0-nightly.11275+78bbb64db** during this handoff.
+The candidate pins its immutable OCI index and exact Linux/Mac executable hashes;
+both extracted Linux binaries equal the official release assets, and the Mac
+binary reports the expected version. The executable source is
+`78bbb64dbe1a3e1df8d2299cbf05efcff81bd65f`, independently of the moving nightly tag.
+Local renderer contract tests pass. The Mac physical run has proxy-fixture startup
+failures; retain them and require both Linux physical suites before promotion.
+See [new release evidence](evidence/lightpanda-nightly11275-candidate-2026-10-29.json).
+Production still uses nightly 11227 until supported deployment and independent
+new renderer readback pass. Keep strict Lightpanda and Go HTTP/API execution.
+
+The newest IHG public HTTP hypothesis returned a redirect and zero roles, so it
+is unqualified. Preserve the working legacy inventory. Natural freshness remains
+unaccepted: at the last sample 6,022 boards were over an hour overdue. Complete
+positive IHG coverage, sustained freshness, comparable resources/cost, remaining
+runtime consumers and supported reversal/window before retiring production Python.
+
+## Historical verified 1111 serving checkpoint — October 29, 2026, 01:16 UTC
 
 Runtime **0.13.1111** is serving from
 `019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, with the combined CSV publication

@@ -86,7 +86,7 @@ func TestLightpandaLiveAPIPublicOriginalFields(t *testing.T) {
 					t.Fatal("private inventory capture failed")
 				}
 			}
-			t.Logf("platform=%s/%s release=1.1.0-nightly.11227+0eee96bf2 jobs=%d all_original_fields_match=true child_cleanup_proved=true", runtime.GOOS, runtime.GOARCH, len(inventory.Jobs))
+			t.Logf("platform=%s/%s release=1.1.0-nightly.11275+78bbb64db jobs=%d all_original_fields_match=true child_cleanup_proved=true", runtime.GOOS, runtime.GOARCH, len(inventory.Jobs))
 		})
 	}
 }

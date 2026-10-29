@@ -1,0 +1,57 @@
+{
+  "schema": "jobseek.lightpanda-release-qualification/v1",
+  "observed_at_utc": "2026-10-29T03:00:19.814141+00:00",
+  "engine_version": "1.1.0-nightly.11275+78bbb64db",
+  "source_revision": "78bbb64dbe1a3e1df8d2299cbf05efcff81bd65f",
+  "official_release": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+  "immutable_OCI_index": "sha256:4b7153ec430e5b99c0a5b2fb589c14ac88f0ce6916b00afc4059973d676c5bbf",
+  "platforms": [
+    {
+      "architecture": "amd64",
+      "manifest_digest": "sha256:9ea928e3f019a7b1695321f126c61039282c679c899d672a17aa1ac5715e03c4",
+      "created_at": "2026-10-29T02:49:36.636049891Z",
+      "labels": {},
+      "entrypoint": [
+        "/usr/bin/tini",
+        "--"
+      ],
+      "binary_path": "/usr/bin/lightpanda",
+      "binary_sha256": "73c6594300deeb8f20b30f96842655775ccc72f77af0a9085bbcae40b90759f1",
+      "binary_bytes": 76866888,
+      "binary_layer_digest": "sha256:6682f8a21067e2df786089f76c9c0ded94e7a2d761ea3caef2e10e7bebb20370"
+    },
+    {
+      "architecture": "arm64",
+      "manifest_digest": "sha256:09d7a61dad6c6640f91444ac5d1cc5688621f943e8048a79ec6fa28896e3e1d7",
+      "created_at": "2026-10-29T02:49:36.684952409Z",
+      "labels": {},
+      "entrypoint": [
+        "/usr/bin/tini",
+        "--"
+      ],
+      "binary_path": "/usr/bin/lightpanda",
+      "binary_sha256": "d82e8ff27da466beb94dfba39e61ae6eeda91e5d8cf220d104400c862dcf44c0",
+      "binary_bytes": 74092600,
+      "binary_layer_digest": "sha256:3189b8da8efd74ebe84f2a8effb8d67012aec70f44d0c23397205cd36d2741ba"
+    }
+  ],
+  "Mac_binary_sha256": "e22ffe3c4f0aaec04a25b963d5cb3e946c71a97867f621c7b27b905283842b74",
+  "qualified_for_production": false,
+  "deployment_status": "Candidate only; both Linux physical CI suites and supported exact-source renderer deployment/readback required.",
+  "local_validation": {
+    "renderer_contract_tests": {
+      "passed": 101,
+      "skipped": 24,
+      "scope": "Existing deployment/proxy contract tests."
+    },
+    "Mac_full_race_suite": "Running; proxy fixtures exit before readiness. Preserve failures and require actual Linux architecture suites. No tests weakened or skipped to grant promotion.",
+    "Go_unit_race": {
+      "passed_entries": 421,
+      "failed": 0,
+      "explicit_skips": 34,
+      "scope": "Physical opt-in tests skipped in unit-only run; separate physical run and both Linux CI suites remain required."
+    }
+  },
+  "runtime_handoff": "PR10996 merged as5dce82878ef815df610f7f2f8610c9c23fae1119. Original ordinary retirement successful; independent P/dataQ epoch396 cold ordinary/full9actors7endpoints verified. Original B0 rollback running. Incoming1112 deployment/admission not yet accepted.",
+  "scope": "Official OCI index, platform, config, layer and extracted binary hashes verified independently. Both Linux executables equal official GitHub asset digests. Mac executable version verified; moving nightly Git tag is not executable source authority."
+}
