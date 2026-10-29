@@ -354,11 +354,23 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 		// Detail writes lock their posting/fence, while the shared board lock
 		// prevents configuration or publisher policy changing mid-transaction.
 		// Upgrading it would deadlock concurrent details after ownership observation.
-		boardQuery := "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR UPDATE"
+		boardQuery := "SELECT id::text FROM public.job_board WHERE id=$1::uuid"
+		if a.defaultOwner {
+			// Registry removal may leave old detail members after the board's
+			// cache is removed. They must not activate a productive fence and
+			// reach profile/transport selection. Keep their original raw lease
+			// for the existing bounded reaper/dead-letter policy.
+			boardQuery += " AND is_enabled AND board_status IN ('active','suspect','quarantined','gone_pending','gone')"
+		}
 		if claim.task.Kind == Scrape {
-			boardQuery = "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR SHARE"
+			boardQuery += " FOR SHARE"
+		} else {
+			boardQuery += " FOR UPDATE"
 		}
 		if err := tx.QueryRow(ctx, boardQuery, claim.boardID).Scan(&board); err != nil {
+			// The existing transaction wrapper reports canonical absence as
+			// an unacknowledged observation, retaining this raw attempt. Loss
+			// of the installed owner remains a separate fatal condition.
 			return err
 		}
 		if task.Kind == Scrape {
