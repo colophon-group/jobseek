@@ -684,7 +684,7 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error
 	return command, nil
 }
 
-// fixedLightpandaServeArgs is the single source of truth for pinned Lightpanda 1.1.0-nightly.11227+0eee96bf2.
+// fixedLightpandaServeArgs is the single source of truth for pinned Lightpanda 1.1.0-nightly.11275+78bbb64db.
 // command shape. Production callers must validate EgressPolicy before passing
 // its private blockCIDRs. Test-tagged fixture callers can pass one narrowly
 // scoped exact exemption without creating a production configuration surface.

@@ -25,7 +25,7 @@ func TestLightpandaRotatingAPISessionIntegration(t *testing.T) {
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
 		if binary == "" {
-			t.Skip("requires official Lightpanda1.1.0-nightly.11227+0eee96bf2 binary")
+			t.Skip("requires official Lightpanda1.1.0-nightly.11275+78bbb64db binary")
 		}
 		if verifyFileSHA256(binary, lightpandaPinnedDarwinArm64SHA256) != nil {
 			t.Fatal("official macOS asset differs")
@@ -107,7 +107,7 @@ func TestLightpandaRotatingAPISessionIntegration(t *testing.T) {
 			if navigations.Load() != 2 || stored.Load() != 1 || later.Load() != 1 {
 				t.Fatal("original retry sequence differs", navigations.Load(), stored.Load(), later.Load())
 			}
-			t.Log("pinned Lightpanda1.1.0-nightly.11227+0eee96bf2 rotating path, pagination, policy and child cleanup proved")
+			t.Log("pinned Lightpanda1.1.0-nightly.11275+78bbb64db rotating path, pagination, policy and child cleanup proved")
 		})
 	}
 }
