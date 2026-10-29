@@ -296,7 +296,9 @@ func TestRealDefaultCommittedReapingRetiresWrongLane(t *testing.T) {
 				t.Fatal("default claim unavailable", err)
 			}
 			due := futureDue()
-			if _, err := a.Write(ctx, claim, true, func(ctx context.Context, tx pgx.Tx) error {
+			learned := "learned.greenhouse.io"
+			learnedPtr := &learned
+			if _, err := a.write(ctx, claim, true, &learnedPtr, func(ctx context.Context, tx pgx.Tx) error {
 				_, err := tx.Exec(ctx, "UPDATE job_board SET next_check_at=$2 WHERE id=$1::uuid", p.f.task.ID, due)
 				return err
 			}); err != nil {
@@ -345,6 +347,7 @@ func TestRealDefaultCommittedReapingRetiresWrongLane(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			cacheBefore := r.HGetAll(ctx, "board:"+p.f.task.ID).Val()
 			p.f.task.Worker = Browser
 			before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
 			var result []any
@@ -366,6 +369,9 @@ func TestRealDefaultCommittedReapingRetiresWrongLane(t *testing.T) {
 			}
 			if err != nil || !reflect.DeepEqual(result, []any{int64(1), int64(0), int64(0)}) {
 				t.Fatal("reroute failed", result, err)
+			}
+			if !reflect.DeepEqual(cacheBefore, r.HGetAll(ctx, "board:"+p.f.task.ID).Val()) {
+				t.Fatal("reroute changed target runtime cache")
 			}
 			if canonical != coldCanonicalSnapshot(t, p.f) || r.HExists(ctx, "inflight_tokens:browser", member).Val() || r.ZCard(ctx, "inflight:browser").Val() != 0 || r.ZCard(ctx, "monitors_browser:"+p.f.task.Domain).Val() != 0 || r.ZScore(ctx, "ready:browser:1", p.f.task.Domain).Err() != redis.Nil {
 				t.Fatal("source retirement or canonical state changed")

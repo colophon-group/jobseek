@@ -351,7 +351,9 @@ for _, member in ipairs(expired) do
                             redis.call("ZADD", queue_key, due, task_id)
                         end
                         redis.call("HDEL", monitor_repair_key, member)
-                        if receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
+                        -- A reroute may coexist with a newer target claim. Preserve
+                        -- its exact runtime cache as well as its token/deadline.
+                        if receipt.worker == nil and receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
                     elseif repair_due ~= false then
                         local due = math.min(retry_score, tonumber(repair_due))
                         local queued_due = redis.call("ZSCORE", queue_key, task_id)
