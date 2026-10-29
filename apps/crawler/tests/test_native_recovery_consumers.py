@@ -108,12 +108,13 @@ def test_parked_repair_uses_selected_cli_without_retry(
 
 
 @pytest.mark.parametrize("role", ["csv-sync", "recovery-sync", "bootstrap-sync"])
-@pytest.mark.parametrize("capability", ["v1", ""])
+@pytest.mark.parametrize(("capability", "runtime_capability"), [("v1", ""), ("v1", "v1"), ("", "")])
 @pytest.mark.parametrize("status", [0, 29])
 def test_csv_recovery_uses_retained_image_capability_and_never_retries(
     tmp_path: Path,
     role: str,
     capability: str,
+    runtime_capability: str,
     status: int,
 ) -> None:
     log = tmp_path / "calls"
@@ -128,7 +129,14 @@ verify_release_generation() {
 }
 build_runtime_env() { RUNTIME_ENV="$TEST_ROOT/runtime.env"; : >"$RUNTIME_ENV"; }
 docker() {
-  if [[ "$1 $2" == "image inspect" ]]; then printf "%s\n" "$TEST_CAPABILITY"; return 0; fi
+  if [[ "$1 $2" == "image inspect" ]]; then
+    if [[ "$4" == *default-native-runtime* ]]; then
+      printf "%s\n" "$TEST_RUNTIME_CAPABILITY"
+    else
+      printf "%s\n" "$TEST_CAPABILITY"
+    fi
+    return 0
+  fi
   printf "%s\n" "$*" >>"$TEST_LOG"; return "$TEST_STATUS"
 }
 sync_release_data "$TEST_ROOT/release" "$TEST_ROLE"
@@ -143,6 +151,7 @@ sync_release_data "$TEST_ROOT/release" "$TEST_ROLE"
             "TEST_LOG": str(log),
             "TEST_ROOT": str(tmp_path),
             "TEST_CAPABILITY": capability,
+            "TEST_RUNTIME_CAPABILITY": runtime_capability,
             "TEST_ROLE": role,
             "TEST_STATUS": str(status),
         },
@@ -158,6 +167,8 @@ sync_release_data "$TEST_ROOT/release" "$TEST_ROLE"
         if role == "csv-sync" or capability == "v1"
         else "uv run --no-sync crawler sync"
     )
+    if runtime_capability == "v1":
+        command += " --require-native"
     assert calls[0].endswith(IMAGE + " " + command)
     assert f"-v {tmp_path}/data:/app/data:ro" in calls[0]
     assert f"-e CRAWLER_DB_ROLE={role}" in calls[0]

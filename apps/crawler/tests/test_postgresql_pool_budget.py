@@ -31,7 +31,7 @@ def _compose() -> dict:
     return yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
 
 
-def _render_compose_config(*files: Path) -> dict:
+def _render_compose_config(*files: Path, profile: str = "legacy") -> dict:
     docker = shutil.which("docker")
     assert docker is not None, "Docker Compose is required for the rollback contract test"
     # Intentionally exclude the caller's environment values. Compose gives
@@ -44,6 +44,7 @@ def _render_compose_config(*files: Path) -> dict:
     environment.update(
         {
             "COMPOSE_PROJECT_NAME": "rollback-base-contract",
+            "COMPOSE_PROFILES": profile,
             "CRAWLER_IMAGE_TAG": "base-fixture",
             "CRAWLER_IMAGE_REF": f"ghcr.io/fixture/jobseek-crawler@sha256:{'a' * 64}",
             "BROWSER_IMAGE_REF": f"ghcr.io/fixture/jobseek-browser@sha256:{'b' * 64}",
@@ -149,6 +150,14 @@ def test_enabled_lightpanda_overlay_adds_exactly_one_executor_connection() -> No
     )
 
 
+def test_default_go_topology_does_not_start_legacy_connection_owners() -> None:
+    services = _render_compose_config(COMPOSE, profile="ordinary-go")["services"]
+    assert set(services) == {"redis", "ordinary-go", "exporter", "drain", "alloy"}
+    assert int(services["exporter"]["environment"]["CRAWLER_DB_POOL_MAX"]) == 4
+    assert int(services["drain"]["environment"]["CRAWLER_DB_POOL_MAX"]) == 6
+    assert services["ordinary-go"]["command"] == ["/usr/local/bin/go-ordinary-worker"]
+
+
 def test_murmur_enforces_both_connection_owners() -> None:
     node_db = (ROOT / "apps/murmur-shim/src/db/index.ts").read_text(encoding="utf-8")
     invoker = (ROOT / "apps/murmur-shim/app/api/murmur/_lib/invoke-lib.ts").read_text(
@@ -220,7 +229,8 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
     deploy = (CRAWLER / "deploy.sh").read_text(encoding="utf-8")
     stop = deploy.index(
-        "docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain"
+        "docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
+        "ordinary-go exporter drain"
     )
     migrate = deploy.index("CRAWLER_DB_ROLE=deploy-migrate", stop)
     sync = deploy.index("CRAWLER_DB_ROLE=deploy-sync", migrate)

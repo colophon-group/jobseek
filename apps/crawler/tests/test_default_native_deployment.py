@@ -182,3 +182,13 @@ def test_native_exporter_requires_go_owner(tmp_path: Path, owner: str) -> None:
             assert not result.stdout
     finally:
         binary.unlink()
+
+
+def test_native_entrypoint_and_preflight_are_in_the_build_context() -> None:
+    dockerfile = (CRAWLER / "Dockerfile").read_text()
+    ignores = (CRAWLER / ".dockerignore").read_text().splitlines()
+    assert "!scripts/native-exporter-entrypoint.sh" in ignores
+    native = dockerfile.split(" AS native\n", 1)[1].split("\nFROM ", 1)[0]
+    assert "COPY --chmod=0755 scripts/native-exporter-entrypoint.sh" in native
+    assert "COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor" in native
+    assert "lightpanda-b0-supervisor --validate-dark" in DEPLOY

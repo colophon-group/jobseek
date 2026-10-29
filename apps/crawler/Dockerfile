@@ -250,7 +250,7 @@ FROM docker.io/library/alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2d
 WORKDIR /app
 RUN apk add --no-cache ca-certificates antiword poppler-utils \
       tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-deu \
-    && install -d --owner=10001 --group=10001 --mode=0700 \
+    && install -d -o 10001 -g 10001 -m 0700 \
       /run/jobseek-lightpanda-executor /run/jobseek-lightpanda-producer
 COPY VERSION ./
 COPY data/ data/
@@ -260,6 +260,8 @@ COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bi
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
 COPY --from=go-ats-inventory-build /out/go-ats-inventory /usr/local/bin/go-ats-inventory
 COPY --from=lightpanda-b0-build /out/go-lightpanda-claimant-credentials /usr/local/bin/go-lightpanda-claimant-credentials
+# The full release still runs its existing networkless credential preflight.
+COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 COPY --chmod=0755 scripts/native-exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
 COPY go/job-enrichment/models/ /usr/local/share/jobseek/language-model/
 COPY go/job-enrichment/licenses/ /usr/local/share/jobseek/go-enrichment-licenses/
