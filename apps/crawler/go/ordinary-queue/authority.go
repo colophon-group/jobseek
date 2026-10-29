@@ -368,9 +368,9 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 			boardQuery += " FOR UPDATE"
 		}
 		if err := tx.QueryRow(ctx, boardQuery, claim.boardID).Scan(&board); err != nil {
-			if a.defaultOwner && errors.Is(err, pgx.ErrNoRows) {
-				return ErrAuthorityLost
-			}
+			// The existing transaction wrapper reports canonical absence as
+			// an unacknowledged observation, retaining this raw attempt. Loss
+			// of the installed owner remains a separate fatal condition.
 			return err
 		}
 		if task.Kind == Scrape {

@@ -77,7 +77,7 @@ func TestRealDefaultIneligibleClaimsKeepOriginalRecovery(t *testing.T) {
 						}
 						before := coldCanonicalSnapshot(t, f)
 						claim, err := a.Claim(ctx, worker)
-						if claim == nil || !errors.Is(err, ErrAuthorityLost) {
+						if claim == nil || !errors.Is(err, ErrObservation) {
 							t.Fatal("ineligible board acquired default execution authority", err)
 						}
 						if _, err := a.Write(ctx, claim, true, func(context.Context, pgx.Tx) error {

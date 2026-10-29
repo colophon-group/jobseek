@@ -42,8 +42,8 @@ refused its missing profile.
 
 The **0.13.1124** correction checks current board eligibility under the existing
 canonical board lock **before activating or replacing a default-mode fence**.
-Disabled or nonrecoverable boards return nonfatal authority loss for both monitor
-and detail claims in either worker lane. Their exact raw lease remains available
+Disabled or nonrecoverable boards return a nonfatal unacknowledged observation
+for both monitor and detail claims in either worker lane. Their raw lease remains available
 to the original bounded reaper/dead-letter policy; no content, canonical deadline,
 existing fence or failure budget is rewritten. Enabled active, suspect,
 quarantined, gone-pending and gone boards retain their existing execution path.
