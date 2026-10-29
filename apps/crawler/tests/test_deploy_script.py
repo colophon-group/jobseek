@@ -322,6 +322,9 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     assert "alembic -c src/migrations/alembic.ini upgrade head" not in script
     migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
     typesense_schema = script.index("go-typesense-exporter --setup-schemas")
+    pre_sync_reap = script.index(
+        "drain_expired_worker_leases deploy-pre-sync-reap", typesense_schema
+    )
     sync = script.index("go-typesense-exporter --sync-registry", typesense_schema)
     nw_cutover = script.index("go-typesense-exporter --repair-nw-provider-cutover")
     umantis_cutover = script.index(
@@ -338,6 +341,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
         < migrate
         < migration_cutover
         < typesense_schema
+        < pre_sync_reap
         < sync
         < nw_cutover
         < umantis_cutover
@@ -2561,6 +2565,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             '  return "$REPAIR_STATUS"',
             "}",
             "repair_worker_route_cutover() { :; }",
+            'drain_expired_worker_leases() { return "${REAP_STATUS:-0}"; }',
             "rollback_sync_previous_config",
             "status=$?",
             'test -z "$ROLLBACK_SYNC_WEB_DATABASE_URL"',
@@ -2576,10 +2581,11 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             + (f"WEB_DATABASE_URL={legacy_web_database_url}\n" if legacy_web_database_url else ""),
             encoding="utf-8",
         )
-        for compose_status, repair_status, expected_status in (
-            (0, 0, 0),
-            (9, 0, 9),
-            (0, 7, 7),
+        for reap_status, compose_status, repair_status, expected_status in (
+            (0, 0, 0, 0),
+            (0, 9, 0, 9),
+            (0, 0, 7, 7),
+            (23, 0, 0, 23),
         ):
             log.write_text("", encoding="utf-8")
             result = subprocess.run(
@@ -2590,6 +2596,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                 env={
                     **os.environ,
                     "COMPOSE_STATUS": str(compose_status),
+                    "REAP_STATUS": str(reap_status),
                     "TEST_BACKEND": maintenance_backend,
                     "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url
                     if maintenance_backend == "legacy"
@@ -2603,6 +2610,9 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             )
             assert result.returncode == 0, result.stderr
             calls = log.read_text(encoding="utf-8").splitlines()
+            if reap_status:
+                assert calls == [f"status={reap_status}"]
+                continue
             expected_web_arg = (
                 "-e WEB_DATABASE_URL "
                 if legacy_web_database_url and maintenance_backend == "legacy"
@@ -3316,6 +3326,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             rollback,
             "repair_umantis_identity_cutover() { :; }",
             "repair_worker_route_cutover() { :; }",
+            "drain_expired_worker_leases() { return 0; }",
             "wait_for_rollback_core_services() { :; }",
             "publish_legacy_success_marker() { :; }",
             "stop_maintenance_window() { :; }",

@@ -276,3 +276,132 @@ func TestRealCommittedLeaseReapingKeepsUnfinishedRetry(t *testing.T) {
 		})
 	}
 }
+
+// A stale browser attempt can outlive a canonical HTTP route. A committed
+// receipt must retire that exact source generation without replaying its work
+// or changing a newer target attempt/deadline.
+func TestRealDefaultCommittedReapingRetiresWrongLane(t *testing.T) {
+	for _, mode := range []string{"missing", "queued", "first", "inflight", "deadletter", "target-corrupt", "target-token", "target-rate", "target-rotation", "changed-token", "changed-config", "changed-deadline", "producer-owner"} {
+		t.Run(mode, func(t *testing.T) {
+			p := firstOwnerFixture{f: greenhouseAuthorityFixture(t)}
+			ctx := context.Background()
+			r := p.f.client.redis
+			a, err := OpenDefaultAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(a.Close)
+			claim, err := a.Claim(ctx, Simple)
+			if err != nil || claim == nil {
+				t.Fatal("default claim unavailable", err)
+			}
+			due := futureDue()
+			learned := "learned.greenhouse.io"
+			learnedPtr := &learned
+			if _, err := a.write(ctx, claim, true, &learnedPtr, func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, "UPDATE job_board SET next_check_at=$2 WHERE id=$1::uuid", p.f.task.ID, due)
+				return err
+			}); err != nil {
+				t.Fatal(err)
+			}
+			member := inflight(p.f.task)
+			token := r.HGet(ctx, "inflight_tokens:simple", member).Val()
+			pipe := r.TxPipeline()
+			pipe.ZRem(ctx, "inflight:simple", member)
+			pipe.HDel(ctx, "inflight_tokens:simple", member)
+			pipe.ZAdd(ctx, "inflight:browser", redis.Z{Member: member, Score: 1})
+			pipe.HSet(ctx, "inflight_tokens:browser", member, token)
+			pipe.ZAdd(ctx, "monitors_browser:"+p.f.task.Domain, redis.Z{Member: p.f.task.ID, Score: 2})
+			pipe.ZAdd(ctx, "ready:browser:1", redis.Z{Member: p.f.task.Domain, Score: 2})
+			if _, err := pipe.Exec(ctx); err != nil {
+				t.Fatal(err)
+			}
+			targetDue := seconds(due) + 100
+			switch mode {
+			case "queued":
+				err = r.ZAdd(ctx, "monitors_simple:"+p.f.task.Domain, redis.Z{Member: p.f.task.ID, Score: targetDue}).Err()
+			case "first":
+				err = r.ZAdd(ctx, "ft_monitors_simple:"+p.f.task.Domain, redis.Z{Member: p.f.task.ID, Score: targetDue}).Err()
+			case "inflight":
+				if err = r.ZAdd(ctx, "inflight:simple", redis.Z{Member: member, Score: targetDue}).Err(); err == nil {
+					err = r.HSet(ctx, "inflight_tokens:simple", member, strings.Repeat("a", 32)).Err()
+				}
+			case "deadletter":
+				err = r.ZAdd(ctx, "deadletter:simple", redis.Z{Member: member, Score: targetDue}).Err()
+			case "target-corrupt":
+				err = r.Set(ctx, "ready:simple:1", "corrupt", 0).Err()
+			case "target-token":
+				err = r.HSet(ctx, "inflight_tokens:simple", member, strings.Repeat("a", 32)).Err()
+			case "target-rate":
+				err = r.Set(ctx, "ratelimit:"+p.f.task.Domain, "NaN", 0).Err()
+			case "target-rotation":
+				err = r.ZAdd(ctx, "ready:rotation:simple", redis.Z{Member: p.f.task.Domain, Score: 1e300}).Err()
+			case "changed-token": // Lua CAS must reject a post-observation replacement.
+			case "changed-config":
+				err = r.HSet(ctx, "board:"+p.f.task.ID, "check_interval_minutes", "120").Err()
+			case "changed-deadline":
+				_, err = p.f.observer.Exec(ctx, "UPDATE job_board SET next_check_at=next_check_at+interval '1 minute' WHERE id=$1::uuid", p.f.task.ID)
+			case "producer-owner":
+				err = r.Set(ctx, "lightpanda-b0:producer-owner", "{}", 0).Err()
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			cacheBefore := r.HGetAll(ctx, "board:"+p.f.task.ID).Val()
+			p.f.task.Worker = Browser
+			before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+			var result []any
+			if mode == "changed-token" {
+				result, err = reapCommittedFixture(t, p, func(ctx context.Context) error {
+					err := r.HSet(ctx, "inflight_tokens:browser", member, strings.Repeat("f", 32)).Err()
+					before = snapshot(t, p.f.client)
+					return err
+				})
+			} else {
+				result, err = reapCommittedFixture(t, p)
+			}
+			refuse := strings.HasPrefix(mode, "target-") && mode != "target-rotation" || strings.HasPrefix(mode, "changed-") || mode == "producer-owner"
+			if refuse {
+				if err == nil || !reflect.DeepEqual(before, snapshot(t, p.f.client)) {
+					t.Fatal("refused reroute had effects", err)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(result, []any{int64(1), int64(0), int64(0)}) {
+				t.Fatal("reroute failed", result, err)
+			}
+			if !reflect.DeepEqual(cacheBefore, r.HGetAll(ctx, "board:"+p.f.task.ID).Val()) {
+				t.Fatal("reroute changed target runtime cache")
+			}
+			if canonical != coldCanonicalSnapshot(t, p.f) || r.HExists(ctx, "inflight_tokens:browser", member).Val() || r.ZCard(ctx, "inflight:browser").Val() != 0 || r.ZCard(ctx, "monitors_browser:"+p.f.task.Domain).Val() != 0 || r.ZScore(ctx, "ready:browser:1", p.f.task.Domain).Err() != redis.Nil {
+				t.Fatal("source retirement or canonical state changed")
+			}
+			switch mode {
+			case "queued":
+				if r.ZScore(ctx, "monitors_simple:"+p.f.task.Domain, p.f.task.ID).Val() != targetDue {
+					t.Fatal("target deadline changed")
+				}
+			case "first":
+				if r.ZScore(ctx, "ft_monitors_simple:"+p.f.task.Domain, p.f.task.ID).Val() != targetDue || r.ZCard(ctx, "monitors_simple:"+p.f.task.Domain).Val() != 0 {
+					t.Fatal("target first schedule changed")
+				}
+			case "inflight":
+				if r.HGet(ctx, "inflight_tokens:simple", member).Val() != strings.Repeat("a", 32) || r.ZScore(ctx, "inflight:simple", member).Val() != targetDue || r.ZCard(ctx, "monitors_simple:"+p.f.task.Domain).Val() != 0 {
+					t.Fatal("target claim changed")
+				}
+			case "deadletter":
+				if r.ZScore(ctx, "deadletter:simple", member).Val() != targetDue || r.ZCard(ctx, "monitors_simple:"+p.f.task.Domain).Val() != 0 {
+					t.Fatal("target disposition changed")
+				}
+			default:
+				if r.ZScore(ctx, "monitors_simple:"+p.f.task.Domain, p.f.task.ID).Val() != seconds(due) {
+					t.Fatal("canonical deadline lost")
+				}
+			}
+			before = snapshot(t, p.f.client)
+			if _, err := reapCommittedFixture(t, p); err != nil || !reflect.DeepEqual(before, snapshot(t, p.f.client)) {
+				t.Fatal("repeat changed settled state", err)
+			}
+		})
+	}
+}

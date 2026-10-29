@@ -2,11 +2,20 @@
 
 ## Current checkpoint — October 29, 2026
 
-Runtime **0.13.1118** is qualified and merged through PR
-[#11007](https://github.com/colophon-group/jobseek/pull/11007). The complete
-migration goal remains active until the production exit checks below pass.
-Execution must use **self-hosted Lightpanda or proven Go HTTP/API routes**.
-Preserve every enabled board; do not add a Chromium fallback.
+**Recovery is the immediate priority.** PR
+[#11009](https://github.com/colophon-group/jobseek/pull/11009), runtime
+**0.13.1119**, passed required checks and merged, but its full deployment and
+rollback both failed the guarded expired browser-lease sweep. Independent
+readback at **17:18 UTC** found all eleven processors stopped. Rollback selected
+prior source `9d6760016279f7b4263133694ac768daefaa18ed`, image
+`sha256:a0d6912593fae767e7b0e74ade30c9bc8d61b18905bb4977f9d24d237b33f259`,
+with default ownership at epoch **404**. Do not infer runtime health from an
+earlier successful workflow or a selected image.
+
+The complete migration goal remains active. Use **self-hosted Lightpanda or
+proven Go HTTP/API routes**, preserve every enabled board, and keep the existing
+resource limits. The latest full workflow is
+[40917608147](https://github.com/colophon-group/jobseek/actions/runs/40917608147).
 
 The installed renderer is **1.1.0-nightly.11275+78bbb64db**, upstream commit
 `78bbb64dbe1a3e1df8d2299cbf05efcff81bd65f`, matching the latest official
@@ -15,72 +24,60 @@ October 29 Linux assets. Its immutable image is
 Retain the reviewed 1 GiB memory, zero swap, concurrency, child heap and response
 limits. Check upstream again when continuing on a later release day.
 
-## Complete deployment and reversal
+## Recovery batch — 0.13.1120
 
-The original full workflow's cold rollback exercise
-[40899557014](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
-passed. Candidate source
-`9d6760016279f7b4263133694ac768daefaa18ed` reached default Go readiness at
-epoch **403**, with all four native actors on the exact immutable candidate
-image and all legacy processors stopped. The same full deployment transaction
-then restored the complete previous release. Image promotion was skipped.
+Read-only inspection of the first 200 expired browser entries found three
+completed current-epoch API-sniffer monitor receipts with exact current tokens,
+stable effective configurations and unchanged canonical deadlines. Their
+canonical and cached route is Go HTTP, while the expired attempt remains in the
+browser lane. The previous reaper refuses that lane mismatch, blocking the batch.
 
-Independent readback at **15:28:10 UTC** verifies the prior source
-`1a7c8cfbedcaee0c70c1a6717b23c31724a9839b`, its exact crawler/browser images,
-committed data generation and original deploy specifications, seven running
-legacy actors, six healthy HTTP endpoints, stopped candidate Go/reaper actors,
-and no active ownership plan, receipt, selector or Redis ownership projection.
-The allocator remains at **403**; it was not rewound.
+The recovery retains all token, epoch, configuration, domain, deadline and
+ownership checks. Only an exact default-mode completed receipt can retire its
+stale lane and restore the canonical successful deadline in the compiled lane.
+An existing target queue, first-time queue, live attempt or dead-letter
+representation is preserved. All affected indexes and deadlines are checked
+before any batch effects. Both lanes retain the original rate and rotation
+floors. No fetch or canonical database write is replayed.
 
-The final full deployment
-[40903648972](https://github.com/colophon-group/jobseek/actions/runs/40903648972)
-was dispatched after complete legacy control samples and fresh main/hold checks.
-It uses the same qualified source. Its independently observed build digest is
-`sha256:a0d6912593fae767e7b0e74ade30c9bc8d61b18905bb4977f9d24d237b33f259`.
-The full deployment and promotion passed. Independent readback verifies
-source/image/data, default mode at **epoch 404**, schema 0041, all **8,142 enabled
-boards**, four native actors, three healthy endpoints and stopped legacy
-processors. The installed worker has no Python, uv, Playwright or Chromium
-commands. Final migration acceptance remains incomplete: the worker restarted
-with a configuration error, and later readback counted seven restarts.
+The original full workflow drains expired attempts before registry sync in both
+forward deployment and rollback. Sync then removes obsolete queued monitor
+lanes; a conflicting live attempt still fails closed even without a queued
+duplicate. No manual SQL/Redis/env repair, partial restart, epoch adjustment,
+timer extension or resource increase is authorized by this recovery.
 
-Use the original full workflow and [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md)
-for cutover or reversal. Preserve immutable source/image/data identities,
-mutation locks, complete writer quiescence and authenticated generation/spec
-restoration. Do not use partial restarts, manual queue/environment/epoch repairs,
-mutable image tags or stale-main deployments. A failed restore must leave writers
-stopped until the original guarded recovery succeeds.
+Actual PostgreSQL/Redis regressions pass for completed receipt recovery,
+wrong-lane retirement, preserved target schedules/attempts/dispositions, unchanged
+canonical data, idempotence and atomic refusal. Offline replay confirms all three
+captured receipts retain their exact effective hashes, domains and deadlines and
+compile to Go HTTP. Complete required CI and the original full deployment before
+claiming recovery.
 
-## Current correction — 0.13.1119
+The previously exercised complete cold reversal succeeded in workflow
+[40899557014](https://github.com/colophon-group/jobseek/actions/runs/40899557014).
+Retain the supported reversal contract in
+[ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md): immutable identities,
+mutation locks, full writer quiescence and authenticated generation/spec
+restoration. A failed restore must keep writers stopped.
 
-The complete installed-source verifier read **2,038,879 scheduled detail routes**,
-with zero cache identity mismatches, then refused **14 wrong-lane monitor
-observations**. Sixteen non-atomic detail snapshot gaps still require current
-canonical dispositions. Every enabled monitor/detail configuration and scheduled
-URL reached the existing SDK checks; the complete verifier did not pass because
-of the monitor lanes.
+## Remaining acceptance work
 
-The 14 monitors retain browser-lane entries alongside their valid HTTP-lane
-entries: **11 API sniffer, one TalentBrew, one DOM and one sitemap**. Registry sync
-had enqueued the selected lane and updated its cache without retiring old entries
-in the opposite lane. Those entries can reach the worker's existing configuration
-guard. Confirm the observed restart class disappears after the correction;
-do not weaken that guard or infer stability from one healthy container.
+The complete installed-source verifier checked **2,038,879 scheduled detail
+routes** and found zero cache identity mismatches, but refused 14 stale monitor
+lanes across API sniffer, TalentBrew, DOM and sitemap. The 1119 sync correction
+covers those four families. Production acceptance has not passed.
 
-Candidate 1119 adds guarded opposite-lane cleanup to the original registry sync.
-It preserves the selected deadline/tier, canonical cache and live attempt, and
-rebuilds the affected ready indexes with their existing rate/rotation floors.
-Conflicting inflight attempts, orphan tokens, missing selected authority and
-corrupt state refuse before cleanup effects. Mixed-owner migration routing stays
-with its existing owner. No new production repair command or manual mutation
-is needed. CPU limits, concurrency, timers and budgets are unchanged.
+Fifteen active scheduled details on former B0 boards lack their cache and queue
+projection despite existing canonical deadlines. A missing-only recovery
+extension is prepared separately for validation after processing is restored.
+Preserve existing schedules, fallback steps and canonical deadlines; the global
+rebuild is unsuitable because it rewrites existing runtime state. A sixteenth
+snapshot gap is now canonically unscheduled.
 
-The registry-sync module tests and focused Redis safety cases pass. A private
-replay of all **14 actual configurations across the four families** preserves
-canonical caches and selected deadlines, removes the stale entries and is
-idempotent. It performs no network fetch or production mutation. Complete required
-CI, the exact-source original full deployment and fresh fleet/stability checks
-before accepting the correction.
+The complete queue boundary contains **3,465,138 identities**. All 290 removals
+from the previous boundary are accounted for: 275 inactive/disabled and 15
+unscheduled. This conservation result does not resolve the fifteen missing
+active schedules above.
 
 The completed native resource window had stable process identities. Compared
 with the legacy natural window, aggregate CPU was **44% lower**, working memory
@@ -108,7 +105,7 @@ The four processing services are `ordinary-go`, `lease-reaper`, `exporter` and
 `drain`, alongside Redis and Alloy. The native reaper uses the existing SQL
 receipt and Redis CAS protocol. Forward deployment and complete rollback drain
 expired attempts after quiescence and before provider route repair; they retain
-compatible live attempts and reject changed lanes, orphan tokens or duplicates.
+compatible live attempts and reject unproved lane changes, orphan tokens or duplicates.
 
 Additive schema **0041** records a default monitor's effective configuration
 hash separately from its runtime snapshot. Receipt recovery permits mutable
@@ -116,15 +113,9 @@ egress metadata while retaining configuration, token, epoch, canonical deadline
 and ownership guards. A changed runtime snapshot cannot replay a stale learned
 host. Existing retained runtimes keep their explicit-column SQL ABI.
 
-Required CI and Crawler Deploy Gate passed on exact PR head
-`bea788c9e661fc7859f62584e979dc0ee7c51094`. Qualification includes 14,265 crawler
-tests, native worker/queue and installed image checks, actual PostgreSQL/Redis
-recovery cases, and exact native/Alembic schema parity through 0041. This is
-qualification, not a substitute for the production checks below.
-
 ## Finish the production exit checks
 
-1. Complete candidate 1119 required checks and its original full deployment; bind the selected source,
+1. Complete recovery candidate 1120 required checks and its original full deployment; bind the selected source,
    actual image digest, data generation, default mode and allocator epoch.
    Check all four native actors, exporter/drain/worker health and stopped legacy
    processors. Investigate an unexpected epoch; never adjust it manually.

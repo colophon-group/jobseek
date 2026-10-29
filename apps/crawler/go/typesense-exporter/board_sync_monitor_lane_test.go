@@ -189,3 +189,47 @@ func TestMonitorLaneRepairRefusesBeforeEffects(t *testing.T) {
 		})
 	}
 }
+
+func TestMonitorLaneGuardFindsInflightWithoutQueuedDuplicate(t *testing.T) {
+	for _, mode := range []string{"lease", "orphan-token", "mixed-owner"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx := context.Background()
+			c := reaperRedisFixture(t, ctx)
+			domain, id := "example.test", "board-fixture"
+			member := "monitor|" + domain + "|" + id
+			if err := c.HSet(ctx, "board:"+id, "domain", domain, "monitor_needs_browser", "0").Err(); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "orphan-token" {
+				if err := c.HSet(ctx, "inflight_tokens:browser", member, strings.Repeat("a", 32)).Err(); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := c.ZAdd(ctx, "inflight:browser", redis.Z{Member: member, Score: 1800}).Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "mixed-owner" {
+				if err := c.Set(ctx, "ordinary:ownership:active", "owner", 0).Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := snapshotReaperKeys(ctx, c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			n, err := c.Eval(ctx, boardSyncMonitorLaneLua, nil, "simple", domain, id).Int()
+			if mode == "mixed-owner" {
+				if err != nil || n != 0 {
+					t.Fatal("mixed routing owner changed", err)
+				}
+			} else if err == nil {
+				t.Fatal("wrong-lane attempt missed without queued duplicate")
+			}
+			after, e := snapshotReaperKeys(ctx, c)
+			if e != nil || !reflect.DeepEqual(before, after) {
+				t.Fatal("guard had effects", e)
+			}
+		})
+	}
+}

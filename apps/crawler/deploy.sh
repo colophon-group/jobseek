@@ -1282,6 +1282,13 @@ repair_umantis_identity_cutover() {
     "${command_args[@]}"
 }
 
+drain_expired_worker_leases() {
+  docker run --rm -e LOCAL_DATABASE_URL -e REDIS_URL \
+    --network host "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label "com.docker.compose.service=$1" \
+    "$CRAWLER_IMAGE_REF" go-typesense-exporter --drain-expired-leases
+}
+
 repair_worker_route_cutover() {
   # Full writer quiescence precedes this command in both directions. Recover
   # expired opaque attempts with the existing SQL receipt/Redis CAS protocol;
@@ -1389,7 +1396,8 @@ rollback_sync_previous_config() {
     ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
     sync_env_args=(-e WEB_DATABASE_URL)
   fi
-  if rollback_compose run --rm --no-deps \
+  if drain_expired_worker_leases rollback-pre-sync-reap && \
+    rollback_compose run --rm --no-deps \
     "${data_args[@]}" \
     "${sync_env_args[@]}" \
     -e CRAWLER_DB_ROLE=rollback-sync \
@@ -2248,6 +2256,10 @@ docker run --rm \
   --label com.docker.compose.service=deploy-setup-typesense \
   "$CRAWLER_IMAGE_REF" \
   go-typesense-exporter --setup-schemas
+
+# Recover expired opaque attempts against the still-selected canonical config
+# before registry lane cleanup. Live attempts retain their exact authority.
+drain_expired_worker_leases deploy-pre-sync-reap
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
 forward_sync_command=(go-typesense-exporter --sync-registry)

@@ -115,32 +115,57 @@ if ARGV[7] ~= nil then
             fields = fields + 1
         end
         if fields == 0 or fields ~= redis.call("HLEN", board) then return redis.error_reply("ordinary committed config changed") end
-        for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
-            local key = prefix .. wtype .. ":" .. domain
-            if not compatible(key, "zset") then return redis.error_reply("ordinary committed queue is corrupt") end
-            for _, position in ipairs({0, -1}) do
-                local edge = redis.call("ZRANGE", key, position, position, "WITHSCORES")
-                if #edge >= 2 and not finite(tonumber(edge[2])) then return redis.error_reply("ordinary committed queue is corrupt") end
+        local workers = {wtype}
+        if receipt.worker ~= nil then
+            if ARGV[8] ~= "default" or (receipt.worker ~= "simple" and receipt.worker ~= "browser")
+                or receipt.worker == wtype
+                or (receipt.config.monitor_needs_browser == "1") ~= (receipt.worker == "browser") then
+                return redis.error_reply("ordinary committed route changed")
             end
+            workers[#workers + 1] = receipt.worker
         end
-        for tier = 0, 2 do
-            if not compatible("ready:" .. wtype .. ":" .. tier, "zset") then return redis.error_reply("ordinary committed ready index is corrupt") end
-        end
-        if not compatible(strikes_key, "hash") or not compatible("ratelimit:" .. domain, "string") then
-            return redis.error_reply("ordinary committed recovery index is corrupt")
-        end
-        local rate = redis.call("GET", "ratelimit:" .. domain)
-        local rotation = redis.call("ZSCORE", scrape_rotation_key, domain)
-        local repair = redis.call("HGET", monitor_repair_key, member)
-        if (rate ~= false and not finite(tonumber(rate))) or (rotation ~= false and not finite(tonumber(rotation)))
-            or (repair ~= false and not finite(tonumber(repair))) then
-            return redis.error_reply("ordinary committed recovery deadline is corrupt")
+        for _, worker in ipairs(workers) do
+            for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
+                local key = prefix .. worker .. ":" .. domain
+                if not compatible(key, "zset") then return redis.error_reply("ordinary committed queue is corrupt") end
+                for _, position in ipairs({0, -1}) do
+                    local edge = redis.call("ZRANGE", key, position, position, "WITHSCORES")
+                    if #edge >= 2 and not finite(tonumber(edge[2])) then return redis.error_reply("ordinary committed queue is corrupt") end
+                end
+            end
+            for tier = 0, 2 do
+                if not compatible("ready:" .. worker .. ":" .. tier, "zset") then return redis.error_reply("ordinary committed ready index is corrupt") end
+            end
+            if not compatible("inflight:" .. worker, "zset") or not compatible("inflight_tokens:" .. worker, "hash")
+                or not compatible("inflight_strikes:" .. worker, "hash")
+                or not compatible("monitor_repair_due:" .. worker, "hash")
+                or not compatible("ready:rotation:" .. worker, "zset")
+                or not compatible("deadletter:" .. worker, "zset")
+                or not compatible("ratelimit:" .. domain, "string") then
+                return redis.error_reply("ordinary committed recovery index is corrupt")
+            end
+            local rate = redis.call("GET", "ratelimit:" .. domain)
+            local rotation = redis.call("ZSCORE", "ready:rotation:" .. worker, domain)
+            local repair = redis.call("HGET", "monitor_repair_due:" .. worker, member)
+            if (rate ~= false and not finite(tonumber(rate))) or (rotation ~= false and not finite(tonumber(rotation)))
+                or (repair ~= false and not finite(tonumber(repair))) then
+                return redis.error_reply("ordinary committed recovery deadline is corrupt")
+            end
+            if worker ~= wtype then
+                local lease = redis.call("ZSCORE", "inflight:" .. worker, member)
+                local token = redis.call("HGET", "inflight_tokens:" .. worker, member)
+                if (lease ~= false and not finite(tonumber(lease)))
+                    or (token ~= false and (lease == false or #token ~= 32 or string.find(token, "[^0-9a-f]") ~= nil)) then
+                    return redis.error_reply("ordinary committed target attempt changed")
+                end
+            end
         end
         count = count + 1
     end
     if count > 0 and ARGV[8] == "default" then
         if redis.call("EXISTS", "ordinary:ownership:active") ~= 0
-            or redis.call("HLEN", b0_guard_key) ~= 0 then
+            or redis.call("HLEN", b0_guard_key) ~= 0
+            or redis.call("EXISTS", "lightpanda-b0:producer-owner") ~= 0 then
             return redis.error_reply("ordinary ownership projection changed")
         end
     elseif count > 0 then
@@ -152,6 +177,73 @@ if ARGV[7] ~= nil then
         end
     end
     receipts = observation.receipts
+end
+
+local function refresh_ready(worker, domain)
+    local rotation_key = "ready:rotation:" .. worker
+                    -- Re-park every ready representation for the domain. A
+                    -- monitor and scrape deadline must coexist: otherwise an
+                    -- older scrape backlog can leave a later due monitor
+                    -- advertised only in globally lower-priority tier 2.
+                    local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. worker .. ":" .. domain)
+                    local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. worker .. ":" .. domain)
+
+                    local ft_score = nil
+                    if ft_mon_count > 0 then
+                        local r1 = redis.call("ZRANGE", "ft_monitors_" .. worker .. ":" .. domain, 0, 0, "WITHSCORES")
+                        if #r1 >= 2 then ft_score = tonumber(r1[2]) end
+                    end
+                    if ft_scr_count > 0 then
+                        local r2 = redis.call("ZRANGE", "ft_scrapes_" .. worker .. ":" .. domain, 0, 0, "WITHSCORES")
+                        if #r2 >= 2 then
+                            local s = tonumber(r2[2])
+                            if ft_score == nil or s < ft_score then ft_score = s end
+                        end
+                    end
+
+                    local mon_score = nil
+                    if redis.call("ZCARD", "monitors_" .. worker .. ":" .. domain) > 0 then
+                        local r3 = redis.call("ZRANGE", "monitors_" .. worker .. ":" .. domain, 0, 0, "WITHSCORES")
+                        if #r3 >= 2 then mon_score = tonumber(r3[2]) end
+                    end
+
+                    local scr_score = nil
+                    if redis.call("ZCARD", "scrapes_" .. worker .. ":" .. domain) > 0 then
+                        local r4 = redis.call("ZRANGE", "scrapes_" .. worker .. ":" .. domain, 0, 0, "WITHSCORES")
+                        if #r4 >= 2 then scr_score = tonumber(r4[2]) end
+                    end
+
+                    local rl_val = redis.call("GET", "ratelimit:" .. domain)
+                    local rl_at = 0
+                    if rl_val then rl_at = tonumber(rl_val) end
+                    local scrape_rotation_floor = tonumber(
+                        redis.call("ZSCORE", rotation_key, domain) or "0"
+                    )
+
+                    for tier = 0, 2 do
+                        redis.call("ZREM", "ready:" .. worker .. ":" .. tier, domain)
+                    end
+                    if ft_score ~= nil then
+                        if scr_score == nil then
+                            redis.call("ZREM", rotation_key, domain)
+                        end
+                        redis.call("ZADD", "ready:" .. worker .. ":0", math.max(rl_at, ft_score), domain)
+                    else
+                        if mon_score ~= nil then
+                            redis.call("ZADD", "ready:" .. worker .. ":1", math.max(rl_at, mon_score), domain)
+                        end
+                        if scr_score ~= nil then
+                            redis.call(
+                                "ZADD",
+                                "ready:" .. worker .. ":2",
+                                math.max(rl_at, scrape_rotation_floor, scr_score),
+                                domain
+                            )
+                        else
+                            redis.call("ZREM", rotation_key, domain)
+                        end
+                    end
+
 end
 
 local reenqueued = 0
@@ -243,9 +335,25 @@ for _, member in ipairs(expired) do
                         local due = tonumber(receipt.due)
                         if repair_due ~= false then due = math.min(due, tonumber(repair_due)) end
                         redis.call("ZREM", "ft_monitors_" .. wtype .. ":" .. domain, task_id)
-                        redis.call("ZADD", queue_key, due, task_id)
+                        if receipt.worker ~= nil then
+                            -- The source attempt completed under the same exact
+                            -- fence. Retire its stale lane without overwriting a
+                            -- newer target schedule, live attempt or disposition.
+                            redis.call("ZREM", queue_key, task_id)
+                            local target = receipt.worker
+                            if redis.call("ZSCORE", "ft_monitors_" .. target .. ":" .. domain, task_id) == false
+                                and redis.call("ZSCORE", "monitors_" .. target .. ":" .. domain, task_id) == false
+                                and redis.call("ZSCORE", "inflight:" .. target, member) == false
+                                and redis.call("ZSCORE", "deadletter:" .. target, member) == false then
+                                redis.call("ZADD", "monitors_" .. target .. ":" .. domain, tonumber(receipt.due), task_id)
+                            end
+                        else
+                            redis.call("ZADD", queue_key, due, task_id)
+                        end
                         redis.call("HDEL", monitor_repair_key, member)
-                        if receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
+                        -- A reroute may coexist with a newer target claim. Preserve
+                        -- its exact runtime cache as well as its token/deadline.
+                        if receipt.worker == nil and receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
                     elseif repair_due ~= false then
                         local due = math.min(retry_score, tonumber(repair_due))
                         local queued_due = redis.call("ZSCORE", queue_key, task_id)
@@ -257,68 +365,8 @@ for _, member in ipairs(expired) do
                         redis.call("ZADD", queue_key, "NX", retry_score, task_id)
                     end
 
-                    -- Re-park every ready representation for the domain. A
-                    -- monitor and scrape deadline must coexist: otherwise an
-                    -- older scrape backlog can leave a later due monitor
-                    -- advertised only in globally lower-priority tier 2.
-                    local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain)
-                    local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
-
-                    local ft_score = nil
-                    if ft_mon_count > 0 then
-                        local r1 = redis.call("ZRANGE", "ft_monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
-                        if #r1 >= 2 then ft_score = tonumber(r1[2]) end
-                    end
-                    if ft_scr_count > 0 then
-                        local r2 = redis.call("ZRANGE", "ft_scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
-                        if #r2 >= 2 then
-                            local s = tonumber(r2[2])
-                            if ft_score == nil or s < ft_score then ft_score = s end
-                        end
-                    end
-
-                    local mon_score = nil
-                    if redis.call("ZCARD", "monitors_" .. wtype .. ":" .. domain) > 0 then
-                        local r3 = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
-                        if #r3 >= 2 then mon_score = tonumber(r3[2]) end
-                    end
-
-                    local scr_score = nil
-                    if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) > 0 then
-                        local r4 = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
-                        if #r4 >= 2 then scr_score = tonumber(r4[2]) end
-                    end
-
-                    local rl_val = redis.call("GET", "ratelimit:" .. domain)
-                    local rl_at = 0
-                    if rl_val then rl_at = tonumber(rl_val) end
-                    local scrape_rotation_floor = tonumber(
-                        redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
-                    )
-
-                    for tier = 0, 2 do
-                        redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
-                    end
-                    if ft_score ~= nil then
-                        if scr_score == nil then
-                            redis.call("ZREM", scrape_rotation_key, domain)
-                        end
-                        redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, ft_score), domain)
-                    else
-                        if mon_score ~= nil then
-                            redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
-                        end
-                        if scr_score ~= nil then
-                            redis.call(
-                                "ZADD",
-                                "ready:" .. wtype .. ":2",
-                                math.max(rl_at, scrape_rotation_floor, scr_score),
-                                domain
-                            )
-                        else
-                            redis.call("ZREM", scrape_rotation_key, domain)
-                        end
-                    end
+                    refresh_ready(wtype, domain)
+                    if receipt ~= nil and receipt.worker ~= nil then refresh_ready(receipt.worker, domain) end
 
                     -- Remove the in-flight entry — the task is back
                     -- on the per-domain queue, available for any

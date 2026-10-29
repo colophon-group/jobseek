@@ -20,16 +20,20 @@ local wrong_recurring = "monitors_" .. other .. ":" .. domain
 if not require_type(wrong_first, "zset") or not require_type(wrong_recurring, "zset") then
     return redis.error_reply("monitor opposite lane is corrupt")
 end
-if not redis.call("ZSCORE", wrong_first, board_id) and not redis.call("ZSCORE", wrong_recurring, board_id) then
-    return 0
+local wrong_queued = redis.call("ZSCORE", wrong_first, board_id) or redis.call("ZSCORE", wrong_recurring, board_id)
+local member = "monitor|" .. domain .. "|" .. board_id
+if not require_type("inflight:" .. other, "zset") or not require_type("inflight_tokens:" .. other, "hash") then
+    return redis.error_reply("monitor opposite inflight state is corrupt")
 end
+local wrong_inflight = redis.call("ZSCORE", "inflight:" .. other, member) or redis.call("ZSCORE", "inflight:" .. other, board_id)
+    or redis.call("HEXISTS", "inflight_tokens:" .. other, member) == 1 or redis.call("HEXISTS", "inflight_tokens:" .. other, board_id) == 1
+if not wrong_queued and not wrong_inflight then return 0 end
 if not require_type("ordinary:ownership:active", "string") or not require_type("lightpanda-b0:legacy-guard", "hash") then
     return redis.error_reply("monitor lane ownership guard is corrupt")
 end
 if redis.call("EXISTS", "ordinary:ownership:active") == 1 or redis.call("HLEN", "lightpanda-b0:legacy-guard") > 0 or redis.call("EXISTS", "lightpanda-b0:producer-owner") == 1 then
     return 0
 end
-local member = "monitor|" .. domain .. "|" .. board_id
 for _, lane in ipairs({wtype, other}) do
     if not require_type("inflight:" .. lane, "zset") or not require_type("inflight_tokens:" .. lane, "hash") or not require_type("monitor_repair_due:" .. lane, "hash") then
         return redis.error_reply("monitor lane inflight state is corrupt")
