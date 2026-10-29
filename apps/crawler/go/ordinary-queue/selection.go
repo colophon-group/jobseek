@@ -181,8 +181,15 @@ func (a *Authority) claimOwnedFiltered(ctx context.Context, tx pgx.Tx, worker Wo
 	if err != nil {
 		return nil, err
 	}
+	priority, err := a.queue.readyPriority(ctx, worker)
+	if err != nil {
+		return nil, err
+	}
+	if priority < 0 || detailsOnly && priority == 1 {
+		return nil, nil
+	}
 	var candidates []ownershipCandidate
-	if !detailsOnly {
+	if !detailsOnly && priority != 2 {
 		members := a.ownership.document.Members
 		count := min(len(members), ownershipCandidateBatch)
 		// Protect only the shared scan cursor. A canonical row wait must not hold
@@ -201,10 +208,14 @@ func (a *Authority) claimOwnedFiltered(ctx context.Context, tx pgx.Tx, worker Wo
 		}
 		probes := make([]probe, 0, count)
 		pipe := a.queue.redis.Pipeline()
+		rates := map[string]*redis.Cmd{}
 		for i := 0; i < count; i++ {
 			member := members[(start+i)%len(members)]
 			if member.Worker != worker {
 				continue
+			}
+			if rates[member.Domain] == nil {
+				rates[member.Domain] = pipe.EvalRO(ctx, domainRateLimitObservation, []string{"ratelimit:" + member.Domain})
 			}
 			probes = append(probes, probe{member,
 				pipe.Do(ctx, "ZMSCORE", "ft_monitors_"+string(member.Worker)+":"+member.Domain, member.BoardID),
@@ -214,23 +225,36 @@ func (a *Authority) claimOwnedFiltered(ctx context.Context, tx pgx.Tx, worker Wo
 			return nil, ErrObservation
 		}
 		for _, probe := range probes {
+			future, err := futureDomainRateLimit(rates[probe.member.Domain], now)
+			if err != nil {
+				return nil, err
+			}
+			scores := [2]*float64{}
 			for tier, command := range []*redis.Cmd{probe.first, probe.recurring} {
 				score, err := ownershipProbeScore(command)
 				if err != nil {
 					return nil, err
 				}
-				if score != nil && *score <= now {
+				scores[tier] = score
+			}
+			if future {
+				continue
+			}
+			for tier, score := range scores {
+				if tier == priority && score != nil && *score <= now {
 					candidates = append(candidates, ownershipCandidate{member: probe.member, tier: tier, score: *score})
 					break
 				}
 			}
 		}
 	}
-	details, err := a.detailCandidates(ctx, tx, now, worker)
-	if err != nil {
-		return nil, err
+	if priority != 1 {
+		details, err := a.detailCandidatesForTier(ctx, tx, now, worker, priority)
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, details...)
 	}
-	candidates = append(candidates, details...)
 	sort.Slice(candidates, func(i, j int) bool {
 		if candidates[i].tier != candidates[j].tier {
 			return candidates[i].tier < candidates[j].tier
@@ -300,6 +324,13 @@ func (a *Authority) claimOwnedFiltered(ctx context.Context, tx pgx.Tx, worker Wo
 		// not hide another provider in this bounded batch. Lua retains all
 		// global first-time/fairness checks for every attempted claim.
 		blockedDomains[domain] = true
+		currentPriority, err := a.queue.readyPriority(ctx, worker)
+		if err != nil {
+			return nil, err
+		}
+		if currentPriority != priority {
+			return nil, rejected
+		}
 	}
 	return nil, rejected
 }

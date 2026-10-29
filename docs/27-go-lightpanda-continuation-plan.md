@@ -38,6 +38,25 @@ Go SDK independently validates every captured current canonical/cache route.
 See [the current serving evidence](evidence/go-native1113-serving-2026-10-29.json)
 and [the renderer qualification](evidence/lightpanda-nightly11275-candidate-2026-10-29.json).
 
+## Throughput candidate — October 29, 2026
+
+The **0.13.1114** candidate avoids inspecting and locking task classes that the
+original atomic queue policy cannot currently claim. A read-only Redis observation
+follows first-time priority and the existing eight-monitor fairness turn; domain
+throttle observations skip work whose shared delay is still in the future. The
+original Lua pop retains the final priority, ownership, configuration, throttle
+and lease checks. Queue deadlines, concurrency, pool limits and Lua are unchanged.
+
+Real migrated PostgreSQL/Redis regressions reproduce unrelated row-lock stalls
+before the change. Current-source race tests pass for monitor, detail, first-time
+and detail-only turns, deferred work, malformed shared state, future throttles,
+changed authority and a stale priority hint. The earlier queue suite passed;
+current-source full queue/worker and required CI remain pending. The earlier
+worker run lacked local document converter dependencies and is not counted as a
+pass. This candidate has not been deployed and does not establish restored
+freshness or production savings. Measure natural throughput after the supported
+full deployment and ownership transition before accepting an improvement.
+
 ## Continue to full delivery
 
 Execution stays **strictly Lightpanda and proved Go HTTP/API**, with no Chromium
