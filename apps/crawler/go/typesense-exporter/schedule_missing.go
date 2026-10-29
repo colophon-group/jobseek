@@ -24,10 +24,14 @@ func missingScheduleProgram() string {
 const missingCacheScanLua = `local out={};for _,id in ipairs(ARGV) do local key='scrape:'..id;local kind=redis.call('TYPE',key)['ok'];if kind~='none' and kind~='hash' then return redis.error_reply('invalid canonical schedule cache') end;if kind=='none' then out[#out+1]=id end end;return out`
 const missingOwnershipLua = `if redis.call('EXISTS','ordinary:ownership:active')~=0 or redis.call('EXISTS','lightpanda-b0:producer-owner')~=0 then return 0 end;local kind=redis.call('TYPE','lightpanda-b0:legacy-guard')['ok'];if kind~='none' and kind~='hash' then return 0 end;if redis.call('HLEN','lightpanda-b0:legacy-guard')~=0 then return 0 end;return 1`
 
-func missingScheduleAuthority(ctx context.Context, pool *pgxpool.Pool, c *redis.Client) (int64, error) {
+type missingScheduleQuerier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func missingScheduleAuthority(ctx context.Context, db missingScheduleQuerier, c *redis.Client) (int64, error) {
 	var epoch int64
 	var called, owned bool
-	err := pool.QueryRow(ctx, `SELECT last_value,is_called,EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan WHERE state='active') FROM public.lightpanda_b0_routing_epoch_seq`).Scan(&epoch, &called, &owned)
+	err := db.QueryRow(ctx, `SELECT last_value,is_called,EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan WHERE state='active') FROM public.lightpanda_b0_routing_epoch_seq`).Scan(&epoch, &called, &owned)
 	if err != nil || !called || epoch < 1 || owned {
 		return 0, errors.New("missing schedule canonical ownership unavailable")
 	}
@@ -43,26 +47,41 @@ func missingScheduleSQL(afterID string) string {
 	// disabled/reserved boards and unresolved live SQL attempts.
 	query := strings.Replace(capacityRebuildSQL, "jb.scraper_needs_browser", "jb.scraper_needs_browser, COALESCE(jb.scrape_interval_hours,24)", 1)
 	query = strings.Replace(query, "WHERE jp.is_active", "WHERE jp.is_active AND jb.is_enabled AND NOT jb.tdm_reserved AND (jp.leased_until IS NULL OR jp.leased_until<=now())", 1)
+	// Repair visits the entire eligible fleet. A global UUID order forces
+	// random heap reads; repeatedly seeking does not remove that cost. Let a
+	// single forward cursor scan in physical order, retaining bounded FETCHes.
+	query, _, _ = strings.Cut(query, "\nORDER BY jp.id")
 	if afterID != "" {
 		// A cached generic plan cannot turn the nullable OR into an index
-		// bound. Keep subsequent pages as an explicit primary-key seek.
+		// bound. Keep an explicitly requested starting UUID indexable.
 		query = strings.Replace(query, "($1::uuid IS NULL OR jp.id > $1::uuid)", "jp.id > $1::uuid", 1)
 	}
 	return query
 }
 
-func missingSchedulePage(ctx context.Context, pool *pgxpool.Pool, o capacityOptions) ([]capacitySchedule, error) {
-	query := missingScheduleSQL(o.AfterID)
+func openMissingScheduleSnapshot(ctx context.Context, pool *pgxpool.Pool, afterID string) (pgx.Tx, error) {
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return nil, errors.New("open missing schedule snapshot failed")
 	}
-	defer tx.Rollback(context.Background())
 	var cursor any
-	if o.AfterID != "" {
-		cursor = o.AfterID
+	if afterID != "" {
+		cursor = afterID
 	}
-	result, err := tx.Query(ctx, query, cursor, o.Limit)
+	if _, err = tx.Exec(ctx, "DECLARE missing_schedule NO SCROLL CURSOR FOR "+missingScheduleSQL(afterID), cursor); err != nil {
+		tx.Rollback(context.Background())
+		return nil, errors.New("declare missing schedule snapshot failed")
+	}
+	return tx, nil
+}
+
+func missingSchedulePage(ctx context.Context, tx pgx.Tx, limit int) ([]capacitySchedule, error) {
+	if limit < 1 || limit > 50000 {
+		return nil, errors.New("invalid missing schedule batch bound")
+	}
+	// FETCH counts cannot be bind parameters. Only the validated integer is
+	// rendered; the optional UUID remains a parameter on DECLARE.
+	result, err := tx.Query(ctx, "FETCH FORWARD "+strconv.Itoa(limit)+" FROM missing_schedule")
 	if err != nil {
 		return nil, errors.New("read missing schedule candidates failed")
 	}
@@ -79,7 +98,7 @@ func missingSchedulePage(ctx context.Context, pool *pgxpool.Pool, o capacityOpti
 	}
 	err = result.Err()
 	result.Close()
-	if err != nil || tx.Commit(ctx) != nil {
+	if err != nil {
 		return nil, errors.New("complete missing schedule snapshot failed")
 	}
 	return rows, nil
@@ -138,9 +157,14 @@ func runMissingScheduleRepair(ctx context.Context, c *redis.Client, o capacityOp
 	if err != nil {
 		return err
 	}
+	tx, err := openMissingScheduleSnapshot(ctx, pool, o.AfterID)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
 	scanned, candidates, restored, preserved := 0, 0, 0, 0
 	for {
-		rows, err := missingSchedulePage(ctx, pool, o)
+		rows, err := missingSchedulePage(ctx, tx, o.Limit)
 		if err != nil {
 			return err
 		}
@@ -188,18 +212,18 @@ func runMissingScheduleRepair(ctx context.Context, c *redis.Client, o capacityOp
 				preserved += 1 - n
 			}
 		}
-		current, err := missingScheduleAuthority(ctx, pool, c)
+		// Use the same one-connection pool while the cursor is open. READ
+		// COMMITTED gives this separate statement a fresh ownership snapshot.
+		current, err := missingScheduleAuthority(ctx, tx, c)
 		if err != nil || current != epoch {
 			return errors.New("missing schedule ownership changed")
 		}
 		if len(rows) < o.Limit {
 			break
 		}
-		next := rows[len(rows)-1].ID
-		if next <= o.AfterID {
-			return errors.New("missing schedule cursor did not advance")
-		}
-		o.AfterID = next
+	}
+	if tx.Commit(ctx) != nil {
+		return errors.New("complete missing schedule snapshot failed")
 	}
 	return json.NewEncoder(os.Stdout).Encode(map[string]any{"dry_run": !o.Apply, "canonical_candidates_scanned": scanned, "absent_cache_candidates": candidates, "reconstructed_or_would_reconstruct": restored, "existing_lifecycle_preserved": preserved, "complete": true, "routing_epoch": epoch})
 }

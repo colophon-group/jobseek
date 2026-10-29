@@ -2,21 +2,33 @@
 
 ## Current checkpoint — October 29, 2026
 
-The **0.13.1121** full deployment
-[40942821136](https://github.com/colophon-group/jobseek/actions/runs/40942821136)
-failed at **20:19:54 UTC**: its missing-schedule inspection reached the unchanged
-15-minute command deadline. The rollback then refused the browser lease sweep
-and left processors stopped. Promotion was skipped. The retained verified
-release is 1120, source `45b2c700f96ef59101ab4789f139510ed864a014`, at epoch 404;
-its selected environment is not evidence that processing has resumed.
+The **0.13.1122** full deployment
+[40956619705](https://github.com/colophon-group/jobseek/actions/runs/40956619705)
+failed at **21:48:45 UTC** when its missing-schedule inspection reached the
+unchanged 15-minute deadline. The complete rollback restored 1120, source
+`45b2c700f96ef59101ab4789f139510ed864a014`, at epoch 404. Independent readback at
+21:52:47 UTC found all four native actors running with zero restarts and all
+seven legacy processors stopped. This single observation does not establish
+stability; the earlier 1120 retired-detail transport failure remains a known risk.
 
-The **0.13.1122** correction batches two causes. PostgreSQL's generic plan for
-the nullable cursor filter has no posting primary-key index bound and repeatedly
-scans earlier rows. Subsequent canonical pages now use a separate non-null UUID
-seek query, retaining eligibility, row bounds and the existing command deadline.
-Read-only production EXPLAIN verifies an index condition for the proposed query;
-the private PostgreSQL regression checks the generic plan as well as paging.
+The **0.13.1123** correction replaces repeated globally UUID-ordered pages with
+one read-only forward cursor and bounded FETCH batches. Production read-only
+inspection found a roughly 4 GiB posting heap and an expensive ordered index
+walk. The complete unordered cursor traversed **2,048,488 eligible canonical
+rows in 19.6 seconds**, without emitting or retaining their fields. This is a
+scan measurement, not installed repair-command acceptance.
 
+The repair keeps the same eligibility, optional starting UUID, at-most-50,000-row
+batches, five-million-candidate bound, one database connection and original
+15-minute command deadline. Its cursor retains one canonical snapshot across
+batches; separate READ COMMITTED statements on the same connection revalidate
+current SQL ownership and epoch after every batch. Redis ownership checks,
+original atomic lifecycle preservation, enqueue semantics and complete rollback
+remain in force. Real PostgreSQL/Redis tests cover concurrent canonical inserts,
+newly activated ownership, optional cursor bounds, cancellation, and the installed
+CLI dry-run/apply/repeat lifecycle behavior.
+
+The previously merged 1122 monitor recovery remains included in this release.
 Three current-epoch, exact-token completed monitor receipts retain old Redis
 domain keys. Their current configurations, stable fingerprints and canonical
 deadlines validate. Default-mode recovery now carries the independently validated
@@ -66,8 +78,9 @@ Lightpanda calls, including reactivation and token/configuration refusal.
 
 The original canonical rebuild now has a bounded `repair-missing` action. It
 retains the existing scraper eligibility and additionally excludes disabled,
-reserved, unscheduled, inactive and currently leased records. It seeks canonical
-UUID pages, then inspects only absent caches. Existing caches, fallback steps,
+reserved, unscheduled, inactive and currently leased records. It streams one
+read-only canonical snapshot in bounded batches, then inspects only absent
+caches. Existing caches, fallback steps,
 queues in either lane, attempts, tokens, dead letters and retry counts are
 preserved. Restore a wholly absent projection through the original enqueue
 script using its canonical URL, description hash, deadline, interval and lane.
@@ -113,7 +126,7 @@ operator tooling may remain; production processing uses the native image.
 
 ## Finish the production exit checks
 
-1. Complete 1122 required checks and its exact-source original full deployment.
+1. Complete 1123 required checks and its exact-source original full deployment.
    Independently bind source/image/data/default mode/epoch, healthy native actors,
    stopped legacy processors and all fifteen restored schedules.
 2. Run the complete installed-source SDK across every enabled configuration and

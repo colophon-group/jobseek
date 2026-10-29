@@ -124,7 +124,12 @@ func TestMissingScheduleCanonicalScanAndInstalledCommand(t *testing.T) {
 	params := u.Query()
 	params.Set("search_path", schema)
 	u.RawQuery = params.Encode()
-	pool, e := pgxpool.New(ctx, u.String())
+	config, e := pgxpool.ParseConfig(u.String())
+	if e != nil {
+		t.Fatal(e)
+	}
+	config.MaxConns = 1
+	pool, e := pgxpool.NewWithConfig(ctx, config)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -134,20 +139,83 @@ func TestMissingScheduleCanonicalScanAndInstalledCommand(t *testing.T) {
 	}
 	rows := []capacitySchedule{}
 	o := capacityOptions{Action: "repair-missing", Limit: 2}
+	snapshot, e := openMissingScheduleSnapshot(ctx, pool, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer snapshot.Rollback(context.Background())
+	lateID := "00000000-0000-0000-0000-999999999999"
 	for {
-		page, e := missingSchedulePage(ctx, pool, o)
+		page, e := missingSchedulePage(ctx, snapshot, o.Limit)
 		if e != nil {
 			t.Fatal(e)
 		}
 		rows = append(rows, page...)
+		if len(rows) == o.Limit {
+			// The cursor retains one canonical snapshot across FETCHes, while
+			// authority statements must observe a newly activated owner.
+			if _, e = conn.Exec(ctx, `INSERT INTO job_posting VALUES($1::uuid,'https://example.test/late','00000000-0000-0000-0000-000000000001',12345,$2,true,NULL);`, lateID, due); e != nil {
+				t.Fatal(e)
+			}
+			if _, e = conn.Exec(ctx, "INSERT INTO public.ordinary_worker_ownership_plan VALUES('active')"); e != nil {
+				t.Fatal(e)
+			}
+			if _, e = missingScheduleAuthority(ctx, snapshot, c); e == nil {
+				t.Fatal("cursor hid concurrently activated ownership")
+			}
+			if _, e = conn.Exec(ctx, "DELETE FROM public.ordinary_worker_ownership_plan"); e != nil {
+				t.Fatal(e)
+			}
+			if _, e = missingScheduleAuthority(ctx, snapshot, c); e != nil {
+				t.Fatal("same-connection authority check unavailable", e)
+			}
+		}
 		if len(page) < o.Limit {
 			break
 		}
-		o.AfterID = page[len(page)-1].ID
+	}
+	if e = snapshot.Commit(ctx); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = conn.Exec(ctx, "DELETE FROM job_posting WHERE id=$1::uuid", lateID); e != nil {
+		t.Fatal(e)
 	}
 	if len(rows) != 7 {
 		t.Fatal("canonical eligibility changed", len(rows))
 	}
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if seen[row.ID] || row.ID == lateID {
+			t.Fatal("forward snapshot repeated a posting or admitted a later insert")
+		}
+		seen[row.ID] = true
+	}
+	t.Run("starting-bound-and-cancelled-fetch", func(t *testing.T) {
+		tx, err := openMissingScheduleSnapshot(ctx, pool, "00000000-0000-0000-0000-000000000003")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback(context.Background())
+		for _, invalid := range []int{0, 50001} {
+			if _, err = missingSchedulePage(ctx, tx, invalid); err == nil {
+				t.Fatal("unbounded fetch accepted")
+			}
+		}
+		page, err := missingSchedulePage(ctx, tx, 50000)
+		if err != nil || len(page) != 4 {
+			t.Fatal("explicit starting UUID changed eligibility", len(page), err)
+		}
+		for _, row := range page {
+			if row.ID <= "00000000-0000-0000-0000-000000000003" {
+				t.Fatal("starting UUID ignored")
+			}
+		}
+		stopped, stop := context.WithCancel(ctx)
+		stop()
+		if _, err = missingSchedulePage(stopped, tx, 2); err == nil {
+			t.Fatal("cancelled snapshot reported a successful fetch")
+		}
+	})
 	t.Run("cached-plan-seeks-from-cursor", func(t *testing.T) {
 		tx, err := conn.Begin(ctx)
 		if err != nil {
@@ -164,7 +232,7 @@ func TestMissingScheduleCanonicalScanAndInstalledCommand(t *testing.T) {
 			t.Fatal(err)
 		}
 		var raw json.RawMessage
-		if err = tx.QueryRow(ctx, "EXPLAIN (FORMAT JSON) EXECUTE private_missing_seek('00000000-0000-0000-0000-000000000001',2)").Scan(&raw); err != nil {
+		if err = tx.QueryRow(ctx, "EXPLAIN (FORMAT JSON) EXECUTE private_missing_seek('00000000-0000-0000-0000-000000000001')").Scan(&raw); err != nil {
 			t.Fatal(err)
 		}
 		var plans []map[string]any
@@ -174,7 +242,7 @@ func TestMissingScheduleCanonicalScanAndInstalledCommand(t *testing.T) {
 		bounded := false
 		var visit func(map[string]any)
 		visit = func(node map[string]any) {
-			if node["Relation Name"] == "job_posting" {
+			if node["Relation Name"] == "job_posting" || node["Index Name"] == "job_posting_pkey" {
 				condition, _ := node["Index Cond"].(string)
 				bounded = bounded || strings.Contains(condition, "id > $1")
 			}
