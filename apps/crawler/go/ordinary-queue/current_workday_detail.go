@@ -110,13 +110,25 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	if source != claim.task.Config["source_url"] || claim.task.Config["board_id"] != claim.boardID {
 		return nil, ErrAuthorityLost
 	}
-	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, claim.task.Worker)
+	d.Schedulable = active && due != nil
+	d.PublisherReserved = postingReserved || boardReserved
+	profileWorker := claim.task.Worker
+	if a.defaultOwner && !d.Schedulable {
+		// A retired posting can retain a lease in its former lane. Resolve
+		// its canonical profile solely for the existing no-fetch retirement;
+		// scheduled work must still validate the exact claimed worker.
+		profileWorker = Simple
+		if boardConfig["scraper_needs_browser"] == "1" {
+			profileWorker = Browser
+		}
+	}
+	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, profileWorker)
 	if err != nil {
 		return nil, err
 	}
 	d.ownershipProfile = d.profile.Profile
 	if isOrderedDetailProfile(d.profile.Profile) {
-		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, claim.task.Worker)
+		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, profileWorker)
 		if e != nil {
 			return nil, e
 		}
@@ -131,8 +143,6 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	if claim.task.Domain != d.profile.Domain {
 		return nil, ErrAuthorityLost
 	}
-	d.Schedulable = active && due != nil
-	d.PublisherReserved = postingReserved || boardReserved
 	return d, nil
 }
 

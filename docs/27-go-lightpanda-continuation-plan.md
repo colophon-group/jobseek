@@ -25,6 +25,15 @@ DOM and sitemap. The recovery preserves completed SQL receipts and newer target
 attempts, including their runtime cache. Configuration, token, epoch, domain,
 deadline and ownership guards remain enforced.
 
+The subsequent 1120 stability window failed: the ordinary worker exited during
+transport selection on a stale browser attempt for an active but canonically
+unscheduled API-sniffer detail whose current route is HTTP. A fresh protected
+snapshot reproduces the mismatch, and the canonical HTTP profile validates. The
+initial zero-restart readback above is not sustained stability acceptance.
+Typesense itself retains its prior start time/restart count; the broader node
+sampler rejected a process-generation change. Neither rejected window is a final
+resource comparison.
+
 The full migration goal remains active until the remaining exit checks pass.
 Use **self-hosted Lightpanda or proven Go HTTP/API routes** and preserve every
 enabled board. Batch related contracts and retain existing resource limits.
@@ -46,6 +55,16 @@ existing descriptions, unchanged deadlines and no live SQL leases. All fifteen
 retain the existing browser route. They were outside the previous ordinary-only
 verification cohort. A sixteenth non-atomic snapshot gap is now unscheduled.
 
+The same batch corrects default-mode retirement of stale unscheduled detail
+attempts. Once fresh canonical SQL says the posting is inactive or unscheduled,
+resolve its validated canonical worker profile for the existing no-fetch
+retirement path. Keep the original claim's worker, epoch, token, cached snapshot
+and canonical identity guards through receipt settlement. Scheduled work still
+requires the exact claimed route. A rescheduling race or changed authority
+refuses retirement; content and failure budgets remain unchanged. Real
+PostgreSQL/Redis worker tests cover Workday and API sniffer with zero HTTP or
+Lightpanda calls, including reactivation and token/configuration refusal.
+
 The original canonical rebuild now has a bounded `repair-missing` action. It
 retains the existing scraper eligibility and additionally excludes disabled,
 reserved, unscheduled, inactive and currently leased records. It seeks canonical
@@ -63,7 +82,7 @@ any inspection or apply failure stops the transaction through its existing full
 rollback. No manual repair command, forced fetch, timer change or resource
 increase is part of this rollout.
 
-Local qualification includes real PostgreSQL/Redis canonical paging and
+Local qualification includes real PostgreSQL/Redis retirement, canonical paging and
 eligibility, the actual numeric description-hash column type, installed CLI dry
 run/apply/repeat, atomic refusal and preserved lifecycle state. An isolated replay
 of all fifteen actual configurations qualifies their current Go/Lightpanda
@@ -111,7 +130,8 @@ operator tooling may remain; production processing uses the native image.
    with fixed process identities and no restarts. Preserve inventory for reserved
    or unavailable publishers. Do not force jobs or clear counters/circuits.
 5. Complete aligned crawler, renderer, PostgreSQL and Typesense resource windows.
-   A new 1120 stability/resource window is running. The qualified legacy control
+   The first 1120 stability/resource window was rejected; repeat after the
+   retirement correction. The qualified legacy control
    recorded 726 monitor and 1,454 detail successes in 566.8 seconds. The earlier
    unstable 1118 comparison used less CPU/RAM but delivered less throughput and
    modeled higher cost per useful task; no cost or throughput win was accepted.
