@@ -233,7 +233,7 @@ func TestRealLocalMigrationFreshSchemaMatchesActualAlembic(t *testing.T) {
 		t.Fatal("native migration at current head not idempotent", e)
 	}
 	var rows int
-	if e := native.QueryRow(ctx, "SELECT count(*) FROM alembic_version WHERE version_num='0040'").Scan(&rows); e != nil || rows != 1 {
+	if e := native.QueryRow(ctx, "SELECT count(*) FROM alembic_version WHERE version_num=$1", head).Scan(&rows); e != nil || rows != 1 {
 		t.Fatal("original revision stamp semantics")
 	}
 	proof, _ := json.Marshal(map[string]any{"schema_entries": len(a), "all_original_schema_entries_equal": true, "head": head})
