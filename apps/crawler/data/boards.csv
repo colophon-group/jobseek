@@ -5008,6 +5008,7 @@ national-life-insurance-company,national-life-insurance-company-greenhouse,https
 national-science-center-kharkiv-institute-of-physics-and-technology,national-science-center-kharkiv-institute-of-physics-and-technology-vacancies,https://www.kipt.kharkov.ua/ua/vacancy.html,kipt,"{""max_age_days"":30,""default_location"":""Kharkiv, Ukraine""}",skip,
 national-vision,national-vision-careers,https://careers.smartrecruiters.com/nationalvision1,smartrecruiters,,smartrecruiters,
 nationwide,nationwide-careers,https://careers.nationwide.com,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,"{""render"":true,""proxy"":false}"
+nationwide-childrens-hospital,nationwide-childrens-hospital-careers,https://nationwidechildrens.wd5.myworkdayjobs.com/NCHCareers,workday,,workday,
 naturalmotion,naturalmotion-greenhouse,https://job-boards.greenhouse.io/nmcareers,greenhouse,"{""token"": ""nmcareers""}",skip,
 nature-s-bakery,nature-s-bakery-greenhouse,https://job-boards.greenhouse.io/naturesbakery,greenhouse,"{""token"": ""naturesbakery""}",skip,
 naughty-dog,naughty-dog-greenhouse,https://job-boards.greenhouse.io/naughtydog,greenhouse,"{""token"": ""naughtydog""}",skip,
