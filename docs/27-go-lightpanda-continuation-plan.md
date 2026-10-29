@@ -1,53 +1,62 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — October 29, 2026
+## Current checkpoint — October 30, 2026
 
-The **0.13.1122** full deployment
-[40956619705](https://github.com/colophon-group/jobseek/actions/runs/40956619705)
-failed at **21:48:45 UTC** when its missing-schedule inspection reached the
-unchanged 15-minute deadline. The complete rollback restored 1120, source
-`45b2c700f96ef59101ab4789f139510ed864a014`, at epoch 404. Independent readback at
-21:52:47 UTC found all four native actors running with zero restarts and all
-seven legacy processors stopped. This single observation does not establish
-stability; the earlier 1120 retired-detail transport failure remains a known risk.
+The **0.13.1123** full deployment
+[40966476322](https://github.com/colophon-group/jobseek/actions/runs/40966476322)
+succeeded, including promotion. Production source is
+`6732ad7e3f4362f6c4c701377d8c162f352fd7c3`, at default epoch 404, using
+`ghcr.io/colophon-group/jobseek-crawler@sha256:b9b7ca17d40c077389d74eb7fa18e2b457b2cb613bf55ced1ad269dde4afd8a7`.
+The browser repository references the same native image digest. Independent
+readback verifies the source/image/runtime/data contracts, schema 0041,
+8,143 enabled boards, four running native actors and seven stopped legacy actors.
+Deployment timestamps below are UTC.
 
-The **0.13.1123** correction replaces repeated globally UUID-ordered pages with
-one read-only forward cursor and bounded FETCH batches. Production read-only
-inspection found a roughly 4 GiB posting heap and an expensive ordered index
-walk. The complete unordered cursor traversed **2,048,488 eligible canonical
-rows in 19.6 seconds**, without emitting or retaining their fields. This is a
-scan measurement, not installed repair-command acceptance.
+The missing-schedule correction completed both inspection and apply across
+**2,050,912 eligible canonical rows**, reconstructing **16 absent projections**.
+One read-only forward cursor replaces the expensive globally UUID-ordered pages,
+while retaining bounded FETCH batches, the five-million-candidate limit, one
+connection, eligibility, ownership checks and the original 15-minute deadline.
+Existing lifecycle, fallback, retry and pacing state remains preserved.
 
-The repair keeps the same eligibility, optional starting UUID, at-most-50,000-row
-batches, five-million-candidate bound, one database connection and original
-15-minute command deadline. Its cursor retains one canonical snapshot across
-batches; separate READ COMMITTED statements on the same connection revalidate
-current SQL ownership and epoch after every batch. Redis ownership checks,
-original atomic lifecycle preservation, enqueue semantics and complete rollback
-remain in force. Real PostgreSQL/Redis tests cover concurrent canonical inserts,
-newly activated ownership, optional cursor bounds, cancellation, and the installed
-CLI dry-run/apply/repeat lifecycle behavior.
+The installed-source SDK passed **8,143 monitor configurations, 8,143 detail
+configurations and 2,052,231 scheduled detail URLs**, with zero unqueued snapshot
+gaps or pending lane normalizations. The complete monitor census has no wrong,
+unknown or malformed routes. The complete detail census has no missing caches
+or wrong domains; retained wrong-worker entries still require canonical lifecycle
+handling. All five apparent monitor gaps resolve to four current queue/inflight
+members and one dead letter.
 
-The previously merged 1122 monitor recovery remains included in this release.
-Three current-epoch, exact-token completed monitor receipts retain old Redis
-domain keys. Their current configurations, stable fingerprints and canonical
-deadlines validate. Default-mode recovery now carries the independently validated
-canonical domain separately from the expired source member, including when the
-worker lane also changed. Atomic Lua validates both routes before any effect,
-retires only the exact old token/member, and preserves a newer target schedule,
-attempt, dead letter and runtime cache. Active ownership plans retain their
-original domain restrictions. Registry publication also inventories all four
-monitor queue families and retires queued old-domain aliases only after the
-canonical selected schedule exists and the old route has no live lease/token.
-This covers unfinished attempts that expired before sync, while preserving
-unrelated source-domain work and rate/rotation floors. Tests cover same-lane and cross-lane recovery,
-repeated application, and token/configuration/deadline/ownership/index refusal.
+The current complete queue boundary contains **3,491,254 identities**. All
+**740** removals are accounted for: 652 inactive/disabled, 68 unscheduled,
+19 present in current queues/inflight, and one dead letter. There are no missing
+canonical records or unexplained active scheduled removals. Consumed bulk
+captures and the superseded boundary have been deleted.
 
-The full migration goal remains active. Resume through a qualified exact-source
-original full deployment, with writer quiescence and complete authenticated
-rollback. No manual SQL, queue, environment, epoch or partial restart repair is
-authorized. Use **self-hosted Lightpanda or proven Go HTTP/API routes**, preserve
-every enabled board, and retain existing runtime resource limits.
+Stability is **not accepted**: the native worker restarted once with
+`transport_selection:configuration`. A bounded fatal-window replay validates
+21 other claims and isolates an inactive, unscheduled detail whose canonical
+board is disabled and whose board cache was removed. Default activation still
+granted this stale member a productive SQL fence before transport selection
+refused its missing profile.
+
+The **0.13.1124** correction checks current board eligibility under the existing
+canonical board lock **before activating or replacing a default-mode fence**.
+Disabled or nonrecoverable boards return nonfatal authority loss for both monitor
+and detail claims in either worker lane. Their exact raw lease remains available
+to the original bounded reaper/dead-letter policy; no content, canonical deadline,
+existing fence or failure budget is rewritten. Enabled active, suspect,
+quarantined, gone-pending and gone boards retain their existing execution path.
+Active ownership plans keep their current behavior. Real PostgreSQL/Redis tests
+cover both kinds/lanes, inactive and still-scheduled disabled details, removed
+board caches, old fences, refusal of writes, original final-retry dead lettering,
+and every recoverable enabled board state.
+
+The full migration goal remains active. Qualify and deploy this correction
+through required exact-head CI, fresh merge authority and the original complete
+workflow. Use **self-hosted Lightpanda or proven Go HTTP/API routes**, preserve
+every enabled board, and retain the existing runtime limits and rollback guards.
+No manual SQL/Redis/environment/epoch repair or partial restart is authorized.
 
 ## Latest Lightpanda
 
@@ -126,24 +135,24 @@ operator tooling may remain; production processing uses the native image.
 
 ## Finish the production exit checks
 
-1. Complete 1123 required checks and its exact-source original full deployment.
+1. Complete 1124 required checks and its exact-source original full deployment.
    Independently bind source/image/data/default mode/epoch, healthy native actors,
    stopped legacy processors and all fifteen restored schedules.
-2. Run the complete installed-source SDK across every enabled configuration and
-   scheduled active detail URL. The previous full run checked 2,038,879 routes
-   with no cache identity mismatch, but refused the fourteen monitor lanes.
-   That historical run is not final acceptance; rerun after the remaining repair.
-3. Compare complete unfiltered queue/inflight identities with the retained current
-   boundary of 3,465,138 identities. All 290 previous removals are accounted for:
-   275 inactive/disabled and 15 unscheduled. Verify new dispositions and explain
-   every removal. Conservation does not by itself resolve missing projections.
+2. Repeat the complete installed-source SDK for the final source and actual
+   current fleet. The 1123 run qualified all 2,052,231 scheduled URLs and all
+   enabled configurations; retain its result without treating the restart as
+   accepted stability.
+3. Compare complete unfiltered queue/inflight identities against the current
+   3,491,254-identity boundary and its monitor frontier. The older detail-only
+   boundary is consumed. Verify current dispositions for every new removal;
+   conservation does not itself establish correct scheduling or freshness.
 4. Verify sustained natural monitor/detail completions, canonical output,
    enrichment, exporter/drain progress, publisher/failure behavior and freshness
    with fixed process identities and no restarts. Preserve inventory for reserved
    or unavailable publishers. Do not force jobs or clear counters/circuits.
 5. Complete aligned crawler, renderer, PostgreSQL and Typesense resource windows.
-   The first 1120 stability/resource window was rejected; repeat after the
-   retirement correction. The qualified legacy control
+   Earlier stability/resource windows were rejected; repeat after the
+   eligibility correction with fixed process identities and no restarts. The qualified legacy control
    recorded 726 monitor and 1,454 detail successes in 566.8 seconds. The earlier
    unstable 1118 comparison used less CPU/RAM but delivered less throughput and
    modeled higher cost per useful task; no cost or throughput win was accepted.
