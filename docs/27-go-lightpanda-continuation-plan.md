@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Verified 1111 serving checkpoint — October 29, 2026
+## Verified 1111 serving checkpoint — October 29, 2026, 01:16 UTC
 
 Runtime **0.13.1111** is serving from
 `019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, with the combined CSV publication
@@ -46,6 +46,14 @@ captures do not prove positive access or verified publisher-empty inventories.
 Focused CSV/census checks, full Go DOM race tests, the broader real API suite
 and complete prospective catalogue pass. See the
 [eight-monitor candidate evidence](evidence/go-native-eight-monitors-candidate-2026-10-29.json).
+
+Main subsequently added Arcis Golf. The candidate preserves that board and
+all associated company changes unchanged, with **8,142 CSV boards** and the same
+eight migration rows relative to main `d9ca2bfad279bcc1b9a94facedbca3a68863b247`.
+The quoted prospective floor is bound to the earlier verified published catalogue;
+qualify Arcis Golf from the actual published state before staging. If it passes,
+the complete prospective floor becomes **8,137 monitors / 8,139 details**, still
+leaving IHG and NTT. Regenerated census remains **326 records / 517 browser boards**.
 
 Ship this group through required CI and Crawler Deploy Gate, exact-head merge,
 immutable full runtime deployment and the original supported cold ownership

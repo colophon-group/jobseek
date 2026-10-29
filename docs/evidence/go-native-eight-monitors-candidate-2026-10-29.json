@@ -73,5 +73,15 @@
     "history-full-validation1.json": "530204c23a66ac9fcee57a6a7336dcce3a889c816978933b1ff938a87bdf7206",
     "final-api-validation1.json": "b8ba252247c77eb5cd4e263ad63f85b66d85791f1dd895281b622ed2e8002818",
     "local-validation2.json": "e0d0564c9f5bede48e39731c844e53ba04b58bf1dd8e17f695d6d35c4bdea3e6"
+  },
+  "integrated_main_revision": "d9ca2bfad279bcc1b9a94facedbca3a68863b247",
+  "CSV_boards_after_main_integration": 8142,
+  "preserved_main_addition": "Arcis Golf, unchanged",
+  "main_integration_scope": "Eight migration rows only relative to integrated main. Quoted full prospective catalogue remains bound to verified sourceP/dataQ and8141boards; qualify the later main addition from actual published canonical state before staging.",
+  "conditional_after_added_board": {
+    "monitors": 8137,
+    "details": 8139,
+    "remaining_monitors": 2,
+    "new_board_actual_qualification_required": true
   }
 }
