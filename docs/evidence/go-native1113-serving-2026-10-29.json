@@ -1,0 +1,122 @@
+{
+  "schema": "jobseek.native-serving-checkpoint/v1",
+  "observed_at_utc": "2026-10-29T05:01:34.753857Z",
+  "runtime_version": "0.13.1113",
+  "source_revision": "7a3f6fab1c6d9e54825b6674da5768661b09eb7d",
+  "data_revision": "7a3f6fab1c6d9e54825b6674da5768661b09eb7d",
+  "enabled_boards": 8142,
+  "runtime_workflow": 40811479061,
+  "runtime_workflow_conclusion": "success",
+  "runtime_images": {
+    "jobseek-crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:31f3334acfcc7e2fe7101c1bbe9ac1dfc2fdc6e1fd14715ece7093e9f3bbae06",
+    "jobseek-crawler-browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:3a1276d943615ab20deeec178cd40d67cbdeefafbecf419277ed626b6270ed91"
+  },
+  "runtime_contract": "289e8b7df8a79e5144886c5fc6e72a9deeee08374127f3669a19e8e0916e3527",
+  "data_contract": "10059f994e941e86165740f2564bedce0687e5274321a68ff8beafc3506caac9",
+  "renderer": {
+    "source_revision": "7a3f6fab1c6d9e54825b6674da5768661b09eb7d",
+    "engine_version": "1.1.0-nightly.11275+78bbb64db",
+    "engine_sha256": "d82e8ff27da466beb94dfba39e61ae6eeda91e5d8cf220d104400c862dcf44c0",
+    "image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:4361f406e77fc0bd2fab56533e0bab51b56773e2c398cdbd78fd1e7b7c707805",
+    "memory_max_bytes": 1073741824,
+    "memory_swap_max_bytes": 0,
+    "readiness_probe_passed": true
+  },
+  "renderer_workflow": 40811645914,
+  "renderer_workflow_conclusion": "success",
+  "native_ownership": "active; original supported B0 and ordinary activation succeeded, independently verified",
+  "routing_epoch": 398,
+  "qualified_actual_floor": {
+    "monitors": 8138,
+    "details": 8139,
+    "retained_monitors": 8128,
+    "retained_details": 8138,
+    "captured_reference_URLs": 3513,
+    "configuration_mismatches": 0,
+    "approved_retained_detail_normalization": "Alten Belgium: remove only inert stealth; proxy true, three attempts and all other fields preserved."
+  },
+  "incoming_full_capture": {
+    "completed_at_utc": "2026-10-29T03:45:53.601512+00:00",
+    "scheduled_owned_postings": 2040315,
+    "captured_owned_scheduled_unqueued": 9,
+    "owned_cache_mismatches": 0,
+    "queue_members_observed": 3451722
+  },
+  "whole_route_SDK": "passed incoming full route SDK and strict postactivation actual scheduled-route SDK",
+  "unfiltered_outgoing_baseline_unique": 3448369,
+  "remaining_monitor": "IHG Kimpton Americas: retained route succeeded at 2026-10-29T04:47:24.296729Z; 402 active roles. Latest Lightpanda and tested public HTTP bootstrap/search flows remain unqualified; no production heap/configuration change.",
+  "freshness_accepted": false,
+  "whole_lane_cost_accepted": false,
+  "production_Python_retired": false,
+  "full_migration_complete": false,
+  "execution_constraint": "Strict self-hosted Lightpanda and proven Go HTTP/API. No Chromium fallback.",
+  "activation": {
+    "B0_original_completed_at_utc": "2026-10-29T04:08:39Z",
+    "ordinary_original_completed_at_utc": "2026-10-29T04:34:12.367985Z",
+    "independent_active_readback_at_utc": "2026-10-29T04:34:14.650826Z",
+    "running_actors": 10,
+    "healthy_HTTP_endpoints": 8,
+    "complete_staged_projection_matched": true,
+    "all_actor_restart_policies_restored": true
+  },
+  "strict_postactivation": {
+    "captured_at_utc": "2026-10-29T04:58:27.835957Z",
+    "SDK_completed_at_utc": "2026-10-29T05:01:27Z",
+    "scheduled_routes": 2039274,
+    "monitor_bindings": 8138,
+    "detail_bindings": 8139,
+    "cache_mismatches": 0,
+    "wrong_lane_residue": 0,
+    "non_atomic_queue_memberships": 3452783,
+    "snapshot_queue_gaps": 1,
+    "scope": "Full captured current canonical/cache identities, scheduled URLs, fallback stages and intended lanes pass the deployed Go SDK. Non-atomic observation; the snapshot gap is accounted for by current typed dispositions below."
+  },
+  "queue_conservation": {
+    "completed_at_utc": "2026-10-29T05:01:34.753857Z",
+    "outgoing_source": "019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04",
+    "outgoing_data": "7169c1a1adcb8994f8d1b0322755912b6664f32d",
+    "outgoing_epoch": 396,
+    "before_unique": 3448369,
+    "before_unfiltered": true,
+    "before_preparation": "Sort and deduplicate only; no cohort or canonical filtering.",
+    "before_sha256": "0961950419cf17b27c0ff05f20dc19468c340b991567c5b8519f50ab642a1a64",
+    "after_unique": 3452777,
+    "removed": 301,
+    "added": 4709,
+    "SDK_snapshot_gaps": 1,
+    "distinct_dispositions_requested": 301,
+    "classes": {
+      "canonical_inactive_or_disabled": 204,
+      "canonical_unscheduled": 95,
+      "currently_queued_expected": 2
+    },
+    "unexplained": 0,
+    "all_dispositions_accounted": true,
+    "scope": "Whole before/after queue identity comparison, including every SDK gap. Current typed SQL/Redis dispositions explain each removal; no freshness or cost grant."
+  },
+  "active_configuration_comparison": {
+    "configured_routing_and_parser_fields_preserved": true,
+    "runtime_updates": "Typed Eightfold timestamp/default normalization; UKG discovered metadata is equivalent to the original URL identity. All current SDK routes independently validated.",
+    "production_mutations": "None from the audit."
+  },
+  "natural_freshness_diagnostic": {
+    "observed_at_utc": "2026-10-29T05:00:47.443516Z",
+    "due": 6523,
+    "over_hour_due": 3247,
+    "over_day_due": 19,
+    "successes_past_hour_all_boards": 1012,
+    "native_monitor_successes_over_725_68569_seconds": 126,
+    "native_monitor_successes_per_hour": 625.0639998151265,
+    "heartbeat_lost": 0,
+    "scope": "Natural short-window counters, below required hourly board workload. No forced runs or deadline changes; no sustained freshness acceptance."
+  },
+  "synthetic_ARM64_density": {
+    "PR": 10999,
+    "qualified_head": "6a1497765c49f73f1e1ce7462ef3cb9e4d8aadc5",
+    "job_id": 123237103972,
+    "conclusion": "success",
+    "matched_pairs": 8,
+    "admitted": true,
+    "scope": "Synthetic B0 work only; no full-production fleet savings or attributable-cost acceptance."
+  }
+}
