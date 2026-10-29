@@ -161,10 +161,10 @@ func TestRealFirstOwnershipActivationRetirementPreservesSchedulesAndB0(t *testin
 }
 
 func TestRealFirstOwnershipFreshEpochRetainsRetiredOwnerAndInterruptedReceipt(t *testing.T) {
-	for _, name := range []string{"simple", "rendered-rows", "accenture", "candidatus"} {
+	for _, name := range []string{"simple", "rendered-rows", "accenture", "candidatus", "brassring", "njoyn"} {
 		t.Run(name, func(t *testing.T) {
 			var p firstOwnerFixture
-			if name == "accenture" || name == "candidatus" {
+			if name == "accenture" || name == "candidatus" || name == "brassring" || name == "njoyn" {
 				p = firstNativeBrowserProviderFixture(t, name)
 			} else {
 				p = firstOwnershipFixture(t)

@@ -97,7 +97,7 @@ func TestRealProxyConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *te
 }
 func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 	annotated := len(annotations) > 0 && annotations[0]
-	for _, mode := range []string{"later503", "laterMalformed", "laterReserved", "probeReserved", "totalGap", "cap", "first404"} {
+	for _, mode := range []string{"later503", "laterMalformed", "laterReserved", "probeReserved", "totalGap", "cap", "first404", "first400", "first401", "first403", "later400", "later401", "later403"} {
 		t.Run(mode, func(t *testing.T) {
 			endpoint := "https://example.com/api?page=1"
 			if mode == "probeReserved" {
@@ -106,6 +106,9 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool)
 			metadata := map[string]any{"api_url": endpoint, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name"}, "scraper_type": "skip", "transport_attempts": 1, "transient_403": true, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
 			if mode == "cap" {
 				metadata["max_items"] = 1
+			}
+			if mode == "first400" || mode == "first401" || mode == "first403" || mode == "later400" || mode == "later401" || mode == "later403" {
+				metadata["transient_403"] = false
 			}
 			if len(annotations) > 2 && annotations[2] {
 				metadata["pagination"].(map[string]any)["browser"] = true
@@ -120,12 +123,29 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool)
 			calls := 0
 			client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls++
-				if mode == "first404" {
-					w.WriteHeader(404)
+				if mode == "first404" || mode == "first400" || mode == "first401" || mode == "first403" {
+					status := http.StatusNotFound
+					if mode == "first400" {
+						status = http.StatusBadRequest
+					} else if mode == "first401" {
+						status = http.StatusUnauthorized
+					} else if mode == "first403" {
+						status = http.StatusForbidden
+					}
+					w.WriteHeader(status)
 					return
 				}
 				if calls > 1 {
 					switch mode {
+					case "later400":
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					case "later401":
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					case "later403":
+						w.WriteHeader(http.StatusForbidden)
+						return
 					case "later503":
 						w.WriteHeader(503)
 						return
@@ -165,7 +185,7 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool)
 				t.Fatal("API response became provider-gone authority")
 			}
 			switch mode {
-			case "later503", "laterMalformed":
+			case "later503", "laterMalformed", "first400", "first401", "first403", "later400", "later401", "later403":
 				if result.Cycle.Status != "failed" || failures != 1 || reserved || count != 1 || !active {
 					t.Fatal("partial failure wrote inventory", result.Cycle, count, active)
 				}

@@ -1,6 +1,96 @@
 # Go and Lightpanda migration delivery plan
 
-## Combined recovery and next native batch — October 28, 2026, 22:36 UTC
+## Verified 1111 serving checkpoint — October 29, 2026, 01:16 UTC
+
+Runtime **0.13.1111** is serving from
+`019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, with the combined CSV publication
+`7169c1a1adcb8994f8d1b0322755912b6664f32d` from
+[PR #10991](https://github.com/colophon-group/jobseek/pull/10991).
+The original full rollout, compatible CSV workflow and supported B0/ordinary
+activation all succeeded. Independent readback verifies both immutable runtime
+images, the exact data revision, protected receipts, SQL authority, the complete
+staged Redis projection, **ten actors and eight health endpoints**.
+
+**Ordinary ownership is active at epoch 396: 8,128 monitors / 8,138 details.**
+All **8,141 enabled boards** remain configured, with the three B0 boards owned
+separately. The grouped six-detail changes, Tesco HTTP and Syneos Lightpanda
+monitor admissions, and the later Gray Media addition are included. **Ten
+ordinary monitor configurations remain; ordinary detail coverage is complete.**
+Execution stays strictly self-hosted Lightpanda and Go HTTP/API. The deployed
+engine and all official nightly assets were rechecked: latest remains
+**1.1.0-nightly.11227+0eee96bf2**.
+
+Strict postactivation SDK verification passes **2,039,482 scheduled routes**,
+with zero cache mismatches and zero wrong-lane residue. Whole queue conservation
+compares **3,443,518** outgoing unique identities with **3,448,232** after
+activation: **130 removals / 4,844 additions**. Every removal and both non-atomic
+snapshot gaps have current canonical or queue dispositions, with **zero
+unexplained identities**. The unchanged source-bound cold preflight qualified
+five first-time caches and 26 recurring caches for reconstruction from canonical
+content hashes and deadlines through the original routine.
+See [verified serving evidence](evidence/go-native1111-serving-2026-10-29.json).
+
+The grouped **0.13.1112** candidate normalizes **nine monitor configurations**
+across DOM, inline and direct HTTP API contracts. Its complete prospective
+catalogue passes **8,137 monitors / 8,138 details**, retains all current
+assignments, checks **3,513 reference URLs** and excludes all B0 boards.
+Alten keeps rendered pagination; its detail normalization removes only the inert
+`stealth` flag while retaining proxy routing, three origin attempts and every
+extraction/wait setting. All other retained detail execution profiles match.
+
+**39 real PostgreSQL/Redis canonical cases** cover current documents, transport,
+incomplete output and publisher reservation across these nine sources.
+Recognized challenge pages and non-probe API 401/403 responses explicitly fail
+and retain inventory. BAE now requires explicit zero evidence. Blocked/dormant
+captures do not prove positive access or verified publisher-empty inventories.
+Focused CSV/census checks, full Go DOM race tests, the broader real API suite
+and complete prospective catalogue pass. See the
+[nine-monitor candidate evidence](evidence/go-native-nine-monitors-candidate-2026-10-29.json).
+
+NTT now has a complete Go HTTP replacement. Its published public listing
+component supplies the exact read-only request and empty UI filters. A current
+bootstrap GET plus listing POST returns **394 roles**. Every URL and mapped field
+matches the frozen original Python parser, and the URL set exactly matches all
+**394 current active canonical roles**, including **392 scheduled** roles. The
+existing browser detail profile remains unchanged. Seven real canonical cases
+verify all 394 inserted URL/title rows, normal missing-role retirement, transport,
+malformed context, incomplete output, API 400/403 and publisher reservation.
+
+The explicit `post_data_refresh.aura_context=true` option selects the public
+client request fields from each fresh bootstrap. It excludes bootstrap-only
+state and avoids pinning the changing framework ID. Matching Go/Python support
+keeps the supported cold legacy path functional. Required API 400/401/403
+responses fail while preserving inventory; optional probes keep their existing
+behavior. The actual candidate's broader real API suite passes **54 test/subtest
+entries**, with zero skips, and the full Go API race suite passes.
+
+Main subsequently added Arcis Golf. The candidate preserves that board and
+all associated company changes unchanged, with **8,142 CSV boards** and the same
+nine migration rows relative to main `d9ca2bfad279bcc1b9a94facedbca3a68863b247`.
+The quoted prospective floor is bound to the earlier verified published catalogue;
+qualify Arcis Golf from the actual published state before staging. If it passes,
+the complete prospective floor becomes **8,138 monitors / 8,139 details**, still
+leaving IHG. Regenerated census remains **326 records / 517 browser boards**.
+
+Ship this group through required CI and Crawler Deploy Gate, exact-head merge,
+immutable full runtime deployment and the original supported cold ownership
+transition. Requalify the actual published catalogue and complete queue effects
+before granting ownership. Its conditional remainder is **one ordinary monitor:
+IHG**, with no ordinary detail gap.
+
+The candidate also fixes retained BrassRing/Njoyn ownership history. Both real
+interrupted-history regressions fail before the fix and pass after it; the
+broader migrated PostgreSQL/Redis race suite passes **83 test/subtest entries**,
+with no skips. See [retained-browser history evidence](evidence/go-native-retained-browser-history-2026-10-29.json).
+Preserve working IHG until its complete positive replacement passes. NTT's
+publisher sitemap remains unqualified; use the positively qualified listing API
+in this candidate instead. At 00:47 UTC, 3,724 boards were over an hour overdue and 25 over a day;
+natural freshness is not yet accepted. The final delivery requires stability,
+comparable whole-lane resources/cost, maintenance/deployment consumers and the
+final supported reversal/window before retiring the four Python worker/browser
+processes and legacy runtime assets. Useful isolated offline Python may remain.
+
+## Historical combined recovery and next native batch — October 28, 2026, 22:36 UTC
 
 [Hotfix #10992](https://github.com/colophon-group/jobseek/pull/10992) is merged as
 `019e4e7fa7a6e3ca54750e3d64c8f683fbd4ec04`, runtime **0.13.1111**, after

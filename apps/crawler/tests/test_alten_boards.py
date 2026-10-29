@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 
-def test_alten_boards_keep_monitor_proxy_and_qualified_detail_transports() -> None:
+def test_alten_boards_keep_qualified_monitor_and_detail_transports() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         rows = {
@@ -36,9 +36,13 @@ def test_alten_boards_keep_monitor_proxy_and_qualified_detail_transports() -> No
         monitor_config = json.loads(row["monitor_config"])
         scraper_config = json.loads(row["scraper_config"])
         assert monitor_config["render"] is True
-        assert monitor_config["stealth"] is True
-        assert monitor_config["proxy"] is True
-        assert monitor_config["transport_attempts"] == 3
+        if row["board_slug"] == "alten-belgium":
+            assert {"stealth", "proxy", "transport_attempts"}.isdisjoint(monitor_config)
+            assert monitor_config["pagination"]["browser"] is True
+        else:
+            assert monitor_config["stealth"] is True
+            assert monitor_config["proxy"] is True
+            assert monitor_config["transport_attempts"] == 3
         assert scraper_config["render"] is True
         if row["board_slug"] in {"alten-spain", "alten-finland"}:
             assert scraper_config["proxy"] is False
@@ -50,7 +54,10 @@ def test_alten_boards_keep_monitor_proxy_and_qualified_detail_transports() -> No
                 "transport_attempts",
             }.isdisjoint(scraper_config)
         else:
-            assert scraper_config["stealth"] is True
+            if row["board_slug"] == "alten-belgium":
+                assert "stealth" not in scraper_config
+            else:
+                assert scraper_config["stealth"] is True
             assert scraper_config["proxy"] is True
             assert scraper_config["transport_attempts"] == 3
 

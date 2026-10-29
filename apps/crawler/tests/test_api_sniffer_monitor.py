@@ -5968,3 +5968,64 @@ class TestDiscoverAutoTruncation:
                 AsyncMock(),
                 pw=_make_mock_pw(AsyncMock()),
             )
+
+
+class TestPublicAuraContextRefresh:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("uad", [0, 1, False])
+    async def test_selects_public_request_context_before_replay(self, uad):
+        import json
+        from urllib.parse import parse_qs
+
+        context = {
+            "mode": "PROD",
+            "app": "siteforce:communityApp",
+            "fwuid": "current-framework",
+            "loaded": {"APPLICATION@markup://siteforce:communityApp": "current-definition"},
+            "uad": uad,
+            "bootstrapOnly": True,
+            "globals": {"unexpected": "ignored"},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, text="publicContext=" + json.dumps(context), request=request
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _refresh_post_data(
+                client,
+                "https://fixture.example/s/jobs",
+                "message=fixture&aura.context=refresh-required",
+                {"aura_context": True, "fields": {"aura.context": r"publicContext=(\{.*\})"}},
+            )
+        form = parse_qs(result)
+        assert form["message"] == ["fixture"]
+        actual = json.loads(form["aura.context"][0])
+        expected = {key: context[key] for key in ("mode", "app", "fwuid", "loaded", "uad")}
+        expected.update(dn=[], globals={})
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        "change",
+        [
+            {"app": "other:app"},
+            {"fwuid": ""},
+            {"loaded": []},
+            {"uad": 2},
+        ],
+    )
+    def test_invalid_public_context_cannot_become_inventory(self, change):
+        import json
+
+        from src.core.monitors.api_sniffer import _public_aura_request_context
+
+        context = {
+            "mode": "PROD",
+            "app": "siteforce:communityApp",
+            "fwuid": "current-framework",
+            "loaded": {"APPLICATION@markup://siteforce:communityApp": "current-definition"},
+            "uad": 0,
+        }
+        context.update(change)
+        with pytest.raises(ValueError, match="invalid public Aura context"):
+            _public_aura_request_context(json.dumps(context))

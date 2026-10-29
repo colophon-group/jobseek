@@ -2714,6 +2714,39 @@ def _extract_urls_from_html(
     return urls
 
 
+def _public_aura_request_context(value: str) -> str:
+    """Select the public Aura client context without bootstrap-only flags."""
+    context = json.loads(value)
+    if (
+        not isinstance(context, dict)
+        or context.get("mode") != "PROD"
+        or context.get("app") != "siteforce:communityApp"
+    ):
+        raise ValueError("invalid public Aura context")
+    fwuid = context.get("fwuid")
+    loaded = context.get("loaded")
+    uad = context.get("uad")
+    if (
+        not isinstance(fwuid, str)
+        or not 1 <= len(fwuid.encode("utf-8")) <= 256
+        or any(char in fwuid for char in "\x00\r\n")
+        or not isinstance(loaded, dict)
+        or not 1 <= len(loaded) <= 256
+        or any(
+            not isinstance(key, str)
+            or len(key.encode("utf-8")) > 512
+            or not isinstance(item, str)
+            or len(item.encode("utf-8")) > 512
+            for key, item in loaded.items()
+        )
+        or not (isinstance(uad, bool) or type(uad) is int and uad in (0, 1))
+    ):
+        raise ValueError("invalid public Aura context fields")
+    request = {key: context[key] for key in ("mode", "app", "fwuid", "loaded", "uad")}
+    request.update(dn=[], globals={})
+    return json.dumps(request, sort_keys=True, separators=(",", ":"))
+
+
 async def _refresh_post_data(
     client: httpx.AsyncClient,
     board_url: str,
@@ -2738,6 +2771,12 @@ async def _refresh_post_data(
         raise ValueError("post_data_refresh.fields must be a non-empty mapping")
     if len(fields) > _MAX_REFRESH_FIELDS:
         raise ValueError(f"post_data_refresh supports at most {_MAX_REFRESH_FIELDS} fields")
+
+    aura_context = refresh_config.get("aura_context", False)
+    if "aura_context" in refresh_config and (
+        aura_context is not True or set(fields) != {"aura.context"}
+    ):
+        raise ValueError("Aura context refresh requires only the aura.context form field")
 
     source_url = refresh_config.get("source_url") or board_url
     if not isinstance(source_url, str) or not source_url:
@@ -2779,6 +2818,8 @@ async def _refresh_post_data(
             raise ValueError(
                 f"post_data_refresh pattern for {field!r} did not match one bounded value"
             )
+        if aura_context:
+            value = _public_aura_request_context(value)
         updated = set_body_param(refreshed, field, value)
         if updated == refreshed:
             raise ValueError(f"post_data_refresh field {field!r} is missing from post_data")
