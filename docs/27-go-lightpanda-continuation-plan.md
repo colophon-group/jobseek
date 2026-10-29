@@ -1,6 +1,41 @@
 # Go and Lightpanda migration delivery plan
 
-## Current Go-only deployment candidate — October 29, 2026
+## Recovery candidate 0.13.1118 — October 29, 2026
+
+The first complete Go-only exercise on source
+`9859b16bc05b83378e8bc285af78529fed0ee76a` failed readiness. Default
+claims passed the database/lease fences but execution rejected them because
+`OwnershipBound` only recognized migration plans. Automatic rollback restored
+the prior environment and generation, then refused provider route repair on an
+inflight scrape and intentionally left the old processors stopped. Processing
+recovery is the immediate priority; no final Go production acceptance is claimed.
+
+This candidate recognizes default claims at the execution boundary, runs the
+existing Go lease reaper as an independent native service, and recovers expired
+leases through its existing SQL receipt/Redis CAS protocol before provider route
+repair in both directions. Reapplying an unchanged provider lane preserves a
+compatible inflight attempt's exact token, deadline and cache. Wrong lanes,
+orphan tokens, descriptor changes and queued duplicates still refuse before
+effects. Default-mode committed results retain their successful deadlines when
+an expired attempt is recovered, rather than becoming failed retries.
+
+Additive migration **0041** stores the default monitor's effective configuration
+hash separately from its exact runtime snapshot. Recovery tolerates mutable
+egress metadata while requiring the same actual crawler configuration, token,
+epoch, canonical deadline and ownership guards. The nullable column preserves
+the retained runtime's existing SQL column ABI. A changed runtime snapshot never
+replays a stale learned host. Actual PostgreSQL/Redis tests cover both harmless
+metadata drift and refusal of changed crawler configuration.
+
+The next rollout must pass Required CI and Crawler Deploy Gate, restore complete
+processing through the original full workflow, and prove the complete cold
+reversal before final Go acceptance. Then verify fleet output, natural freshness,
+conservation and comparable whole-lane resource/cost results, including the
+reaper. Preserve all enabled boards and strict Lightpanda/Go HTTP execution.
+The latest upstream Linux assets were rechecked and still match the installed
+October 29 Lightpanda pins. Delete disposable databases and binaries after tests.
+
+## Prior Go-only deployment candidate — October 29, 2026
 
 Runtime **0.13.1115**, source/data
 `1a7c8cfbedcaee0c70c1a6717b23c31724a9839b`, completed the original full

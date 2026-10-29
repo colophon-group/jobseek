@@ -152,10 +152,14 @@ def test_enabled_lightpanda_overlay_adds_exactly_one_executor_connection() -> No
 
 def test_default_go_topology_does_not_start_legacy_connection_owners() -> None:
     services = _render_compose_config(COMPOSE, profile="ordinary-go")["services"]
-    assert set(services) == {"redis", "ordinary-go", "exporter", "drain", "alloy"}
+    assert set(services) == {"redis", "ordinary-go", "lease-reaper", "exporter", "drain", "alloy"}
     assert int(services["exporter"]["environment"]["CRAWLER_DB_POOL_MAX"]) == 4
     assert int(services["drain"]["environment"]["CRAWLER_DB_POOL_MAX"]) == 6
     assert services["ordinary-go"]["command"] == ["/usr/local/bin/go-ordinary-worker"]
+    reaper = services["lease-reaper"]
+    assert reaper["command"] == ["/usr/local/bin/go-typesense-exporter", "--reap-leases"]
+    assert set(reaper["environment"]) == {"LOCAL_DATABASE_URL", "REDIS_URL", "GOMEMLIMIT"}
+    assert reaper["restart"] == "unless-stopped"
 
 
 def test_murmur_enforces_both_connection_owners() -> None:
@@ -230,7 +234,7 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     deploy = (CRAWLER / "deploy.sh").read_text(encoding="utf-8")
     stop = deploy.index(
         "docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
-        "ordinary-go exporter drain"
+        "ordinary-go lease-reaper exporter drain"
     )
     migrate = deploy.index("CRAWLER_DB_ROLE=deploy-migrate", stop)
     sync = deploy.index("CRAWLER_DB_ROLE=deploy-sync", migrate)

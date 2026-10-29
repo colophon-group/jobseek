@@ -285,6 +285,25 @@ services:
     # Keep parsing bounded to two cores and the existing memory envelope.
     cpus: 2.0
 
+  # The former Python parents supervised this same native reaper. Keep one
+  # independent owner when the ordinary worker replaces those parents.
+  lease-reaper:
+    profiles: [ordinary-go]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s
+    command: ["/usr/local/bin/go-typesense-exporter", "--reap-leases"]
+    environment:
+      LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}
+      REDIS_URL: redis://localhost:6379/0
+      GOMEMLIMIT: 64MiB
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 128m
+
   # -- Exporter ----------------------------------------------------
   exporter:
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}

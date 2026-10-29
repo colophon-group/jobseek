@@ -198,12 +198,52 @@ func leaseReaperPoolConfig(dsn string) (*pgxpool.Config, error) {
 }
 
 func runLeaseReaper() error {
+	return runLeaseReaperMode(false)
+}
+
+// Full deploys call this only after every processor is stopped. Each sweep uses
+// the existing clock, batch, strike and SQL/Redis receipt fences. Live leases
+// remain untouched; route repair still refuses any incompatible live attempt.
+func drainExpiredLeases(ctx context.Context, backend leaseReaperBackend, batch int, emit func(leaseReaperEvent) error) error {
+	if batch < 1 {
+		return errors.New("invalid lease reaper bounds")
+	}
+	for _, lane := range []string{"simple", "browser"} {
+		depth, _, err := backend.Depths(ctx, lane)
+		if err != nil {
+			return err
+		}
+		for remaining := depth; remaining > 0; remaining -= int64(batch) {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			result, err := backend.Sweep(ctx, lane)
+			if err != nil {
+				return err
+			}
+			if err := emit(leaseReaperEvent{Event: "reaper.sweep", Wtype: lane, Result: &result}); err != nil {
+				return err
+			}
+			if result.Reenqueued+result.DeadLettered+result.MissingConfig < int64(batch) {
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func runLeaseReaperMode(drain bool) error {
 	settings, err := loadLeaseReaperSettings()
 	if err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if drain {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+	}
 	dsn := os.Getenv("LOCAL_DATABASE_URL")
 	if dsn == "" {
 		return errors.New("LOCAL_DATABASE_URL is required")
@@ -233,6 +273,9 @@ func runLeaseReaper() error {
 	client := redis.NewClient(options)
 	defer client.Close()
 	encoder := json.NewEncoder(os.Stdout)
+	if drain {
+		return drainExpiredLeases(ctx, redisLeaseReaper{client: client, pool: pool, settings: settings}, settings.BatchSize, func(event leaseReaperEvent) error { return encoder.Encode(event) })
+	}
 	err = leaseReaperLoop(ctx, settings.Interval, redisLeaseReaper{client: client, pool: pool, settings: settings}, func(event leaseReaperEvent) error { return encoder.Encode(event) })
 	if errors.Is(err, context.Canceled) {
 		return nil

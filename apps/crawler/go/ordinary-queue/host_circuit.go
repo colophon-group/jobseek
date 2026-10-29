@@ -195,7 +195,7 @@ type GreenhouseHostPreflight struct {
 // after discovery starts. Deferrals commit a future canonical PG deadline and
 // receipt without changing success/failure, listing or provider-gone state.
 func (a *Authority) PreflightGreenhouseHost(ctx context.Context, claim *Claim, circuits *HostCircuits) (*GreenhouseHostPreflight, error) {
-	if a == nil || !a.valid(claim) || a.ownership == nil || (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.recovered != nil || circuits == nil || circuits.client != a.queue {
+	if a == nil || !a.valid(claim) || !claim.OwnershipBound() || (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.recovered != nil || circuits == nil || circuits.client != a.queue {
 		return nil, ErrConfiguration
 	}
 	var err error

@@ -18,7 +18,7 @@ import (
 
 func TestLocalMigrationAssetsBindCompleteOriginalSourceChain(t *testing.T) {
 	manifest, e := loadLocalMigrations()
-	if e != nil || manifest.Head != "0040" || len(manifest.Revisions) != 40 {
+	if e != nil || manifest.Head != "0041" || len(manifest.Revisions) != 41 {
 		t.Fatal("complete migration chain", e)
 	}
 	for path, expected := range manifest.SourceHashes {
@@ -203,7 +203,7 @@ func TestRealLocalMigrationFreshSchemaMatchesActualAlembic(t *testing.T) {
 	nativeCommand.Env = []string{"LOCAL_DATABASE_URL=" + nativeDSN, "CRAWLER_DB_ROLE=fixture-migrate"}
 	output, e := nativeCommand.CombinedOutput()
 	var result map[string]string
-	if e != nil || json.Unmarshal(output, &result) != nil || result["schema_revision"] != "0040" {
+	if e != nil || json.Unmarshal(output, &result) != nil || result["schema_revision"] != "0041" {
 		t.Fatalf("compiled native fresh migration failed: %s", output)
 	}
 	head := result["schema_revision"]
@@ -233,7 +233,7 @@ func TestRealLocalMigrationFreshSchemaMatchesActualAlembic(t *testing.T) {
 		t.Fatal("native migration at current head not idempotent", e)
 	}
 	var rows int
-	if e := native.QueryRow(ctx, "SELECT count(*) FROM alembic_version WHERE version_num='0040'").Scan(&rows); e != nil || rows != 1 {
+	if e := native.QueryRow(ctx, "SELECT count(*) FROM alembic_version WHERE version_num=$1", head).Scan(&rows); e != nil || rows != 1 {
 		t.Fatal("original revision stamp semantics")
 	}
 	proof, _ := json.Marshal(map[string]any{"schema_entries": len(a), "all_original_schema_entries_equal": true, "head": head})
