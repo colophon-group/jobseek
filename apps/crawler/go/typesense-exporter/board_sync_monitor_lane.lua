@@ -2,12 +2,17 @@
 -- Keep the selected lane's cadence, cache and inflight attempt unchanged.
 -- Mixed-owner migration owns its own routing; this repair is for the default
 -- catalogue. All refusal checks precede the first Redis effect.
--- ARGV: selected worker, canonical domain, board identity.
+-- ARGV: selected worker, canonical domain, board identity; optional old worker/domain.
 local wtype, domain, board_id = ARGV[1], ARGV[2], ARGV[3]
-if #ARGV ~= 3 or (wtype ~= "simple" and wtype ~= "browser") or not domain or domain == "" or not board_id or board_id == "" then
+if (#ARGV ~= 3 and #ARGV ~= 5) or (wtype ~= "simple" and wtype ~= "browser") or not domain or domain == "" or not board_id or board_id == "" then
     return redis.error_reply("monitor lane repair arguments are invalid")
 end
-local other = wtype == "simple" and "browser" or "simple"
+local other = ARGV[4] or (wtype == "simple" and "browser" or "simple")
+local old_domain = ARGV[5] or domain
+if (other ~= "simple" and other ~= "browser") or not old_domain or #old_domain == 0 or #old_domain > 253
+    or string.find(old_domain, "[%c|]") or (other == wtype and old_domain == domain) then
+    return redis.error_reply("monitor previous route arguments are invalid")
+end
 local function require_type(key, expected)
     local actual = redis.call("TYPE", key)["ok"]
     if actual ~= "none" and actual ~= expected then
@@ -15,13 +20,14 @@ local function require_type(key, expected)
     end
     return true
 end
-local wrong_first = "ft_monitors_" .. other .. ":" .. domain
-local wrong_recurring = "monitors_" .. other .. ":" .. domain
+local wrong_first = "ft_monitors_" .. other .. ":" .. old_domain
+local wrong_recurring = "monitors_" .. other .. ":" .. old_domain
 if not require_type(wrong_first, "zset") or not require_type(wrong_recurring, "zset") then
     return redis.error_reply("monitor opposite lane is corrupt")
 end
 local wrong_queued = redis.call("ZSCORE", wrong_first, board_id) or redis.call("ZSCORE", wrong_recurring, board_id)
-local member = "monitor|" .. domain .. "|" .. board_id
+local member = "monitor|" .. old_domain .. "|" .. board_id
+local selected_member = "monitor|" .. domain .. "|" .. board_id
 if not require_type("inflight:" .. other, "zset") or not require_type("inflight_tokens:" .. other, "hash") then
     return redis.error_reply("monitor opposite inflight state is corrupt")
 end
@@ -34,12 +40,13 @@ end
 if redis.call("EXISTS", "ordinary:ownership:active") == 1 or redis.call("HLEN", "lightpanda-b0:legacy-guard") > 0 or redis.call("EXISTS", "lightpanda-b0:producer-owner") == 1 then
     return 0
 end
-for _, lane in ipairs({wtype, other}) do
+for _, route in ipairs({{wtype,domain},{other,old_domain}}) do
+    local lane, route_domain = route[1], route[2]
     if not require_type("inflight:" .. lane, "zset") or not require_type("inflight_tokens:" .. lane, "hash") or not require_type("monitor_repair_due:" .. lane, "hash") then
         return redis.error_reply("monitor lane inflight state is corrupt")
     end
     for _, prefix in ipairs({"ft_monitors_", "monitors_"}) do
-        if not require_type(prefix .. lane .. ":" .. domain, "zset") then
+        if not require_type(prefix .. lane .. ":" .. route_domain, "zset") then
             return redis.error_reply("monitor lane schedule is corrupt")
         end
     end
@@ -51,23 +58,23 @@ if not require_type("board:" .. board_id, "hash") or redis.call("HGET", "board:"
     return redis.error_reply("monitor canonical lane cache is unavailable")
 end
 local selected_ready = redis.call("ZSCORE", "ft_monitors_" .. wtype .. ":" .. domain, board_id) or redis.call("ZSCORE", "monitors_" .. wtype .. ":" .. domain, board_id)
-local selected_inflight = redis.call("ZSCORE", "inflight:" .. wtype, member)
+local selected_inflight = redis.call("ZSCORE", "inflight:" .. wtype, selected_member)
 if not selected_ready then
-    local token = redis.call("HGET", "inflight_tokens:" .. wtype, member)
+    local token = redis.call("HGET", "inflight_tokens:" .. wtype, selected_member)
     if not selected_inflight or not token or #token ~= 32 or not string.match(token, "^[0-9a-f]+$") then
         return redis.error_reply("monitor selected lane has no authoritative schedule")
     end
 end
-if not require_type("ratelimit:" .. domain, "string") or not require_type("ready:rotation:" .. other, "zset") then
+if not require_type("ratelimit:" .. old_domain, "string") or not require_type("ready:rotation:" .. other, "zset") then
     return redis.error_reply("monitor lane readiness state is corrupt")
 end
 local function finite(value)
     local number = tonumber(value)
     return number and number == number and number ~= math.huge and number ~= -math.huge
 end
-local limit = redis.call("GET", "ratelimit:" .. domain)
-local rotation = redis.call("ZSCORE", "ready:rotation:" .. other, domain)
-if (limit and not finite(limit)) or (rotation and not finite(rotation)) or (selected_inflight and not finite(selected_inflight)) then
+local limit = redis.call("GET", "ratelimit:" .. old_domain)
+local rotation = redis.call("ZSCORE", "ready:rotation:" .. other, old_domain)
+if (limit and not finite(limit)) or (rotation and not finite(rotation)) or (selected_inflight and not finite(selected_inflight)) or (selected_ready and not finite(selected_ready)) then
     return redis.error_reply("monitor lane readiness score is corrupt")
 end
 for tier = 0, 2 do
@@ -76,7 +83,7 @@ for tier = 0, 2 do
     end
 end
 for _, prefix in ipairs({"ft_monitors_", "monitors_", "ft_scrapes_", "scrapes_"}) do
-    local key = prefix .. other .. ":" .. domain
+    local key = prefix .. other .. ":" .. old_domain
     if not require_type(key, "zset") then
         return redis.error_reply("monitor lane domain schedule is corrupt")
     end
@@ -88,7 +95,7 @@ for _, prefix in ipairs({"ft_monitors_", "monitors_", "ft_scrapes_", "scrapes_"}
     end
 end
 
-local function refresh_ready(wtype)
+local function refresh_ready(wtype, domain)
     local scrape_rotation_key = "ready:rotation:" .. wtype
     local scrape_rotation_floor = tonumber(
         redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
@@ -137,5 +144,5 @@ end
 
 local removed = redis.call("ZREM", wrong_first, board_id) + redis.call("ZREM", wrong_recurring, board_id)
 redis.call("HDEL", "monitor_repair_due:" .. other, member)
-refresh_ready(other)
+refresh_ready(other, old_domain)
 return removed

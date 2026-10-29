@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -147,6 +148,47 @@ func TestMissingScheduleCanonicalScanAndInstalledCommand(t *testing.T) {
 	if len(rows) != 7 {
 		t.Fatal("canonical eligibility changed", len(rows))
 	}
+	t.Run("cached-plan-seeks-from-cursor", func(t *testing.T) {
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback(ctx)
+		// Reproduce the production cached plan with a tiny private fixture.
+		// Disabling sequential scans makes its actual index bound observable
+		// without requiring a large table or a timing assertion.
+		if _, err = tx.Exec(ctx, "SET LOCAL plan_cache_mode=force_generic_plan; SET LOCAL enable_seqscan=off"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = tx.Prepare(ctx, "private_missing_seek", missingScheduleSQL("00000000-0000-0000-0000-000000000001")); err != nil {
+			t.Fatal(err)
+		}
+		var raw json.RawMessage
+		if err = tx.QueryRow(ctx, "EXPLAIN (FORMAT JSON) EXECUTE private_missing_seek('00000000-0000-0000-0000-000000000001',2)").Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var plans []map[string]any
+		if json.Unmarshal(raw, &plans) != nil || len(plans) != 1 {
+			t.Fatal("generic plan unavailable")
+		}
+		bounded := false
+		var visit func(map[string]any)
+		visit = func(node map[string]any) {
+			if node["Relation Name"] == "job_posting" {
+				condition, _ := node["Index Cond"].(string)
+				bounded = bounded || strings.Contains(condition, "id > $1")
+			}
+			if children, ok := node["Plans"].([]any); ok {
+				for _, child := range children {
+					visit(child.(map[string]any))
+				}
+			}
+		}
+		visit(plans[0]["Plan"].(map[string]any))
+		if !bounded {
+			t.Fatal("cached canonical page scans before its UUID cursor")
+		}
+	})
 	missing, e := missingScheduleCandidates(ctx, c, rows)
 	if e != nil {
 		t.Fatal(e)

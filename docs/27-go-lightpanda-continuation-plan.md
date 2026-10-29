@@ -2,41 +2,40 @@
 
 ## Current checkpoint — October 29, 2026
 
-Processing is restored on **0.13.1120**, merged through
-[PR #11011](https://github.com/colophon-group/jobseek/pull/11011). The original
-full deployment and promotion
-[40928901750](https://github.com/colophon-group/jobseek/actions/runs/40928901750)
-passed, including both guarded expired-lease sweeps. Installed source is
-`45b2c700f96ef59101ab4789f139510ed864a014`; both crawler repository identities
-select immutable digest
-`sha256:cd21f1370c62da64d798677c1717cc1a975b35e50b20c1d304824f562c19ca4e`.
+The **0.13.1121** full deployment
+[40942821136](https://github.com/colophon-group/jobseek/actions/runs/40942821136)
+failed at **20:19:54 UTC**: its missing-schedule inspection reached the unchanged
+15-minute command deadline. The rollback then refused the browser lease sweep
+and left processors stopped. Promotion was skipped. The retained verified
+release is 1120, source `45b2c700f96ef59101ab4789f139510ed864a014`, at epoch 404;
+its selected environment is not evidence that processing has resumed.
 
-Independent readback at **18:26:29 UTC** verifies the source, image and committed
-data generation, default Go ownership at **epoch 404**, schema **0041**, all
-**8,142 enabled boards**, four healthy native actors with zero restarts, stopped
-legacy processors and no active ownership plan. Three HTTP health endpoints pass;
-the ordinary worker attests the compiled source, mode and epoch. The native image
-has no Python, uv, Playwright or Chromium commands.
+The **0.13.1122** correction batches two causes. PostgreSQL's generic plan for
+the nullable cursor filter has no posting primary-key index bound and repeatedly
+scans earlier rows. Subsequent canonical pages now use a separate non-null UUID
+seek query, retaining eligibility, row bounds and the existing command deadline.
+Read-only production EXPLAIN verifies an index condition for the proposed query;
+the private PostgreSQL regression checks the generic plan as well as paging.
 
-Readback at **18:28:21 UTC** checks all fourteen previously misrouted monitors:
-all retain their selected HTTP lane and cache flag, with **zero wrong-lane queued
-or inflight representations**. The four families are API sniffer (11), TalentBrew,
-DOM and sitemap. The recovery preserves completed SQL receipts and newer target
-attempts, including their runtime cache. Configuration, token, epoch, domain,
-deadline and ownership guards remain enforced.
+Three current-epoch, exact-token completed monitor receipts retain old Redis
+domain keys. Their current configurations, stable fingerprints and canonical
+deadlines validate. Default-mode recovery now carries the independently validated
+canonical domain separately from the expired source member, including when the
+worker lane also changed. Atomic Lua validates both routes before any effect,
+retires only the exact old token/member, and preserves a newer target schedule,
+attempt, dead letter and runtime cache. Active ownership plans retain their
+original domain restrictions. Registry publication also inventories all four
+monitor queue families and retires queued old-domain aliases only after the
+canonical selected schedule exists and the old route has no live lease/token.
+This covers unfinished attempts that expired before sync, while preserving
+unrelated source-domain work and rate/rotation floors. Tests cover same-lane and cross-lane recovery,
+repeated application, and token/configuration/deadline/ownership/index refusal.
 
-The subsequent 1120 stability window failed: the ordinary worker exited during
-transport selection on a stale browser attempt for an active but canonically
-unscheduled API-sniffer detail whose current route is HTTP. A fresh protected
-snapshot reproduces the mismatch, and the canonical HTTP profile validates. The
-initial zero-restart readback above is not sustained stability acceptance.
-Typesense itself retains its prior start time/restart count; the broader node
-sampler rejected a process-generation change. Neither rejected window is a final
-resource comparison.
-
-The full migration goal remains active until the remaining exit checks pass.
-Use **self-hosted Lightpanda or proven Go HTTP/API routes** and preserve every
-enabled board. Batch related contracts and retain existing resource limits.
+The full migration goal remains active. Resume through a qualified exact-source
+original full deployment, with writer quiescence and complete authenticated
+rollback. No manual SQL, queue, environment, epoch or partial restart repair is
+authorized. Use **self-hosted Lightpanda or proven Go HTTP/API routes**, preserve
+every enabled board, and retain existing runtime resource limits.
 
 ## Latest Lightpanda
 
@@ -47,7 +46,7 @@ October 29 Linux assets. Its immutable image is
 Retain the reviewed 1 GiB memory, zero swap, concurrency, child heap and response
 limits. Check upstream again when continuing on a later release day.
 
-## Current correction — 0.13.1121
+## Schedule and retired-detail correction — 0.13.1121
 
 Fifteen active, enabled, scheduled details on one former B0 sitemap board lack
 both their cache and queue projection. Fresh canonical inspection confirms
@@ -114,7 +113,7 @@ operator tooling may remain; production processing uses the native image.
 
 ## Finish the production exit checks
 
-1. Complete 1121 required checks and its exact-source original full deployment.
+1. Complete 1122 required checks and its exact-source original full deployment.
    Independently bind source/image/data/default mode/epoch, healthy native actors,
    stopped legacy processors and all fifteen restored schedules.
 2. Run the complete installed-source SDK across every enabled configuration and
