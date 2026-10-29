@@ -145,9 +145,9 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 					retryable := status >= 500 || status == 408 || status == 425 || status == 429 || o.Transient403 && (status == 401 || status == 403) || len(o.EmptyResponse) > 0 && (status == 404 || status == 410)
 					if !retryable {
 						cancel()
-						// An origin block cannot attest an empty inventory. Optional
+						// An unsuccessful required request cannot attest an empty inventory. Optional
 						// probes keep their existing fallback behavior.
-						if !r.Probe && (status == http.StatusUnauthorized || status == http.StatusForbidden) {
+						if !r.Probe && (status == http.StatusBadRequest || status == http.StatusUnauthorized || status == http.StatusForbidden) {
 							return nil, &DiscoveryError{Kind: "http_status", Status: status}
 						}
 						return nil, nil

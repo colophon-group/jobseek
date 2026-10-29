@@ -1,6 +1,7 @@
 package apisniffer
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,8 +13,9 @@ import (
 
 // Session tokens remain operation-local response data, never profile identity.
 type postDataRefresh struct {
-	source string
-	fields []postRefreshField
+	source      string
+	fields      []postRefreshField
+	auraContext bool
 }
 type postRefreshField struct {
 	name    string
@@ -35,7 +37,7 @@ func parsePostDataRefresh(raw any, o Options, document *Document) (*postDataRefr
 		return nil, nil
 	}
 	for key := range m {
-		if key != "source_url" && key != "fields" {
+		if key != "source_url" && key != "fields" && key != "aura_context" {
 			return nil, ErrOptions
 		}
 	}
@@ -69,6 +71,14 @@ func parsePostDataRefresh(raw any, o Options, document *Document) (*postDataRefr
 		return nil, ErrOptions
 	}
 	result := &postDataRefresh{source: source}
+	if raw, present := m["aura_context"]; present {
+		enabled, ok := raw.(bool)
+		endpoint, err := url.Parse(o.Endpoint)
+		if !ok || !enabled || err != nil || !strings.HasSuffix(endpoint.Path, "/sfsites/aura") || len(fields) != 1 || fields["aura.context"] == nil {
+			return nil, ErrOptions
+		}
+		result.auraContext = true
+	}
 	for _, name := range names {
 		pattern, ok := fields[name].(string)
 		if !ok || utf8.RuneCountInString(name) < 1 || utf8.RuneCountInString(name) > 256 || !utf8.ValidString(name) || !utf8.ValidString(pattern) || utf8.RuneCountInString(pattern) < 1 || utf8.RuneCountInString(pattern) > 4096 {
@@ -104,7 +114,15 @@ func (o Options) refreshedPostData(source string) (Options, error) {
 		if len(match) != 2 || utf8.RuneCountInString(match[1]) < 1 || utf8.RuneCountInString(match[1]) > 16384 {
 			return o, ErrInventory
 		}
-		updated, err := setBodyParam(body, field.name, match[1])
+		value := match[1]
+		if o.PostDataRefresh.auraContext {
+			var err error
+			value, err = publicAuraRequestContext(value)
+			if err != nil {
+				return o, ErrInventory
+			}
+		}
+		updated, err := setBodyParam(body, field.name, value)
 		if err != nil || updated == body {
 			return o, ErrInventory
 		}
@@ -145,4 +163,50 @@ func setOrderedFormParam(body, param string, value any) (string, error) {
 		return "", ErrOptions
 	}
 	return strings.Join(result, "&"), nil
+}
+
+// Project only the public client request context. Bootstrap-only flags do not
+// belong in the Aura request; no token or arbitrary globals are copied.
+func publicAuraRequestContext(source string) (string, error) {
+	d, err := Decode([]byte(source))
+	if err != nil {
+		return "", ErrInventory
+	}
+	m, ok := d.Value.(map[string]any)
+	if !ok || m["mode"] != "PROD" || m["app"] != "siteforce:communityApp" {
+		return "", ErrInventory
+	}
+	fwuid, ok := m["fwuid"].(string)
+	if !ok || len(fwuid) < 1 || len(fwuid) > 256 || strings.ContainsAny(fwuid, "\x00\r\n") {
+		return "", ErrInventory
+	}
+	loaded, ok := m["loaded"].(map[string]any)
+	if !ok || len(loaded) < 1 || len(loaded) > 256 {
+		return "", ErrInventory
+	}
+	for k, v := range loaded {
+		value, ok := v.(string)
+		if !ok || len(k) > 512 || len(value) > 512 {
+			return "", ErrInventory
+		}
+	}
+	uad, ok := m["uad"]
+	if !ok {
+		return "", ErrInventory
+	}
+	switch value := uad.(type) {
+	case bool:
+	case json.Number:
+		if value.String() != "0" && value.String() != "1" {
+			return "", ErrInventory
+		}
+	default:
+		return "", ErrInventory
+	}
+	request := map[string]any{"mode": "PROD", "app": "siteforce:communityApp", "fwuid": fwuid, "loaded": loaded, "uad": uad, "dn": []any{}, "globals": map[string]any{}}
+	raw, err := json.Marshal(request)
+	if err != nil {
+		return "", ErrInventory
+	}
+	return string(raw), nil
 }

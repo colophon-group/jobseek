@@ -30,44 +30,61 @@ five first-time caches and 26 recurring caches for reconstruction from canonical
 content hashes and deadlines through the original routine.
 See [verified serving evidence](evidence/go-native1111-serving-2026-10-29.json).
 
-The grouped **0.13.1112** candidate normalizes **eight monitor configurations**
+The grouped **0.13.1112** candidate normalizes **nine monitor configurations**
 across DOM, inline and direct HTTP API contracts. Its complete prospective
-catalogue passes **8,136 monitors / 8,138 details**, retains all current
+catalogue passes **8,137 monitors / 8,138 details**, retains all current
 assignments, checks **3,513 reference URLs** and excludes all B0 boards.
 Alten keeps rendered pagination; its detail normalization removes only the inert
 `stealth` flag while retaining proxy routing, three origin attempts and every
 extraction/wait setting. All other retained detail execution profiles match.
 
-**32 real PostgreSQL/Redis canonical cases** cover current documents, transport,
-incomplete output and publisher reservation across these eight sources.
+**39 real PostgreSQL/Redis canonical cases** cover current documents, transport,
+incomplete output and publisher reservation across these nine sources.
 Recognized challenge pages and non-probe API 401/403 responses explicitly fail
 and retain inventory. BAE now requires explicit zero evidence. Blocked/dormant
 captures do not prove positive access or verified publisher-empty inventories.
 Focused CSV/census checks, full Go DOM race tests, the broader real API suite
 and complete prospective catalogue pass. See the
-[eight-monitor candidate evidence](evidence/go-native-eight-monitors-candidate-2026-10-29.json).
+[nine-monitor candidate evidence](evidence/go-native-nine-monitors-candidate-2026-10-29.json).
+
+NTT now has a complete Go HTTP replacement. Its published public listing
+component supplies the exact read-only request and empty UI filters. A current
+bootstrap GET plus listing POST returns **394 roles**. Every URL and mapped field
+matches the frozen original Python parser, and the URL set exactly matches all
+**394 current active canonical roles**, including **392 scheduled** roles. The
+existing browser detail profile remains unchanged. Seven real canonical cases
+verify all 394 inserted URL/title rows, normal missing-role retirement, transport,
+malformed context, incomplete output, API 400/403 and publisher reservation.
+
+The explicit `post_data_refresh.aura_context=true` option selects the public
+client request fields from each fresh bootstrap. It excludes bootstrap-only
+state and avoids pinning the changing framework ID. Matching Go/Python support
+keeps the supported cold legacy path functional. Required API 400/401/403
+responses fail while preserving inventory; optional probes keep their existing
+behavior. The actual candidate's broader real API suite passes **54 test/subtest
+entries**, with zero skips, and the full Go API race suite passes.
 
 Main subsequently added Arcis Golf. The candidate preserves that board and
 all associated company changes unchanged, with **8,142 CSV boards** and the same
-eight migration rows relative to main `d9ca2bfad279bcc1b9a94facedbca3a68863b247`.
+nine migration rows relative to main `d9ca2bfad279bcc1b9a94facedbca3a68863b247`.
 The quoted prospective floor is bound to the earlier verified published catalogue;
 qualify Arcis Golf from the actual published state before staging. If it passes,
-the complete prospective floor becomes **8,137 monitors / 8,139 details**, still
-leaving IHG and NTT. Regenerated census remains **326 records / 517 browser boards**.
+the complete prospective floor becomes **8,138 monitors / 8,139 details**, still
+leaving IHG. Regenerated census remains **326 records / 517 browser boards**.
 
 Ship this group through required CI and Crawler Deploy Gate, exact-head merge,
 immutable full runtime deployment and the original supported cold ownership
 transition. Requalify the actual published catalogue and complete queue effects
-before granting ownership. Its conditional remainder is **two ordinary monitors:
-IHG and NTT**, with no ordinary detail gap.
+before granting ownership. Its conditional remainder is **one ordinary monitor:
+IHG**, with no ordinary detail gap.
 
 The candidate also fixes retained BrassRing/Njoyn ownership history. Both real
 interrupted-history regressions fail before the fix and pass after it; the
 broader migrated PostgreSQL/Redis race suite passes **83 test/subtest entries**,
 with no skips. See [retained-browser history evidence](evidence/go-native-retained-browser-history-2026-10-29.json).
-Preserve working IHG and NTT until complete positive replacements pass; NTT's
-publisher sitemap has far more offers than its current inventory and remains
-unqualified as a replacement. At 00:47 UTC, 3,724 boards were over an hour overdue and 25 over a day;
+Preserve working IHG until its complete positive replacement passes. NTT's
+publisher sitemap remains unqualified; use the positively qualified listing API
+in this candidate instead. At 00:47 UTC, 3,724 boards were over an hour overdue and 25 over a day;
 natural freshness is not yet accepted. The final delivery requires stability,
 comparable whole-lane resources/cost, maintenance/deployment consumers and the
 final supported reversal/window before retiring the four Python worker/browser
