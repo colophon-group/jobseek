@@ -22,6 +22,9 @@ import (
 //go:embed board_sync_remove.lua
 var boardSyncRemoveLua string
 
+//go:embed board_sync_monitor_lane.lua
+var boardSyncMonitorLaneLua string
+
 const boardSyncInputLimit = 128 << 20
 
 type boardSyncSchedule struct {
@@ -96,6 +99,10 @@ func applyBoardSync(ctx context.Context, client *redis.Client, input boardSyncIn
 	if err != nil {
 		return errors.New("load board removal script failed")
 	}
+	laneSHA, err := client.ScriptLoad(ctx, boardSyncMonitorLaneLua).Result()
+	if err != nil {
+		return errors.New("load board monitor lane script failed")
+	}
 	for start := 0; start < len(input.Schedules); start += 1000 {
 		batch := input.Schedules[start:min(start+1000, len(input.Schedules))]
 		now := clock()
@@ -119,6 +126,7 @@ func applyBoardSync(ctx context.Context, client *redis.Client, input boardSyncIn
 				pipe.HSet(ctx, "board:"+s.BoardID, config)
 			}
 			pipe.Set(ctx, "delay:"+s.Domain, boardSyncFloat(delays.forDomain(s.Domain)), 0)
+			pipe.EvalSha(ctx, laneSHA, []string{}, wtype, s.Domain, s.BoardID)
 		}
 		// Preserve the existing ordered, nontransactional pipeline. A Redis or
 		// transport error fails the sync; never blindly replay ambiguous writes.
