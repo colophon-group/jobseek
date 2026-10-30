@@ -19,6 +19,18 @@ var experienceFalsePositive, experienceMonth, experiencePrefix *regexp.Regexp
 var experienceTags = regexp.MustCompile(`<[^>]+>`)
 var experienceSpaces = regexp.MustCompile(`[ \t]+`)
 
+// These are required leading literals of the reversed rule. Text has already
+// folded dotted/dotless I; long S is the remaining nontrivial Latin simple fold.
+func experienceReversedPossible(text string) bool {
+	folded := strings.Map(func(r rune) rune {
+		if r == 'ſ' {
+			return 's'
+		}
+		return unicode.ToLower(r)
+	}, text)
+	return salaryContains(folded, "erfahrung", "berufserfahrung", "expérience", "esperienza", "experiencia", "ervaring")
+}
+
 func experienceRegex(pattern string) *regexp.Regexp {
 	// RE2 lacks lookbehind; check this one numeric boundary at the captured
 	// minimum below. Preserve Python's Unicode digit, word and space classes.
@@ -100,12 +112,12 @@ func Experience(raw string) (*float64, *float64) {
 	if len(digits) == 0 {
 		return nil, nil
 	}
-	prefixes := map[int]int{}
-	for _, p := range experiencePrefix.FindAllStringIndex(text, -1) {
-		prefixes[p[1]] = p[0]
-	}
+	var prefixes map[int]int
 	bestMin, bestMax := -1, -1
 	for ruleIndex, rule := range experienceRules {
+		if ruleIndex == 2 && !experienceReversedPossible(text) {
+			continue
+		}
 		for from := 0; from < len(text); {
 			searchFrom := from
 			var indexes []int
@@ -129,6 +141,15 @@ func Experience(raw string) (*float64, *float64) {
 				}
 			}
 			if ruleIndex < 2 {
+				// Prefixes affect only a successful forward match's context.
+				// Keep their original global matching/order, but defer that scan
+				// when none of the description's numeric candidates matches.
+				if prefixes == nil {
+					prefixes = map[int]int{}
+					for _, prefix := range experiencePrefix.FindAllStringIndex(text, -1) {
+						prefixes[prefix[1]] = prefix[0]
+					}
+				}
 				if start, ok := prefixes[searchFrom]; ok && start >= from {
 					indexes[0] = start
 				}

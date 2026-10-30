@@ -199,6 +199,21 @@ output, then repeat only affected operational checks. Reuse unchanged admission,
 policy and deployment proof instead of collecting another full frontier or SDK
 capture without a changed contract or unexplained gap.
 
+Candidate **0.13.1128** batches the next measured shared CPU costs across
+monitor/detail profiles: an immutable technology keyword prefix index preserves
+the old substring admission and literal matching; structured/bare salary scans
+require their existing currency/period markers; experience prefix scanning is
+lazy and impossible reversed-wording scans are filtered. A private replay of
+127 recent stored records across 12 providers identified these stages as 82.6%
+of preparation CPU. Serial same-input runs fall from 4.83–5.37 milliseconds
+to 2.76–2.78 per record, at least 42.6% less preparation time; complete prepared
+output hashes match for every record. This excludes actual location/queue/SQL
+work and uses fixed lookup maps. Frozen Python outputs and old-filter
+differential tests qualify semantics; actual PostgreSQL executor checks
+qualify the persistence boundary. This component work does not close whole-lane
+acceptance. Complete required CI and the full immutable rollout, then measure
+natural throughput, freshness and whole-lane cost under unchanged budgets.
+
 Keep normal ADF quarantine/probe and Amazon pacing; their next natural outcomes
 can distinguish upstream behavior from migration regression. Do not force origin
 work, clear failures or raise quotas for evidence. After performance/freshness

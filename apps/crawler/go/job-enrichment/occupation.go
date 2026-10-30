@@ -20,10 +20,11 @@ type trie struct {
 	terminal int
 }
 type Matcher struct {
-	aliases      []alias
-	exact        map[string]int
-	root         *trie
-	technologies []technology
+	aliases            []alias
+	exact              map[string]int
+	root               *trie
+	technologies       []technology
+	technologyKeywords *technologyKeywordNode
 }
 
 func table(path string) ([]map[string]string, []string, error) {

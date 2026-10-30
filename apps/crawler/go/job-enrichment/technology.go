@@ -14,6 +14,59 @@ type technology struct {
 	sensitive    bool
 }
 
+// The existing lowercase substring filter admits candidates only. Index its
+// exact bytes once instead of rescanning the description for every keyword;
+// literalMatch still owns case sensitivity, Unicode folds and word boundaries.
+type technologyKeywordNode struct {
+	children map[byte]*technologyKeywordNode
+	indexes  []int
+}
+
+func (m *Matcher) indexTechnologyKeywords() {
+	m.technologyKeywords = &technologyKeywordNode{}
+	for i, technology := range m.technologies {
+		for _, keyword := range technology.keywords {
+			node := m.technologyKeywords
+			for j := 0; j < len(keyword); j++ {
+				if node.children == nil {
+					node.children = map[byte]*technologyKeywordNode{}
+				}
+				if node.children[keyword[j]] == nil {
+					node.children[keyword[j]] = &technologyKeywordNode{}
+				}
+				node = node.children[keyword[j]]
+			}
+			node.indexes = append(node.indexes, i)
+		}
+	}
+}
+
+func (m *Matcher) technologyCandidates(low string) []bool {
+	possible := make([]bool, len(m.technologies))
+	for i, technology := range m.technologies {
+		possible[i] = len(technology.keywords) == 0
+	}
+	if m.technologyKeywords == nil {
+		return possible
+	}
+	for _, index := range m.technologyKeywords.indexes {
+		possible[index] = true
+	}
+	for start := 0; start < len(low); start++ {
+		node := m.technologyKeywords
+		for end := start; end < len(low); end++ {
+			node = node.children[low[end]]
+			if node == nil {
+				break
+			}
+			for _, index := range node.indexes {
+				possible[index] = true
+			}
+		}
+	}
+	return possible
+}
+
 func (m *Matcher) loadTechnologies(path string) error {
 	rows, _, err := table(path)
 	if err != nil {
@@ -42,6 +95,7 @@ func (m *Matcher) loadTechnologies(path string) error {
 	for i := range m.technologies {
 		m.technologies[i].keywords = keywords[m.technologies[i].slug]
 	}
+	m.indexTechnologyKeywords()
 	return nil
 }
 func stripHTML(s string) string {
@@ -103,15 +157,9 @@ func (m *Matcher) Technologies(raw string) []string {
 	}
 	low := lower(raw)
 	text := []rune(raw)
-	for _, t := range m.technologies {
-		possible := len(t.keywords) == 0
-		for _, kw := range t.keywords {
-			if strings.Contains(low, kw) {
-				possible = true
-				break
-			}
-		}
-		if !possible {
+	possible := m.technologyCandidates(low)
+	for i, t := range m.technologies {
+		if !possible[i] {
 			continue
 		}
 		for _, alt := range t.alternatives {

@@ -44,6 +44,8 @@ func FuzzSalaryCurrencyFilters(f *testing.F) {
 		"Salary 50000 ſEK; 50000 DKK; 50000 HUF; Ft 50000; 50000 RON; 50000 leİ; 50000 лв.; 50000 BGN",
 		"Salary Â€ 50000, R$50000 yearly; ١٢٠٠٠٠ CHF; salary &euro; 50000",
 		"salary 50000 EUR\x00gross; £25 per hour\n$30/hr",
+		"US, CA, Anywhere - 80000 - 100000 UſD annually; 80000 - 100000 (yr)",
+		"١٠٠٠٠٠ - ١٢٠٠٠٠ ſGD annually; 100000 - 120000 HKD per year",
 	} {
 		f.Add(text)
 	}
