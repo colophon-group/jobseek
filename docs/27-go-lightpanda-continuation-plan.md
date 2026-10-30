@@ -111,6 +111,17 @@ salary, location or taxonomy extraction.
 
 ## Freshness and whole-lane resource acceptance
 
+Runtime **0.13.1126 is under qualification**, with production still on 1125.
+The observed aggregate limits already match the legacy lane: 60 discovery and
+15 monitor slots. Active claims remained at 15–20 in the stable window. Real
+Redis tests reproduced a native selector regression: occupied monitor slots
+prevented recurring details on unrelated hosts whenever any monitor was due.
+The correction lets independent hosts use spare discovery capacity, retains
+same-host monitor priority and the shared fairness counter, and scans past busy
+hosts with a bounded cursor. HTTP and browser lanes share the fix. Concurrency,
+host delays and resource budgets stay unchanged. Required CI, full deployment
+and a natural production readback must pass before claiming restored capacity.
+
 The accepted stability window ran **09:32:25–09:42:09**, with ten samples per
 node, fixed source/image/process identities, no restart increments and no OOM.
 The Go worker entered with two earlier cumulative restarts during registry

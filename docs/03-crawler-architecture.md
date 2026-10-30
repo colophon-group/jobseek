@@ -72,6 +72,14 @@ domain with both kinds of work can appear in tiers 1 and 2 at the same time.
 This lets due scrapes drain while a future monitor retains its own automatic
 tier-1 promotion time. First-time work remains exclusive to tier 0.
 
+Native workers reserve monitor slots before claiming monitors. When those slots
+are occupied, spare discovery slots may claim recurring details on independent
+hosts. A due monitor on the same throttle key keeps priority until the existing
+eight-monitor fairness turn permits a scrape. Independent capacity claims retain
+that shared fairness counter. A per-lane `claim:detail-capacity-cursor:*` advances
+past blocked hosts within the existing domain scan limit; it changes no task
+deadline, throttle, lease or concurrency bound. First-time tier 0 remains strict.
+
 **Lua scripts** (`src/lua/`):
 - `claim_work.lua` -- atomically pop from the highest-priority queue with a due item
 - `enqueue_task.lua` -- add a task to the correct tier with a scheduled time
