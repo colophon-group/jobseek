@@ -175,7 +175,17 @@ unique committed jobs. Skipped details are excluded from successful-task cost.
 These are natural windows at different times and task mixes. Shared PostgreSQL
 and Typesense work varies; Typesense CPU rises from 0.34 to 0.83 cores while
 renderer CPU falls from 0.69 to 0.51. No causal same-workload speedup or legacy
-output-normalized win is proved. Legacy inventory output was not measured.
+output-normalized win is proved. The original legacy samples did not measure
+inventory output. A later read of the stopped containers' retained logs recovers
+215,734 streamed monitor outputs in that exact control window. All four Python
+actors have logs surrounding the window, without reaching the tail bound, but
+their 722 terminal monitor events do not reconcile with 726 counter successes;
+the fifth, Go claimant has no retained log events. Detail successes were logged
+at debug level and cannot be recovered from these logs. Native output is counted
+at task settlement, while the recovered legacy output is counted per batch.
+These limits prevent a complete equivalent-work comparison. The different
+inventory volumes also mean task-count cost alone cannot identify an enrichment
+regression or justify further CPU changes without a measured bottleneck.
 Modeled native cost per success is still **34.4% above the legacy observation**;
 the original efficiency/no-material-regression gate remains open. Provisioned
 catalogue compute stays **EUR 0.0624/hour**; modeled allocation is not billed
@@ -250,9 +260,12 @@ Compose and compatibility code remain for explicit cold reversal and offline
 parity; retention grants no mixed writers or per-task fallback.
 
 Retirement inventory: the Dockerfile still has explicit Python `slim`, `full`
-and `benchmark-browser` targets, with `full` as its final/default build stage;
-production workflows explicitly select `native`. Whole-lane comparison and
-runtime-contract workflows still consume named legacy targets. Five Compose
+and `benchmark-browser` compatibility targets. Whole-lane comparison and
+runtime-contract workflows still consume named legacy targets. Untargeted
+crawler image builds inherit the native Go image through the final `production`
+stage; installed-image CI builds without `--target` and checks the actual image
+for native executables and absence of Python, Playwright and Chromium. Production
+deployments continue to select `native` explicitly. Five Compose
 services remain behind the explicit `legacy` profile. The deployment rollback
 restores the authenticated prior spec archive and exact old image/pool overrides;
 qualify that archived path before removing current legacy entrypoints/profiles.

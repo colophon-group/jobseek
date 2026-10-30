@@ -210,8 +210,8 @@ jobs:
       - name: Build slim crawler image
         run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
 
-      - name: Build Python-free native crawler image
-        run: docker build --target native --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:native-runtime-v1 apps/crawler
+      - name: Build default Python-free crawler image
+        run: docker build --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:native-runtime-v1 apps/crawler
 
       - name: Verify native runtime assets and installed source
         run: |

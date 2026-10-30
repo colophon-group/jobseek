@@ -429,3 +429,7 @@ RUN chmod 0755 /usr/local/bin/with-xvfb
 
 ENTRYPOINT ["/usr/local/bin/with-xvfb"]
 CMD ["uv", "run", "--no-sync", "crawler", "run-browser"]
+
+# Untargeted builds select the Go production runtime. Python/Chromium images
+# remain explicit compatibility targets for offline tooling and cold reversal.
+FROM native AS production
