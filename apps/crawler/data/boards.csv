@@ -7356,6 +7356,8 @@ towardjobs,towardjobs-careers,https://jobs.lever.co/usasurveyjob,lever,,skip,
 towardjobs,towardjobs-manatal,https://www.careers-page.com/towardjobs,manatal,"{""slug"": ""towardjobs""}",skip,
 tower-peak-partners,tower-peak-partners-greenhouse,https://job-boards.greenhouse.io/towerpeak,greenhouse,"{""token"": ""towerpeak""}",skip,
 tower-research-capital,tower-research-capital-careers,https://boards.greenhouse.io/embed/job_board?for=towerresearchcapital,greenhouse,"{""token"": ""towerresearchcapital""}",skip,
+towne,towne-careers,https://townepark.wd5.myworkdayjobs.com/ext,workday,"{""company"": ""townepark"", ""wd_instance"": ""wd5"", ""site"": ""ext"", ""all_sites"": false}",workday,
+towne,towne-careers-hawaii,https://us262.dayforcehcm.com/CandidatePortal/en-US/Eliteparking,dayforce,"{""tenant"": ""eliteparking"", ""portal"": ""CANDIDATEPORTAL""}",skip,
 toyota,toyota-careers,https://toyota.wd5.myworkdayjobs.com/TMNA,workday,"{""company"": ""toyota"", ""wd_instance"": ""wd503"", ""site"": ""TMNA"", ""all_sites"": true}",workday,"{""proxy"": true}"
 toyota,toyota-careers-asia,https://careers.toyota-asia.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.toyota-asia.com/googlefeed.xml""}",skip,
 toyota,toyota-careers-australia,https://toyotaau.wd3.myworkdayjobs.com/Careers,workday,"{""company"": ""toyotaau"", ""wd_instance"": ""wd3"", ""site"": ""Careers""}",workday,
