@@ -290,14 +290,32 @@ harmless; preserve the bounded acknowledgement and write-deadline diagnostic lea
 | Whole-lane efficiency and freshness | **Open:** observations do not establish the original improvement/no-material-regression gate. |
 | Final legacy removal | **Open:** retain required rollback assets until acceptance and a schedule-based observation window are established. |
 
-Next batch: reproduce and reduce the shared native posting-write deadlines,
-then qualify the affected provider paths together. Bounded current-runtime logs
-contain 11 `posting_write: deadline` failures. The shared rich writer performs
-per-row refresh/description statements inside its existing 15-second transaction
-and five-connection pool. This identifies an investigation target, not yet a
-proven cause or an authorized budget increase. Preserve the 500-row atomic chunk,
-fences, publisher policy, rollback behavior and existing retry rules. Measure
-before choosing a change; keep CPU, pool, timeout and host limits unchanged.
+The 1131 candidate addresses the shared native posting-write deadlines. Bounded
+1130 logs contain 11 `posting_write: deadline` failures. The existing writer
+performs per-row statements in uncached `DescribeExec` mode, which requires two
+round trips per statement, inside a 15-second transaction and five-connection
+pool. Passive kernel timing found existing PostgreSQL sockets at 0.36–6.90 ms
+RTT, median 1.92 ms; that observation alone does not establish the timeout cause.
+
+A controlled real-PostgreSQL/Redis reproduction runs 15 concurrent monitor
+claims, each refreshing a complete 500-row chunk, with a 6 ms read-latency
+envelope. The original writer completes five chunks and rolls back ten after
+15.02 seconds, using 10,218 socket reads. The candidate completes all 15 in
+1.26–5.56 seconds across isolated and contract-suite runs, using 735–958 reads.
+Readback checks complete effects or complete rollback. This is a transport
+regression test, not production throughput or whole-lane acceptance evidence.
+
+The candidate pipelines the unchanged posting statements, resolves returned
+insert identities and concurrent duplicates, then pipelines description
+statements inside the same fenced transaction. The 500-row atomic chunk,
+15-second budget, five connections, uncached execution mode, SQL statements,
+publisher policy and three-attempt deadlock-only retry rule remain unchanged.
+All 313 focused tests/subtests across 24 roots pass against actual PostgreSQL
+and Redis, including identity, nullable retention, enrichment delegation,
+publisher reservation and rollback contracts. Exact-head Required CI and Crawler
+Deploy Gate must pass before merge and the full locked rollout. Then compare
+actual natural provider recovery, freshness, useful outputs and whole-lane
+resources before closing the original gates or removing rollback assets.
 
 The five pre-rollout deadletter-only cases all received native attempts through
 normal scheduling. The simple API-sniffer case succeeded with a current-epoch

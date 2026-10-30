@@ -306,6 +306,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			type classified struct {
 				action, id, url string
 				needsScrape     bool
+				deduplicated    bool
 			}
 			classifiedRows := make([]classified, 0, len(batch))
 			seen := make(map[string]bool, len(batch))
@@ -330,7 +331,7 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					return errors.New("rich monitor classification lost input identity")
 				}
 				seen[url] = true
-				classifiedRows = append(classifiedRows, classified{action, optionalID(id), url, needsScrape})
+				classifiedRows = append(classifiedRows, classified{action: action, id: optionalID(id), url: url, needsScrape: needsScrape})
 			}
 			err = rows.Err()
 			rows.Close()
@@ -340,14 +341,18 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			if len(classifiedRows) != len(batch) {
 				return errors.New("rich monitor classification lost input identity")
 			}
-			detailIDs := []string{}
-			for _, row := range classifiedRows {
+			// Pipeline the same statements inside this already fenced transaction.
+			// Per-row DescribeExec calls otherwise require two network round trips
+			// each, consuming the fixed deadline and holding the bounded pool.
+			// Returned insert identities are resolved before description writes;
+			// no publication or result escapes until the whole chunk commits.
+			var writes pgx.Batch
+			var concurrentIdentities []string
+			for i := range classifiedRows {
+				row := &classifiedRows[i]
 				content := byURL[row.url]
 				switch row.action {
 				case "foreign":
-					// An active global duplicate supplies liveness only. The first
-					// owner retains its content and company/board attribution.
-					result.Foreign++
 					continue
 				case "new":
 					fields := content.Fields
@@ -361,37 +366,35 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 						fields.SalaryMin, fields.SalaryMax, fields.SalaryCurrency, fields.SalaryPeriod, fields.SalaryEUR,
 						fields.ExperienceMin, fields.ExperienceMax, fields.TechnologyIDs,
 						fields.OccupationID, fields.SeniorityID}
-					var err error
 					if identityEnabled {
 						insert = richMonitorIdentityInsertSQL
 						if len(enrich) > 0 {
 							insert = richMonitorIdentityEnrichInsertSQL
 						}
 						args = append(args[:3], append([]any{identityByURL[row.url]}, args[3:]...)...)
-						var company, identity, url string
-						err = tx.QueryRow(ctx, insert, args...).Scan(&row.id, &company, &identity, &url)
-						if err == nil && (company != profile.CompanyID || identity != identityByURL[row.url] || url != row.url) {
-							return errors.New("durable insert identity differs")
+					}
+					writes.Queue(insert, args...).QueryRow(func(r pgx.Row) error {
+						var err error
+						if identityEnabled {
+							var company, identity, source string
+							err = r.Scan(&row.id, &company, &identity, &source)
+							if err == nil && (company != profile.CompanyID || identity != identityByURL[row.url] || source != row.url) {
+								return errors.New("durable insert identity differs")
+							}
+							if errors.Is(err, pgx.ErrNoRows) {
+								// Query only after closing the pipeline. This preserves
+								// the concurrent-insert validation without a busy Conn.
+								concurrentIdentities = append(concurrentIdentities, row.url)
+							}
+						} else {
+							err = r.Scan(&row.id)
 						}
 						if errors.Is(err, pgx.ErrNoRows) {
-							if err := tx.QueryRow(ctx, "SELECT company_id::text,source_url FROM job_posting WHERE source_identity=$1", identityByURL[row.url]).Scan(&company, &url); err != nil || company != profile.CompanyID || url != row.url {
-								return errors.New("durable concurrent insert conflict")
-							}
+							row.deduplicated = true
+							return nil
 						}
-					} else {
-						err = tx.QueryRow(ctx, insert, args...).Scan(&row.id)
-					}
-					if errors.Is(err, pgx.ErrNoRows) {
-						result.Deduplicated++
-						continue
-					}
-					if err != nil {
 						return err
-					}
-					result.Inserted++
-					if len(enrich) > 0 {
-						detailIDs = append(detailIDs, row.id)
-					}
+					})
 				case "touched", "relisted", "foreign_relisted":
 					if !canonicalUUID.MatchString(row.id) {
 						return errors.New("rich monitor classification lost posting identity")
@@ -405,10 +408,48 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 								}
 							}
 						}
-						if err := refreshRichMonitorContent(ctx, tx, row.id, fields); err != nil {
-							return err
-						}
+						writes.Queue(refreshRichMonitorSQL, richMonitorRefreshArgs(row.id, fields)...).Exec(func(updated pgconn.CommandTag) error {
+							if updated.RowsAffected() != 1 {
+								return errors.New("rich monitor posting unavailable")
+							}
+							return nil
+						})
 					}
+				default:
+					return errors.New("unknown rich monitor classification")
+				}
+			}
+			if writes.Len() > 0 {
+				if err := tx.SendBatch(ctx, &writes).Close(); err != nil {
+					return err
+				}
+			}
+			for _, source := range concurrentIdentities {
+				var company, url string
+				if err := tx.QueryRow(ctx, "SELECT company_id::text,source_url FROM job_posting WHERE source_identity=$1", identityByURL[source]).Scan(&company, &url); err != nil || company != profile.CompanyID || url != source {
+					return errors.New("durable concurrent insert conflict")
+				}
+			}
+
+			detailIDs := []string{}
+			var descriptions pgx.Batch
+			for _, row := range classifiedRows {
+				if row.action == "foreign" {
+					// Active duplicates retain their first owner's content and attribution.
+					result.Foreign++
+					continue
+				}
+				if row.deduplicated {
+					result.Deduplicated++
+					continue
+				}
+				switch row.action {
+				case "new":
+					result.Inserted++
+					if len(enrich) > 0 {
+						detailIDs = append(detailIDs, row.id)
+					}
+				case "touched", "relisted", "foreign_relisted":
 					if len(enrich) > 0 && (row.needsScrape || row.action != "touched" || identityEnabled) {
 						detailIDs = append(detailIDs, row.id)
 					}
@@ -420,24 +461,34 @@ func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					case "foreign_relisted":
 						result.ForeignRelisted++
 					}
-				default:
-					return errors.New("unknown rich monitor classification")
 				}
+				content := byURL[row.url]
 				if content.Description != nil && (!hybridByURL[row.url] || row.action == "new") {
 					delegatedDescription := false
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
 					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || profile.Provider == "rss" || profile.Provider == "lever" || DOMMonitorUsesRichRows(profile.Profile)) && delegatedDescription && row.action != "new" {
-						// Same locale-only availability fallback as the legacy rich
-						// monitor: a scraped locale remains byte-authoritative.
+						// A scraped locale remains byte-authoritative; only fill a
+						// missing delegated locale, as in the original per-row path.
 						d := content.Description
-						if _, err := tx.Exec(ctx, `INSERT INTO descriptions(posting_id,locale,html,hash,r2_uploaded) VALUES($1,$2,$3,$4,false) ON CONFLICT(posting_id,locale) DO NOTHING`, row.id, d.Locale, d.HTML, d.Hash); err != nil {
+						descriptions.Queue(`INSERT INTO descriptions(posting_id,locale,html,hash,r2_uploaded) VALUES($1,$2,$3,$4,false) ON CONFLICT(posting_id,locale) DO NOTHING`, row.id, d.Locale, d.HTML, d.Hash)
+					} else {
+						args, err := richMonitorDescriptionArgs(row.id, content.Description)
+						if err != nil {
 							return err
 						}
-					} else if _, err := saveRichMonitorDescription(ctx, tx, row.id, content.Description); err != nil {
-						return err
+						descriptions.Queue(richMonitorDescriptionSQL, args...).QueryRow(func(r pgx.Row) error {
+							var sampled, existed, scheduled, changed bool
+							var before, after *string
+							return r.Scan(&sampled, &existed, &before, &after, &scheduled, &changed)
+						})
 					}
+				}
+			}
+			if descriptions.Len() > 0 {
+				if err := tx.SendBatch(ctx, &descriptions).Close(); err != nil {
+					return err
 				}
 			}
 			if len(detailIDs) > 0 {
@@ -495,31 +546,43 @@ func optionalID(id *string) string {
 }
 
 func refreshRichMonitorContent(ctx context.Context, tx pgx.Tx, postingID string, f GreenhouseRichFields) error {
-	updated, err := tx.Exec(ctx, refreshRichMonitorSQL, postingID, f.EmploymentType, f.Titles, f.Locales,
-		f.LocationIDs, f.LocationTypes, f.TechnologyIDs,
-		f.SalaryMin, f.SalaryMax, f.SalaryCurrency, f.SalaryPeriod, f.SalaryEUR,
-		f.ExperienceMin, f.ExperienceMax, f.OccupationID, f.SeniorityID)
+	updated, err := tx.Exec(ctx, refreshRichMonitorSQL, richMonitorRefreshArgs(postingID, f)...)
 	if err == nil && updated.RowsAffected() != 1 {
 		return errors.New("rich monitor posting unavailable")
 	}
 	return err
 }
 
+func richMonitorRefreshArgs(postingID string, f GreenhouseRichFields) []any {
+	return []any{postingID, f.EmploymentType, f.Titles, f.Locales,
+		f.LocationIDs, f.LocationTypes, f.TechnologyIDs,
+		f.SalaryMin, f.SalaryMax, f.SalaryCurrency, f.SalaryPeriod, f.SalaryEUR,
+		f.ExperienceMin, f.ExperienceMax, f.OccupationID, f.SeniorityID}
+}
+
 func saveRichMonitorDescription(ctx context.Context, tx pgx.Tx, postingID string, description *GreenhouseRichDescription) (bool, error) {
-	// Recompute the detached staged hash before it crosses the persistence
-	// boundary. Description equality is decided by PostgreSQL's exact bytes.
-	if description.HTML == "" || description.Locale == "" || !utf8.ValidString(description.HTML) || !utf8.ValidString(description.Locale) || strings.ContainsRune(description.HTML, 0) || strings.ContainsRune(description.Locale, 0) {
-		return false, ErrConfiguration
-	}
-	digest := sha256.Sum256([]byte(description.HTML))
-	if int64(binary.BigEndian.Uint64(digest[:8])) != description.Hash {
-		return false, ErrConfiguration
+	args, err := richMonitorDescriptionArgs(postingID, description)
+	if err != nil {
+		return false, err
 	}
 	var sampled, existed, scheduled, changed bool
 	var before, after *string
-	err := tx.QueryRow(ctx, richMonitorDescriptionSQL, postingID, description.Locale, description.HTML, description.Hash, description.Hash).Scan(
+	err = tx.QueryRow(ctx, richMonitorDescriptionSQL, args...).Scan(
 		&sampled, &existed, &before, &after, &scheduled, &changed)
 	return scheduled, err
+}
+
+func richMonitorDescriptionArgs(postingID string, description *GreenhouseRichDescription) ([]any, error) {
+	// Recompute the detached staged hash before it crosses the persistence
+	// boundary. Description equality is decided by PostgreSQL's exact bytes.
+	if description.HTML == "" || description.Locale == "" || !utf8.ValidString(description.HTML) || !utf8.ValidString(description.Locale) || strings.ContainsRune(description.HTML, 0) || strings.ContainsRune(description.Locale, 0) {
+		return nil, ErrConfiguration
+	}
+	digest := sha256.Sum256([]byte(description.HTML))
+	if int64(binary.BigEndian.Uint64(digest[:8])) != description.Hash {
+		return nil, ErrConfiguration
+	}
+	return []any{postingID, description.Locale, description.HTML, description.Hash, description.Hash}, nil
 }
 
 // Same expressions as queries.monitor._BATCH_UPDATE_RICH_CONTENT, with
