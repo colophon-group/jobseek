@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 
 func TestRealDefaultRetiredFormerBrowserDetailMakesNoTransportRequest(t *testing.T) {
 	for _, family := range []string{"workday", "api_sniffer"} {
-		for _, mode := range []string{"unscheduled", "inactive", "reactivated"} {
-			t.Run(family+"/"+mode, func(t *testing.T) {
+		for _, variant := range []string{"unscheduled", "inactive", "reactivated", "unscheduled-retired-url", "inactive-retired-url", "reactivated-retired-url", "unscheduled-retired-step", "inactive-retired-step", "reactivated-retired-step"} {
+			t.Run(family+"/"+variant, func(t *testing.T) {
+				mode := strings.Split(variant, "-retired-")[0]
 				f, initialAuthority, old, _ := workdayDetailFixture(t, false)
 				ctx := context.Background()
 				receipt, err := initialAuthority.Write(ctx, old, true, func(ctx context.Context, tx pgx.Tx) error {
@@ -45,12 +47,23 @@ func TestRealDefaultRetiredFormerBrowserDetailMakesNoTransportRequest(t *testing
 						t.Fatal(err)
 					}
 				}
+				if strings.HasSuffix(variant, "-retired-url") {
+					source = "https://fixture.wd1.myworkdayjobs.com/Careers/retired-link"
+					if family == "api_sniffer" {
+						source = "https://careers.example.net/retired-link"
+					}
+				}
 				if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET source_url=$2,description_r2_hash=123,next_scrape_at=NULL,is_active=$3 WHERE id=$1::uuid", f.original, source, mode != "inactive"); err != nil {
 					t.Fatal(err)
 				}
 				hash := int64(123)
 				if _, err := f.client.EnqueueURLDetail(ctx, queue.URLOnlyDetail{ID: f.original, BoardID: f.board, URL: source, DescriptionHash: &hash, Due: time.Now().Add(-time.Minute), Browser: true}); err != nil {
 					t.Fatal(err)
+				}
+				if strings.HasSuffix(variant, "-retired-step") {
+					if err := f.r.HSet(ctx, "scrape:"+f.original, "scrape_step", "9").Err(); err != nil {
+						t.Fatal(err)
+					}
 				}
 				var epoch int64
 				if err := f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&epoch); err != nil {
