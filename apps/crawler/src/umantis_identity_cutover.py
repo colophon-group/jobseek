@@ -107,7 +107,7 @@ local function refresh_ready(wtype, domain)
     if #monitor >= 2 then
         redis.call(
             "ZADD", "ready:" .. wtype .. ":1",
-            tonumber(monitor[2]), domain
+            math.max(rate_limit, tonumber(monitor[2])), domain
         )
     end
     local scrape = redis.call(
