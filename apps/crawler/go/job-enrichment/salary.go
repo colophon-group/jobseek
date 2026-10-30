@@ -172,6 +172,10 @@ func (s *salaryScan) matches(name string, first bool) []salaryMatch {
 		if !salaryContains(s.markers, markers...) {
 			return []salaryMatch{}
 		}
+		// Both structured alternatives end in one of these required periods.
+		if name == "_LOCATION_SALARY_RE" && !salaryContains(s.markers, "annually", "hourly") {
+			return []salaryMatch{}
+		}
 	}
 	return s.scanMatches(name, first)
 }
@@ -181,6 +185,8 @@ func (s *salaryScan) matches(name string, first bool) []salaryMatch {
 // engine; a marker hit is only permission to run that engine, never a match.
 // Keep aliases aligned with salary_rules.json and the differential oracle test.
 var salaryCurrencyMarkers = map[string][]string{
+	"_LOCATION_SALARY_RE":      {"usd", "cad", "eur", "gbp", "chf"},
+	"_BARE_RANGE_CURRENCY_RE":  {"usd", "cad", "eur", "gbp", "chf", "aud", "nzd", "sgd", "hkd", "brl", "mxn", "(yr)"},
 	"_DOLLAR_RANGE_RE":         {"$"},
 	"_SINGLE_DOLLAR_PERIOD_RE": {"$"},
 	"_PREFIX_DOLLAR_SINGLE_RE": {"$"},

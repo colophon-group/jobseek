@@ -31,6 +31,12 @@ boundary occupation match, token fallback, multilingual NFKD normalization,
 ordered seniority rules, internship overrides, technology boundaries/case
 flags, missing IDs, ID zero, deduplication, and first available title match.
 
+Technology candidates use a process-local byte-prefix index of the same lowercase
+keywords, avoiding one full description scan per keyword. The original literal
+matcher still decides boundaries, case flags and Unicode folds, and CSV order
+still decides output order. Differential taxonomy and fuzz checks retain the old
+substring filter as an independent oracle.
+
 ## Verification
 
 From this module: `go test -race ./...`, `go vet ./...`, `go mod tidy -diff`.
@@ -95,6 +101,9 @@ exclusions, and the 30-year ceiling. Integer tenths preserve decimal half-up
 month conversion without floating-point rounding drift. Forward expressions
 are anchored at eligible numeric starts; optional prefix positions still
 define the false-positive context window.
+The optional prefix scan runs only after a forward candidate matches. A required
+leading-word filter skips impossible reversed scans; the original regex and
+context rules still decide every accepted result, including Unicode folds.
 
 `testdata/generate_experience.py` freezes the retained Python expressions and
 1,967 oracle cases, including existing regression inputs and numeric boundary,
@@ -156,7 +165,8 @@ The Python implementation is retained only for explicit engine reversal and
 protected offline comparisons.
 
 Currency extraction first rejects scans missing a required literal currency
-marker. The filter uses the regex input's special Unicode folds and preserves
+marker, including structured location and bare-range currency/`(yr)` alternatives.
+The filter uses the regex input's special Unicode folds and preserves
 all currency aliases. A marker hit still runs the original ordered regex,
 context, amount and period rules. Differential tests compare every guarded
 match's spans and captures against the unfiltered engine on the full salary
