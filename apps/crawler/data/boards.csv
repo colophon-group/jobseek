@@ -4138,6 +4138,15 @@ kinexon,kinexon-greenhouse,https://boards.eu.greenhouse.io/kinexon,greenhouse,"{
 kinexus-group,kinexus-group-greenhouse,https://job-boards.greenhouse.io/kinexus,greenhouse,"{""token"": ""kinexus""}",skip,
 king,king-careers,https://careers.king.com/us/en/search-jobs,sitemap,"{""sitemap_url"": ""https://careers.king.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 kion-group,kion-group-careers,https://kiongroup.wd3.myworkdayjobs.com/kiongroup,workday,,workday,
+kipp,kipp-careers,https://careers.smartrecruiters.com/kipp,smartrecruiters,,smartrecruiters,
+kipp,kipp-careers-albany,https://recruiting.ultipro.com/KIP1001KIPS/JobBoard/b2306cda-4085-404a-898a-9a1cb6feadcc/,ukg,"{""host"": ""recruiting.ultipro.com"", ""tenant"": ""KIP1001KIPS"", ""board_id"": ""b2306cda-4085-404a-898a-9a1cb6feadcc""}",embedded,"{""pattern"": ""new\\s+US\\.Opportunity\\.CandidateOpportunityDetail\\s*\\("", ""fields"": {""title"": ""Title"", ""description"": ""Description""}, ""enrich"": [""description""]}"
+kipp,kipp-careers-atlanta,https://www.paycomonline.net/v4/ats/web.php/portal/F95C0942220DD74CB7A53FB6A5F35BC6/career-page,paycom,"{""token"": ""F95C0942220DD74CB7A53FB6A5F35BC6""}",paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
+kipp,kipp-careers-colorado,https://kippcolorado.applytojob.com/apply/,jazzhr,"{""tenant"": ""kippcolorado""}",jazzhr,
+kipp,kipp-careers-dc,https://kippdc.applytojob.com/apply/,jazzhr,"{""tenant"": ""kippdc""}",jazzhr,
+kipp,kipp-careers-memphis,https://recruiting.paylocity.com/recruiting/jobs/All/562f87ff-1b95-4f0a-953d-256783bacf45/KIPP-Memphis,paylocity,,paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+kipp,kipp-careers-nc,https://recruiting.paylocity.com/recruiting/jobs/All/63b18e24-726b-41ed-aeb9-a29e7f342513/KIPP-Public-Schools,paylocity,,paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+kipp,kipp-careers-norcal,https://jobs.jobvite.com/kippnorcal/,jobvite,"{""tenant"": ""kippnorcal"", ""listing_url"": ""https://jobs.jobvite.com/kippnorcal""}",json-ld,
+kipp,kipp-careers-socal,https://jobs.lever.co/kippsocal,lever,"{""token"": ""kippsocal""}",skip,
 kipu-quantum,kipu-quantum-careers,https://kipu-quantum.jobs.personio.com/,personio,"{""slug"": ""kipu-quantum"", ""language"": ""en""}",skip,
 kira,kira-ashby,https://jobs.ashbyhq.com/kira,ashby,"{""token"": ""kira""}",skip,
 kit,kit-ashby,https://jobs.ashbyhq.com/kit,ashby,"{""token"": ""kit""}",skip,
