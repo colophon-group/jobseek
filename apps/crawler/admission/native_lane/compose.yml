@@ -1,0 +1,187 @@
+name: ${NATIVE_LANE_PROJECT:?unique comparison project required}
+x-common: &common
+  restart: "no"
+  init: true
+  read_only: true
+  security_opt: [no-new-privileges:true]
+x-env: &env
+  LOCAL_DATABASE_URL: postgresql://admission:admission@postgres:5432/admission
+  DATABASE_URL: postgresql://admission:admission@postgres:5432/admission
+  REDIS_URL: redis://redis:6379/0
+  WEB_DATABASE_URL: ""
+  LIGHTPANDA_B0_PRODUCER_MODE: "off"
+  WEBSHARE_PROXY_URL: ""
+  WEBSHARE_PROXY_URLS: ""
+  TYPESENSE_PROTOCOL: http
+  TYPESENSE_HOST: typesense
+  TYPESENSE_PORT: "8108"
+  TYPESENSE_OPERATIONS_KEY: admission
+  R2_ENDPOINT_URL: http://fixture:8080
+  R2_BUCKET: descriptions
+  R2_ACCESS_KEY_ID: fixture
+  R2_SECRET_ACCESS_KEY: fixture
+  THROTTLE_DELAY_DEFAULT: "1"
+  THROTTLE_DELAY_ATS: "1"
+  CRAWLER_DB_POOL_MIN: "1"
+  CRAWLER_DB_POOL_MAX: "5"
+  PYTHONDONTWRITEBYTECODE: "1"
+x-native: &native
+  <<: *common
+  image: ${NATIVE_IMAGE:?exact native image required}
+  user: "10001:10001"
+  cap_drop: [ALL]
+  networks: [claim]
+  environment: *env
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700"]
+x-legacy: &legacy
+  <<: *common
+  image: ${LEGACY_IMAGE:?exact comparator image required}
+  user: "10001:10001"
+  cap_drop: [ALL]
+  environment: *env
+  networks: [claim, origin]
+  tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=256m,uid=10001,gid=10001,mode=0700"]
+  cpus: 1.75
+  mem_limit: 1536m
+  memswap_limit: 1536m
+  pids_limit: 1024
+services:
+  postgres:
+    <<: *common
+    image: ${POSTGRES_IMAGE:?pinned PostgreSQL image required}
+    environment: {POSTGRES_USER: admission, POSTGRES_PASSWORD: admission, POSTGRES_DB: admission}
+    networks: [claim]
+    tmpfs: ["/var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=512m", "/var/run/postgresql:rw,noexec,nosuid,nodev"]
+    healthcheck: {test: [CMD-SHELL, pg_isready -U admission -d admission], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 512m
+    memswap_limit: 512m
+  redis:
+    <<: *common
+    image: ${REDIS_IMAGE:?pinned Redis image required}
+    command: [redis-server, --save, "", --appendonly, "no", --maxmemory-policy, noeviction]
+    networks: [claim]
+    tmpfs: ["/data:rw,noexec,nosuid,nodev,size=32m"]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 96m
+    memswap_limit: 96m
+  typesense:
+    <<: *common
+    image: mirror.gcr.io/typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455
+    command: [--data-dir, /data, --api-key, admission]
+    networks: [claim]
+    tmpfs: ["/data:rw,noexec,nosuid,nodev,size=256m"]
+    mem_limit: 1g
+    memswap_limit: 1g
+  fixture:
+    <<: *common
+    image: ${PYTHON_IMAGE:?pinned fixture image required}
+    command: [python, -m, admission.native_lane.fixture_server, --certificate, /run/pki/fixture.pem, --private-key, /run/pki/fixture-key.pem]
+    user: "10001:10001"
+    environment: {PYTHONPATH: /fixtures, PYTHONDONTWRITEBYTECODE: "1"}
+    cap_add: [NET_BIND_SERVICE]
+    cap_drop: [ALL]
+    networks:
+      claim: {}
+      origin: {ipv4_address: 11.252.0.2, aliases: [origin-0.lane.bench.test, origin-1.lane.bench.test, origin-2.lane.bench.test, origin-3.lane.bench.test]}
+    volumes:
+      - ..:/fixtures/admission:ro
+      - ${NATIVE_LANE_PKI:?}/fixture.pem:/run/pki/fixture.pem:ro
+      - ${NATIVE_LANE_PKI:?}/fixture-key.pem:/run/pki/fixture-key.pem:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=4m,uid=10001,gid=10001,mode=0700"]
+    healthcheck: {test: [CMD, test, -f, /tmp/ready], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 128m
+    memswap_limit: 128m
+  migrate:
+    <<: *native
+    command: [/usr/local/bin/go-typesense-exporter, --migrate-local]
+    mem_limit: 512m
+    memswap_limit: 512m
+  schema:
+    <<: *native
+    command: [/usr/local/bin/go-typesense-exporter, --setup-schemas]
+    mem_limit: 512m
+    memswap_limit: 512m
+  exporter-owner:
+    <<: *native
+    command: [/usr/local/bin/go-typesense-exporter, --transfer-owner, python, go]
+    environment: {<<: *env, GO_TYPESENSE_EXPORTER_TRANSFER: "1"}
+    mem_limit: 64m
+    memswap_limit: 64m
+  runner:
+    <<: *legacy
+    command: [/app/.venv/bin/python, -m, admission.native_lane.driver, --phase, "${NATIVE_LANE_PHASE:?}", --lane, "${NATIVE_LANE_ARM:?}"]
+    environment: {<<: *env, PYTHONPATH: /fixtures}
+    networks: [claim]
+    volumes: [..:/fixtures/admission:ro]
+  ordinary:
+    <<: *native
+    command: [/usr/local/bin/go-ordinary-worker]
+    networks: [claim, origin]
+    environment:
+      <<: *env
+      ORDINARY_GO_WORKER_MODE: default
+      ORDINARY_GO_RENDERED_DETAILS: enabled
+      ORDINARY_OWNERSHIP_ROUTING_EPOCH: "2"
+      DISCOVERY_CONCURRENCY: "4"
+      MONITOR_CONCURRENCY: "2"
+      GOMEMLIMIT: 512MiB
+    volumes:
+      - ${NATIVE_LANE_PKI:?}/ca.pem:/run/lightpanda/ca.pem:ro
+      - ${NATIVE_LANE_PKI:?}/client.pem:/run/lightpanda/client.pem:ro
+      - ${NATIVE_LANE_PKI:?}/client-key.pem:/run/lightpanda/client-key.pem:ro
+      - ${NATIVE_LANE_PKI:?}/ca.sha256:/run/lightpanda/ca.sha256:ro
+      - ${NATIVE_LANE_PKI:?}/server-leaf.sha256:/run/lightpanda/server-leaf.sha256:ro
+      - ${NATIVE_LANE_PKI:?}/server-spki.sha256:/run/lightpanda/server-spki.sha256:ro
+    healthcheck: {test: [CMD, /usr/local/bin/go-ordinary-worker, --health], interval: 30s, timeout: 5s, retries: 3, start_period: 15s}
+    cpus: 2
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+  renderer:
+    <<: *common
+    image: ${RENDERER_IMAGE:?exact renderer image required}
+    command: [--runtime-v1-service, --listen, "0.0.0.0:9443", --service-ip, 10.0.0.5, --deployment-deny-cidr, 93.184.216.34/32, --tls-cert, /run/pki/server.pem, --tls-key, /run/pki/server-key.pem, --tls-ca, /run/pki/ca.pem, --tls-ca-sha256, "${NATIVE_LANE_CA_PIN:?}", --client-leaf-sha256, "${NATIVE_LANE_CLIENT_LEAF_PIN:?}", --client-spki-sha256, "${NATIVE_LANE_CLIENT_SPKI_PIN:?}"]
+    user: "10001:10001"
+    cap_drop: [ALL]
+    networks: {claim: {ipv4_address: 10.0.0.5}, origin: {}}
+    volumes:
+      - ${NATIVE_LANE_PKI:?}/ca.pem:/run/pki/ca.pem:ro
+      - ${NATIVE_LANE_PKI:?}/server.pem:/run/pki/server.pem:ro
+      - ${NATIVE_LANE_PKI:?}/server-key.pem:/run/pki/server-key.pem:ro
+      - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0700"]
+    cpus: 1.5
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 192
+  legacy-simple:
+    <<: *legacy
+    command: [/app/.venv/bin/crawler, run]
+    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9090"}
+    healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
+  legacy-browser:
+    <<: *legacy
+    command: [/app/.venv/bin/crawler, run-browser]
+    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9091"}
+    healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9091/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
+  reaper:
+    <<: *native
+    command: [/usr/local/bin/go-typesense-exporter, --reap-leases]
+    environment: {<<: *env, GOMEMLIMIT: 64MiB}
+    mem_limit: 128m
+    memswap_limit: 128m
+  exporter:
+    <<: *native
+    command: [/usr/local/bin/go-typesense-exporter, --run]
+    environment: {<<: *env, GO_TYPESENSE_EXPORTER_ENABLE: "1", GOMEMLIMIT: 128MiB}
+    mem_limit: 256m
+    memswap_limit: 256m
+  drain:
+    <<: *native
+    command: [/usr/local/bin/go-r2-drain]
+    environment: {<<: *env, GOMEMLIMIT: 128MiB}
+    mem_limit: 256m
+    memswap_limit: 256m
+networks:
+  claim: {internal: true, ipam: {config: [{subnet: 10.0.0.0/24}]}}
+  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24}]}}

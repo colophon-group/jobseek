@@ -1,0 +1,79 @@
+name: Native ordinary whole-lane comparison
+
+on:
+  pull_request:
+    paths:
+      - apps/crawler/admission/native_lane/**
+      - .github/workflows/crawler-native-whole-lane.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-whole-lane-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  measure:
+    name: Compare complete native and legacy lanes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+      - name: Check comparison fixture
+        working-directory: apps/crawler
+        run: |
+          uv sync --frozen --group dev
+          uv run --frozen pytest admission/native_lane -q
+          uv run --frozen ruff check admission/native_lane
+          uv run --frozen ruff format --check admission/native_lane
+      - name: Build exact runtime and comparator images
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          docker build --target native \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
+            --label "org.opencontainers.image.revision=${source_sha}" \
+            --tag "native-lane-candidate:${source_sha}" apps/crawler
+          docker build --target benchmark-browser \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
+            --label "org.opencontainers.image.revision=${source_sha}" \
+            --tag "native-lane-control:${source_sha}" apps/crawler
+          docker build --build-context contracts=apps/crawler/contracts \
+            --build-context api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor \
+            --build-context dom-detail=apps/crawler/go/dom-detail \
+            --build-context jsonld-detail=apps/crawler/go/jsonld-detail \
+            --build-context publisher-policy=apps/crawler/go/publisher-policy \
+            --build-arg "SOURCE_COMMIT=${source_sha}" \
+            --label "org.opencontainers.image.revision=${source_sha}" \
+            --target service --tag "native-lane-renderer:${source_sha}" pilots/go-lightpanda
+      - name: Compare identical complete work and resource use
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          umask 077
+          source_sha="$(git rev-parse HEAD)"
+          native="$(docker image inspect --format '{{.Id}}' "native-lane-candidate:${source_sha}")"
+          legacy="$(docker image inspect --format '{{.Id}}' "native-lane-control:${source_sha}")"
+          renderer="$(docker image inspect --format '{{.Id}}' "native-lane-renderer:${source_sha}")"
+          mkdir -p "${RUNNER_TEMP}/native-whole-lane"
+          uv run --frozen python -m admission.native_lane.controller \
+            --native-image "$native" --legacy-image "$legacy" \
+            --renderer-image "$renderer" --source-sha "$source_sha" \
+            --output "${RUNNER_TEMP}/native-whole-lane/report.json"
+      - name: Retain compact numeric comparison
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-whole-lane-${{ github.run_id }}
+          path: ${{ runner.temp }}/native-whole-lane/report.json
+          if-no-files-found: warn
+          retention-days: 1
