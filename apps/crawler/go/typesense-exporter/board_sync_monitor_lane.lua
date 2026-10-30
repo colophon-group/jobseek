@@ -126,7 +126,7 @@ local function refresh_ready(wtype, domain)
 
     local mon_head = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
     if #mon_head >= 2 then
-        redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(floor, tonumber(mon_head[2])), domain)
+        redis.call("ZADD", "ready:" .. wtype .. ":1", tonumber(mon_head[2]), domain)
     end
 
     local scrape_head = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")

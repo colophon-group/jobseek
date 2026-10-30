@@ -31,7 +31,7 @@ gh workflow run prewarm-company-og-cache.yml \
 
 prewarm_run_id=""
 for attempt in $(seq 1 30); do
-  prewarm_run=$(gh run list \
+  if prewarm_run=$(gh run list \
     --repo "$REPO" \
     --workflow prewarm-company-og-cache.yml \
     --branch "$default_branch" \
@@ -39,7 +39,12 @@ for attempt in $(seq 1 30); do
     --limit 20 \
     --json databaseId,createdAt,displayTitle \
     --jq ".[] | select(.createdAt >= \"$dispatch_started\" and .displayTitle == \"Prewarm company OG $TARGET_REVISION $handoff_token\") | .databaseId" \
-    | head -n1)
+    2>/dev/null | head -n1); then
+    :
+  else
+    prewarm_run=""
+    echo "Unable to observe the dispatched OG run yet; retrying its existing handoff"
+  fi
   if [[ -n "$prewarm_run" ]]; then
     prewarm_run_id="$prewarm_run"
     break
@@ -54,5 +59,25 @@ if [[ ! "$prewarm_run_id" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 echo "Waiting for company OG prewarm run $prewarm_run_id"
-gh run watch "$prewarm_run_id" --repo "$REPO" --exit-status
-echo "Company OG coverage attested for $TARGET_REVISION by run $prewarm_run_id"
+# Poll the run itself: the jobs endpoint used by `gh run watch` can fail even
+# after the child succeeds. Observation errors never dispatch another child or
+# imply that the original run stopped. Stay within the caller's six-hour budget.
+for attempt in $(seq 1 2100); do
+  if observation=$(gh api "repos/$REPO/actions/runs/$prewarm_run_id" \
+    --jq '[.status, (.conclusion // "")] | @tsv' 2>/dev/null); then
+    IFS=$'\t' read -r status conclusion <<< "$observation"
+    if [[ "$status" == completed ]]; then
+      if [[ "$conclusion" == success ]]; then
+        echo "Company OG coverage attested for $TARGET_REVISION by run $prewarm_run_id"
+        exit 0
+      fi
+      echo "Company OG prewarm run $prewarm_run_id completed without success" >&2
+      exit 1
+    fi
+  else
+    echo "Unable to observe OG run $prewarm_run_id; retrying the same run"
+  fi
+  sleep 10
+done
+echo "Unable to observe OG completion within the workflow budget; keep the original run authoritative" >&2
+exit 1

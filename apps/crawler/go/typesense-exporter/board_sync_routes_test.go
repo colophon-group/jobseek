@@ -52,7 +52,7 @@ func TestBoardSyncRetiresPreviousMonitorDomains(t *testing.T) {
 				if c.ZScore(ctx, "monitors_"+selected+":"+domain, id).Val() != 1500 || c.ZScore(ctx, "ft_monitors_"+selected+":"+domain, id).Err() != redis.Nil || c.HGet(ctx, "board:"+id, "retained").Val() != "yes" {
 					t.Fatal("canonical cadence, tier or cache changed")
 				}
-				if c.ZScore(ctx, "ready:"+source+":0", oldDomain).Err() != redis.Nil || c.ZScore(ctx, "ready:"+source+":1", oldDomain).Val() != 1400 || c.ZScore(ctx, "ready:"+source+":2", oldDomain).Val() != 1500 || c.ZScore(ctx, "monitors_"+source+":"+oldDomain, "other-monitor").Val() != 1200 {
+				if c.ZScore(ctx, "ready:"+source+":0", oldDomain).Err() != redis.Nil || c.Get(ctx, "ratelimit:"+oldDomain).Val() != "1400" || c.ZScore(ctx, "ready:"+source+":1", oldDomain).Val() != 1200 || c.ZScore(ctx, "ready:"+source+":2", oldDomain).Val() != 1500 || c.ZScore(ctx, "monitors_"+source+":"+oldDomain, "other-monitor").Val() != 1200 {
 					t.Fatal("unrelated source work or rate/rotation floor changed")
 				}
 				before, _ := snapshotReaperKeys(ctx, c)

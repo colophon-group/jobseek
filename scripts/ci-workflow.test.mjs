@@ -429,6 +429,8 @@ function runEnsureCompanyOgPrewarm({
   includeDefaultBranch = true,
   targetRevision = "cccccccccccccccccccccccccccccccccccccccc",
   prewarmWatchStatus = 0,
+  prewarmStatuses = null,
+  prewarmListFailures = 0,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ensure-company-og-"));
   const log = join(dir, "gh.log");
@@ -440,9 +442,23 @@ function runEnsureCompanyOgPrewarm({
 set -euo pipefail
 printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
 if [[ "$1 $2" == "run list" ]]; then
+  count=0
+  if [[ -f "$MOCK_GH_LOG.list-count" ]]; then read -r count < "$MOCK_GH_LOG.list-count"; fi
+  count=$((count + 1))
+  printf '%s\\n' "$count" > "$MOCK_GH_LOG.list-count"
+  if [[ "$count" -le "$MOCK_PREWARM_LIST_FAILURES" ]]; then exit 1; fi
   printf '4242\\n'
-elif [[ "$1 $2" == "run watch" ]]; then
-  exit "$MOCK_PREWARM_WATCH_STATUS"
+elif [[ "$1" == "api" ]]; then
+  count=0
+  if [[ -f "$MOCK_GH_LOG.status-count" ]]; then read -r count < "$MOCK_GH_LOG.status-count"; fi
+  count=$((count + 1))
+  printf '%s\\n' "$count" > "$MOCK_GH_LOG.status-count"
+  outcome=$(printf '%s' "$MOCK_PREWARM_STATUSES" | cut -d, -f "$count")
+  case "$outcome" in
+    api-error) exit 1 ;;
+    queued|in_progress) printf '%s\\t\\n' "$outcome" ;;
+    *) printf 'completed\\t%s\\n' "$outcome" ;;
+  esac
 fi
 `,
   );
@@ -452,6 +468,8 @@ fi
     "#!/usr/bin/env bash\nprintf '%s\\n' bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
   );
   chmodSync(openssl, 0o755);
+  writeFileSync(join(dir, "sleep"), "#!/usr/bin/env bash\nexit 0\n");
+  chmodSync(join(dir, "sleep"), 0o755);
   const env = {
     ...process.env,
     PATH: `${dir}:${process.env.PATH}`,
@@ -459,13 +477,16 @@ fi
     REPO: "colophon-group/jobseek",
     TARGET_REVISION: targetRevision,
     MOCK_GH_LOG: log,
-    MOCK_PREWARM_WATCH_STATUS: String(prewarmWatchStatus),
+    MOCK_PREWARM_STATUSES: (
+      prewarmStatuses ?? [prewarmWatchStatus === 0 ? "success" : "failure"]
+    ).join(","),
+    MOCK_PREWARM_LIST_FAILURES: String(prewarmListFailures),
   };
   if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
   const result = spawnSync(
     "bash",
     [".github/scripts/ensure-company-og-prewarm.sh"],
-    { cwd: process.cwd(), env, encoding: "utf8" },
+    { cwd: process.cwd(), env, encoding: "utf8", timeout: 10_000 },
   );
   const calls = readFileSync(log, "utf8");
   rmSync(dir, { recursive: true, force: true });
@@ -2608,7 +2629,7 @@ test("every CSV publication target gets a unique exact-revision OG attestation",
     );
     assert.equal(
       calls[2],
-      "run watch 4242 --repo colophon-group/jobseek --exit-status",
+      'api repos/colophon-group/jobseek/actions/runs/4242 --jq [.status, (.conclusion // "")] | @tsv',
     );
   }
 
@@ -2617,6 +2638,32 @@ test("every CSV publication target gets a unique exact-revision OG attestation",
   const failedTargetB = runEnsureCompanyOgPrewarm({ prewarmWatchStatus: 1 });
   assert.equal(failedTargetB.status, 1);
   assert.match(failedTargetB.calls, /target_revision=c{40}/);
+});
+
+test("company OG observation errors keep the original dispatched run authoritative", () => {
+  const result = runEnsureCompanyOgPrewarm({
+    prewarmListFailures: 1,
+    prewarmStatuses: ["api-error", "in_progress", "success"],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const calls = result.calls.trim().split("\n");
+  assert.equal(calls.filter((line) => line.startsWith("workflow run ")).length, 1);
+  const observations = calls.filter((line) => line.startsWith("api "));
+  assert.equal(observations.length, 3);
+  assert.ok(observations.every((line) => line.includes("/actions/runs/4242 ")));
+  assert.doesNotMatch(result.calls, /run watch|\/jobs(?:[/?\s]|$)/);
+  assert.match(result.stdout, /retrying the same run/);
+  assert.match(result.stdout, /coverage attested/);
+
+  const failed = runEnsureCompanyOgPrewarm({
+    prewarmStatuses: ["api-error", "failure"],
+  });
+  assert.equal(failed.status, 1);
+  assert.doesNotMatch(failed.stdout, /coverage attested/);
+  assert.equal(
+    failed.calls.split("\n").filter((line) => line.startsWith("workflow run ")).length,
+    1,
+  );
 });
 
 test("company OG workflow is incremental, exact-revision, and write-budgeted", () => {
@@ -2664,7 +2711,7 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
   assert.match(syncDataWorkflow, /workflow_dispatch:[\s\S]*revision:/);
   assert.match(
     ensureCompanyOgPrewarmScript,
-    /TARGET_REVISION[\s\S]*handoff_token=\$\(openssl rand -hex 16\)[\s\S]*-f target_revision="\$TARGET_REVISION"[\s\S]*-f handoff_token="\$handoff_token"[\s\S]*gh run watch/,
+    /TARGET_REVISION[\s\S]*handoff_token=\$\(openssl rand -hex 16\)[\s\S]*-f target_revision="\$TARGET_REVISION"[\s\S]*-f handoff_token="\$handoff_token"[\s\S]*gh api/,
   );
   assert.match(
     deployCrawlerWorkflow,
