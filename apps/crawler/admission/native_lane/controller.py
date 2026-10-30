@@ -433,6 +433,7 @@ def main() -> int:
         document["failure_class"] = type(error).__name__
         document["complete"] = False
     _atomic_evidence(args.output, document)
+    print("NATIVE_LANE_REPORT=" + json.dumps(document, sort_keys=True, separators=(",", ":")))
     print(json.dumps({"complete": document["complete"], "arms": len(document["arms"])}))
     return 0 if document["complete"] else 1
 

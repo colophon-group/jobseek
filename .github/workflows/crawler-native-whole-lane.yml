@@ -39,15 +39,15 @@ jobs:
         run: |
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
-          docker build --target native \
+          docker build --quiet --target native \
             --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "native-lane-candidate:${source_sha}" apps/crawler
-          docker build --target benchmark-browser \
+          docker build --quiet --target benchmark-browser \
             --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "native-lane-control:${source_sha}" apps/crawler
-          docker build --build-context contracts=apps/crawler/contracts \
+          docker build --quiet --build-context contracts=apps/crawler/contracts \
             --build-context api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor \
             --build-context dom-detail=apps/crawler/go/dom-detail \
             --build-context jsonld-detail=apps/crawler/go/jsonld-detail \
