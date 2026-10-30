@@ -1473,6 +1473,10 @@ def validate_running_inspect(
 
 def verify_idle_process_boundary(command: list[str]) -> None:
     lines = run_text(["docker", "top", CONTAINER, "-eo", "pid,uid,gid,comm,args"]).splitlines()
+    validate_idle_process_boundary(lines, command)
+
+
+def validate_idle_process_boundary(lines: list[str], command: list[str]) -> None:
     if len(lines) != 3:
         fail("renderer idle process count drifted")
     rows = [line.split(None, 4) for line in lines[1:]]
@@ -1497,7 +1501,157 @@ def verify_idle_process_boundary(command: list[str]) -> None:
         fail("renderer controller process identity drifted")
 
 
-def verify_running_with_image(environment: Path, *, image_id: str, expected_id: str | None) -> str:
+def verify_serving_process_boundary(command: list[str]) -> bool:
+    """Authenticate the controller and its bounded, unprivileged render children.
+
+    Return whether the snapshot was idle. Deployment must not mistake a real
+    request arriving during its restart observation for an extra controller.
+    """
+    lines = run_text(["docker", "top", CONTAINER, "-eo", "pid,ppid,uid,gid,comm,args"]).splitlines()
+    rows = [line.split(None, 5) for line in lines[1:]]
+    if not 2 <= len(rows) <= 6 or any(
+        len(row) != 6 or not row[0].isdigit() or not row[1].isdigit() for row in rows
+    ):
+        fail("renderer serving process inventory is invalid")
+    if len({row[0] for row in rows}) != len(rows):
+        fail("renderer serving process identities are duplicated")
+    controllers = [row for row in rows if row[2:4] != ["10002", "10002"]]
+    validate_idle_process_boundary(
+        [
+            "PID UID GID COMMAND COMMAND",
+            *(" ".join([r[0], *r[2:]]) for r in controllers),
+        ],
+        command,
+    )
+    controller = next(row for row in controllers if row[4] == "go-lightpanda")
+    init = next(row for row in controllers if row[4] == "docker-init")
+    if controller[1] != init[0]:
+        fail("renderer controller parent identity drifted")
+    children = [row for row in rows if row not in controllers]
+    for row in children:
+        if row[1] != controller[0] or row[4] not in {
+            "lightpanda",
+            "setpriv",
+            "go-lightpanda",
+        }:
+            fail("renderer child process identity drifted")
+        words = row[5].split()
+        if not words or Path(words[0]).name != row[4]:
+            fail("renderer child executable identity drifted")
+        validate_render_child_arguments(words, command)
+    return not children
+
+
+def validate_render_child_arguments(words: list[str], command: list[str]) -> None:
+    trampoline = [
+        "/usr/bin/setpriv",
+        "--inh-caps=-all",
+        "--ambient-caps=-all",
+        "--nnp",
+        "--",
+    ]
+    if words[:1] == trampoline[:1]:
+        if words[: len(trampoline)] != trampoline:
+            fail("renderer child privilege trampoline drifted")
+        words = words[len(trampoline) :]
+    proxy_port = None
+    if words[:2] == ["/usr/local/bin/go-lightpanda", "--runtime-v1-pinned-proxy-child"]:
+        if len(words) < 4:
+            fail("renderer child proxy trampoline drifted")
+        proxy_port = words[2]
+        words = words[3:]
+    fixed = [
+        "/usr/local/bin/lightpanda",
+        "serve",
+        "--host",
+        "127.0.0.1",
+        "--port",
+    ]
+    limits = [
+        "--log-level",
+        "error",
+        "--cdp-max-connections",
+        "2",
+        "--cdp-max-pending-connections",
+        "1",
+        "--http-max-concurrent",
+        "8",
+        "--v8-max-heap-mb",
+        "128",
+        "--http-max-host-open",
+        "4",
+        "--http-connect-timeout",
+        "5000",
+        "--http-max-response-size",
+        "8388608",
+        "--ws-max-concurrent",
+        "1",
+        "--block-private-networks",
+        "--block-cidrs",
+    ]
+    if (
+        len(words) not in (27, 29)
+        or words[:5] != fixed
+        or not words[5].isdigit()
+        or not 1 <= int(words[5]) <= 65535
+        or words[6:26] != limits
+    ):
+        fail("renderer child resource or command boundary drifted")
+    if len(words) == 29:
+        if words[27] != "--http-proxy" or not re.fullmatch(
+            r"http://127\.0\.0\.1:[1-9][0-9]{0,4}", words[28]
+        ):
+            fail("renderer child proxy endpoint drifted")
+        port = words[28].rsplit(":", 1)[1]
+        if int(port) > 65535 or (proxy_port is not None and proxy_port != port):
+            fail("renderer child proxy port drifted")
+        if words[26] != "0.0.0.0/0,::/0,-127.0.0.1/32":
+            fail("renderer proxied child egress boundary drifted")
+    else:
+        if proxy_port is not None or len(words[26]) > 16384:
+            fail("renderer direct child egress boundary drifted")
+        entries = words[26].split(",")
+        try:
+            networks = [ipaddress.ip_network(value, strict=True) for value in entries]
+            required = [
+                ipaddress.ip_network(command[i + 1], strict=False)
+                for i, value in enumerate(command)
+                if value == "--deployment-deny-cidr"
+            ]
+            # Mirror the pinned controller's baseline; a test binds this list
+            # to egress_policy.go so a release cannot silently lose a deny.
+            baseline = (
+                "0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,"
+                "172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,"
+                "198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,"
+                "::/3,2001::/23,2001:db8::/32,2002::/16,3fff::/20,4000::/2,8000::/1"
+            )
+            required.extend(ipaddress.ip_network(value) for value in baseline.split(","))
+        except (ValueError, IndexError):
+            fail("renderer child egress inventory is invalid")
+        if (
+            not 1 <= len(networks) <= 128
+            or not required
+            or any(
+                not any(
+                    r.version == n.version
+                    and int(n.network_address) <= int(r.network_address)
+                    and int(r.broadcast_address) <= int(n.broadcast_address)
+                    for n in networks
+                )
+                for r in required
+            )
+        ):
+            fail("renderer direct child deployment deny inventory drifted")
+
+
+def verify_running_with_image(
+    environment: Path,
+    *,
+    image_id: str,
+    expected_id: str | None,
+    allow_active: bool = False,
+) -> str:
     env = read_env(environment)
     verify_browser_proxy_settings(environment)
     inventory = load_inventory(environment.parent / "inventory.json")
@@ -1589,12 +1743,25 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
     egress_endpoint_mac = (
         inspect.get("NetworkSettings", {}).get("Networks", {}).get(EGRESS_NETWORK, {})
     ).get("MacAddress")
-    verify_idle_process_boundary(expected_service_command(env, inventory))
+    command = expected_service_command(env, inventory)
+    idle = True
+    if allow_active:
+        idle = verify_serving_process_boundary(command)
+    else:
+        verify_idle_process_boundary(command)
     docker_exec = ["docker", "exec", "--user", CONTROLLER_USER, CONTAINER]
     memory_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.max"]).strip()
     memory_swap_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.swap.max"]).strip()
     if memory_max != "1073741824" or memory_swap_max != "0":
         fail("renderer cgroup memory attestation drifted")
+    if allow_active and idle:
+        memory_current = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.current"]).strip()
+        if not memory_current.isdigit():
+            fail("renderer memory observation is invalid")
+        # A request can arrive between the process and memory observations.
+        # Reauthenticate its children before classifying this as idle memory.
+        if int(memory_current) > 134217728 and verify_serving_process_boundary(command):
+            fail("idle renderer exceeds the reviewed 128 MiB idle ceiling")
     ipv4_routes = run_text([*docker_exec, "cat", "/proc/net/route"]).splitlines()[1:]
     verify_egress_default_route(
         ipv4_routes,
@@ -1624,7 +1791,9 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
     return str(inspect["Id"])
 
 
-def verify_running(environment: Path, *, expected_id: str | None) -> str:
+def verify_running(
+    environment: Path, *, expected_id: str | None, allow_active: bool = False
+) -> str:
     env = read_env(environment)
     ci_release_id = (
         env["RELEASE_ID"]
@@ -1635,7 +1804,10 @@ def verify_running(environment: Path, *, expected_id: str | None) -> str:
         env["RENDERER_IMAGE_REF"], env["SOURCE_COMMIT"], ci_release_id=ci_release_id
     )
     return verify_running_with_image(
-        environment, image_id=str(image["Id"]), expected_id=expected_id
+        environment,
+        image_id=str(image["Id"]),
+        expected_id=expected_id,
+        allow_active=allow_active,
     )
 
 
@@ -1892,6 +2064,7 @@ def parser() -> argparse.ArgumentParser:
     running = sub.add_parser("running")
     running.add_argument("environment", type=Path)
     running.add_argument("--expected-id")
+    running.add_argument("--allow-active", action="store_true")
     owned = sub.add_parser("owned")
     owned.add_argument("environment", type=Path)
     owned.add_argument("--expected-id", required=True)
@@ -1953,7 +2126,13 @@ def main() -> int:
         elif args.command == "proxy-settings":
             verify_browser_proxy_settings(args.environment)
         elif args.command == "running":
-            print(verify_running(args.environment, expected_id=args.expected_id))
+            print(
+                verify_running(
+                    args.environment,
+                    expected_id=args.expected_id,
+                    allow_active=args.allow_active,
+                )
+            )
         elif args.command == "owned":
             print(
                 verify_owned(

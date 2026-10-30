@@ -220,8 +220,11 @@ if (( renderer_exists )); then
   existing_status="$(docker container inspect --format '{{.State.Status}}' "$existing_id")"
   existing_oom="$(docker container inspect --format '{{json .State.OOMKilled}}' "$existing_id")"
   if [[ "$existing_running" == true ]]; then
-    python3 "$existing_generation/verify.py" running \
-      "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
+    # The incoming verifier also understands active children of a previously
+    # deployed controller. The immutable predecessor verifier predates serving
+    # deployments and incorrectly requires a permanently idle process set.
+    python3 "$STAGE/verify.py" running \
+      "$existing_generation/release.env" --expected-id "$existing_id" --allow-active >/dev/null
     sudo -n "$POLICY" verify-running-ready \
       "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
   elif [[ "$existing_running" == false && "$existing_status" == created ]]; then
@@ -579,7 +582,11 @@ candidate_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINE
 [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || exit 1
 
-first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env")"
+running_arguments=()
+if (( ! ci_rollback_smoke )); then
+  running_arguments=(--allow-active)
+fi
+first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env" "${running_arguments[@]}")"
 [[ "$first_verified_id" == "$candidate_container_id" ]] || exit 1
 sudo -n "$POLICY" verify-running-ready \
   "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
@@ -599,21 +606,23 @@ started_after_restart="$(docker container inspect --format '{{.State.StartedAt}}
 [[ "$started_after_restart" != "$started_before_restart" ]] || exit 1
 sleep 20
 python3 "$GENERATION/verify.py" running "$GENERATION/release.env" \
-  --expected-id "$candidate_container_id" >/dev/null
+  --expected-id "$candidate_container_id" "${running_arguments[@]}" >/dev/null
 sudo -n "$POLICY" verify-running-ready \
   "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
 [[ "$(docker container inspect --format '{{.RestartCount}}' "$candidate_container_id")" == 0 ]] || exit 1
-memory_current="$(docker exec "$candidate_container_id" cat /sys/fs/cgroup/memory.current)"
-[[ "$memory_current" =~ ^[0-9]+$ && "$memory_current" -le 134217728 ]] || {
-  echo "idle renderer exceeds the reviewed 128 MiB idle ceiling" >&2
-  exit 1
-}
-docker exec "$candidate_container_id" /bin/sh -ceu '
-  for comm in /proc/[0-9]*/comm; do
-    IFS= read -r process_name <"$comm"
-    [ "$process_name" != lightpanda ] || exit 1
-  done
-'
+if (( ci_rollback_smoke )); then
+  memory_current="$(docker exec "$candidate_container_id" cat /sys/fs/cgroup/memory.current)"
+  [[ "$memory_current" =~ ^[0-9]+$ && "$memory_current" -le 134217728 ]] || {
+    echo "idle renderer exceeds the reviewed 128 MiB idle ceiling" >&2
+    exit 1
+  }
+  docker exec "$candidate_container_id" /bin/sh -ceu '
+    for comm in /proc/[0-9]*/comm; do
+      IFS= read -r process_name <"$comm"
+      [ "$process_name" != lightpanda ] || exit 1
+    done
+  '
+fi
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
 active_candidate="$ROOT/.active.$RELEASE_ID"
