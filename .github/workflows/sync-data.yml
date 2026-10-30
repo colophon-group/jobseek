@@ -245,12 +245,30 @@ jobs:
               fi
               [[ "$status" -eq 0 ]] || exit "$status"
 
+              mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.crawler-active-release/environment.env)
+              [[ ${#image_refs[@]} -eq 1 && "${image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+                echo "ERROR: committed crawler image digest is missing, duplicated, or invalid" >&2
+                exit 1
+              }
+              # Select restoration actors from the exact committed image, including cold reversal.
+              maintenance_services=(redis exporter drain alloy)
+              capability="$(docker image inspect --format '{{index .Config.Labels "org.jobseek.crawler.default-native-runtime"}}' "${image_refs[0]}")"
+              case "$capability" in
+                v1) maintenance_services+=(ordinary-go lease-reaper) ;;
+                ''|'<no value>') maintenance_services+=(worker-1 worker-2 worker-3 browser-1) ;;
+                *) echo "ERROR: committed runtime topology is unsupported" >&2; exit 1 ;;
+              esac
+              maintenance_expectations=()
+              for service in "${maintenance_services[@]}"; do
+                maintenance_expectations+=(--expect-service "$service")
+              done
               set +e
               /usr/local/sbin/jobseek-maintenance window \
                 --operation csv-data-sync \
                 --issue 2623 \
                 --revision "$SYNC_REVISION" \
                 --budget-seconds 1800 \
+                "${maintenance_expectations[@]}" \
                 --lock-timeout-seconds 1500 \
                 -- \
                 bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh \

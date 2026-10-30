@@ -58,6 +58,7 @@ jobs:
           cd apps/crawler
           uv run --frozen ruff check \
             ../../deploy/lightpanda-renderer/verify.py \
+            ../../deploy/lightpanda-renderer/test_serving_deployment.py \
             ../../deploy/lightpanda-renderer/proxy-settings.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
@@ -66,6 +67,7 @@ jobs:
             tests/test_lightpanda_proxy_settings.py
           uv run --frozen ruff format --check \
             ../../deploy/lightpanda-renderer/verify.py \
+            ../../deploy/lightpanda-renderer/test_serving_deployment.py \
             ../../deploy/lightpanda-renderer/proxy-settings.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
@@ -78,7 +80,7 @@ jobs:
             ../../deploy/lightpanda-renderer/validate_pki.py \
             ../../deploy/lightpanda-renderer/network-policy.py \
             ../../deploy/lightpanda-renderer/testdata/legacy-verify.py
-          uv run --frozen pytest tests/test_lightpanda_renderer_deployment.py tests/test_lightpanda_proxy_settings.py -q
+          uv run --frozen pytest tests/test_lightpanda_renderer_deployment.py tests/test_lightpanda_proxy_settings.py ../../deploy/lightpanda-renderer/test_serving_deployment.py -q
 
   build:
     if: github.event_name == 'pull_request'

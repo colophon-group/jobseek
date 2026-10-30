@@ -48,11 +48,24 @@ jobs:
               echo "ERROR: committed crawler image digest is missing, duplicated, or invalid" >&2
               exit 1
             }
+            # Select restoration actors from the exact committed image, including cold reversal.
+            maintenance_services=(redis exporter drain alloy)
+            capability="$(docker image inspect --format '{{index .Config.Labels "org.jobseek.crawler.default-native-runtime"}}' "${image_refs[0]}")"
+            case "$capability" in
+              v1) maintenance_services+=(ordinary-go lease-reaper) ;;
+              ''|'<no value>') maintenance_services+=(worker-1 worker-2 worker-3 browser-1) ;;
+              *) echo "ERROR: committed runtime topology is unsupported" >&2; exit 1 ;;
+            esac
+            maintenance_expectations=()
+            for service in "${maintenance_services[@]}"; do
+              maintenance_expectations+=(--expect-service "$service")
+            done
             /usr/local/sbin/jobseek-maintenance oneoff \
               --operation refresh-currency-rates \
               --issue 3576 \
               --revision "$GITHUB_SHA" \
               --budget-seconds 600 \
+              "${maintenance_expectations[@]}" \
               --lock-timeout-seconds 600 \
               -- \
               docker run --rm \
