@@ -191,6 +191,27 @@ if recurring_monitor_streak_raw then
     end
 end
 
+-- When monitor slots are occupied, independent hosts may use spare discovery
+-- capacity. Preserve same-host monitor priority and the global fairness streak.
+-- A shared cursor scans past busy hosts without increasing the candidate budget.
+local detail_capacity_cursor_key = "claim:detail-capacity-cursor:" .. wtype
+local detail_capacity_cursor = 0
+local independent_detail_capacity = false
+if details_only then
+    local cursor_type = redis.call("TYPE", detail_capacity_cursor_key)["ok"]
+    if cursor_type ~= "none" and cursor_type ~= "string" then
+        return redis.error_reply("detail capacity cursor is corrupt")
+    end
+    detail_capacity_cursor = tonumber(redis.call("GET", detail_capacity_cursor_key) or "0")
+    if not detail_capacity_cursor or detail_capacity_cursor ~= detail_capacity_cursor or
+        detail_capacity_cursor < 0 or detail_capacity_cursor > 9007199254740991 or
+        detail_capacity_cursor % 1 ~= 0 then
+        return redis.error_reply("detail capacity cursor is corrupt")
+    end
+    independent_detail_capacity = recurring_monitor_streak < max_recurring_monitor_streak and
+        redis.call("ZCOUNT", "ready:" .. wtype .. ":1", "-inf", tostring(now)) > 0
+end
+
 local tier_order = {0, 1, 2}
 if recurring_monitor_streak >= max_recurring_monitor_streak then
     tier_order = {0, 2, 1}
@@ -436,18 +457,25 @@ end
 for _, tier in ipairs(tier_order) do
     local ready_key = "ready:" .. wtype .. ":" .. tier
 
-    -- Get candidate domains with score <= now (due or overdue)
-    local candidates = redis.call("ZRANGEBYSCORE", ready_key, "-inf", tostring(now), "LIMIT", 0, max_check)
-
-    -- Occupied monitor slots do not authorize spending a monitor's fairness
-    -- turn on recurring details. Leave both queues and the shared streak alone.
-    if details_only and tier == 1 and #candidates > 0 then return nil end
+    local offset = 0
+    if independent_detail_capacity and tier == 2 then
+        local count = redis.call("ZCOUNT", ready_key, "-inf", tostring(now))
+        if detail_capacity_cursor < count then offset = detail_capacity_cursor end
+    end
+    local candidates = {}
+    if not (details_only and tier == 1) then
+        candidates = redis.call("ZRANGEBYSCORE", ready_key, "-inf", tostring(now), "LIMIT", offset, max_check)
+    end
 
     for _, domain in ipairs(candidates) do
         -- Check shared rate limit
         local rl_key = "ratelimit:" .. domain
         local rl_val = redis.call("GET", rl_key)
-        if rl_val and tonumber(rl_val) > now then
+        if independent_detail_capacity and tier == 2 and
+            redis.call("ZCOUNT", "monitors_" .. wtype .. ":" .. domain, "-inf", tostring(now)) > 0 then
+            -- Do not consume this host's throttle ahead of its waiting monitor.
+            -- Leave its task deadlines and ready representations unchanged.
+        elseif rl_val and tonumber(rl_val) > now then
             -- Rate-limited: move every representation to when the shared
             -- domain lease becomes available.
             refresh_ready(domain, tonumber(rl_val), false)
@@ -576,7 +604,10 @@ for _, tier in ipairs(tier_order) do
                         ))
                     )
                 elseif claimed_priority == 2 then
-                    redis.call("SET", recurring_monitor_streak_key, "0")
+                    if not independent_detail_capacity then
+                        redis.call("SET", recurring_monitor_streak_key, "0")
+                    end
+                    if details_only then redis.call("DEL", detail_capacity_cursor_key) end
                 end
 
                 refresh_ready(domain, now + rate_delay, claimed_priority == 2)
@@ -592,6 +623,15 @@ for _, tier in ipairs(tier_order) do
                 -- board). Rebuild from the authoritative queues instead.
                 refresh_ready(domain, 0, false)
             end
+        end
+    end
+
+    if independent_detail_capacity and tier == 2 then
+        local next_offset = offset + #candidates
+        if next_offset >= redis.call("ZCOUNT", ready_key, "-inf", tostring(now)) then
+            redis.call("DEL", detail_capacity_cursor_key)
+        else
+            redis.call("SET", detail_capacity_cursor_key, tostring(next_offset))
         end
     end
 

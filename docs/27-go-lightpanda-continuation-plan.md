@@ -111,6 +111,35 @@ salary, location or taxonomy extraction.
 
 ## Freshness and whole-lane resource acceptance
 
+Runtime **0.13.1126 is under qualification**, with production still on 1125.
+The observed aggregate limits already match the legacy lane: 60 discovery and
+15 monitor slots. Active claims remained at 15–20 in the stable window. Real
+Redis tests reproduced a native selector regression: occupied monitor slots
+prevented recurring details on unrelated hosts whenever any monitor was due.
+The correction lets independent hosts use spare discovery capacity, retains
+same-host monitor priority and the shared fairness counter, and scans past busy
+hosts with a bounded cursor. HTTP and browser lanes share the fix. Concurrency,
+host delays and resource budgets stay unchanged. Required CI, full deployment
+and a natural production readback must pass before claiming restored capacity.
+
+The same batch fixes no-fetch retirement of obsolete detail URLs and fallback
+stages. A bounded replay found four inactive, unscheduled Workday attempts that
+failed URL admission during transport selection, matching four process exits.
+Real PostgreSQL/Redis tests reproduced this for Workday and API-sniffer URLs.
+Retirement now retains the verified canonical board, posting and opaque lease
+binding without granting permission to fetch the obsolete URL. Settlement
+rechecks eligibility; reactivated work still requires its current admitted route.
+No HTTP/render request, content write or failure-budget increment is authorized
+by retirement. Further exits during registry publication need separate accounting.
+
+The later enabled-fleet readback contains **8,148 boards**, including a catalogue
+addition after the earlier window. All current monitor profiles and TLS selectors
+pass the actual Go SDK. The new committed data revision is
+`7d4d43621bc6c01d1a1b4fdbad45ff799b8f30ef`, contract
+`f5f8b863efd90c850e5f1c0c782f4f817961d436b0410135265b6c6099e0d6f5`.
+This monitor transport sweep does not replace the earlier complete detail-URL
+admission proof or the next post-deployment freshness/conservation readback.
+
 The accepted stability window ran **09:32:25–09:42:09**, with ten samples per
 node, fixed source/image/process identities, no restart increments and no OOM.
 The Go worker entered with two earlier cumulative restarts during registry

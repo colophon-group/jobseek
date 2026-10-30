@@ -146,7 +146,8 @@ func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, err
 }
 
 // ClaimFencedDetails leaves monitors queued when all monitor slots are occupied.
-// The atomic pop still enforces global priority, fairness, throttle and leases.
+// Independent hosts may use spare discovery capacity without spending a monitor's
+// fairness turn. First-time priority, host throttles and leases still apply.
 // It rejects an installed ownership projection and grants no SQL authority.
 func (c *Client) ClaimFencedDetails(ctx context.Context, worker WorkerType) (*Task, error) {
 	return c.claimFenced(ctx, worker, true)

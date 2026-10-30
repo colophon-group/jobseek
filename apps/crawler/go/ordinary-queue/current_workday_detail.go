@@ -89,7 +89,7 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	if !a.valid(claim) || claim.task.Kind != Scrape || (claim.task.Worker != Simple && claim.task.Worker != Browser) {
 		return nil, ErrUnsupportedProfile
 	}
-	_, boardConfig, err := a.observeDetailOwnershipState(ctx, tx, claim.boardID, false)
+	boardProfile, boardConfig, err := a.observeDetailOwnershipState(ctx, tx, claim.boardID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -112,23 +112,23 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	}
 	d.Schedulable = active && due != nil
 	d.PublisherReserved = postingReserved || boardReserved
-	profileWorker := claim.task.Worker
 	if a.defaultOwner && !d.Schedulable {
-		// A retired posting can retain a lease in its former lane. Resolve
-		// its canonical profile solely for the existing no-fetch retirement;
-		// scheduled work must still validate the exact claimed worker.
-		profileWorker = Simple
-		if boardConfig["scraper_needs_browser"] == "1" {
-			profileWorker = Browser
-		}
+		// Retired postings may retain old URLs, lanes and fallback stages.
+		// Their no-fetch settlement needs the verified canonical board binding,
+		// not permission to fetch an obsolete URL. Posting identity and the
+		// opaque lease were checked above; settlement rechecks eligibility.
+		d.profile = boardProfile
+		d.profile.SourceURL = source
+		d.ownershipProfile = boardProfile.Profile
+		return d, nil
 	}
-	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, profileWorker)
+	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, claim.task.Worker)
 	if err != nil {
 		return nil, err
 	}
 	d.ownershipProfile = d.profile.Profile
 	if isOrderedDetailProfile(d.profile.Profile) {
-		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, profileWorker)
+		chain, e := InspectOrderedDetail(claim.boardID, boardConfig, source, claim.task.Worker)
 		if e != nil {
 			return nil, e
 		}
