@@ -139,6 +139,7 @@ def main() -> None:
     state = FixtureState()
     upstream = http.server.ThreadingHTTPServer(("0.0.0.0", 443), handler(state, storage=False))
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.load_cert_chain(args.certificate, args.private_key)
     upstream.socket = context.wrap_socket(upstream.socket, server_side=True)
     threading.Thread(target=upstream.serve_forever, daemon=True).start()
