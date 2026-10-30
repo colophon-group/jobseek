@@ -56,7 +56,12 @@ func newR2Client(endpoint, bucket, accessKey, secretKey string) (*r2Client, erro
 		endpoint: strings.TrimRight(endpoint, "/"),
 		bucket:   bucket,
 		creds:    aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey},
-		signer:   v4.NewSigner(),
+		// S3 signs the escaped wire path without a second URI escaping pass.
+		// The generic signer's default double-escapes locale characters and
+		// produces HTTP 403 even though the object URL and credentials are valid.
+		signer: v4.NewSigner(func(o *v4.SignerOptions) {
+			o.DisableURIPathEscaping = true
+		}),
 		http: &http.Client{
 			Transport: transport, Timeout: 40 * time.Second,
 			// R2's endpoint is fixed. Do not follow a redirect to another host
@@ -67,10 +72,12 @@ func newR2Client(endpoint, bucket, accessKey, secretKey string) (*r2Client, erro
 }
 
 func objectURL(endpoint, bucket string, d description) string {
-	// The Python key is job/{posting_id}/{locale}/latest.html, URL-quoted with
-	// slashes preserved. Quote individual segments to keep that exact layout.
-	return strings.TrimRight(endpoint, "/") + "/" + url.PathEscape(bucket) +
-		"/job/" + url.PathEscape(d.PostingID) + "/" + url.PathEscape(d.Locale) + "/latest.html"
+	// Match Python quote(key, safe='/'): preserve slashes and escape every
+	// non-unreserved byte, including plus signs. QueryEscape uses '+' only for
+	// spaces, so restore those as %20 and the escaped path separators as '/'.
+	key := "job/" + d.PostingID + "/" + d.Locale + "/latest.html"
+	path := strings.ReplaceAll(strings.ReplaceAll(url.QueryEscape(key), "+", "%20"), "%2F", "/")
+	return strings.TrimRight(endpoint, "/") + "/" + url.PathEscape(bucket) + "/" + path
 }
 
 func (c *r2Client) put(ctx context.Context, d description) error {
