@@ -2,17 +2,17 @@
 
 ## Current checkpoint — October 30, 2026
 
-Production processing runs **0.13.1127**, source
-`09658eeee4f4bdc823a6dcc61202f22c5ebd6cdd`, after the complete
-[deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41067006705).
+Production processing runs **0.13.1128**, source
+`d4a41626f6a31f17b8b8227a01ea40467565cbea`, after the complete
+[deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41085351259).
 Both crawler image repositories use native image
-`sha256:6abc122eca99368ce5d07ab8fb0a9f958e173ad03b5e974c5e581fd5c1229dc4`.
+`sha256:567edc79a60c1b7b7aa1c3c758e733ee6f195f1ab8318b2046ad67d12d164e38`.
 Runtime contract:
-`b40bdfadf8816e4fda10be60aedae87536e9db66002a6caa4891434262e0423c`.
+`03e7ceb9e32ee9191e30c70c4d5de3719289b72e8f4573e4ed5bbc7cdac34e8e`.
 Installed data revision is the same full source revision; data contract:
-`f5f8b863efd90c850e5f1c0c782f4f817961d436b0410135265b6c6099e0d6f5`.
-There are **8,148 enabled boards**, schema 0041, default Go ownership at epoch
-404, and no active migration plans. Four native actors started at 14:07:51;
+`41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693`.
+There are **8,151 enabled boards**, schema 0041, default Go ownership at epoch
+404, and no active migration plans. Four native actors started at 16:11:00;
 all remain running without restarts or OOM in the observation below. None of the
 five current Compose legacy-profile services runs. The processing image contains
 no Python, uv, Playwright or Chromium command. Runtime, data and renderer
@@ -72,16 +72,37 @@ enrichment/executor race suites, and actual PostgreSQL/Redis transport, publishe
 retirement and executable-selection contracts. Exact-head Required CI and Crawler
 Deploy Gate passed before merge and the full immutable rollout.
 
+[PR #11047](https://github.com/colophon-group/jobseek/pull/11047) batches the next
+shared CPU costs across monitor/detail profiles. An immutable technology keyword
+prefix index preserves the old substring admission and literal matching;
+structured/bare salary scans require their existing currency/period markers;
+experience prefix scans are lazy and impossible reversed-wording scans are
+filtered. Frozen Python outputs, independent old-filter comparisons, salary
+match spans/captures, full enrichment/executor race suites, real PostgreSQL
+executor checks and **162,709 differential fuzz executions** passed. Required CI
+and the deploy gate passed at exact head before the full immutable rollout.
+
+A private replay of **127 recent stored records across 12 providers** identified
+these stages as 82.6% of sampled preparation CPU. Serial two-core runs fall from
+4.83–5.37 milliseconds to 2.76–2.78 per record: a conservative observed **42.6%**
+reduction, with identical complete prepared-output hashes. The comparison uses
+fixed lookup maps and excludes actual location/queue/SQL work. It is component
+evidence; whole-lane acceptance uses the production observations below. Consumed
+replay content, profiles, binaries, temporary database and caches were removed.
+
 The 1126 SDK passed **8,148 monitor configurations**, **8,148 detail configurations**,
 **1,992,763 actual scheduled detail URLs** and **47 detail groups**. All six
 non-atomic scheduled snapshot gaps resolved: five unscheduled and one inactive.
-The entire admission/fencing/scheduling Go module is byte-identical in 1127
-(Git tree `556c836c182bfc5b6a5bd2699054edd294939bca`); the data contract is unchanged,
-and actual 1127 startup validates every enabled canonical/cache profile. This is
-an unchanged-contract qualification, not a new two-million-URL capture.
+The entire admission/fencing/scheduling Go module remains byte-identical in 1128
+(Git tree `556c836c182bfc5b6a5bd2699054edd294939bca`); the existing 8,148 board configurations are unchanged. The new data tree adds
+three boards and removes none. Atomic canonical company/board-key hashes match
+all 8,151 committed registry keys before and after rollout. Actual 1128 startup
+validates every enabled canonical/cache profile. This qualifies the unchanged
+existing admission contract and the new configurations; no fresh two-million-URL
+capture is claimed.
 
-Complete monitor/detail queues and both inflight lanes contain **3,499,609 distinct
-identities** after rollout, versus 3,499,394 before it. All **1,237 removals** resolve
+The previous 1127 complete monitor/detail queues and both inflight lanes contained **3,499,609 distinct
+identities** after its rollout, versus 3,499,394 before it. All **1,237 removals** resolve
 through independent canonical/Redis readback: 1,101 inactive/disabled, 131 unscheduled
 and five currently queued/inflight. All four apparent monitor gaps are now queued
 or inflight. There are zero malformed memberships, missing canonical records,
@@ -96,86 +117,94 @@ no-fetch path without inventing a per-record settlement quota.
 
 ## Canonical output and storage effects
 
-Current-runtime completed detail fences and zero-failure active canonical states
-provide **1,000 recent records**: no missing titles, 1,000 nonnull description
-hashes, and **1,000 nonempty uploaded description rows**, with zero pending/inflight
-rows in the sample. Of those, 998 current posting hashes match an uploaded row.
-Salary, occupation, seniority and technology fields occur in 125, 235, 117 and
-192 records respectively. Retained good fields need not have been newly computed
-by this attempt. Detected language and localized title variants may differ;
-`last_enriched_at` and `to_be_enriched` track separate offline enrichment.
+At 16:27, current-runtime completed detail fences and zero-failure active
+canonical states provide **1,000 recent records across 26 provider groups**:
+no missing titles, 994 nonnull description hashes and 1,000 nonempty description
+rows, with 994 uploaded and six pending. All 994 uploaded posting hashes match.
+Salary, occupation, seniority and technology fields occur in 178, 183, 166 and
+285 records respectively. Good existing fields may be retained by COALESCE;
+these counts do not prove every field was newly computed by this attempt.
+Detected language and localized title variants may differ; offline enrichment
+has separate `last_enriched_at` and `to_be_enriched` state.
 
-A broader bounded read finds three description hash inconsistencies. All three
-stored rows date April 7–8. Read-only signed GETs using the running drain's exact
-bucket/endpoint return HTTP 200 and nonempty objects; all object modification
-times also predate this runtime. Their bodies match neither retained hash.
-This is an existing data consistency limitation, not evidence of a new 1127 write;
-do not report universal hash integrity or manually repair it. Object keys use
-`job/<posting>/<locale>/latest.html`, independent of the hash/version hint.
+A 16:37 maturity check covers **2,981 current-runtime completed active records**:
+no pending or inflight description uploads, including none older than 30/120
+seconds respectively. Its separate 30-second-mature sample has 1,000 records,
+996 posting hashes, all 996 matching uploaded rows, and 997 nonempty uploaded
+description rows. Hashes/descriptions are nullable for some processing contracts;
+do not turn these samples into universal description or hash-integrity claims.
 
-Actual Typesense readback finds **10 mature current-runtime canonical records**,
-with every title and company identity matching. Health, schema and the scoped
-company-facet query return HTTP 200. The bounded drain observation contains
-1,661 upload events and zero PUT HTTP errors in its last 2,000 code-owned events.
-Reaper observations contain 80 sweeps, 40 lifecycle events, 24 requeues and no
-failures, dead letters or missing configurations. Existing publisher and ownership
-fences remain in place.
+An earlier bounded read found three legacy hash inconsistencies: stored rows
+from April 7–8 and nonempty HTTP-200 objects whose modification times also
+predate 1127. Their bodies matched neither retained hash. They are classified
+existing data limitations, without a new 1128 corruption or repair claim.
+Object keys use `job/<posting>/<locale>/latest.html`, independent of hash hints.
+
+Actual Typesense readback finds **10 mature current-runtime records**, with
+every title and company identity matching. Health, schema and the scoped company
+facet query return HTTP 200. At 16:27 the bounded drain observation contains
+1,339 upload events and zero PUT HTTP errors in its last 2,000 code-owned events.
+Reaper observations contain 60 sweeps, 30 lifecycle events, 24 requeues and no
+failed events, dead letters or missing configurations. Publisher and ownership
+fences remain in place; no outbox rows, counters or queues were manually repaired.
 
 ## Freshness, capacity and resource acceptance
 
-The final 1127 window ran **14:19:29–14:28:29**, ten aligned samples per node,
+The final 1128 window ran **16:16:23–16:25:22**, ten aligned samples per node,
 with fixed processing identities, zero restart increments and no OOM across
 crawler, renderer, PostgreSQL and Typesense. Actual limits stay at 60 discovery
 and 15 monitor slots, ten host domains, Go two cores/1 GiB/GOMEMLIMIT 512 MiB,
-and the renderer bounds above. Active claims range from 24 to 57.
+and the renderer bounds above. Active claims range from 18 to 44.
 
-| Observation | Legacy control | Fresh 1126 baseline | Native 1127 |
+| Observation | Legacy control | Fresh 1127 baseline | Native 1128 |
 | --- | ---: | ---: | ---: |
-| Window duration, seconds | 566.8 | 539.1 | 540.6 |
-| Successful monitors / details | 726 / 1,454 | 316 / 803 | 252 / 909 |
-| Mean whole-lane CPU cores | 5.43 | 3.97 | 4.19 |
-| Mean whole-lane working memory, GiB | 11.97 | 11.24 | 11.38 |
-| Successful tasks per CPU second | 0.709 | 0.523 | 0.512 |
-| Modeled compute EUR per 1,000 successful tasks | 0.001881 | 0.003279 | 0.002936 |
+| Window duration, seconds | 566.8 | 539.1 | 539.2 |
+| Successful monitors / details | 726 / 1,454 | 213 / 979 | 286 / 1,165 |
+| Mean whole-lane CPU cores | 5.43 | 3.69 | 4.17 |
+| Mean whole-lane working memory, GiB | 11.97 | 11.35 | 11.52 |
+| Successful tasks per CPU second | 0.709 | 0.600 | 0.646 |
+| Modeled compute EUR per 1,000 successful tasks | 0.001881 | 0.003101 | 0.002528 |
 
-The fresh 1126 baseline ran 13:47–13:56. Relative to it, 1127 completes more details
-and more successful tasks overall, with about 10.4% lower modeled cost per success,
-but slightly fewer successes per CPU second. Typesense CPU rises from 0.63 to
-1.24 cores. Different task mix, observation times and shared database/search work
-prevent a causal same-workload claim. Monitor inventory outputs are similar
-(166,789 versus 166,437) despite different monitor counts; they are not unique
-committed jobs. Legacy inventory output is unmeasured. The 186 skipped details
-are excluded from successful-task cost. Modeled 1127 cost per success is still
-about **56% above the legacy observation**. Provisioned catalogue compute remains
-**EUR 0.0624/hour**; modeled allocation is not billed savings.
+The fresh 1127 baseline ran 15:27:03–15:36:02. Relative to it, 1128 has **21.7%
+more successful-task throughput**, **7.7% more successes per CPU second**, and
+**18.5% lower modeled cost per success**, with 1.5% more working memory.
+Monitor inventory outputs increase from 148,493 to 259,822, about 75%; detail
+outputs increase from 1,040 to 1,194. These are emitted discovery outputs, not
+unique committed jobs. Skipped details are excluded from successful-task cost.
 
-The same frozen rich preparation benchmark, same machine and two Go cores,
-falls from 178–385 microseconds/item to 61.6–62.1. Comparing the fastest baseline
-with the slowest candidate gives **65.2% lower preparation time**. This component
-result does not establish whole-lane efficiency. Cgroup CPU, working set excluding
-inactive file pages, and official role-specific catalogue prices underpin the
-whole-lane model. One background crawler generation changes during the baseline;
-processing actors stay fixed. Sampled peaks are not absolute memory peaks.
+These are natural windows at different times and task mixes. Shared PostgreSQL
+and Typesense work varies; Typesense CPU rises from 0.34 to 0.83 cores while
+renderer CPU falls from 0.69 to 0.51. No causal same-workload speedup or legacy
+output-normalized win is proved. Legacy inventory output was not measured.
+Modeled native cost per success is still **34.4% above the legacy observation**;
+the original efficiency/no-material-regression gate remains open. Provisioned
+catalogue compute stays **EUR 0.0624/hour**; modeled allocation is not billed
+savings. Cgroup CPU, working set excluding inactive file pages, and official
+role-specific catalogue prices underpin the model. Sampled peaks are not
+absolute memory peaks.
 
-Due monitors decrease from 6,182 to 6,029 and preceding-hour successes increase
-from 1,567 to 1,721. Day-overdue monitors change from 2,333 to 2,338 as deadlines
-age. Eligible scheduled details total 1,991,115: 1,928,729 due, 1,884,918 over a day,
-1,627,890 over a week and 6,641 never scraped; 5,041 zero-failure details were
-scraped in the preceding hour. Preserve real deadlines and the original freshness
-gate; no zero-overdue SLO or reset is introduced.
+Between the bound installed reads at 16:12:59 and 16:26:51, due monitors decrease
+from 6,188 to 6,121 and preceding-hour successes rise from 1,589 to 1,648.
+Day-overdue monitors change from 2,266 to 2,271 as deadlines age. The 16:27 detail
+snapshot has 1,994,073 eligible scheduled records: 1,926,695 due, 1,880,014 over
+a day, 1,624,482 over a week and 6,670 never scraped; 6,304 zero-failure details
+were scraped in the preceding hour. Much of this backlog predates cutover.
+Keep real deadlines and the original freshness gate; do not invent a zero-overdue
+SLO or reset scheduling state.
 
-At 14:50 Oracle ADF remains quarantined with nine failures, last success October
-28 and its existing 14:05 probe still awaiting a natural check. Amazon was checked
-at 14:47, remains active with one failure, and has no success since October 29.
-Their stored native failures are fetch-phase. HTTP session implementation is not
-fresh production recovery proof. Browser starvation is not supported by the
-preceding bounded lane census: 104 current-runtime browser successes and no
-browser monitor more than a day late.
+Oracle ADF's normal probe ran at **16:23** and failed in fetch, increasing its
+failure count to ten. It remains quarantined, with its existing next probe on
+October 31 at 16:23 and last success October 28. Amazon was checked at 16:23,
+remains active with one failure, and has no success since October 29; its stored
+failure is also fetch-phase. Neither has proven fresh production recovery.
+No forced origin work or Chromium fallback is authorized. The earlier bounded
+lane census does not support browser starvation as the explanation: 104 browser
+successes and no browser monitor more than a day late in that observation.
 
-The final window has ten claim acknowledgement errors and two posting-write
-deadlines in bounded, code-owned diagnostics, plus 59 failed and 727 circuit-open
-detail outcomes. These are concrete remaining diagnostic leads; zero restarts
-alone does not make them harmless or establish sufficient freshness.
+The final window has nine claim errors versus two in the fresh control. The
+new shared CPU changes do not establish a fix for their underlying cause.
+Zero restarts alone does not establish sufficient freshness or make errors
+harmless; preserve the bounded acknowledgement and write-deadline diagnostic lead.
 
 ## Requirement audit and next delivery
 
@@ -183,36 +212,27 @@ alone does not make them harmless or establish sufficient freshness.
 | --- | --- |
 | Shared salary, location and CPU stages | Native packages deployed; canonical effects and parity suites qualify the boundary. |
 | Native browser executor and ordinary workers | Go owns fetch/render, enrichment, persistence, failure handling, scheduling and fences. |
-| Enabled monitor/detail/browser coverage | Full current-fleet admission qualified through unchanged module/data; upstream failures remain visible. |
-| Canonical, publisher, storage and export | Real integration and natural SQL/R2/Typesense effects verified within sample limits; three pre-existing hash inconsistencies classified. |
+| Enabled monitor/detail/browser coverage | Existing admission and configs unchanged; new configs pass startup and all 8,151 registry keys match canonical state. ADF/Amazon recovery remains unproved. |
+| Canonical, publisher, storage and export | Real integration and natural SQL/R2/Typesense effects verified within sample limits; bounded hash/upload samples and pre-existing inconsistencies stated above. |
 | Conservation and cold reversal | Complete frontier reconciles; full locked deployment and supported cold reversal pass. |
 | Runtime consumers and Python boundary | Native production image/maintenance verified; useful offline tooling and required reversal compatibility stay isolated. |
 | Whole-lane efficiency and freshness | **Open:** observations do not establish the original improvement/no-material-regression gate. |
 | Final legacy removal | **Open:** retain required rollback assets until acceptance and a schedule-based observation window are established. |
 
-Next batch: distinguish claim acknowledgement latency and posting-write deadline
-causes under the existing pool, CPU and host limits, using bounded read-only
-queue/database and code-owned error evidence. Batch demonstrated shared fixes
-across affected profiles; do not raise concurrency, add a control plane or reserve
-browser capacity on speculation. Qualify equivalent effective routes and useful
-output, then repeat only affected operational checks. Reuse unchanged admission,
-policy and deployment proof instead of collecting another full frontier or SDK
-capture without a changed contract or unexplained gap.
+Next batch: resolve the remaining measured processing/acknowledgement cost and
+known provider recovery gaps under the existing CPU, pool and host limits.
+Use existing code-owned diagnostics and canonical evidence to distinguish
+transport/session failures from upstream conditions; do not infer recovery from
+profile admission. Batch demonstrated shared fixes across affected profiles.
+The source audit also shows ordinary legacy rich refresh recomputes shared fields;
+do not assume all refresh preparation can be skipped without changing output.
 
-Candidate **0.13.1128** batches the next measured shared CPU costs across
-monitor/detail profiles: an immutable technology keyword prefix index preserves
-the old substring admission and literal matching; structured/bare salary scans
-require their existing currency/period markers; experience prefix scanning is
-lazy and impossible reversed-wording scans are filtered. A private replay of
-127 recent stored records across 12 providers identified these stages as 82.6%
-of preparation CPU. Serial same-input runs fall from 4.83–5.37 milliseconds
-to 2.76–2.78 per record, at least 42.6% less preparation time; complete prepared
-output hashes match for every record. This excludes actual location/queue/SQL
-work and uses fixed lookup maps. Frozen Python outputs and old-filter
-differential tests qualify semantics; actual PostgreSQL executor checks
-qualify the persistence boundary. This component work does not close whole-lane
-acceptance. Complete required CI and the full immutable rollout, then measure
-natural throughput, freshness and whole-lane cost under unchanged budgets.
+Preserve the original efficiency/freshness requirement. Qualify equivalent
+effective routes and useful output, then repeat only affected operational checks.
+Reuse unchanged admission/policy/conservation proof instead of another full
+frontier or two-million-URL capture without a changed contract or unexplained gap.
+Do not raise concurrency, create a control plane or reserve browser capacity on
+speculation.
 
 Keep normal ADF quarantine/probe and Amazon pacing; their next natural outcomes
 can distinguish upstream behavior from migration regression. Do not force origin
@@ -228,6 +248,18 @@ Useful Python setup, labelling, research, tests, offline enrichment and operator
 tooling remain outside the production processing image. Legacy Docker targets,
 Compose and compatibility code remain for explicit cold reversal and offline
 parity; retention grants no mixed writers or per-task fallback.
+
+Retirement inventory: the Dockerfile still has explicit Python `slim`, `full`
+and `benchmark-browser` targets, with `full` as its final/default build stage;
+production workflows explicitly select `native`. Whole-lane comparison and
+runtime-contract workflows still consume named legacy targets. Five Compose
+services remain behind the explicit `legacy` profile. The deployment rollback
+restores the authenticated prior spec archive and exact old image/pool overrides;
+qualify that archived path before removing current legacy entrypoints/profiles.
+`src/processing` also serves offline workspace code, including
+`workspace/lib/run.py`'s `scrape._apply_defaults` import. A blanket Python-source
+deletion would remove useful tooling. Retire only proven runtime-only consumers
+after the stated acceptance/window, preserving isolated tooling and recovery.
 
 The complete [cold reversal](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
 passed independent image/spec/data/actor checks without mixed ownership. Do not
