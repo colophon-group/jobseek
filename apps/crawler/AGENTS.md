@@ -7,7 +7,14 @@ sections on demand.
 
 ## Setup and verification
 
-Run from `apps/crawler`:
+Production processing uses the Dockerfile's `native` target and Go modules under
+`go/`. Run `go test ./...` and `go vet ./...` from each changed module; use focused
+race/integration checks for changed ownership, queue and persistence contracts.
+Preserve real PostgreSQL/Redis and installed-image verification where required.
+Read the [current migration checkpoint](../../docs/27-go-lightpanda-continuation-plan.md)
+before changing production transports or retained legacy paths.
+
+For Python offline tooling, run from `apps/crawler`:
 
 ```bash
 uv sync --frozen --group dev
@@ -23,13 +30,18 @@ Experiment in a disposable worktree; preserve unrelated data edits.
 
 ## Architecture and invariants
 
-- `src/core/`: pure async monitor/scraper logic, no DB awareness.
-- `src/workers/` + `processing/`: Redis claims, HTTP/browser execution and local
-  Postgres writes. `src/lua/`: atomic queue operations.
-- Local Postgres is authoritative. `src/exporter.py` exports to Typesense using
-  the writer-floor/CDC protocol. `src/sync.py` applies CSV state locally first.
-- `src/workers/r2_drain.py` uploads descriptions. No direct production mutation
-  outside the documented maintenance/deployment workflows.
+- `go/ordinary-worker/`: production monitor/detail execution through Go HTTP/API
+  or self-hosted Lightpanda. `go/ordinary-queue/`: claims, fencing, scheduling,
+  canonical persistence and route admission. `src/lua/`: atomic Redis operations.
+- `go/job-enrichment/`: shared enrichment; `go/pdf-text/`: document extraction.
+- Local Postgres is authoritative. `go/typesense-exporter/` owns Typesense
+  writer-floor/CDC export, canonical registry sync, migrations, maintenance and
+  lease recovery. `go/r2-drain/` uploads descriptions. No direct production
+  mutation outside the documented maintenance/deployment workflows.
+- `src/core/`, `src/workers/`, `processing/` and Python export/sync/drain paths
+  support offline parity/tooling and the retained cold-reversal contract. They
+  are not the default production processors; do not add new production-only
+  behavior there or remove required rollback compatibility speculatively.
 - `src/workspace/`: agent setup CLI, state, runtime templates, gates and KB.
   `src/labeller/`: sampling, task rendering, validation, merging and uploading.
 - Inspect [architecture](../../docs/03-crawler-architecture.md),
@@ -38,7 +50,11 @@ Experiment in a disposable worktree; preserve unrelated data edits.
 
 ## Code conventions
 
-- `from __future__ import annotations` in every module; async I/O via asyncpg
+- Go: retain bounded contexts, response sizes, retries, publisher policy and
+  SQL/Redis authority checks. Use the existing queue/profile/enrichment contracts
+  and focused Go regression tests. Production routes remain Go HTTP/API or
+  Lightpanda; do not introduce Chromium or per-task Python fallbacks.
+- Python: `from __future__ import annotations` in every module; async I/O via asyncpg
   and httpx. Use `asyncio.TaskGroup` for parallel work and Redis Lua for claims.
 - Structured logging: `structlog.get_logger()` and `log.info("event.name", key=value)`.
 - Raw SQL with `$1` parameters for asyncpg; no ORM or string-interpolated SQL.
@@ -50,7 +66,10 @@ Experiment in a disposable worktree; preserve unrelated data edits.
 ## Monitor/scraper work
 
 Exhaust configuration options before adding a type. Prefer extending a matching
-existing type; document the failing input and verification evidence.
+existing type; document the failing input and verification evidence. Qualify its
+production Go profile, actual URLs, worker lane and publisher behavior as well
+as the offline workspace configuration. Batch related profile changes when
+possible. The Python interfaces below support offline setup and parity:
 
 - Monitor: implement async `discover(board, client)` returning `DiscoveredJob`
   objects or URLs; optionally `can_handle`. Register at module bottom and import

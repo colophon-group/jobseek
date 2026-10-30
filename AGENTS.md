@@ -1,8 +1,9 @@
 # AGENTS.md — Jobseek
 
-Jobseek monitors career pages with a Python crawler and serves jobs through a
-Next.js frontend. Keep this startup file concise; load linked references for
-specific work.
+Jobseek monitors career pages with Go workers, Go HTTP/API routes and self-hosted
+Lightpanda, and serves jobs through a Next.js frontend. Python remains for useful
+offline company setup, labelling, research and compatibility tooling. Keep this
+startup file concise; load linked references for specific work.
 
 ## Safety and Git
 
@@ -28,8 +29,10 @@ specific work.
 
 ## Layout and development
 
-- `apps/crawler/`: Python 3.13, async workers, CSV registry, Redis queues, local
-  Postgres truth, Typesense export. Read its [AGENTS.md](apps/crawler/AGENTS.md).
+- `apps/crawler/`: Go production workers and maintenance, CSV registry, Redis
+  queues, local Postgres truth, Typesense export, and Python 3.13 offline tooling.
+  Read its [AGENTS.md](apps/crawler/AGENTS.md) and the
+  [Go/Lightpanda checkpoint](docs/27-go-lightpanda-continuation-plan.md).
 - `apps/web/`: Next.js, TypeScript, Drizzle, Lingui. Read its
   [AGENTS.md](apps/web/AGENTS.md). From that directory: `pnpm dev`, `pnpm build`,
   `pnpm extract`, `pnpm compile`. Read [cache components](apps/web/docs/cache-components.md)
