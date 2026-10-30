@@ -2,34 +2,39 @@
 
 ## Current checkpoint — October 30, 2026
 
-The last fully verified production checkpoint is **0.13.1128**, source
-`d4a41626f6a31f17b8b8227a01ea40467565cbea`, after the complete
-[deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41085351259).
+The installed production checkpoint is **0.13.1130**, source
+`69843fc38f4dd9e65c89511a323d3848678ba1cd`, after the complete
+[deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41121590516).
 Both crawler image repositories use native image
-`sha256:567edc79a60c1b7b7aa1c3c758e733ee6f195f1ab8318b2046ad67d12d164e38`.
+`sha256:4f340039fa4ed73c808f2b22890a0d033d3039c7a5a9fda8a080153f1357cf9e`.
 Runtime contract:
-`03e7ceb9e32ee9191e30c70c4d5de3719289b72e8f4573e4ed5bbc7cdac34e8e`.
+`eb77a82afb74aec23d8010b057ca711c1ddfc1edfd151fb5064f75ce371dc485`.
 Installed data revision is the same full source revision; data contract:
 `41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693`.
 There are **8,151 enabled boards**, schema 0041, default Go ownership at epoch
-404, and no active migration plans. Four native actors started at 16:11:00;
-all remain running without restarts or OOM in the observation below. None of the
+404, and no active migration plans. Four native actors started at 20:30:32;
+the 20:32 installed read verifies all running without restarts or OOM. None of the
 five current Compose legacy-profile services runs. The processing image contains
 no Python, uv, Playwright or Chromium command. Runtime, data and renderer
 identities are independently verified.
 
-[PR #11068](https://github.com/colophon-group/jobseek/pull/11068) merges the
-Python-free default image build as 0.13.1129 at
-`6c16fa75151727482161bb7d65de577538872019`. Required CI and actual default-image
-parity pass. Its [deployment](https://github.com/colophon-group/jobseek/actions/runs/41103411774)
-build succeeds, but the company-OG observer fails twice with GitHub HTTP 502
-while reading child jobs; both exact dispatched prewarm runs actually succeed.
-Host deployment and promotion are skipped. A fresh 18:25 installed read confirms
-1128 still serves all 8,151 boards with no native restarts, OOM or legacy workers.
-The 1130 candidate polls the existing prewarm run's status, retrying observation
-errors without dispatching another child. A completed failed child remains a
-failure. The full replacement rollout restores from the authenticated active
-v3 generation; a skipped intermediate rollout does not become rollback evidence.
+[PR #11068](https://github.com/colophon-group/jobseek/pull/11068) makes the default
+image build Python-free. [PR #11069](https://github.com/colophon-group/jobseek/pull/11069)
+preserves overdue monitor deadlines and retries observation of the same uniquely
+dispatched company-OG run. Exact-head Required CI and Crawler Deploy Gate passed
+before its expected-head merge. The complete rollout passed preflight, native
+image build, company-OG coverage, host deployment and promotion on attempt one.
+The exact-revision [prewarm child](https://github.com/colophon-group/jobseek/actions/runs/41121777717)+succeeded and the parent accepted its attestation. The documented locked rollout
+retains the authenticated active v3 rollback generation.
+
+At 20:32 all 8,151 enabled monitors are queued or validly leased: 8,127 queued
+and 24 leased, with no unexplained missing monitors, duplicate representations,
+expired-only leases or cache domain/lane mismatches. Canonical monitor identity
+and key hashes match the pre-rollout scope. The five earlier deadletter-only
+cases are represented again after normal full sync; that alone does not prove
+successful provider recovery. Greenhouse, Ashby and JOIN now have zero
+ready-marker/head lag and ranks 0, 1 and 2; original host delays remain 0.5,
+0.5 and 2 seconds. Their accumulated backlog still requires natural observation.
 
 The full goal remains **active**. Native implementation and deployment are in
 place, but the original acceptance requirement of better whole-lane efficiency
@@ -130,6 +135,19 @@ no-fetch path without inventing a per-record settlement quota.
 
 ## Canonical output and storage effects
 
+At 20:45 the 1130 runtime has **730 completed, active, zero-failure detail
+records across 27 provider groups**. None lacks a title. All 729 nonnull posting
+hashes match nonempty uploaded description rows, with no pending or inflight
+uploads in that cohort. Ten mature Typesense records match title and company.
+Twenty-one records have differing locale/title array lengths; localized title
+variants and detected language have separate contracts, so this count alone is
+not a corruption finding. The bounded drain log has 2,000 upload events and no
+PUT errors. One simple-lane reaper sweep failed; later sweeps and lifecycle
+classification succeeded, with no newly deadlettered or missing-config result.
+
+Earlier unchanged-component qualification follows; its samples belong to the
+stated observation times rather than to the new runtime cohort.
+
 At 16:27, current-runtime completed detail fences and zero-failure active
 canonical states provide **1,000 recent records across 26 provider groups**:
 no missing titles, 994 nonnull description hashes and 1,000 nonempty description
@@ -163,7 +181,37 @@ fences remain in place; no outbox rows, counters or queues were manually repaire
 
 ## Freshness, capacity and resource acceptance
 
-The final 1128 window ran **16:16:23–16:25:22**, ten aligned samples per node,
+The current 1130 window ran **20:35:46–20:44:46**, after five minutes of startup
+warmup. Ten samples cover each node, with fixed processing identities, no
+restart increments or OOMs, and unchanged budgets. The nearby 1128 control ran
+19:42:05–19:51:04 against the same 8,151 enabled monitor identities and registry
+data contract.
+
+| Observation | Nearby 1128 control | Native 1130 |
+| --- | ---: | ---: |
+| Window duration, seconds | 539.3 | 539.3 |
+| Successful monitors / details | 206 / 660 | 601 / 478 |
+| Monitor / detail inventory outputs | 73,709 / 753 | 47,240 / 502 |
+| Mean whole-lane CPU cores | 3.60 | 3.76 |
+| Mean whole-lane working memory, GiB | 10.81 | 11.12 |
+| Successful tasks per CPU second | 0.446 | 0.531 |
+| Modeled compute EUR per 1,000 successful tasks | 0.003888 | 0.003185 |
+
+Successful-task throughput rises 24.6% and task density rises 19.3%; modeled
+cost per success falls 18.1%. CPU rises 4.5% and memory 2.9%. Detail throughput
+falls **27.6%**, and both output counts fall while the task/provider mix changes.
+These natural windows establish neither a causal same-workload speedup nor the
+original legacy efficiency/no-material-regression gate. Provisioned compute
+remains EUR 0.0624/hour; modeled allocation is not billed savings.
+
+Between the bound 20:32 and 20:45 installed reads, due monitors fall from
+6,315 to 5,647 and day-overdue monitors from **2,697 to 1,959**. Greenhouse,
+Ashby and JOIN due queue counts fall from 2,541/907/271 to 2,074/684/202, with
+zero marker/head lag throughout. JOIN now has an open host circuit; its normal
+backoff stays in force. All 8,151 monitors remain queued or validly leased,
+with unchanged canonical hashes and no unexplained gaps or duplicate routing.
+
+The earlier 1128 enrichment window ran **16:16:23–16:25:22**, ten aligned samples per node,
 with fixed processing identities, zero restart increments and no OOM across
 crawler, renderer, PostgreSQL and Typesense. Actual limits stay at 60 discovery
 and 15 monitor slots, ten host domains, Go two cores/1 GiB/GOMEMLIMIT 512 MiB,
@@ -199,7 +247,7 @@ at task settlement, while the recovered legacy output is counted per batch.
 These limits prevent a complete equivalent-work comparison. The different
 inventory volumes also mean task-count cost alone cannot identify an enrichment
 regression or justify further CPU changes without a measured bottleneck.
-Modeled native cost per success is still **34.4% above the legacy observation**;
+That earlier 1128 modeled cost per success is **34.4% above the legacy observation**;
 the original efficiency/no-material-regression gate remains open. Provisioned
 catalogue compute stays **EUR 0.0624/hour**; modeled allocation is not billed
 savings. Cgroup CPU, working set excluding inactive file pages, and official
@@ -235,20 +283,29 @@ harmless; preserve the bounded acknowledgement and write-deadline diagnostic lea
 | --- | --- |
 | Shared salary, location and CPU stages | Native packages deployed; canonical effects and parity suites qualify the boundary. |
 | Native browser executor and ordinary workers | Go owns fetch/render, enrichment, persistence, failure handling, scheduling and fences. |
-| Enabled monitor/detail/browser coverage | Existing admission and configs unchanged; new configs pass startup and all 8,151 registry keys match canonical state. ADF/Amazon recovery remains unproved. |
+| Enabled monitor/detail/browser coverage | Existing admission/configs unchanged; all 8,151 monitor identities remain represented. One former deadletter recovers; three processing failures and ADF/Amazon recovery remain open. |
 | Canonical, publisher, storage and export | Real integration and natural SQL/R2/Typesense effects verified within sample limits; bounded hash/upload samples and pre-existing inconsistencies stated above. |
 | Conservation and cold reversal | Complete frontier reconciles; full locked deployment and supported cold reversal pass. |
 | Runtime consumers and Python boundary | Native production image/maintenance verified; useful offline tooling and required reversal compatibility stay isolated. |
 | Whole-lane efficiency and freshness | **Open:** observations do not establish the original improvement/no-material-regression gate. |
 | Final legacy removal | **Open:** retain required rollback assets until acceptance and a schedule-based observation window are established. |
 
-Next batch: resolve the remaining measured processing/acknowledgement cost and
-known provider recovery gaps under the existing CPU, pool and host limits.
-Use existing code-owned diagnostics and canonical evidence to distinguish
-transport/session failures from upstream conditions; do not infer recovery from
-profile admission. Batch demonstrated shared fixes across affected profiles.
-The source audit also shows ordinary legacy rich refresh recomputes shared fields;
-do not assume all refresh preparation can be skipped without changing output.
+Next batch: reproduce and reduce the shared native posting-write deadlines,
+then qualify the affected provider paths together. Bounded current-runtime logs
+contain 11 `posting_write: deadline` failures. The shared rich writer performs
+per-row refresh/description statements inside its existing 15-second transaction
+and five-connection pool. This identifies an investigation target, not yet a
+proven cause or an authorized budget increase. Preserve the 500-row atomic chunk,
+fences, publisher policy, rollback behavior and existing retry rules. Measure
+before choosing a change; keep CPU, pool, timeout and host limits unchanged.
+
+The five pre-rollout deadletter-only cases all received native attempts through
+normal scheduling. The simple API-sniffer case succeeded with a current-epoch
+completed fence and cleared failures. Accenture, Beisen and the browser
+API-sniffer case still report processing failures. Amazon retains an active
+fence and its earlier next-check deadline, without a new success in the 20:45
+read. Oracle ADF remains quarantined until its normal October 31 16:23 probe.
+Do not equate requeue, an active fence or profile admission with recovery.
 
 The 17:35–17:45 read-only schedule check instead identifies a shared freshness
 bottleneck: Greenhouse, Ashby and JOIN have 1,883, 402 and 114 day-overdue
@@ -258,21 +315,22 @@ but ready markers replace 29–30 hours of that age with a previous throttle flo
 placing these backlogs behind hundreds of other domains. Simple-lane first-time
 work is empty in the observations, so first-time priority does not explain this
 ordering. A private real-Redis regression reproduces the deadline displacement
-in both lanes. The next candidate keeps canonical monitor deadline ordering and
+in both lanes. Deployed 1130 keeps canonical monitor deadline ordering and
 uses bounded scans past throttled hosts across claim, reschedule, enqueue,
 registry sync, lease recovery and native retirement paths. Frozen B0 compatibility
-programs retain their exact generation binding. The candidate retains first-time and
+programs retain their exact generation binding. The implementation retains first-time and
 detail fairness, host delays, lease fences, concurrency and the ten-domain scan
-budget. Qualification and installed rollout must precede any claim of recovery;
-do not repair production queue scores manually.
+budget. Real Redis race regressions and 66 focused PostgreSQL/Redis race cases
+cover cold reversal, canonical deadlines, unchanged host throttles, interrupted
+retirement and bounded claims; exact-head Required CI passed before merge. The
+installed ordering and conservation checks above pass. Backlog and provider
+recovery still require natural observation; no queue scores or deadletters were
+manually repaired or replayed.
 
-At 18:58, a focused canonical/Redis check accounts for all 8,151 enabled
-monitors: 8,146 are queued or validly leased and five remain in retained
-deadletters. There are no unexplained missing monitors, duplicate representations
-or cache domain/lane mismatches. The five deadletters span Accenture,
-API-sniffer (both lanes), Beisen and Amazon; accounting for them does not prove
-recovery. Compare the same monitor identity/key hashes after the candidate's
-full rollout without manually replaying deadletters or forcing origin work.
+Worker, enrichment, PDF, drain, executor, publisher-policy and runtime-contract
+source trees are identical to 1128. Their existing qualification remains valid
+within that unchanged scope. The active queue, registry and reaper scheduling
+paths receive new operational verification.
 
 Preserve the original efficiency/freshness requirement. Qualify equivalent
 effective routes and useful output, then repeat only affected operational checks.
