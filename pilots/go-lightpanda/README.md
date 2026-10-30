@@ -1,7 +1,8 @@
 # Go + Lightpanda lifecycle pilot
 
-This is a deliberately small, nonproduction experiment for driving Lightpanda
-1.0.1 through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
+This module provides the Go renderer used by production crawler workers and
+retains isolated lifecycle and density fixtures for driving Lightpanda
+1.1.0-nightly.11326+948d77378 through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
 HTTP(S) URL and one synchronous JavaScript expression. It returns bounded JSON
 containing the top-level document's final response status, final URL,
 `<html>` outerHTML, and the expression value.
@@ -166,17 +167,17 @@ builds retain the separate-process-group behavior.
 
 ## Build and run
 
-The image supports Linux amd64 and arm64. The Dockerfile copies the official
-Lightpanda 1.0.1 (latest stable release, verified 2026-10-15) binary from `lightpanda/browser` using its immutable
-multi-architecture OCI index digest, then checks the per-architecture SHA-256.
-The [release snapshot](lightpanda-release.json) records the index, platform
-manifests, binary layers and matching release asset metadata. Daily removal of
-GitHub nightly assets no longer prevents a rebuild. The upstream entrypoint,
-user and libraries are not imported into the Jobseek runtime.
+The image supports Linux amd64 and arm64. It copies the official Lightpanda
+1.1.0-nightly.11326+948d77378 nightly binary, verified 2026-10-30, from an immutable
+`lightpanda/browser` OCI index, then checks each executable's SHA-256. The
+[release snapshot](lightpanda-release.json) records the platform manifests,
+binary layers, source revision and matching official release asset metadata.
+Rotating nightly assets are not build inputs. The upstream entrypoint, user
+and libraries are not imported into the Jobseek runtime.
 
-- Index: `sha256:e398c80a48556a271d548811fb5fb9c8bb748d3fba7a168ba2a5734524c1966a`
-- amd64 binary: `551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd`
-- arm64 binary: `392ba370c12d9f045c36c1477db8b3e2985942c89532732ef8d1610057db7d5c`
+- Index: `sha256:e72730e364d1fbf352c1149f29ffa4b278f3b1a55ff0dec3262298ebe624ec7a`
+- amd64 binary: `9dec394124212f796724d4d32737ba66fdf0319ae6faaf8a1df8cccb4a70e23f`
+- arm64 binary: `74480d0994b0a4e02f7a4956a71bd2827954dbd6fbc18bd5df0ffb1e7258263f`
 
 The runtime stage uses the digest-pinned multi-architecture Debian Trixie
 2026-08-24 slim image. The Go builder is patch/digest pinned; packages resolved

@@ -231,7 +231,7 @@ func integrationBinary(t *testing.T) string {
 	t.Helper()
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.1.0-nightly.11275+78bbb64db integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11326+948d77378 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
