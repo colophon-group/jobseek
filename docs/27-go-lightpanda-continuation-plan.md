@@ -266,6 +266,14 @@ detail fairness, host delays, lease fences, concurrency and the ten-domain scan
 budget. Qualification and installed rollout must precede any claim of recovery;
 do not repair production queue scores manually.
 
+At 18:58, a focused canonical/Redis check accounts for all 8,151 enabled
+monitors: 8,146 are queued or validly leased and five remain in retained
+deadletters. There are no unexplained missing monitors, duplicate representations
+or cache domain/lane mismatches. The five deadletters span Accenture,
+API-sniffer (both lanes), Beisen and Amazon; accounting for them does not prove
+recovery. Compare the same monitor identity/key hashes after the candidate's
+full rollout without manually replaying deadletters or forcing origin work.
+
 Preserve the original efficiency/freshness requirement. Qualify equivalent
 effective routes and useful output, then repeat only affected operational checks.
 Reuse unchanged admission/policy/conservation proof instead of another full

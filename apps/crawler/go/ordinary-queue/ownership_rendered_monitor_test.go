@@ -72,6 +72,10 @@ func testRenderedMonitorColdRetirement(t *testing.T, provider string) {
 			}
 			due := firstRetirementDue(t, p)
 			canonical := coldCanonicalSnapshot(t, p.f)
+			throttle, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
+			if rateErr != nil {
+				t.Fatal("claimed browser monitor has no host throttle", rateErr)
+			}
 			if _, e := applyFirstFixture(t, p, true); e != nil {
 				t.Fatal(e)
 			}
@@ -97,10 +101,12 @@ func testRenderedMonitorColdRetirement(t *testing.T, provider string) {
 				}
 			} else {
 				rate, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
-				if rateErr != nil && rateErr != redis.Nil {
-					t.Fatal(rateErr)
+				if rateErr != nil || rate != throttle {
+					t.Fatal("browser reversal changed the shared host throttle", rateErr)
 				}
-				if e != nil || ready != max(seconds(*due), rate) {
+				// Preserve canonical monitor urgency independently of the
+				// still-enforced shared host throttle.
+				if e != nil || ready != seconds(*due) {
 					t.Fatal("browser reversal lost ready-domain routing", e)
 				}
 			}
@@ -222,6 +228,10 @@ func TestRealRenderedNextdataColdRetirementRestoresBrowserDeadline(t *testing.T)
 			}
 			due := firstRetirementDue(t, p)
 			canonical := coldCanonicalSnapshot(t, p.f)
+			throttle, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
+			if rateErr != nil {
+				t.Fatal("claimed browser monitor has no host throttle", rateErr)
+			}
 			if _, e := applyFirstFixture(t, p, true); e != nil {
 				t.Fatal(e)
 			}
@@ -247,10 +257,12 @@ func TestRealRenderedNextdataColdRetirementRestoresBrowserDeadline(t *testing.T)
 				}
 			} else {
 				rate, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
-				if rateErr != nil && rateErr != redis.Nil {
-					t.Fatal(rateErr)
+				if rateErr != nil || rate != throttle {
+					t.Fatal("browser reversal changed the shared host throttle", rateErr)
 				}
-				if e != nil || ready != max(seconds(*due), rate) {
+				// Preserve canonical monitor urgency independently of the
+				// still-enforced shared host throttle.
+				if e != nil || ready != seconds(*due) {
 					t.Fatal("browser reversal lost ready-domain routing", e)
 				}
 			}
