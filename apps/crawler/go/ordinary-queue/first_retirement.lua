@@ -204,7 +204,7 @@ local function apply_first_retirement(changes, domains)
             local first = math.min(ft_monitor or math.huge, ft_scrape or math.huge)
             redis.call("ZADD", "ready:" .. worker .. ":0", math.max(floors.rate, first), domain)
         else
-            if monitor ~= nil then redis.call("ZADD", "ready:" .. worker .. ":1", math.max(floors.rate, monitor), domain) end
+            if monitor ~= nil then redis.call("ZADD", "ready:" .. worker .. ":1", monitor, domain) end
             if scrape ~= nil then redis.call("ZADD", "ready:" .. worker .. ":2", math.max(floors.rate, floors.rotation, scrape), domain) end
         end
         if scrape == nil then redis.call("ZREM", "ready:rotation:" .. worker, domain) end

@@ -55,7 +55,7 @@ func TestBoardSyncRetiresOppositeMonitorLaneWithoutResettingCadence(t *testing.T
 			if c.ZScore(ctx, "monitors_"+selected+":"+domain, id).Val() != 1500 || c.ZScore(ctx, "ft_monitors_"+selected+":"+domain, id).Err() != redis.Nil {
 				t.Fatal("selected cadence/tier reset")
 			}
-			if c.ZScore(ctx, "ready:"+other+":0", domain).Err() != redis.Nil || c.ZScore(ctx, "ready:"+other+":1", domain).Val() != 1400 || c.ZScore(ctx, "ready:"+other+":2", domain).Val() != 1500 {
+			if c.ZScore(ctx, "ready:"+other+":0", domain).Err() != redis.Nil || c.Get(ctx, "ratelimit:"+domain).Val() != "1400" || c.ZScore(ctx, "ready:"+other+":1", domain).Val() != 1200 || c.ZScore(ctx, "ready:"+other+":2", domain).Val() != 1500 {
 				t.Fatal("unrelated priority or rate/rotation floors changed")
 			}
 			if c.HGet(ctx, "board:"+id, "monitor_needs_browser").Val() != flag || c.HGet(ctx, "board:"+id, "retained").Val() != "yes" {

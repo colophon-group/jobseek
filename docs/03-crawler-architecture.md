@@ -72,6 +72,15 @@ domain with both kinds of work can appear in tiers 1 and 2 at the same time.
 This lets due scrapes drain while a future monitor retains its own automatic
 tier-1 promotion time. First-time work remains exclusive to tier 0.
 
+Recurring monitor markers retain the oldest pending monitor's canonical
+deadline. Claims check the shared host throttle separately, so an expired
+throttle cannot replace an overdue ATS backlog's age with the previous claim's
+wall time. The per-lane `claim:recurring-monitor-cursor:*` continues bounded
+scans past throttled hosts. An exhausted scan permits an independent recurring
+detail turn before restarting at the oldest monitor. Each claim retains the
+existing domain candidate budget; task deadlines, host delays and lease bounds
+remain authoritative.
+
 Native workers reserve monitor slots before claiming monitors. When those slots
 are occupied, spare discovery slots may claim recurring details on independent
 hosts. A due monitor on the same throttle key keeps priority until the existing

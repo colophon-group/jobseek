@@ -227,6 +227,8 @@ end
 --
 -- First-time work remains strict tier 0. ``not_before`` applies the shared
 -- throttle after a claim without changing either underlying task deadline.
+-- Recurring monitor markers keep that deadline; the explicit rate check below
+-- enforces availability without erasing the age of a large ATS backlog.
 local function refresh_ready(domain, not_before, rotate_scrapes)
     -- Rotation is distinct from the tier-2 marker: that marker may instead be
     -- an authoritative future task deadline. Only a successful recurring
@@ -267,7 +269,7 @@ local function refresh_ready(domain, not_before, rotate_scrapes)
 
     local mon_head = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
     if #mon_head >= 2 then
-        redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(floor, tonumber(mon_head[2])), domain)
+        redis.call("ZADD", "ready:" .. wtype .. ":1", tonumber(mon_head[2]), domain)
     end
 
     local scrape_head = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
@@ -451,6 +453,24 @@ if owner_role ~= "" then
     return nil
 end
 
+-- Monitor markers retain canonical deadlines, independently of host throttles.
+-- If the oldest bounded batch is entirely throttled, continue the next batch
+-- on a later claim; never widen max_check or discard a pending monitor.
+local monitor_cursor_key = "claim:recurring-monitor-cursor:" .. wtype
+local monitor_cursor = 0
+if not details_only then
+    local cursor_type = redis.call("TYPE", monitor_cursor_key)["ok"]
+    if cursor_type ~= "none" and cursor_type ~= "string" then
+        return redis.error_reply("recurring monitor cursor is corrupt")
+    end
+    monitor_cursor = tonumber(redis.call("GET", monitor_cursor_key) or "0")
+    if not monitor_cursor or monitor_cursor ~= monitor_cursor or
+        monitor_cursor < 0 or monitor_cursor > 9007199254740991 or
+        monitor_cursor % 1 ~= 0 then
+        return redis.error_reply("recurring monitor cursor is corrupt")
+    end
+end
+
 -- Try strict first-time priority, then the bounded recurring order selected
 -- above: normally monitors before scrapes, but one due scrape after at most
 -- eight consecutive recurring monitor claims.
@@ -458,6 +478,10 @@ for _, tier in ipairs(tier_order) do
     local ready_key = "ready:" .. wtype .. ":" .. tier
 
     local offset = 0
+    if tier == 1 and not details_only then
+        local count = redis.call("ZCOUNT", ready_key, "-inf", tostring(now))
+        offset = math.min(monitor_cursor, count)
+    end
     if independent_detail_capacity and tier == 2 then
         local count = redis.call("ZCOUNT", ready_key, "-inf", tostring(now))
         if detail_capacity_cursor < count then offset = detail_capacity_cursor end
@@ -595,6 +619,7 @@ for _, tier in ipairs(tier_order) do
                 end
 
                 if claimed_priority == 1 then
+                    redis.call("DEL", monitor_cursor_key)
                     redis.call(
                         "SET",
                         recurring_monitor_streak_key,
@@ -623,6 +648,24 @@ for _, tier in ipairs(tier_order) do
                 -- board). Rebuild from the authoritative queues instead.
                 refresh_ready(domain, 0, false)
             end
+        end
+    end
+
+    if tier == 1 and not details_only then
+        if #candidates == 0 then
+            redis.call("DEL", monitor_cursor_key)
+        else
+            -- Retain the one-past-end offset after a fully blocked pass. On
+            -- the next claim its empty window allows one existing detail
+            -- turn, without scanning more than max_check domains per call.
+            local retained = 0
+            for _, domain in ipairs(candidates) do
+                local score = tonumber(redis.call("ZSCORE", ready_key, domain))
+                if score and score <= now then retained = retained + 1 end
+            end
+            -- Stale markers removed during this pass no longer occupy ranks.
+            -- Advancing over them would skip untouched eligible monitors.
+            redis.call("SET", monitor_cursor_key, tostring(offset + retained))
         end
     end
 

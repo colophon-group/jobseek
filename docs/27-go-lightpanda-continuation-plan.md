@@ -2,7 +2,7 @@
 
 ## Current checkpoint — October 30, 2026
 
-Production processing runs **0.13.1128**, source
+The last fully verified production checkpoint is **0.13.1128**, source
 `d4a41626f6a31f17b8b8227a01ea40467565cbea`, after the complete
 [deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41085351259).
 Both crawler image repositories use native image
@@ -17,6 +17,19 @@ all remain running without restarts or OOM in the observation below. None of the
 five current Compose legacy-profile services runs. The processing image contains
 no Python, uv, Playwright or Chromium command. Runtime, data and renderer
 identities are independently verified.
+
+[PR #11068](https://github.com/colophon-group/jobseek/pull/11068) merges the
+Python-free default image build as 0.13.1129 at
+`6c16fa75151727482161bb7d65de577538872019`. Required CI and actual default-image
+parity pass. Its [deployment](https://github.com/colophon-group/jobseek/actions/runs/41103411774)
+build succeeds, but the company-OG observer fails twice with GitHub HTTP 502
+while reading child jobs; both exact dispatched prewarm runs actually succeed.
+Host deployment and promotion are skipped. A fresh 18:25 installed read confirms
+1128 still serves all 8,151 boards with no native restarts, OOM or legacy workers.
+The 1130 candidate polls the existing prewarm run's status, retrying observation
+errors without dispatching another child. A completed failed child remains a
+failure. The full replacement rollout restores from the authenticated active
+v3 generation; a skipped intermediate rollout does not become rollback evidence.
 
 The full goal remains **active**. Native implementation and deployment are in
 place, but the original acceptance requirement of better whole-lane efficiency
@@ -236,6 +249,22 @@ transport/session failures from upstream conditions; do not infer recovery from
 profile admission. Batch demonstrated shared fixes across affected profiles.
 The source audit also shows ordinary legacy rich refresh recomputes shared fields;
 do not assume all refresh preparation can be skipped without changing output.
+
+The 17:35–17:45 read-only schedule check instead identifies a shared freshness
+bottleneck: Greenhouse, Ashby and JOIN have 1,883, 402 and 114 day-overdue
+monitors respectively. Their ready monitor domains have no current rate wait or
+open host circuit. Their queue heads retain roughly 30 hours of overdue age,
+but ready markers replace 29–30 hours of that age with a previous throttle floor,
+placing these backlogs behind hundreds of other domains. Simple-lane first-time
+work is empty in the observations, so first-time priority does not explain this
+ordering. A private real-Redis regression reproduces the deadline displacement
+in both lanes. The next candidate keeps canonical monitor deadline ordering and
+uses bounded scans past throttled hosts across claim, reschedule, enqueue,
+registry sync, lease recovery and native retirement paths. Frozen B0 compatibility
+programs retain their exact generation binding. The candidate retains first-time and
+detail fairness, host delays, lease fences, concurrency and the ten-domain scan
+budget. Qualification and installed rollout must precede any claim of recovery;
+do not repair production queue scores manually.
 
 Preserve the original efficiency/freshness requirement. Qualify equivalent
 effective routes and useful output, then repeat only affected operational checks.

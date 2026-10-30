@@ -246,7 +246,7 @@ local function refresh_ready(worker, domain)
                         redis.call("ZADD", "ready:" .. worker .. ":0", math.max(rl_at, ft_score), domain)
                     else
                         if mon_score ~= nil then
-                            redis.call("ZADD", "ready:" .. worker .. ":1", math.max(rl_at, mon_score), domain)
+                            redis.call("ZADD", "ready:" .. worker .. ":1", mon_score, domain)
                         end
                         if scr_score ~= nil then
                             redis.call(

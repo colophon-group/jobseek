@@ -621,7 +621,7 @@
           "ready:simple:1": {
             "type": "zset",
             "value": {
-              "example.test": 1400.0
+              "example.test": 1100.0
             }
           }
         }
@@ -654,7 +654,7 @@
           "ready:simple:1": {
             "type": "zset",
             "value": {
-              "example.test": 1400.0
+              "example.test": 1100.0
             }
           }
         }

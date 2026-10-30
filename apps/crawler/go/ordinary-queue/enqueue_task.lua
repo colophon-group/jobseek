@@ -251,7 +251,7 @@ do
         end
 
         if mon_score ~= nil then
-            redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
+            redis.call("ZADD", "ready:" .. wtype .. ":1", mon_score, domain)
         end
         if scr_score ~= nil then
             redis.call(
