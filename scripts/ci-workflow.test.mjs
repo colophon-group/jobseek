@@ -1977,7 +1977,18 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
     syncDataWorkflow,
     /SYNC_RUNTIME_CONTRACT_SHA256: \$\{\{ steps\.runtime_contract\.outputs\.runtime_contract_sha256 \}\}/,
   );
-  assert.doesNotMatch(syncDataWorkflow, /\/home\/deploy\/\.env|CRAWLER_IMAGE_REF/);
+  assert.doesNotMatch(syncDataWorkflow, /\/home\/deploy\/\.env/);
+  // The runtime floor remains revision-bound. The committed immutable image
+  // is consulted only to select maintenance restoration actors after that
+  // floor passes, never to replace the requested publication contract.
+  assert.match(
+    syncDataWorkflow,
+    /CRAWLER_IMAGE_REF=.*\/home\/deploy\/\.crawler-active-release\/environment\.env/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /image_refs\[0\].*ghcr[\s\S]*org\.jobseek\.crawler\.default-native-runtime[\s\S]*v1\) maintenance_services\+=\(ordinary-go lease-reaper\)/,
+  );
   assert.match(syncDataWorkflow, /if \[\[ "\$before_contract" != "\$target_contract" \]\]/);
   assert.match(syncDataWorkflow, /run_sync=false/);
   const compatibilityPoll = syncDataWorkflow.indexOf("--check-runtime");
@@ -1985,6 +1996,8 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
     "/usr/local/sbin/jobseek-maintenance window",
   );
   assert.ok(compatibilityPoll >= 0 && compatibilityPoll < mutationWindow);
+  const committedTopology = syncDataWorkflow.indexOf("mapfile -t image_refs");
+  assert.ok(compatibilityPoll < committedTopology && committedTopology < mutationWindow);
   assert.match(
     syncDataWorkflow,
     /if \[\[ "\$status" -eq 75 \]\][\s\S]*sleep 15[\s\S]*Crawler generation changed before sync lock; retrying/,
