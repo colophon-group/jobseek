@@ -4,15 +4,18 @@ The resident `job-enrichment` binary owns occupation, seniority, technology,
 experience matching, salary extraction, language detection and description HTML normalization for monitor and detail
 processing. It loads the same read-only
 CSV taxonomy once, returns taxonomy slugs and experience bounds, and leaves
-database ID resolution to the caller. `Matcher` is directly reusable by the future native worker.
+database ID resolution to the caller. Production Go workers use `Matcher` and
+the location index directly in process.
 
-Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
-`python`; explicitly selecting `python` is the cold rollback path. There is
-no same-task Python fallback. Unknown engine names fail. The worker and
-location index loading/backfill, scheduling
-and persistence still run in Python. Location matching runs in a separate Go resident. This is not the full #7966 completion.
+The production native image runs no Python enrichment bridge. The retained
+legacy/offline bridge selects Go with `JOB_ENRICHMENT_ENGINE=go`; outside that
+configuration its default remains Python. Explicit legacy cold reversal is
+separate from production processing; there is no same-task Python fallback.
+Unknown engine names fail. See the
+[current delivery checkpoint](../../../../docs/27-go-lightpanda-continuation-plan.md)
+for deployed ownership and remaining whole-lane acceptance.
 
-Each Python worker process creates one child on first use. A lock serializes
+When using the retained Python bridge, each process creates one child on first use. A lock serializes
 newline JSON requests; forked processes discard inherited pipe descriptors
 without signalling the parent's child. Each request has a ten-second deadline,
 a request bound below 16 MiB, taxonomy/experience response bound of 1 MiB,
@@ -152,6 +155,13 @@ returned. Existing database integer constraints remain enforced by persistence.
 The Python implementation is retained only for explicit engine reversal and
 protected offline comparisons.
 
+Currency extraction first rejects scans missing a required literal currency
+marker. The filter uses the regex input's special Unicode folds and preserves
+all currency aliases. A marker hit still runs the original ordered regex,
+context, amount and period rules. Differential tests compare every guarded
+match's spans and captures against the unfiltered engine on the full salary
+oracle; fuzz seeds include Unicode folds and repaired mojibake.
+
 `testdata/generate_salary.py` freezes all existing regression strings, currency
 and period thresholds, context/magnitude failures, Unicode/mojibake inputs,
 aggregation and EUR rate behavior. Its 2,664 cases include 902 positive cases
@@ -164,19 +174,19 @@ suite work under pytest's per-test deadline.
 `testdata/replay_stored.py --scope salary` compares all salary ranges,
 unification, public parsed fields and EUR results on protected stored bytes.
 The salary slice was merged in [#10177](https://github.com/colophon-group/jobseek/pull/10177).
-Use the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md)
+Use the [current migration checkpoint](../../../../docs/27-go-lightpanda-continuation-plan.md)
 for deployment and ownership status.
 
 
-## Location matching (candidate v0.13.901)
+## Location matching
 
-The separate `location-resolver` resident owns all public free-form location
-resolution, ancestor traversal and display lookups when `JOB_ENRICHMENT_ENGINE`
-is Go. It uses a pure-Go SQLite reader over a private mode-0700 directory and
-mode-0600 index. The transition loader and batched non-core-name backfill still
-use the existing worker PostgreSQL pool, with its 500-key query chunks and
-unchanged queries. No additional PostgreSQL connection is opened by Go. The
-native worker migration must replace that loader/backfill before Python retirement.
+Production Go workers load and backfill the shared location index through their
+bounded native lookup pool. The retained legacy bridge uses the separate
+`location-resolver` resident for public resolution, ancestor traversal and display
+lookups when `JOB_ENRICHMENT_ENGINE` is Go. Both use the pure-Go SQLite reader
+over a private mode-0700 directory and mode-0600 index. Legacy transition loading
+and batched non-core-name backfill use that caller's PostgreSQL pool, retaining
+its 500-key query chunks.
 
 Preserved semantics include aliases/country/state collisions, accent and name
 variants, type hints, semicolon/multi-city ordering and deduplication, language

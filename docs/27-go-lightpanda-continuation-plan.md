@@ -179,6 +179,15 @@ original efficiency/freshness gate visible. Repeat only affected checks and
 operational outcomes after a change or a specific unresolved question. Do not add
 optional proof cycles or rewrite the queue/control plane.
 
+Candidate **0.13.1127** addresses measured shared processing overhead across
+currency families and monitor/detail profiles together. Salary extraction avoids
+regex scans missing a required currency marker; proxy and TLS selection share one
+canonical detail read and one profile copy. Fetch and write admission still
+revalidate independently. Frozen oracle/race, differential match, fuzz and real
+PostgreSQL/Redis transport checks qualify the candidate; required CI, complete
+deployment and a natural whole-lane observation are needed before crediting a
+production efficiency or freshness improvement. No budget or pacing is raised.
+
 Preserve Oracle ADF quarantine/probe and normal Amazon pacing. Their next natural
 outcomes can distinguish current upstream behavior from a migration regression.
 Do not force origin work, clear failures or raise quotas for evidence.

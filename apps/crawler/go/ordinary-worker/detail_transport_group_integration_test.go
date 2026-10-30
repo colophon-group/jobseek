@@ -62,11 +62,10 @@ func TestRealGroupedDetailTransportCanonicalWritesAndConservation(t *testing.T) 
 					// canonical exception allows this origin certificate.
 					client = explicitTLSFixtureClient(t, handler, true, true)
 				}
-				proxy, err := runtimeClaimUsesProxy(ctx, authority, claim)
+				proxy, skip, err := runtimeClaimTransport(ctx, authority, claim)
 				if err != nil || proxy != (scraper == "workday") {
 					t.Fatal("canonical proxy transport selection lost", err)
 				}
-				skip, err := runtimeClaimSkipsSSL(ctx, authority, claim)
 				if err != nil || skip != (scraper != "workday") {
 					t.Fatal("canonical TLS transport selection lost", err)
 				}

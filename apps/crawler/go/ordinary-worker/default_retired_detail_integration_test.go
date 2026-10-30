@@ -78,10 +78,11 @@ func TestRealDefaultRetiredFormerBrowserDetailMakesNoTransportRequest(t *testing
 				if err != nil || claim == nil {
 					t.Fatal("retired browser claim unavailable", err)
 				}
-				if proxy, err := runtimeClaimUsesProxy(ctx, a, claim); err != nil || proxy {
+				proxy, skip, err := runtimeClaimTransport(ctx, a, claim)
+				if err != nil || proxy {
 					t.Fatal("no-fetch canonical transport unavailable", err)
 				}
-				if skip, err := runtimeClaimSkipsSSL(ctx, a, claim); err != nil || skip {
+				if err != nil || skip {
 					t.Fatal("no-fetch canonical TLS selection unavailable", err)
 				}
 				if mode == "reactivated" {
