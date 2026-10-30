@@ -138,6 +138,7 @@ type salaryScan struct {
 	text     []rune
 	folded   []rune
 	deadline time.Time
+	markers  string
 }
 
 func newSalaryScan(text string, deadline time.Time) *salaryScan {
@@ -153,7 +154,7 @@ func newSalaryScan(text string, deadline time.Time) *salaryScan {
 			f[i] = 'k'
 		}
 	}
-	return &salaryScan{r, f, deadline}
+	return &salaryScan{text: r, folded: f, deadline: deadline}
 }
 func (s *salaryScan) check() {
 	if time.Now().After(s.deadline) {
@@ -161,6 +162,44 @@ func (s *salaryScan) check() {
 	}
 }
 func (s *salaryScan) matches(name string, first bool) []salaryMatch {
+	s.check()
+	if markers := salaryCurrencyMarkers[name]; len(markers) > 0 {
+		if s.markers == "" {
+			// Reuse the exact special folds already applied to regex input.
+			// The filter is deliberately broader than case-sensitive patterns.
+			s.markers = strings.ToLower(string(s.folded))
+		}
+		if !salaryContains(s.markers, markers...) {
+			return []salaryMatch{}
+		}
+	}
+	return s.scanMatches(name, first)
+}
+
+// Each guarded extraction alternative requires one of these literal currency
+// markers. Context/period/number rules and ordered matches stay in the original
+// engine; a marker hit is only permission to run that engine, never a match.
+// Keep aliases aligned with salary_rules.json and the differential oracle test.
+var salaryCurrencyMarkers = map[string][]string{
+	"_DOLLAR_RANGE_RE":         {"$"},
+	"_SINGLE_DOLLAR_PERIOD_RE": {"$"},
+	"_PREFIX_DOLLAR_SINGLE_RE": {"$"},
+	"_EUR_RANGE_RE":            {"eur", "€"},
+	"_EUR_SINGLE_RE":           {"eur", "€"},
+	"_GBP_RANGE_RE":            {"£"},
+	"_GBP_SINGLE_RE":           {"£"},
+	"_GBP_PREFIX_PERIOD_RE":    {"£"},
+	"_CHF_RE":                  {"chf"},
+	"PLN":                      {"pln", "zł"},
+	"CZK":                      {"czk", "kč"},
+	"SEK":                      {"sek", "kronor"},
+	"DKK":                      {"dkk"},
+	"HUF":                      {"huf", "ft"},
+	"RON":                      {"ron", "lei"},
+	"BGN":                      {"bgn", "лв"},
+}
+
+func (s *salaryScan) scanMatches(name string, first bool) []salaryMatch {
 	s.check()
 	input := s.text
 	if salaryConfig.Patterns[name].IgnoreCase {

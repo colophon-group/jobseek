@@ -15,56 +15,43 @@ import (
 	"sync"
 )
 
-func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
+// Resolve the sealed client's settings from one canonical observation. Execution
+// independently revalidates the current route, reservation and attempt fences.
+func runtimeClaimTransport(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (proxy, skipSSL bool, err error) {
 	if authority == nil || claim == nil || !claim.OwnershipBound() {
-		return false, queue.ErrConfiguration
+		return false, false, queue.ErrConfiguration
 	}
-	if claim.Descriptor().Kind == queue.Monitor {
-		// Select from the same compiled ownership profile that execution checks.
-		// A second provider-name allowlist can drift as new proxy profiles ship.
-		task := claim.Descriptor()
+	task := claim.Descriptor()
+	if task.Kind == queue.Monitor {
 		profile, err := queue.InspectRichMonitor(task.ID, task.Config)
 		if err != nil {
-			return false, err
+			return false, false, err
 		}
-		return profile.BrowserProxy || queue.ProfileRequiresProxy(profile.Profile), nil
+		skipSSL, err := queue.MonitorSkipsSSL(task.Config)
+		return profile.BrowserProxy || queue.ProfileRequiresProxy(profile.Profile), skipSSL, err
 	}
-	if claim.Descriptor().Kind != queue.Scrape {
-		return false, queue.ErrConfiguration
+	if task.Kind != queue.Scrape {
+		return false, false, queue.ErrConfiguration
 	}
 	if claim.RecoveredReceipt() != nil {
-		return false, nil // Settlement recovery performs no HTTP request.
+		return false, false, nil
 	}
-	// Scrape snapshots contain posting fields, not the canonical board metadata.
-	// Resolve the already-bound detail profile before choosing a sealed client;
-	// RunDetail independently revalidates it before fetching or writing.
+	// Posting snapshots do not contain canonical board transport settings.
 	detail, err := authority.ReadWorkdayDetail(ctx, claim)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
-	return detail.Profile().BrowserProxy || queue.ProfileRequiresProxy(detail.Profile().Profile), nil
+	profile := detail.Profile()
+	return profile.BrowserProxy || queue.ProfileRequiresProxy(profile.Profile), profile.SkipSSL, nil
 }
 
-// Monitor TLS settings and Workday detail exceptions are resolved from
-// the same immutable canonical configuration used by execution.
+func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
+	proxy, _, err := runtimeClaimTransport(ctx, authority, claim)
+	return proxy, err
+}
 func runtimeClaimSkipsSSL(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
-	if authority == nil || claim == nil || !claim.OwnershipBound() {
-		return false, queue.ErrConfiguration
-	}
-	if claim.Descriptor().Kind == queue.Monitor {
-		return queue.MonitorSkipsSSL(claim.Descriptor().Config)
-	}
-	if claim.Descriptor().Kind != queue.Scrape {
-		return false, queue.ErrConfiguration
-	}
-	if claim.RecoveredReceipt() != nil {
-		return false, nil
-	}
-	detail, err := authority.ReadWorkdayDetail(ctx, claim)
-	if err != nil {
-		return false, err
-	}
-	return detail.Profile().SkipSSL, nil
+	_, skipSSL, err := runtimeClaimTransport(ctx, authority, claim)
+	return skipSSL, err
 }
 
 // All endpoint authority comes from protected startup settings. Configs and

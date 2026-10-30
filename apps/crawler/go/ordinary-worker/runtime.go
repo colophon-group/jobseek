@@ -464,11 +464,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		return browserCapacity.claim(ctx, pop)
 	}
 	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, false) }, claimDetail: func(ctx context.Context) (*queue.Claim, error) { return claimOwned(ctx, true) }, releaseClaim: browserCapacity.release, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
-		useProxy, err := runtimeClaimUsesProxy(ctx, authority, claim)
-		if err != nil {
-			return nil, claimRunError("transport_selection", err)
-		}
-		skip, err := runtimeClaimSkipsSSL(ctx, authority, claim)
+		useProxy, skip, err := runtimeClaimTransport(ctx, authority, claim)
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)
 		}
