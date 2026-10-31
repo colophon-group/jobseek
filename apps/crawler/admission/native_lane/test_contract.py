@@ -278,7 +278,7 @@ def test_renderer_keeps_the_production_privilege_drop_and_child_process_contract
     root = Path(__file__).resolve().parents[4]
     production = yaml.safe_load((root / "deploy/lightpanda-renderer/compose.yml").read_text())
     fixture = yaml.safe_load((Path(__file__).parent / "compose.yml").read_text())
-    for field in ("user", "cap_add", "cap_drop", "read_only", "pids_limit"):
+    for field in ("user", "cap_add", "cap_drop", "read_only", "pids_limit", "tmpfs"):
         assert fixture["services"]["renderer"][field] == production["services"]["renderer"][field]
 
 
@@ -299,7 +299,10 @@ def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
     )
     assert (directory / "server-leaf.sha256").read_text() == pins["server-leaf"] + "\n"
     assert stat.S_IMODE(directory.stat().st_mode) == 0o700
-    assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in directory.iterdir())
+    assert all(
+        stat.S_IMODE(path.stat().st_mode) == (0o400 if path.name == "server-key.pem" else 0o600)
+        for path in directory.iterdir()
+    )
 
 
 def test_description_sink_verifies_fixture_tls_identity_and_preserves_bytes(

@@ -32,31 +32,30 @@ image has no Python, uv, Playwright or Chromium. All times here are UTC.
 
 ## Latest Lightpanda and fixed operating limits
 
-Installed **1.1.0-nightly.11326+948d77378**, source
-`948d773786380bae36f046639fc61e2ddddd212a`. The official
+Installed **1.1.0-nightly.11423+56980afde**, executable source
+`56980afdec3ad177072e7a180cb05da838bc1744`. The official
 [nightly assets](https://github.com/lightpanda-io/browser/releases/tag/nightly)
-and latest stable were rechecked October 31 at 02:26. Installed Linux binaries
-still match the newest nightly; stable 1.0.2 is older. The nightly tag is reused,
-so compare asset digests and update times. ARM64 SHA-256:
-`74480d0994b0a4e02f7a4956a71bd2827954dbd6fbc18bd5df0ffb1e7258263f`;
-AMD64: `9dec394124212f796724d4d32737ba66fdf0319ae6faaf8a1df8cccb4a70e23f`.
+advanced on October 31. All three executable assets and both Linux OCI layers
+were independently verified; both Linux physical suites, deployment validation,
+Required CI and Crawler Deploy Gate passed before [PR #11075](https://github.com/colophon-group/jobseek/pull/11075)
+merged. The moving Git tag is not the executable-source authority.
 
-The verified [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41033456615)
-uses source `93a9c49bb063d70b0b0eca8d19c84e96b44d75e0` and image
-`sha256:be79daebf84690c5b40bacd9e6181432d82cc2818836a79e6c213167b4fedfff`.
-Renderer limits remain concurrency four, 128 MiB heap, 8 MiB responses, 1 GiB
-memory and zero swap, with mTLS and controlled egress. Crawler limits remain two
-Go CPU cores, 1 GiB memory, GOMEMLIMIT 512 MiB, 60 discovery slots, 15 monitor
-slots and ten candidate host domains. Preserve normal delays, circuits and
-schedules. **No Chromium fallback**, forced origin probes, manual queue/SQL/env
-repair, deadline/counter resets or raised budgets are authorized.
+The [supported renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41162854853)
+passed. Independent 03:16 readback verifies source
+`406d0f94ee919962da2ccb4196450344265c9445`, image
+`sha256:c09939c34ba034ee9d68ec9176f19f8ddeea04bfa816ce595409b09386133af7`
+and actual ARM64 binary SHA-256
+`97710997faea70bb0f22f9b07ba3a9701b47dbb6a71f679150b040e70c565cf3`.
+AMD64 SHA-256 is `19f3fee25fb14bb75a1e0c1e0f8ab9cce842950544e4a144fbad3884c94b98a3`.
+The renderer has zero restarts/OOMs, unchanged static arguments, 1 GiB memory,
+zero swap, one CPU and the 64-PID limit. Fixed service concurrency remains four,
+with 128 MiB heap, 8 MiB responses, mTLS, controlled egress and isolated child UIDs.
 
-The October 31 nightly has since advanced to **1.1.0-nightly.11423+56980afde**.
-[PR #11075](https://github.com/colophon-group/jobseek/pull/11075) pins verified
-amd64/arm64 executable and OCI-layer digests plus the independently executed
-macOS asset. Both Linux physical qualification suites passed; Required CI remains pending. This new release is
-not installed yet; retain the verified installed renderer until qualification
-and supported rollout complete.
+Crawler limits remain two Go CPU cores, 1 GiB memory, GOMEMLIMIT 512 MiB,
+60 discovery slots, 15 monitor slots and ten candidate host domains. Preserve
+normal delays, circuits and schedules. **No Chromium fallback**, forced origin
+probes, manual queue/SQL/env repair, deadline/counter resets or raised budgets
+are authorized.
 
 ## Current proof and open gates
 
@@ -143,6 +142,11 @@ exclude the fixed renderer and origin-fixture addresses, preventing bootstrap
 containers from occupying them. A regression verifies fixed addresses are outside
 automatic pools; see [Docker's static-address guidance](https://docs.docker.com/reference/cli/docker/network/connect/).
 All 28 local tests, lint/format, typing, actionlint and Compose parsing pass.
+The renderer's private key now uses the required `0400` mode and its temporary
+filesystem matches the isolated child UID and 16 MiB production contract. A local
+qualification feeds the generated certificate bundle and exact comparison
+arguments through the actual Go service argument/TLS loader and exact client
+identity validator; all pass. Temporary keys, source and Go cache are removed.
 The next comparison includes the verified latest Lightpanda 11423 pin and the
 1133 native rollback correction, so final qualification tests the combined
 candidate. Full Linux comparison remains unqualified. Bounded annotations retain
@@ -168,6 +172,10 @@ The [1133 correction in PR #11076](https://github.com/colophon-group/jobseek/pul
 legacy processors retain parking; Go-to-Go reversal preserves all seven monitor
 schedules. Native sync still requires native admission and legacy credential,
 quiescence, failure propagation and archived-generation barriers remain intact.
+Its first full crawler suite had one obsolete unconditional-parking source assertion
+with 14,270 passes. That assertion now checks the runtime-selected call while
+normalizing shell continuations; 34 cutover/recovery checks pass in addition to
+the 88 deployment checks. Required CI is running on the corrected head.
 The exercised workflow alone is insufficient: independent conservation must pass
 after the corrected reversal before closing this gate.
 

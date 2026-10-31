@@ -156,7 +156,7 @@ services:
       - ${NATIVE_LANE_PKI:?}/server.pem:/run/pki/server.pem:ro
       - ${NATIVE_LANE_PKI:?}/server-key.pem:/run/pki/server-key.pem:ro
       - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
-    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0700"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10002,gid=10002,mode=0700"]
     cpus: 1.5
     mem_limit: 1g
     memswap_limit: 1g

@@ -224,7 +224,7 @@ def pki(directory: Path, native_image: str) -> dict[str, str]:
                 serialization.PrivateFormat.PKCS8,
                 serialization.NoEncryption(),
             ),
-            0o600,
+            0o400 if name == "server" else 0o600,
         )
         pins[name + "-leaf"] = hashlib.sha256(
             certificate.public_bytes(serialization.Encoding.DER)
