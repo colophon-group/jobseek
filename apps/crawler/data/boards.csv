@@ -1924,6 +1924,7 @@ corvascular,corvascular-join,https://join.com/companies/corvascularcom,join,"{""
 corvias-corporate-services-llc,corvias-corporate-services-llc-greenhouse,https://job-boards.greenhouse.io/corviascorporateservicesllc,greenhouse,"{""token"": ""corviascorporateservicesllc""}",skip,
 cosmax,cosmax-careers,https://cosmax.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""cosmax""}",skip,
 cosmos,cosmos-ashby,https://jobs.ashbyhq.com/cosmos,ashby,"{""token"": ""cosmos""}",skip,
+costa-navarino,costa-navarino-main,https://apply.workable.com/costa-navarino/,workable,"{""token"": ""costa-navarino""}",workable,
 cosuno,cosuno-ashby,https://jobs.ashbyhq.com/cosuno,ashby,"{""token"": ""cosuno""}",skip,
 cote-vegas,cote-vegas-greenhouse,https://job-boards.greenhouse.io/cotevegas,greenhouse,"{""token"": ""cotevegas""}",skip,
 cotton-on-group,cotton-on-group-careers,https://ekxm.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
