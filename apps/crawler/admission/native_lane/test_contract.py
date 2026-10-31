@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import stat
+import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -13,6 +16,19 @@ from cryptography.hazmat.primitives import serialization
 
 from admission.native_lane import controller, driver
 from admission.native_lane.resources import allocation, role, sample
+
+
+def test_literal_fixture_environment_loads_real_queue_settings_without_connections() -> None:
+    document = yaml.safe_load((Path(__file__).parent / "compose.yml").read_text())
+    environment = {key: os.environ[key] for key in ("PATH", "HOME") if key in os.environ}
+    environment.update({key: str(value) for key, value in document["x-env"].items()})
+    result = subprocess.run(
+        [sys.executable, "-c", "from src.redis_queue import close_redis"],
+        env=environment,
+        capture_output=True,
+        timeout=20,
+    )
+    assert result.returncode == 0, "literal fixture settings could not load"
 
 
 def test_subprocess_diagnostic_does_not_retain_arbitrary_error_text() -> None:
