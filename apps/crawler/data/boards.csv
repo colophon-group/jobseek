@@ -6849,6 +6849,7 @@ squarespace,squarespace-greenhouse,https://job-boards.greenhouse.io/squarespace,
 squint-ai,squint-ai-ashby,https://jobs.ashbyhq.com/squint.ai,ashby,"{""token"": ""squint.ai""}",skip,
 squircle-it-consulting-services,squircle-it-consulting-services-careers,https://careers.smartrecruiters.com/SQUIRCLEITCONSULTINGSERVICESPVTLTD,smartrecruiters,,smartrecruiters,
 squircle-it-consulting-services,squircle-it-consulting-services-training,https://careers.smartrecruiters.com/SquircleITConsultingServices1,smartrecruiters,"{""token"": ""SquircleITConsultingServices1""}",smartrecruiters,
+sr-schweiz-ag,sr-schweiz-ag-careers,https://www.ch-sothebysrealty.ch/de/karriere,inline,"{""require_zero_proof"": true, ""item_boundary_tag"": ""h4"", ""steps"": [{""tag"": ""h4"", ""field"": ""title"", ""regex"": ""^(.+?)\\s+[0-9]+%""}, {""tag"": ""div"", ""attr"": ""class=cms_text_content"", ""field"": ""description"", ""html"": true, ""stop"": ""Bewerben""}], ""defaults"": {""locations"": [""Z\u00fcrich, Switzerland"", ""Schwyz, Switzerland"", ""Central Switzerland""], ""employment_type"": ""full_time""}}",skip,
 srg-ssr,srg-ssr-central,https://jobs.srgssr.ch/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/offene-stellen/""}",json-ld,"{""ignore_address_region"": true}"
 srm-concrete,srm-concrete-careers,https://careers-smyrnareadymix.icims.com/,icims,,json-ld,
 srs-acquiom,srs-acquiom-greenhouse,https://job-boards.greenhouse.io/srsacquiom,greenhouse,"{""token"": ""srsacquiom""}",skip,
