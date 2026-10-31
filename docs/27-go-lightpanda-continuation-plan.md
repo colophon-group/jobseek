@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-10-31 20:15 UTC**. The migration goal remains active.
+Current checkpoint: **2026-10-31 21:54 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -21,15 +21,17 @@ policy, schedule conservation and supported rollback. Production transport stays
 
 ## Deployed release and retirement
 
-[PR #11271](https://github.com/colophon-group/jobseek/pull/11271) merged and
-**0.13.1140** completed the [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41232802166).
+[PR #11299](https://github.com/colophon-group/jobseek/pull/11299) merged and
+**0.13.1141** completed the [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41242427213).
+This narrow Intervieweb/Zinrec provider fix follows the qualified 1140 release;
+the comparison and production-window results below remain explicitly dated 1140.
 
 | Identity | Value |
 | --- | --- |
-| Tested head | `38e5dfe0927213a5bfc3e803cfb4747377aa777b` |
-| Runtime source | `55ba15b9267dbdb7de88efb1f963932d1ff530c6` |
-| Runtime contract | `fdd8d5a6610e915f9e3b7d97281f575a4fb5f0318b9629faa8a4403e97d1cbf1` |
-| Image | `sha256:28a4208b428e2e03af3d24c0ed4b719aa64de523dd13fd1f160270a2c80ff86c` |
+| Tested head | `1b0383741758e0f181778686281a40b371151ea9` |
+| Runtime source | `d1a2f4243e2098daae410c10f09eae2e0144bf46` |
+| Runtime contract | `616d966236554797a9f13c9b2429fa98aaeccaa80d966f59666dc1f4edf473d5` |
+| Image | `sha256:86cfbb53072811f18f77ac5972af4f3d76db33004161e651622c8b5237c313ff` |
 
 Required CI and Crawler Deploy Gate passed before the head-bound merge.
 The rollout includes the retirement topology from
@@ -40,8 +42,8 @@ Python, uv, Playwright or Chromium command. Native processing, enrichment, PDF
 extraction, scheduling, persistence, failure handling, sync, migrations,
 maintenance, currency refresh, export and description drain are implemented.
 
-Independent readback at **19:36:56** verifies exact source/image and all four
-native actors running from their **19:35:16** generation with zero restarts/OOM
+Independent readback at **21:46:36** verifies exact source/image and all four
+native actors running with zero restarts/OOM
 and original budgets. The complete live environment matches the committed release,
 excluding only its documented `COMPOSE_FILE` override. A company-data preflight's
 19:34 drift rejection occurred during the full rollout; no host repair or guard
@@ -49,17 +51,22 @@ bypass was used.
 
 ## Current fleet and downstream effects
 
-At 19:49–19:50, the independently observed data revision is
-`c67d56fae2044bde8b3d6e74aec4a1bb0ff36540`, data contract
-`e240af4c00a949174c8274c4e5a2d76d027f15739485da480a6ae63c4f959315`,
-with **8,187 enabled boards**, routing epoch **404**, schema **0041** and zero
-active migration plans. Company publication can advance independently of runtime.
+At 21:46:36, the independently observed data revision is
+`ee23f1db6b13ddb15659484386dee34b6f03fd3f`, data contract
+`6a67d295e818f1e9e570c524862c75113385edc009dd65d852f7acbd6be5c309`,
+with **8,192 enabled boards**, routing epoch **404**, schema **0041** and zero
+active migration plans. A subsequent selected-row read at 21:54:09 observes data
+revision `be11e7a79b28f7a6e455152758d9a193f397c66f`, contract
+`4c14b0c2b841bc547d5ffc670fd9d23e561ea5a6bb180e8588447a15c7a6b917`.
+Company publication advances independently of runtime; the earlier fleet count
+is not a fresh census of that later revision.
 
-Exact immutable CSV/SQL key equality and original-subset reconciliation preserve
-all original **8,163 board UUIDs**, plus 24 new keys. The original sorted UUID hash
+Exact immutable CSV/SQL key equality and original-subset reconciliation at 21:15
+preserve all original **8,163 board UUIDs**, plus 28 new keys at data revision
+`ca27188439e4fd08f4e10001a04a42ef9692f48d`. The original sorted UUID hash
 remains `73b4d3b1b4be51da0a610f158a64c7e6b71bddffc5dc1a0d9d8716bb5edc9e29`.
-The atomic Redis observation represents all **8,187** currently enabled monitors
-exactly once: **8,172 queued + 15 valid leases**, zero missing, duplicate,
+The 21:13 atomic Redis observation represents all **8,191** enabled monitors
+at that revision exactly once: **8,177 queued + 14 valid leases**, zero missing, duplicate,
 wrong-lane, expired-only, token-presence, cache/domain or deadletter gaps.
 Refresh these identities after later publication rather than reusing saved counts.
 
@@ -84,11 +91,32 @@ Actual R2 GET bytes match SQL UTF-8 HTML SHA-256 for **10/10 descriptions**, fiv
 provider groups, HTML content type and **49,548 bytes**. Endpoint/bucket
 fingerprints match the installed drain. Objects can predate this generation.
 
-The original named required-title browser case remains enabled, with 41 stored
-postings and **zero active** postings. Its one missing title belongs to historical
-inactive data; no detail completed in this generation. The 232 successful live
-browser-configured details verify the current required-title path across other
-active sources, but do not prove repair of that inactive historical row.
+The original named required-title browser case is now qualified through the
+existing native BambooHR monitor and HTTP `api_sniffer` detail route.
+[PR #11346](https://github.com/colophon-group/jobseek/pull/11346) changed one
+registry row and its census/plan, passed required checks, and completed the
+[automatic data publication](https://github.com/colophon-group/jobseek/actions/runs/41241750984).
+The board UUID and source scope are preserved. Standard provider-type sync
+cleared the old attempt state and scheduled native validation; no manual reset
+occurred. Do not claim preservation of the old counters/deadline or count the
+preceding DOM success as proof of the new route.
+
+The new monitor naturally succeeded at **21:25:00**, leaving the board active,
+zero failures and zero empty cycles. At 21:54, its 41 stored postings include
+**two active jobs**: both have titles, locations, descriptions staged and marked
+uploaded, and detail completions after the API monitor. Both have zero scrape
+failures. This closes the observed empty-inventory/missing-title requirement for
+current active output; it does not repair historical inactive records or claim
+a new independent R2 byte comparison.
+
+A separate company-intake location correction is also installed: both active
+postings have the correct stored taxonomy, Frankfurt/Munich in Germany and Bern
+in Switzerland. The unsafe CSV attempt failed at the pre-mutation runtime-drift
+guard; the full 1141 rollout's data-revision anchors retain `ca271884...`, and
+the later corrected publication succeeded. There is no observed unsafe
+publication; current corrected state alone is not exhaustive historical proof.
+Shared source-quality bugs reproduced by both Python and Go remain bounded
+company-intake work, rather than new migration completion requirements.
 
 ## Remaining delivery work
 
@@ -99,21 +127,7 @@ active sources, but do not prove repair of that inactive historical row.
    Do not force work, reset backoff, replace the route wholesale or add Chromium.
    Establish whether this is a migration regression or an upstream/source failure;
    make the smallest shared fix if needed and preserve the enabled board.
-2. **Qualify the original named browser/title case.** Its zero-active-job state
-   does not close the original requirement. Readback at 20:05 records 21 empty
-   cycles, 34 historical postings at three or more failures, and one missing-title
-   row among those failures. The last nonempty monitor was October 30. Current
-   committed reference fixtures do not retain the actual failed extraction input.
-   A one-row candidate uses the existing native BambooHR monitor and HTTP
-   `api_sniffer` detail configuration, matching nine tenant-normalized reference
-   boards. It preserves the board key, origin and full tenant inventory scope;
-   it adds no engine or runtime version change. Native registry admission and
-   the existing multi-provider Python-oracle/parser tests pass locally, as does
-   offline CSV/census validation. Required CI and supported data-only publication
-   remain before normal runtime qualification. Require a complete API inventory
-   and correct required-title/detail output, or explicit upstream empty/gone
-   classification; do not infer repair from inactive records or fabricate output.
-3. **Close the original requirement audit after both diagnoses.** Current-release
+2. **Close the original requirement audit after the ADF diagnosis.** Current-release
    installation, CSV/SQL/queue and original UUID checks, downstream effects,
    controlled comparisons and production stability are qualified within their
    stated limits. Keep large existing backlogs and old hash metadata explicit.
@@ -236,7 +250,7 @@ comparison confirms that operational contract is unchanged. Preserve explicit ro
 1137 source `6934e672a1e10ac5557c025af23f127197af3bbd`, image
 `sha256:05aebf3cc204f9256319433d849f9b97e127fb1db31fc894cd3c7ec281144172`.
 
-Latest official assets were rechecked at 19:41: installed/pinned Lightpanda
+Latest official asset digests were rechecked on October 31: installed/pinned Lightpanda
 **1.1.0-nightly.11423+56980afde**, executable source
 `56980afdec3ad177072e7a180cb05da838bc1744`; stable 1.0.2 is older.
 [Official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly).
@@ -256,7 +270,7 @@ rollback. Available host headroom alone does not qualify a move.
 Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md): immutable
 images, complete writer quiescence, mutation locks and authenticated restoration.
 No live rsync, mutable deploy tags, partial writer restarts, forced provider work,
-manual SQL/Redis/env repair, counter/deadline reset or capacity increase.
+manual SQL/Redis/env repair, manual counter/deadline resets or capacity increases.
 Preserve current renderer/crawler budgets and presence-only Redis token reads.
 Never read, search or edit `profile_self_identifying_dom.go`.
 Before merge re-read state/draft, exact head/base and actual main, checks,
