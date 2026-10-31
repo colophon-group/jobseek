@@ -6526,6 +6526,8 @@ sfcompute,sfcompute-ashby,https://jobs.ashbyhq.com/sfcompute,ashby,"{""token"": 
 sfox,sfox-greenhouse,https://job-boards.greenhouse.io/sfox,greenhouse,"{""token"": ""sfox""}",skip,
 sfs-inc,sfs-inc-careers,https://careers-fdmfieldservices.icims.com/,icims,,json-ld,"{""ignore_date_posted"": true, ""ignore_valid_through"": true}"
 shakepay,shakepay-greenhouse,https://job-boards.greenhouse.io/shakepay,greenhouse,"{""token"": ""shakepay""}",skip,
+shangri-la-group,shangri-la-group-australia,https://shangrila.expr3ss.com/homeModern,dom,"{""link_selector"": ""a.job-card__hit"", ""url_filter"": ""^https://shangrila\\.expr3ss\\.com/jobDetailsModern\\?selectJob=[0-9]+&ppt=[^&]+&modern=1$""}",json-ld,"{""description_selector"": ""#adCopyContainer""}"
+shangri-la-group,shangri-la-group-careers,https://career10.successfactors.com/career?company=ShangriLa,rss,"{""preset"": ""successfactors"", ""variant"": ""legacy"", ""host"": ""career10.successfactors.com"", ""company"": ""ShangriLa""}",dom,"{""scope"": "".joqReqDescription"", ""steps"": [{""field"": ""description"", ""html"": true, ""stop_count"": 10000}], ""enrich"": [""description""]}"
 shardeum-foundation,shardeum-foundation-greenhouse,https://job-boards.greenhouse.io/shardeumfoundation,greenhouse,"{""token"": ""shardeumfoundation""}",skip,
 sharebite,sharebite-greenhouse,https://job-boards.greenhouse.io/sharebite,greenhouse,"{""token"": ""sharebite""}",skip,
 sharegate-en,sharegate-en-greenhouse,https://job-boards.greenhouse.io/sharegateen,greenhouse,"{""token"": ""sharegateen""}",skip,
