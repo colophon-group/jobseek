@@ -5993,6 +5993,7 @@ quartz-bio,quartz-bio-greenhouse,https://job-boards.greenhouse.io/quartzbio,gree
 quatt,quatt-careers,https://careers.quatt.io/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quatt.io/jobs.rss""}",skip,
 qube-rt,qube-rt-careers,https://job-boards.greenhouse.io/quberesearchandtechnologies,greenhouse,"{""token"": ""quberesearchandtechnologies""}",skip,
 qubit-pharmaceuticals,qubit-pharmaceuticals-teamtailor,https://qubitpharmaceuticals.teamtailor.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://qubitpharmaceuticals.teamtailor.com/jobs.rss""}",skip,
+queen-of-clubs,queen-of-clubs-careers-linkedin,https://www.linkedin.com/jobs/search/?f_C=10188048,linkedin,"{""company_id"": ""10188048"", ""company_slug"": ""queen-of-clubs-lifestyle-luxury-services-ltd""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 quera-computing-inc,quera-computing-inc-greenhouse,https://job-boards.greenhouse.io/queracomputinginc,greenhouse,"{""token"": ""queracomputinginc""}",skip,
 quest-diagnostics,quest-diagnostics-careers,https://hdox.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 quest-diagnostics,quest-diagnostics-careers-blueprint-genetics,https://careers.blueprintgenetics.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.blueprintgenetics.com/jobs.rss""}",skip,
