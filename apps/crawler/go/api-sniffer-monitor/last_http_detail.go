@@ -257,7 +257,7 @@ func FetchPeopleSoftDetail(ctx context.Context, o LastHTTPDetailOptions, fetch S
 	if o.Provider != "peoplesoft" || fetch == nil {
 		return nil, ErrOptions
 	}
-	if _, e := fetch(ctx, Request{Method: http.MethodGet, URL: o.Origin + "/psp/" + o.Site + "/" + o.Portal + "/HRMS/?cmd=logout"}); e != nil {
+	if _, e := fetch(ctx, Request{Method: http.MethodGet, URL: o.Origin + "/psp/" + o.Site + "/" + o.Portal + "/HRMS/?cmd=logout"}); e != nil && !peopleSoftBootstrapUnavailable(e) {
 		return nil, e
 	}
 	body, e := fetch(ctx, Request{Method: http.MethodGet, URL: o.Endpoint})

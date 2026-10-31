@@ -228,6 +228,42 @@ func TestLastHTTPOriginalMonitorFieldsThroughVerifiedSessions(t *testing.T) {
 	}
 }
 
+func TestPeopleSoftFrenchFallbackRedirectKeepsAnonymousCookie(t *testing.T) {
+	board := "https://fixture.example/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL"
+	o, err := api.LastHTTPOptionsFromMetadata("peoplesoft", board, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrap, redirects, listing := 0, 0, 0
+	client := verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/psp/") {
+			bootstrap++
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if r.URL.Query().Get("Page") != "HRS_APP_SCHJOB_FL" {
+			t.Errorf("unexpected PeopleSoft path: %s", r.URL)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if !strings.Contains(r.Header.Get("Cookie"), "PSJSESSIONID=abc") {
+			redirects++
+			w.Header().Set("Set-Cookie", "PSJSESSIONID=abc; Path=/; Secure")
+			w.Header().Set("Location", o.ListingURL()+"&")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		listing++
+		fmt.Fprint(w, `<div id="HRS_AGNT_RSLT_I"><b>1</b> emplois trouvés.<li id="HRS_AGNT_RSLT_I$0_row_0"><span id="SCH_JOB_TITLE$0">Chef de rang</span><span id="HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0">115978</span><span id="LOCATION$0">Monaco</span></li></div>`)
+	}))
+	profile := queue.GreenhouseMonitorProfile{Provider: "peoplesoft", Endpoint: o.ListingURL(), Profile: o.Profile()}
+	config := map[string]string{"board_url": board, "crawler_type": "peoplesoft", "monitor_needs_browser": "0", "metadata": "{}"}
+	out, err := FetchLastHTTPProviders(context.Background(), client, profile, config, func(context.Context, time.Duration) error { return nil })
+	if err != nil || len(out.Jobs) != 1 || bootstrap != 3 || redirects != 1 || listing != 1 {
+		t.Fatalf("PeopleSoft fallback lost inventory or bounded cookie flow: jobs=%d bootstrap=%d redirects=%d listing=%d err=%v", len(out.Jobs), bootstrap, redirects, listing, err)
+	}
+}
+
 func TestLastHTTPPairedOriginalFieldsThroughVerifiedSessions(t *testing.T) {
 	cases := []lastHTTPDetailCase{}
 	for _, provider := range []string{"infor", "peoplesoft"} {
