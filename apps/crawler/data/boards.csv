@@ -6000,6 +6000,8 @@ quobly,quobly-main,https://www.quobly.io/careers/jobs,dom,"{""render"": false, "
 quora,quora-ashby,https://jobs.ashbyhq.com/quora,ashby,"{""token"": ""quora""}",skip,
 qutwo,qutwo-careers,https://qutwo.com/careers/,sitemap,"{""sitemap_url"": ""https://qutwo.com/sitemap.xml"", ""url_filter"": {""exclude"": ""/(careers|privacy-policy)/$|^https://qutwo\\.com/$""}}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Read more"", ""from"": 0}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true}], ""defaults"": {""locations"": [""Helsinki, FI""], ""employment_type"": ""full_time"", ""job_location_type"": ""onsite""}}"
 qventus,qventus-greenhouse,https://job-boards.greenhouse.io/qventus,greenhouse,"{""token"": ""qventus""}",skip,
+r1-rcm,r1-rcm-careers,https://r1rcm.wd1.myworkdayjobs.com/r1rcm,workday,,workday,
+r1-rcm,r1-rcm-humata-health,https://jobs.ashbyhq.com/humatahealth,ashby,"{""token"": ""humatahealth""}",skip,
 rackner,rackner-greenhouse,https://job-boards.greenhouse.io/rackner,greenhouse,"{""token"": ""rackner""}",skip,
 radai,radai-ashby,https://jobs.ashbyhq.com/radai,ashby,"{""token"": ""radai""}",skip,
 radar,radar-ashby,https://jobs.ashbyhq.com/radar,ashby,"{""token"": ""radar""}",skip,
