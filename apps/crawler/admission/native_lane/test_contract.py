@@ -48,26 +48,43 @@ def test_legacy_comparator_trusts_only_fixture_ca_in_private_home(tmp_path, monk
     )
 
 
-@pytest.mark.parametrize("report_exists", [False, True])
-def test_workflow_failure_annotation_excludes_raw_diagnostics(tmp_path, report_exists) -> None:
+@pytest.mark.parametrize("mode", ["missing", "failure", "success"])
+def test_workflow_annotation_exposes_safe_results_without_raw_diagnostics(tmp_path, mode) -> None:
     workflow = (
         Path(__file__).resolve().parents[4] / ".github/workflows/crawler-native-whole-lane.yml"
     )
     steps = yaml.safe_load(workflow.read_text())["jobs"]["measure"]["steps"]
     script = next(
-        step["run"] for step in steps if step.get("name") == "Expose bounded comparison failure"
+        step["run"] for step in steps if step.get("name") == "Expose bounded comparison report"
     )
     report = tmp_path / "report.json"
-    if report_exists:
+    if mode != "missing":
         report.write_text(
             json.dumps(
                 {
+                    "complete": mode == "success",
                     "failure_class": "RuntimeError",
                     "private": "PRIVATE_SHOULD_NOT_ECHO",
                     "arms": [
                         {
                             "lane": "native",
                             "cleanup": True,
+                            "output": {
+                                "postings": 536,
+                                "canonical_sha256": "1" * 64,
+                                "private": "PRIVATE_SHOULD_NOT_ECHO",
+                            },
+                            "resource": {
+                                "cpu_seconds": 12,
+                                "duration_seconds": 40,
+                                "groups": {
+                                    "crawler": {
+                                        "mean_cpu_cores": 0.3,
+                                        "mean_working_memory_bytes": 1024,
+                                        "private": "PRIVATE_SHOULD_NOT_ECHO",
+                                    }
+                                },
+                            },
                             "failure": {
                                 "stage": "bootstrap",
                                 "class": "ComparisonFailure",
@@ -100,13 +117,18 @@ def test_workflow_failure_annotation_excludes_raw_diagnostics(tmp_path, report_e
         timeout=10,
     )
     assert result.returncode == 0
-    assert result.stdout.startswith("::error title=Native whole-lane comparison::")
+    level = "notice" if mode == "success" else "error"
+    assert result.stdout.startswith("::" + level + " title=Native whole-lane comparison::")
     assert "PRIVATE_SHOULD_NOT_ECHO" not in result.stdout
     summary = json.loads(result.stdout.split("::", 2)[2])
     assert summary["steps"]["MEASUREMENT_OUTCOME"] == "failure"
-    assert len(summary["arms"]) == int(report_exists)
-    if report_exists:
+    assert summary["complete"] == (mode == "success")
+    assert len(summary["arms"]) == int(mode != "missing")
+    if mode != "missing":
         assert summary["arms"][0]["driver_lines"] == [42]
+        assert summary["arms"][0]["postings"] == 536
+        assert summary["arms"][0]["resource"]["cpu_seconds"] == 12
+        assert summary["arms"][0]["groups"]["crawler"]["mean_cpu_cores"] == 0.3
 
 
 def test_literal_fixture_environment_loads_real_queue_settings_without_connections() -> None:

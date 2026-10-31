@@ -72,8 +72,8 @@ jobs:
             --native-image "$native" --legacy-image "$legacy" \
             --renderer-image "$renderer" --source-sha "$source_sha" \
             --output "${RUNNER_TEMP}/native-whole-lane/report.json"
-      - name: Expose bounded comparison failure
-        if: failure()
+      - name: Expose bounded comparison report
+        if: always()
         env:
           FIXTURE_OUTCOME: ${{ steps.fixture.outcome }}
           IMAGES_OUTCOME: ${{ steps.images.outcome }}
@@ -89,21 +89,47 @@ jobs:
           for arm in report.get("arms", []):
               failure = arm.get("failure") or {}
               diagnostic = failure.get("diagnostic") or {}
+              output, resource = arm.get("output") or {}, arm.get("resource") or {}
+              groups = resource.get("groups") or {}
               arms.append({
                   "lane": arm.get("lane"), "stage": failure.get("stage"),
                   "class": failure.get("class"), "cleanup": arm.get("cleanup"),
                   "exit_code": diagnostic.get("exit_code"),
                   "driver_lines": diagnostic.get("driver_lines"),
                   "error_types": diagnostic.get("error_types"),
+                  "pair": arm.get("pair"), "postings": output.get("postings"),
+                  "canonical_sha256": output.get("canonical_sha256"),
+                  "completion_seconds": arm.get("completion_seconds"),
+                  "modeled_eur_per_1000": arm.get("modeled_eur_per_1000_correct_postings"),
+                  "resource": {key: resource.get(key) for key in (
+                      "duration_seconds", "cpu_seconds", "samples",
+                      "sampled_peak_working_memory_bytes", "retained_working_memory_bytes")},
+                  "groups": {name: {key: values.get(key) for key in (
+                      "mean_cpu_cores", "mean_working_memory_bytes")}
+                      for name in ("crawler", "renderer", "postgresql", "typesense", "fixture")
+                      if (values := groups.get(name)) is not None},
+                  "services": [{key: row.get(key) for key in (
+                      "service", "cpu_seconds", "startup_cpu_seconds", "lifetime_cpu_seconds",
+                      "lifetime_memory_peak_bytes", "memory_limit_bytes")}
+                      for row in resource.get("services", [])],
               })
           summary = {
+              "complete": report.get("complete") is True,
+              "source_revision": report.get("source_revision"),
+              "runtime_contract_sha256": report.get("runtime_contract_sha256"),
+              "workload_sha256": report.get("workload_sha256"),
+              "canonical_parity": report.get("canonical_parity"),
+              "images": {name: {key: image.get(key) for key in ("id", "architecture")}
+                  for name in ("native", "legacy", "renderer")
+                  if (image := report.get("images", {}).get(name)) is not None},
               "steps": {key: os.environ[key] for key in (
                   "FIXTURE_OUTCOME", "IMAGES_OUTCOME", "MEASUREMENT_OUTCOME")},
               "failure_class": report.get("failure_class"), "arms": arms,
           }
           message = json.dumps(summary, sort_keys=True, separators=(",", ":"))
           message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print("::error title=Native whole-lane comparison::" + message)
+          level = "notice" if summary["complete"] else "error"
+          print("::" + level + " title=Native whole-lane comparison::" + message)
           PY
       - name: Retain compact numeric comparison
         if: always()

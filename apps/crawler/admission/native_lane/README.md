@@ -58,6 +58,8 @@ networks and volumes; temporary credentials are deleted when the controller
 exits. No raw upstream/job content or subprocess environment is an artifact.
 Missing output, unequal canonical results, OOM/restarts, incomplete sampling or
 failed cleanup fail the run. A failed arm stops subsequent arms.
+Compact success measurements and bounded failure diagnostics also appear in CI
+annotations, so the required CI reader can inspect them when raw logs are unavailable.
 
 Local checks from `apps/crawler`:
 

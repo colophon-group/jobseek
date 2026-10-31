@@ -309,7 +309,7 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
         )
         result["resource"] = {
             **sampled,
-            "duration_seconds": time.monotonic() - began,
+            "postflight_elapsed_seconds": time.monotonic() - began,
             "services": resource,
         }
     except Exception as error:

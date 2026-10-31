@@ -127,7 +127,7 @@ postings across rich API, direct DOM, rendered DOM and direct JSON-LD routes.
 Each arm includes the actual worker, renderer/browser, reaper, PostgreSQL,
 Redis, exporter, drain and Typesense. Its first Linux run failed before work
 began because an empty proxy-list environment value is invalid in the retained
-Python settings. The fixture passes all 23 local contract tests. A separate real
+Python settings. The fixture passes all 24 local contract tests. A separate real
 PostgreSQL/Redis check found that bootstrap inserted a NULL monitor deadline
 despite the canonical NOT NULL constraint. Corrected bootstrap keeps all four
 boards future-scheduled before feed, then queues three monitors and twelve
@@ -140,8 +140,10 @@ profiles pass with the expected lanes. The offline comparator uses readable
 browser binaries and imports only the fixture CA into a private ephemeral NSS
 database; rendered TLS verification stays enabled. Full container qualification
 of that comparator setup remains required.
-Bounded failure annotations expose step outcomes and safe diagnostic fields
-when selected logs return HTTP 502. The complete Linux comparison remains
+Bounded annotations expose safe failure diagnostics and successful per-arm
+CPU/memory/cost results and image identities when selected logs return HTTP 502.
+Measured sampling duration remains distinct from later inspection elapsed time.
+The complete Linux comparison remains
 unqualified until the new-head run passes.
 
 The same batch addresses controlled monitor task expiry across types. The actual
