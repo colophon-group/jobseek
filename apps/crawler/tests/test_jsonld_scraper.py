@@ -21,6 +21,7 @@ from src.core.scrapers.jsonld import (
     _text_or_list,
     can_handle,
     parse_html,
+    parse_rendered_html,
     probe,
     scrape,
 )
@@ -29,6 +30,32 @@ from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.proxy import ProxyPoolExhaustedError
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_starhotels_talos_exact_url_salary_suppression():
+    target = "https://starhotels.talosats-careers.com/job/972748"
+    html = (
+        FIXTURES.parent.parent / "go/jsonld-detail/testdata/starhotels_talos_salary_conflict.html"
+    ).read_text()
+    config = {"ignore_base_salary_urls": [target]}
+    baseline = parse_rendered_html(target, {}, html)
+    selected = parse_rendered_html(target, config, html)
+    with_default = parse_rendered_html(
+        target,
+        {**config, "defaults_by_url": {target: {"base_salary": {"currency": "GBP", "min": 1}}}},
+        html,
+    )
+    other = parse_rendered_html("https://starhotels.talosats-careers.com/job/977321", config, html)
+    assert baseline.base_salary == {"currency": "GBP", "min": 13, "max": 13, "unit": "year"}
+    assert selected.base_salary is None
+    assert with_default.base_salary is None
+    assert other.base_salary == baseline.base_salary
+    for field in ("title", "description", "locations", "employment_type", "date_posted"):
+        assert getattr(selected, field) == getattr(baseline, field)
+
+    for invalid in ("x", ["http://example.com/job/1"], [target, target], [42]):
+        with pytest.raises(ValueError, match="ignore_base_salary_urls"):
+            parse_rendered_html(target, {"ignore_base_salary_urls": invalid}, html)
 
 
 class _OriginBlock(RuntimeError):

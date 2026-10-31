@@ -42,6 +42,7 @@ def _valid_config() -> dict[str, object]:
         "ignore_date_posted": True,
         "ignore_locations": False,
         "ignore_valid_through": True,
+        "ignore_base_salary_urls": ["https://example.test/jobs/1"],
         "render": True,
         "routing_revision": "route-2026.09.10+canary",
         "timeout": 30_000,
@@ -256,6 +257,7 @@ def test_assignment_rejects_non_json_and_cyclic_nested_values() -> None:
         ),
         ({"enrich": "description"}, "enrich must be a list"),
         ({"enrich": ["unknown"]}, "enrich has unknown field"),
+        ({"ignore_base_salary_urls": ["http://example.test/jobs/1"]}, "ignore_base_salary_urls"),
     ],
 )
 def test_assignment_validates_parser_only_fields(patch: dict[str, object], message: str) -> None:

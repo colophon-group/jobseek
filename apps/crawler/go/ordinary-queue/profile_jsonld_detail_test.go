@@ -17,6 +17,20 @@ func jsonldDetailConfig() map[string]string {
 	c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"ignore_locations":true,"defaults":{"language":"en"}},"selector":"a.job","render":true}`
 	return c
 }
+
+func TestJSONLDDetailAdmitsExactSalarySuppression(t *testing.T) {
+	const source = "https://starhotels.talosats-careers.com/job/972748"
+	c := jsonldDetailConfig()
+	c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"ignore_base_salary_urls":["https://starhotels.talosats-careers.com/job/972748"]}}`
+	profile, err := InspectJSONLDDetail(jsonldBoardID, c, source, Simple)
+	if err != nil || profile.Profile != jsonldDetailProfile || profile.SourceURL != source {
+		t.Fatalf("native direct profile rejected salary suppression: %v, %v", profile, err)
+	}
+	c["metadata"] = `{"scraper_type":"json-ld","scraper_config":{"ignore_base_salary_urls":["http://starhotels.talosats-careers.com/job/972748"]}}`
+	if _, err := InspectJSONLDDetail(jsonldBoardID, c, source, Simple); err == nil {
+		t.Fatal("native direct profile accepted insecure salary suppression URL")
+	}
+}
 func TestJSONLDDetailOwnsCanonicalPostingAcrossHostsIndependentlyOfMonitor(t *testing.T) {
 	c := jsonldDetailConfig()
 	profile, err := InspectJSONLDDetail(jsonldBoardID, c, "https://jobs.example.net/job/42", Simple)

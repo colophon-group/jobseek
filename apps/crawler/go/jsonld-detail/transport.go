@@ -23,7 +23,7 @@ import (
 var allowedConfig = map[string]bool{}
 
 func init() {
-	for _, k := range []string{"render", "proxy", "skip_ssl", "ignore_locations", "ignore_address_region", "ignore_date_posted", "ignore_valid_through", "defaults_by_url", "defaults", "enrich", "fallback", "transport_attempts", "description_selector", "request_headers", "wait", "actions", "channel", "stealth", "timeout", "headless", "persistent_context", "wait_fallback", "browser_backend", "routing_revision"} {
+	for _, k := range []string{"render", "proxy", "skip_ssl", "ignore_locations", "ignore_address_region", "ignore_date_posted", "ignore_valid_through", "ignore_base_salary_urls", "defaults_by_url", "defaults", "enrich", "fallback", "transport_attempts", "description_selector", "request_headers", "wait", "actions", "channel", "stealth", "timeout", "headless", "persistent_context", "wait_fallback", "browser_backend", "routing_revision"} {
 		allowedConfig[k] = true
 	}
 }
@@ -32,6 +32,9 @@ func ValidateConfig(config map[string]any) error {
 		if !allowedConfig[k] {
 			return fmt.Errorf("unsupported direct JSON-LD config: %s", k)
 		}
+	}
+	if _, err := ignoredBaseSalaryURL(config, ""); err != nil {
+		return err
 	}
 	for _, k := range []string{"render", "proxy", "skip_ssl"} {
 		if pyTruthy(config[k]) {

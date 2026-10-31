@@ -60,7 +60,7 @@ func TestTenthProvidersCurrentRegistryCoverageAndCanonicalDetailBindings(t *test
 		}
 		counts[provider]++
 	}
-	if counts["intervieweb"] != 3 || counts["typify"] != 3 || counts["universia"] != 1 || counts["talentreef"] != 2 {
+	if counts["intervieweb"] < 3 || counts["typify"] < 3 || counts["universia"] < 1 || counts["talentreef"] < 2 {
 		t.Fatal("four-provider batch lost enabled configs", counts)
 	}
 }

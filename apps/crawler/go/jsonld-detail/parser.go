@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	stdhtml "html"
+	"net/url"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -570,6 +571,10 @@ func icimsHeadingTitle(body []byte) any {
 }
 
 func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, error) {
+	ignoreSalary, err := ignoredBaseSalaryURL(config, rawURL)
+	if err != nil {
+		return nil, err
+	}
 	blocks, meta, pageTitle := documentBlocks(body)
 	result := emptyContent()
 	ignoreLoc := isTrue(config["ignore_locations"])
@@ -613,7 +618,7 @@ func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, e
 		if !pyTruthy(result["locations"]) && !ignoreLoc {
 			result["locations"] = fallbackLocations(meta)
 		}
-		return defaultsByURL(result, config, rawURL)
+		return finishJSONLDContent(result, config, rawURL, ignoreSalary)
 	}
 	if title, desc := clean(meta["job-title"]), meta["job-description"]; title != nil && desc != "" && strip(desc) != "" {
 		result["title"] = title
@@ -633,7 +638,44 @@ func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, e
 			result["metadata"] = metadata
 		}
 	}
-	return defaultsByURL(result, config, rawURL)
+	return finishJSONLDContent(result, config, rawURL, ignoreSalary)
+}
+
+func ignoredBaseSalaryURL(config map[string]any, rawURL string) (bool, error) {
+	raw := config["ignore_base_salary_urls"]
+	if raw == nil {
+		return false, nil
+	}
+	values, ok := raw.([]any)
+	if !ok || len(values) > 64 {
+		return false, errors.New("JSON-LD ignore_base_salary_urls must be a list of at most 64 URLs")
+	}
+	seen := map[string]bool{}
+	matched := false
+	for _, value := range values {
+		text, ok := value.(string)
+		if !ok || text == "" || len(text) > 8192 {
+			return false, errors.New("JSON-LD ignore_base_salary_urls must contain HTTPS URLs")
+		}
+		u, err := url.Parse(text)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" || u.Path == "" || u.Fragment != "" || u.Port() != "" && u.Port() != "443" || seen[text] {
+			return false, errors.New("JSON-LD ignore_base_salary_urls must contain unique HTTPS URLs")
+		}
+		seen[text] = true
+		matched = matched || rawURL == text
+	}
+	return matched, nil
+}
+
+func finishJSONLDContent(content map[string]any, config map[string]any, rawURL string, ignoreSalary bool) (map[string]any, error) {
+	result, err := defaultsByURL(content, config, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if ignoreSalary {
+		result["base_salary"] = nil
+	}
+	return result, nil
 }
 func defaultsByURL(content map[string]any, config map[string]any, rawURL string) (map[string]any, error) {
 	raw := config["defaults_by_url"]

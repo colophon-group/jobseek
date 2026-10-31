@@ -17,6 +17,7 @@ import httpx
 import structlog
 
 from src.core.job_content import JobContent
+from src.core.jsonld import validate_ignore_base_salary_urls
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -44,6 +45,7 @@ _ALLOWED = frozenset(
         "ignore_address_region",
         "ignore_date_posted",
         "ignore_valid_through",
+        "ignore_base_salary_urls",
         "defaults_by_url",
         "defaults",
         "enrich",
@@ -93,6 +95,7 @@ def eligible(url: str, scraper_type: str, config: dict | None, pw=None) -> None:
     ):
         raise ValueError("unsupported direct JSON-LD configuration")
     _json_keys(meta)
+    validate_ignore_base_salary_urls(meta)
     attempts = meta.get("transport_attempts")
     if attempts is not None and (type(attempts) is not int or not 1 <= attempts <= 5):
         raise ValueError("JSON-LD transport_attempts must be an integer from 1 to 5")

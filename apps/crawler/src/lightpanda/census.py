@@ -414,6 +414,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "ignore_date_posted",
             "ignore_locations",
             "ignore_valid_through",
+            "ignore_base_salary_urls",
             "persistent_context",
             "proxy",
             "render",
