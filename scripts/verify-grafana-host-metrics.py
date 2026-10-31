@@ -17,9 +17,9 @@ import httpx
 
 EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
 EXPECTED_CRAWLER_INSTANCES = frozenset(
-    {"worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"}
+    {"ordinary-go", "exporter", "drain"}
 )
-CAPABILITY_PIPELINE_INSTANCES = frozenset({"worker-1", "worker-2", "worker-3", "browser-1"})
+CAPABILITY_PIPELINE_INSTANCES = frozenset({"ordinary-go"})
 REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
@@ -27,19 +27,19 @@ _EVIDENCE_LABEL_NAMES = frozenset({"host_role", "collector", "probe", "container
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 5_000,
-    # The current registry deterministically seeds 2,116 fleet series. Keep
-    # bounded growth room without weakening the independent crawler-wide cap.
+    # Retain the fleet-series ceiling while the default native topology has
+    # one processing pipeline. The independent crawler-wide cap is unchanged.
     "crawler_capability_series": 2_200,
     "redis_series": 200,
     "unix_series": 2_000,
 }
 QUERIES = {
     "fresh_sampler": "jobseek_host_observability_last_collect_unixtime",
-    "crawler_up": 'up{job="crawler"}',
+    "crawler_up": 'up{job="crawler",instance=~"ordinary-go|exporter|drain"}',
     # Instant-vector results are stamped with query evaluation time. Ask for
     # the underlying scrape timestamp explicitly so cached samples cannot
     # approve a deployment.
-    "crawler_up_timestamp": 'timestamp(up{job="crawler"})',
+    "crawler_up_timestamp": 'timestamp(up{job="crawler",instance=~"ordinary-go|exporter|drain"})',
     "probe_series": "count by (host_role) (jobseek_host_observability_probe_success)",
     "failed_probes": "jobseek_host_observability_probe_success == 0",
     "container_series": "count by (host_role) (jobseek_container_running)",

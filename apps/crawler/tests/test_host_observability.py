@@ -606,7 +606,12 @@ def test_redis_capacity_snapshot_is_cached_and_republished(tmp_path: Path, monke
     lines: list[str] = []
     host._collect_redis_capacity_metrics(lines, tmp_path, now=100)
     assert calls
-    assert calls[0][4:6] == ["redis-capacity", "summary"]
+    assert calls[0][2:6] == [
+        "deploy-exporter-1",
+        "/usr/local/bin/go-typesense-exporter",
+        "--redis-capacity",
+        "summary",
+    ]
     assert "ignored log line" not in lines
     assert "jobseek_redis_capacity_snapshot_available 1" in lines
     assert 'jobseek_redis_key_family_keys{family="scrape_config"} 2' in lines

@@ -63,6 +63,20 @@ def test_same_july_23_sequence_without_validated_labels_remains_unattributed():
     }
 
 
+@pytest.mark.parametrize("service", ["ordinary-go", "lease-reaper"])
+def test_native_actor_pauses_retain_maintenance_attribution(service):
+    events = _fixture_events()
+    for event in events:
+        if event.get("compose_service") == "worker-2":
+            event["compose_service"] = service
+    summary = provenance.correlate_events(events)
+    assert summary["unattributed_service_pauses"] == []
+    pauses = summary["maintenance_windows"][0]["service_pauses"]
+    native = [pause for pause in pauses if pause["service"] == service]
+    assert native
+    assert any(pause["forced_termination"] for pause in native)
+
+
 def test_oom_inside_labelled_window_remains_actionable():
     events = _fixture_events()
     worker_event = next(
