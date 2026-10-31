@@ -20,6 +20,7 @@ EXPECTED_CRAWLER_INSTANCES = frozenset(
     {"ordinary-go", "exporter", "drain"}
 )
 CAPABILITY_PIPELINE_INSTANCES = frozenset({"ordinary-go"})
+EXPECTED_NATIVE_EXECUTION_SERIES = 6  # two stages, three bounded outcomes
 REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
@@ -67,7 +68,11 @@ QUERIES = {
     "active_series": 'count({job=~".+"})',
     "crawler_series": 'count({job="crawler"})',
     "crawler_capability_series": (
-        'count({job="crawler",__name__="crawler_runtime_capability_executions_total"}) or vector(0)'
+        'count({job="crawler",__name__=~"crawler_runtime_(capability_)?executions_total"}) or vector(0)'
+    ),
+    "native_execution_series": (
+        'count(crawler_runtime_executions_total{job="crawler",instance="ordinary-go",'
+        'implementation="go",stage=~"monitor|scrape",outcome=~"success|error|cancelled"}) or vector(0)'
     ),
     "crawler_created_series": 'count({job="crawler",__name__=~".*_created"}) or vector(0)',
     "redis_series": 'count({job="integrations/redis"})',
@@ -534,6 +539,17 @@ def validate_results(
                     observation=observation,
                 )
             )
+    native_series = _scalar_observation(results, "native_execution_series")
+    if native_series is None or native_series.value != EXPECTED_NATIVE_EXECUTION_SERIES:
+        failures.append(
+            _failure(
+                "native_execution_series",
+                "native monitor/scrape execution outcomes are incomplete",
+                now=now,
+                observation=native_series,
+                host_role="crawler",
+            )
+        )
     created_series = _scalar_observation(results, "crawler_created_series")
     if created_series is None or created_series.value != 0:
         failures.append(
