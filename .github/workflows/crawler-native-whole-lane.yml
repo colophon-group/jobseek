@@ -23,9 +23,21 @@ concurrency:
 
 jobs:
   measure:
-    name: Compare complete native and legacy lanes
-    runs-on: ubuntu-24.04
+    name: Compare complete lanes (${{ matrix.architecture }}, ${{ matrix.input }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        input: [generated, captured]
+        architecture: [amd64, arm64]
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      NATIVE_LANE_INPUT_MODE: ${{ matrix.input }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,7 +52,7 @@ jobs:
         working-directory: apps/crawler
         run: |
           uv sync --frozen --group dev
-          uv run --frozen pytest admission/native_lane -q
+          NATIVE_LANE_INPUT_MODE=generated uv run --frozen pytest admission/native_lane -q
           uv run --frozen ruff check admission/native_lane
           uv run --frozen ruff format --check admission/native_lane
       - name: Build exact runtime and comparator images
@@ -136,18 +148,35 @@ jobs:
                   if (image := report.get("images", {}).get(name)) is not None},
               "steps": {key: os.environ[key] for key in (
                   "FIXTURE_OUTCOME", "IMAGES_OUTCOME", "MEASUREMENT_OUTCOME")},
-              "failure_class": report.get("failure_class"), "arms": arms,
+              "failure_class": report.get("failure_class"),
+              "arms": [{key: arm.get(key) for key in (
+                  "lane", "pair", "stage", "class", "cleanup", "postings", "canonical_sha256")}
+                  for arm in arms],
           }
-          message = json.dumps(summary, sort_keys=True, separators=(",", ":"))
-          message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          level = "notice" if summary["complete"] else "error"
-          print("::" + level + " title=Native whole-lane comparison::" + message)
+          def emit(title, value, level="notice"):
+              message = json.dumps(value, sort_keys=True, separators=(",", ":"))
+              message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print("::" + level + " title=" + title + "::" + message)
+          emit("Native whole-lane comparison", summary, "notice" if summary["complete"] else "error")
+          # Keep each arm's numbers accessible when a CI reader caps individual
+          # annotations at 4096 characters. The full report remains an artifact.
+          probe_keys = ("startup_diagnostics", "render_probe", "resident_render_probe", "certificate_probe")
+          for index, arm in enumerate(arms):
+              emit("Native whole-lane arm " + str(index),
+                  {key: value for key, value in arm.items() if key not in probe_keys},
+                  "error" if arm["class"] or not arm["cleanup"] else "notice")
+              for key in probe_keys:
+                  values = arm.get(key)
+                  if values is None:
+                      continue
+                  for item, value in enumerate(values if isinstance(values, list) else [values]):
+                      emit("Native whole-lane arm " + str(index) + " " + key + " " + str(item), value)
           PY
       - name: Retain compact numeric comparison
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: native-whole-lane-${{ github.run_id }}
+          name: native-whole-lane-${{ matrix.architecture }}-${{ matrix.input }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-whole-lane/report.json
           if-no-files-found: warn
           retention-days: 1

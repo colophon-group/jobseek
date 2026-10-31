@@ -19,6 +19,7 @@ from src.workspace.codex_routine_runner import (
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
+LEGACY_COMPOSE = CRAWLER / "tests/fixtures/docker-compose.legacy-b0.yml"
 ROLLBACK_OVERRIDE = CRAWLER / "rollback-pool-budget.override.yml"
 LIGHTPANDA_B0_ENABLED_OVERRIDE = CRAWLER / "lightpanda-b0-enabled.override.yml"
 BASE_REVISION = "51625c18e3d1d03cdf606b307001b96b6dc85868"
@@ -98,8 +99,8 @@ def _render_compose_config(*files: Path, profile: str = "legacy") -> dict:
     return json.loads(result.stdout)
 
 
-def test_long_running_pool_budget_is_explicit_and_below_steady_target() -> None:
-    compose = _compose()
+def test_retained_legacy_pool_budget_is_explicit_and_below_steady_target() -> None:
+    compose = yaml.safe_load(LEGACY_COMPOSE.read_text())
     expected = {
         "worker-1": ("worker-1", 1, 8),
         "worker-2": ("worker-2", 1, 8),
@@ -127,7 +128,7 @@ def test_long_running_pool_budget_is_explicit_and_below_steady_target() -> None:
 
 
 def test_enabled_lightpanda_overlay_adds_exactly_one_executor_connection() -> None:
-    compose = _render_compose_config(COMPOSE, LIGHTPANDA_B0_ENABLED_OVERRIDE)
+    compose = _render_compose_config(LEGACY_COMPOSE, LIGHTPANDA_B0_ENABLED_OVERRIDE)
     executor = compose["services"]["lightpanda-executor"]
 
     assert executor["environment"]["CRAWLER_DB_ROLE"] == "lightpanda-b0-executor"
@@ -233,7 +234,7 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
     deploy = (CRAWLER / "deploy.sh").read_text(encoding="utf-8")
     stop = deploy.index(
-        "docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
+        "\nstop_crawler_services 60 worker-1 worker-2 worker-3 browser-1 "
         "ordinary-go lease-reaper exporter drain"
     )
     migrate = deploy.index("CRAWLER_DB_ROLE=deploy-migrate", stop)

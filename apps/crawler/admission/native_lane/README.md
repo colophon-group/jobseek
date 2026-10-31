@@ -23,7 +23,11 @@ not a request to increase production capacity.
 Each arm starts fresh PostgreSQL, Redis, Typesense and an isolated fixture/S3
 PUT sink. Native reaper, exporter and drain run in both arms. Native processing
 uses `go-ordinary-worker` in default ownership mode and self-hosted Lightpanda;
-the comparator alone uses the explicitly retained legacy target. Bootstrap and
+the comparator alone uses the explicitly retained legacy target. It explicitly selects Python for JSON-LD, DOM HTTP/parse and
+enrichment; installed Go-bridge defaults cannot silently replace its extraction.
+Reaper, exporter and drain remain common native actors in both measured lanes.
+Earlier results without these comparator settings cover the retained mixed
+worker, rather than a Python extraction baseline. Bootstrap and
 inspection Python runs in separate fixture/tooling containers. No container has
 the Docker socket, host networking, published ports or production credentials.
 Both Docker networks are internal. Automatic address pools exclude the fixed
@@ -95,6 +99,50 @@ Docker and cgroup v2. Do not mistake a fixture pass for complete enabled-fleet
 coverage, live provider recovery, production freshness or final migration
 acceptance. Keep the independent deployed-fleet evidence and original gates in
 [the continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md).
+
+The workflow also runs the same six-arm accounting with
+`NATIVE_LANE_INPUT_MODE=captured`. This corpus contains 72 distinct saved HTTP
+detail responses across JSON-LD and DOM, seven source hosts and three recorded
+configurations. Every decompressed page retains its captured SHA-256. The
+workspace saves decoded HTML rather than compressed HTTP wire bytes. The
+original full response headers and network timings were not retained; this
+does not establish live publisher-policy or network-performance equivalence. The
+configuration record is bound by run time and exact reproduction of all saved
+extraction fields; an immutable original configuration snapshot is unavailable.
+Corpus qualification counts, including rejected candidates, are in
+`corpus/provenance.json`. Originals are never contacted during comparison.
+Native direct HTTP uses embedded production trust roots rather than the system
+CA store. Both captured arms therefore use the same explicit `skip_ssl` fixture
+exception as generated direct requests. The recorded extraction configuration
+and page bytes remain intact; the workload hash includes this transport
+override. This does not measure production certificate-verification cost.
+
+Captured work starts from scheduled details; there is no captured monitor or
+rendered-dependency claim. All worker, renderer and storage actors remain in
+the resource scope. Discovery, monitor scheduling and positive salary cases
+retain their independent generated scenario. The captured scenario requires
+every input title, completed SQL/detail ownership, complete uploaded description
+bytes, matching canonical SQL across arms, Typesense convergence, publisher
+policy, future-work disposition and cleanup. It reports hashed request identities.
+The workflow runs both scenarios on native AMD64 and ARM64 runners. Each run
+still uses one machine architecture: these results measure each architecture
+without emulation and do not reproduce cross-host networking in the mixed
+x86 crawler and ARM renderer topology of production. Artifact names include
+both architecture and input mode so reports cannot overwrite each other.
+
+To qualify another existing archive without contacting sources:
+
+```sh
+DOM_GO_PARSE_ENABLED=0 uv run --frozen python -m admission.native_lane.captured_inputs \
+  --workspace /path/to/existing/.workspace --destination /path/to/new/private-inputs
+```
+
+The command refuses an existing destination, writes private files, reports only
+counts/hashes, and never edits source artifacts. Unsupported browser captures,
+missing request/configuration provenance, incomplete output, changed extraction
+and duplicates are counted separately. Qualifying inputs alone is not a
+whole-lane resource result. Keep only inputs for an active comparison or useful
+regression fixture; delete consumed private copies after freezing the corpus.
 
 After a failed native arm with no rendered inventory, the controller stops
 measurement and probes the fixed fixture through the actual resident renderer

@@ -1,3 +1,5 @@
+# Retained offline B0 stack: use tests/fixtures/docker-compose.legacy-b0.yml
+# as the base. Current production has no Python processor services.
 # Explicit production activation overlay for the fixed Go-owned B0 cohort.
 # The ordinary crawler deploy does not load this file and remains dark.
 

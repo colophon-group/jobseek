@@ -53,11 +53,89 @@ def test_pull_deploy_images_serializes_unique_image_services(tmp_path: Path) -> 
 
     assert result.returncode == 0, result.stderr
     assert call_log.read_text().splitlines() == [
-        "compose pull worker-1",
-        "compose pull browser-1",
+        "compose pull ordinary-go",
         "compose pull redis",
         "compose pull alloy",
     ]
+
+
+def test_quiescence_stops_removed_and_current_services_by_project_labels(tmp_path: Path) -> None:
+    old, native, redis = "a" * 64, "b" * 64, "c" * 64
+    bin_dir, call_log = _fake_docker(
+        tmp_path,
+        'printf "%s\\n" "$*" >> "$CALL_LOG"\n'
+        'if [[ "$1" == ps ]]; then\n'
+        '  [[ "$*" == *"label=com.docker.compose.project=crawler-test"* ]] || exit 1\n'
+        f"  printf '%s\\n' '{old} browser-1' '{native} ordinary-go' '{redis} redis'\n"
+        "fi\n",
+    )
+    result = _run_helper(
+        tmp_path,
+        bin_dir,
+        call_log,
+        "stop_crawler_services 60 browser-1 ordinary-go",
+        COMPOSE_PROJECT_NAME="crawler-test",
+    )
+    assert result.returncode == 0, result.stderr
+    calls = call_log.read_text().splitlines()
+    assert calls[0].startswith("ps --no-trunc --filter label=com.docker.compose.project=")
+    assert calls[1:] == [f"stop --timeout 60 {old} {native}"]
+
+
+def test_quiescence_discovery_failure_does_not_stop_partial_set(tmp_path: Path) -> None:
+    for name, output, status in (
+        ("invalid", "not-a-container ordinary-go", 0),
+        ("failed", "a" * 64 + " ordinary-go", 1),
+    ):
+        case = tmp_path / name
+        case.mkdir()
+        bin_dir, call_log = _fake_docker(
+            case,
+            f'printf "%s\\n" "$*" >> "$CALL_LOG"\nprintf \'%s\\n\' \'{output}\'\nexit {status}\n',
+        )
+        result = _run_helper(
+            case,
+            bin_dir,
+            call_log,
+            "stop_crawler_services 60 ordinary-go",
+            COMPOSE_PROJECT_NAME="crawler-test",
+        )
+        assert result.returncode != 0
+        assert len(call_log.read_text().splitlines()) == 1
+
+
+def test_quiescence_propagates_stop_failure_and_allows_empty_first_deploy(tmp_path: Path) -> None:
+    for name, output, status, expected in (
+        ("empty", "", 0, 0),
+        ("stop-failed", "a" * 64 + " ordinary-go", 1, 1),
+    ):
+        case = tmp_path / name
+        case.mkdir()
+        bin_dir, call_log = _fake_docker(
+            case,
+            'printf "%s\\n" "$*" >> "$CALL_LOG"\n'
+            f'if [[ "$1" == ps ]]; then printf "%s\\n" "{output}"; else exit {status}; fi\n',
+        )
+        result = _run_helper(
+            case,
+            bin_dir,
+            call_log,
+            "stop_crawler_services 60 ordinary-go",
+            COMPOSE_PROJECT_NAME="crawler-test",
+        )
+        assert result.returncode == expected
+
+
+def test_quiescence_rejects_nonwriter_and_invalid_project_before_discovery(tmp_path: Path) -> None:
+    bin_dir, call_log = _fake_docker(tmp_path, 'echo called >> "$CALL_LOG"\nexit 99\n')
+    for command, project in (
+        ("stop_crawler_services 60 redis", "crawler-test"),
+        ("stop_crawler_services 0 ordinary-go", "crawler-test"),
+        ("stop_crawler_services 60 ordinary-go", ""),
+    ):
+        result = _run_helper(tmp_path, bin_dir, call_log, command, COMPOSE_PROJECT_NAME=project)
+        assert result.returncode != 0
+        assert not call_log.exists()
 
 
 def test_pull_compose_service_retries_then_recovers(tmp_path: Path) -> None:
@@ -99,5 +177,5 @@ def test_pull_deploy_images_propagates_persistent_failure(tmp_path: Path) -> Non
     )
 
     assert result.returncode == 1
-    assert call_log.read_text().splitlines() == ["compose pull worker-1"] * 2
+    assert call_log.read_text().splitlines() == ["compose pull ordinary-go"] * 2
     assert "after 2 attempts" in result.stderr

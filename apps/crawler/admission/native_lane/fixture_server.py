@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from admission.native_lane.workload import (
+    CAPTURED,
     ORIGINS,
     PROFILES,
     detail_body,
@@ -36,7 +37,7 @@ class FixtureState:
     def response(self, host: str, path: str) -> tuple[bytes, str, int] | None:
         if host not in ORIGINS:
             return None
-        if path == "/listing":
+        if path == "/listing" and not CAPTURED:
             profile = PROFILES[ORIGINS.index(host)]
             return (
                 listing_body(profile),
@@ -89,7 +90,8 @@ def handler(state: FixtureState, *, storage: bool) -> type[http.server.BaseHTTPR
             if storage and path == "/health":
                 self.send(b"{}")
                 return
-            value = state.response(self.headers.get("Host", "").split(":", 1)[0], path)
+            origin_path = self.path if CAPTURED else path
+            value = state.response(self.headers.get("Host", "").split(":", 1)[0], origin_path)
             if value is None:
                 with state.lock:
                     state.unexpected += 1
@@ -97,7 +99,7 @@ def handler(state: FixtureState, *, storage: bool) -> type[http.server.BaseHTTPR
                 return
             body, content_type, delay_ms = value
             with state.lock:
-                state.requests[self.headers["Host"].split(":", 1)[0] + path] += 1
+                state.requests[self.headers["Host"].split(":", 1)[0] + origin_path] += 1
                 state.active += 1
                 state.peak_active = max(state.peak_active, state.active)
             try:

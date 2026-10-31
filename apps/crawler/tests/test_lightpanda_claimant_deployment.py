@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives import serialization
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps/crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
+LEGACY_COMPOSE = CRAWLER / "tests/fixtures/docker-compose.legacy-b0.yml"
 ENABLED_OVERRIDE = CRAWLER / "lightpanda-b0-enabled.override.yml"
 DEPLOY = CRAWLER / "deploy.sh"
 WORKFLOW = ROOT / ".github/workflows/deploy-crawler-browser.yml"
@@ -800,7 +801,7 @@ def _compose_model(*, enabled: bool = False, routing_epoch: str | None = "7") ->
         "--project-directory",
         str(CRAWLER),
         "-f",
-        str(COMPOSE),
+        str(LEGACY_COMPOSE if enabled else COMPOSE),
     ]
     if enabled:
         command.extend(["-f", str(ENABLED_OVERRIDE)])
@@ -1086,8 +1087,8 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
         assert socket_mount["read_only"] is True
 
 
-def test_base_workers_mount_durable_producer_authority_read_only() -> None:
-    source = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+def test_retained_legacy_workers_mount_durable_producer_authority_read_only() -> None:
+    source = yaml.safe_load(LEGACY_COMPOSE.read_text(encoding="utf-8"))
     expected = "lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro"
     for worker in ("worker-1", "worker-2", "worker-3", "browser-1"):
         assert source["services"][worker]["volumes"] == [expected]
@@ -2858,7 +2859,7 @@ def test_direct_executable_dark_mode_starts_without_socket_or_authority_imports(
 def test_deploy_discovers_claimant_only_from_exact_rollback_compose() -> None:
     script = DEPLOY.read_text(encoding="utf-8")
     rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
-    stop = rollback.index("candidate_compose stop --timeout 30 lightpanda-claimant")
+    stop = rollback.index("stop_crawler_services 30 lightpanda-claimant")
     restore = rollback.index("restore_previous_deploy_specs")
     discover = rollback.index("rollback_compose_defines_service lightpanda-claimant")
     start = rollback.index('rollback_compose up -d "${rollback_stack_services[@]}"')
@@ -2993,6 +2994,9 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
             "  printf 'candidate-discover\\n' >>\"$TEST_LOG\"",
             "  return 0",
             "}",
+            "stop_crawler_services() {",
+            '  printf \'quiesce:%s\\n\' "$*" >>"$TEST_LOG"',
+            "}",
             "candidate_compose() {",
             '  printf \'candidate:%s\\n\' "$*" >>"$TEST_LOG"',
             "}",
@@ -3031,9 +3035,8 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
     events = (tmp_path / "events.log").read_text(encoding="utf-8").splitlines()
     legacy_events = [
         "candidate-discover",
-        "candidate:stop --timeout 30 lightpanda-claimant",
-        "candidate:stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
-        "ordinary-go lease-reaper exporter drain",
+        "quiesce:30 lightpanda-claimant",
+        "quiesce:60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain",
         "rollback-discover",
         (
             "rollback:up -d redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy "

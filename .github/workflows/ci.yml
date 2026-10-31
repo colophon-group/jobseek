@@ -909,7 +909,11 @@ jobs:
           GRAFANA_LOKI_PASSWORD: fixture
         run: |
           set -euo pipefail
-          compose=(docker compose -f apps/crawler/docker-compose.yml -f apps/crawler/lightpanda-b0-enabled.override.yml)
+          compose=(
+            docker compose --project-directory apps/crawler
+            -f apps/crawler/tests/fixtures/docker-compose.legacy-b0.yml
+            -f apps/crawler/lightpanda-b0-enabled.override.yml
+          )
           cleanup() {
             "${compose[@]}" down --remove-orphans --volumes >/dev/null 2>&1 || true
           }

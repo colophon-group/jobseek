@@ -5,7 +5,24 @@ Issue #6631 owns this budget. The local crawler PostgreSQL server remains at
 host constructors pin `superuser_reserved_connections=3`, leaving 97 ordinary
 slots and a final three-slot superuser recovery path.
 
-## Enforced service inventory
+## Current native processing and retained rollback
+
+Current processing uses `ordinary-go`, `lease-reaper`, `exporter` and `drain`.
+The ordinary authority fixes its pool at five; the four reaper children have
+one connection each; exporter and drain retain their four- and six-slot bounds.
+The Go-only `worker-1` maintenance carrier is off-profile and uses an explicit
+zero-to-four-slot one-off pool. Deployment rejects forward Python topology and
+stops project-labelled writers from both current and removed service names.
+
+The older Python service inventory and optional mixed-owner B0 calculations
+below remain ceilings for authenticated legacy reversals and the isolated
+compatibility fixture, not the default production topology. Only restored specs
+that still define the legacy processors receive the legacy pool override;
+applying it to a native-only spec would recreate image-less retired services.
+Native exporter/drain limits already equal those override limits. Real native
+reversal and installed-image verification remain required for retirement.
+
+## Retained legacy service inventory
 
 Every pooled crawler process sends a repository-owned `application_name`,
 closes inactive connections after 60 seconds, and aborts sessions left idle

@@ -125,98 +125,21 @@ services:
       timeout: 3s
       retries: 3
 
-  # -- Workers (3x HTTP, each on its own metrics port) -------------
-  # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
-  # cap monitors at five; paginating monitors must stream bounded batches.
+  # Retain this service name for authenticated rollback sync commands.
+  # It is a Go-only, explicit one-off carrier, never a processing daemon.
   worker-1:
-    profiles: [legacy]
+    profiles: [maintenance]
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
-    restart: unless-stopped
+    restart: "no"
     network_mode: host
-    # Give the cli.py SIGTERM handler time to close the Postgres pool
-    # under load. Default 10s is too tight; 30s is conservative.
-    stop_grace_period: 30s
-    command: uv run --no-sync crawler run
+    command: ["/usr/local/bin/go-typesense-exporter", "--owner"]
     environment:
       <<: *common-env
-      METRICS_PORT: "9095"
-      DISCOVERY_CONCURRENCY: "20"
-      MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-1
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
-    volumes:
-      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9095"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    mem_limit: 1g
-    cpus: 1.0
-
-  worker-2:
-    profiles: [legacy]
-    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
-    init: true
-    restart: unless-stopped
-    network_mode: host
-    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
-    command: uv run --no-sync crawler run
-    environment:
-      <<: *common-env
-      METRICS_PORT: "9096"
-      DISCOVERY_CONCURRENCY: "20"
-      MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-2
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
-    volumes:
-      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9096"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    mem_limit: 1g
-    cpus: 1.0
-
-  worker-3:
-    profiles: [legacy]
-    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
-    init: true
-    restart: unless-stopped
-    network_mode: host
-    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
-    command: uv run --no-sync crawler run
-    environment:
-      <<: *common-env
-      METRICS_PORT: "9097"
-      DISCOVERY_CONCURRENCY: "20"
-      MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-3
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
-    volumes:
-      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9097"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      CRAWLER_DB_ROLE: maintenance
+      CRAWLER_DB_POOL_MIN: "0"
+      CRAWLER_DB_POOL_MAX: "4"
+    healthcheck: {disable: true}
     mem_limit: 1g
     cpus: 1.0
 
@@ -354,46 +277,6 @@ services:
   # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
   # `apps/crawler/src/indexnow.py` are kept in the codebase but no
   # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
-
-  # -- Browser -----------------------------------------------------
-  browser-1:
-    profiles: [legacy]
-    image: ${BROWSER_IMAGE_REF:?BROWSER_IMAGE_REF must be an immutable GHCR digest}
-    init: true
-    restart: unless-stopped
-    network_mode: host
-    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
-    command: uv run --no-sync crawler run-browser
-    environment:
-      <<: *common-env
-      METRICS_PORT: "9098"
-      DISCOVERY_CONCURRENCY: "7"
-      MONITOR_CONCURRENCY: "4"
-      CRAWLER_DB_ROLE: browser-1
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "6"
-      # One selected scheduled Kandou detail render; no additional source request.
-      KANDOU_JSONLD_CAPTURE_URL: ${KANDOU_JSONLD_CAPTURE_URL:-}
-      # One normal scheduled Booking visit can record its main response and
-      # final DOM for an offline HTTP-vs-browser migration decision.
-      BOOKING_DOM_REPLAY_CAPTURE: ${BOOKING_DOM_REPLAY_CAPTURE:-}
-      # Bound the lifetime of each long-lived Playwright Node driver. Recycle
-      # only between claims; in-flight browser tasks are never interrupted.
-      BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
-    volumes:
-      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9098"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    mem_limit: 6g
-    pids_limit: 4096
-    cpus: 3.0
 
   # -- Networkless Go Lightpanda B0 supervisor --------------------
   # This is the production process implementation, held in exact dark mode.

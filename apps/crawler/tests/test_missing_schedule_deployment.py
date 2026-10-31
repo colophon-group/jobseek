@@ -67,7 +67,7 @@ def test_missing_schedule_repair_preserves_authority_and_stops_on_failure(
 
 def test_missing_schedule_repair_runs_quiesced_after_epoch_before_restart() -> None:
     source = DEPLOY_SH.read_text()
-    quiesce = source.index("docker compose stop --timeout 60")
+    quiesce = source.index("\nstop_crawler_services 60 worker-1")
     sync = source.index("go-typesense-exporter --sync-registry", quiesce)
     epoch = source.index("\nprepare_default_go_epoch\n", sync)
     repair = source.index("\nrepair_default_missing_schedules\n", epoch)

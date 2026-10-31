@@ -7,8 +7,8 @@ from pathlib import Path
 import yaml
 
 
-def test_simple_worker_concurrency_is_bounded_for_one_gibibyte_limit():
-    compose_path = Path(__file__).parents[1] / "docker-compose.yml"
+def test_retained_legacy_worker_concurrency_is_bounded_for_one_gibibyte_limit():
+    compose_path = Path(__file__).parent / "fixtures/docker-compose.legacy-b0.yml"
     compose = yaml.safe_load(compose_path.read_text())
 
     for worker_name in ("worker-1", "worker-2", "worker-3"):
@@ -22,10 +22,13 @@ def test_simple_worker_concurrency_is_bounded_for_one_gibibyte_limit():
 def test_native_owner_preserves_aggregate_http_worker_capacity():
     compose_path = Path(__file__).parents[1] / "docker-compose.yml"
     services = yaml.safe_load(compose_path.read_text())["services"]
+    retained_legacy = yaml.safe_load(
+        (Path(__file__).parent / "fixtures/docker-compose.legacy-b0.yml").read_text()
+    )["services"]
     native = services["ordinary-go"]
     for setting in ("DISCOVERY_CONCURRENCY", "MONITOR_CONCURRENCY"):
         previous_capacity = sum(
-            int(services[name]["environment"][setting])
+            int(retained_legacy[name]["environment"][setting])
             for name in ("worker-1", "worker-2", "worker-3")
         )
         assert int(native["environment"][setting]) == previous_capacity

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -17,6 +18,104 @@ BASH = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else 
 def _function(name: str) -> str:
     start = DEPLOY.index(name + "() {")
     return DEPLOY[start : DEPLOY.index("\n}\n", start) + 3]
+
+
+def test_current_compose_has_no_python_processors_and_retains_native_sync_carrier() -> None:
+    services = yaml.safe_load((CRAWLER / "docker-compose.yml").read_text())["services"]
+    assert not {"worker-2", "worker-3", "browser-1"} & services.keys()
+    carrier = services["worker-1"]
+    assert carrier["profiles"] == ["maintenance"]
+    assert carrier["restart"] == "no"
+    assert carrier["command"] == ["/usr/local/bin/go-typesense-exporter", "--owner"]
+    assert carrier["healthcheck"] == {"disable": True}
+    assert "worker-1" not in DEPLOY.partition("CRAWLER_STACK_SERVICES=(")[2].partition(")")[0]
+    for service in services.values():
+        command = service.get("command", [])
+        text = command if isinstance(command, str) else " ".join(command)
+        assert not any(word in text for word in ("uv run", "python", "playwright", "chromium"))
+
+
+@pytest.mark.parametrize("selected", [None, "go", "legacy"])
+def test_incoming_deploy_is_native_only_while_reversal_remains_separate(
+    selected: str | None,
+) -> None:
+    start = DEPLOY.index('CRAWLER_RUNTIME_BACKEND="${JOBSEEK_CRAWLER_RUNTIME_BACKEND:')
+    configuration = DEPLOY[start : DEPLOY.index("MAINTENANCE_OPERATION=", start)]
+    environment = {"PATH": os.environ["PATH"]}
+    if selected is not None:
+        environment["JOBSEEK_CRAWLER_RUNTIME_BACKEND"] = selected
+    result = subprocess.run(
+        [BASH, "-c", configuration + '\nprintf "%s\\n" "${CRAWLER_STACK_SERVICES[@]}"'],
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    assert (result.returncode == 0) == (selected != "legacy")
+    if selected != "legacy":
+        assert result.stdout.splitlines() == [
+            "redis",
+            "ordinary-go",
+            "lease-reaper",
+            "exporter",
+            "drain",
+            "alloy",
+        ]
+
+
+@pytest.mark.parametrize(
+    ("services", "needs_override"),
+    [
+        ("ordinary-go\nlease-reaper\nexporter\ndrain\nworker-1", False),
+        ("worker-1\nworker-2\nworker-3\nbrowser-1\nexporter\ndrain", True),
+        ("ordinary-go\nworker-1\nworker-2\nbrowser-1\nexporter\ndrain", True),
+    ],
+)
+def test_rollback_pool_override_follows_restored_service_inventory(
+    tmp_path: Path,
+    services: str,
+    needs_override: bool,
+) -> None:
+    environment, compose, pool, calls = (
+        tmp_path / x for x in ("runtime.env", "docker-compose.yml", "pool.yml", "calls")
+    )
+    environment.write_text("RETAINED=fixture\n")
+    compose.write_text("services: {}\n")
+    pool.write_text("services: {}\n")
+    binary = tmp_path / "docker"
+    binary.write_text(
+        "#!/bin/sh\n"
+        'case " $* " in\n'
+        f"  *' config --services '*) printf '%s\\n' {shlex.quote(services)};;\n"
+        f"  *) printf '%s\\n' \"$@\" > {shlex.quote(str(calls))};;\n"
+        "esac\n"
+    )
+    binary.chmod(0o700)
+    script = "\n".join(
+        [
+            "set -euo pipefail",
+            _function("configure_rollback_compose_contract"),
+            _function("rollback_compose"),
+            "configure_rollback_compose_contract",
+            "rollback_compose config --images",
+        ]
+    )
+    result = subprocess.run(
+        [BASH, "-c", script],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": str(tmp_path) + ":" + os.environ["PATH"],
+            "HOME": str(tmp_path),
+            "COMPOSE_PROJECT_NAME": "retirement-fixture",
+            "DEPLOY_DIR": str(tmp_path),
+            "ENV_FILE": str(environment),
+            "ROLLBACK_POOL_OVERRIDE": str(pool),
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    expected = str(compose) + (":" + str(pool) if needs_override else "")
+    assert environment.read_text() == "RETAINED=fixture\nCOMPOSE_FILE=" + expected + "\n"
+    assert (str(pool) in calls.read_text().splitlines()) == needs_override
 
 
 @pytest.mark.parametrize(

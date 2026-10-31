@@ -1,0 +1,481 @@
+# Offline legacy B0/rollback fixture from source d7e696b9fbd0ca74e7ad14f1c6d05a6e3a95b92d.
+# Current production uses docker-compose.yml and native processors only.
+# docker-compose.yml — Hetzner crawler deployment (worker machine)
+#
+# All containers use network_mode: host (no bridge network).
+# Postgres runs on a separate dedicated machine.
+# Redis runs locally on the worker machine.
+
+x-common-env: &common-env
+  LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
+  REDIS_URL: redis://localhost:6379/0
+  WORKER_ID_PREFIX: hetzner
+  # Exact native cohort binding; empty keeps the ordinary lane on Python.
+  ORDINARY_OWNERSHIP_SOURCE_REVISION: ${ORDINARY_OWNERSHIP_SOURCE_REVISION:-}
+  ORDINARY_OWNERSHIP_ROUTING_EPOCH: ${ORDINARY_OWNERSHIP_ROUTING_EPOCH:-}
+  ORDINARY_OWNERSHIP_PLAN_SHA256: ${ORDINARY_OWNERSHIP_PLAN_SHA256:-}
+  ORDINARY_OWNERSHIP_PROJECTION_SHA1: ${ORDINARY_OWNERSHIP_PROJECTION_SHA1:-}
+  # Shared classification stage; Python remains an explicit cold rollback option.
+  JOB_ENRICHMENT_ENGINE: ${JOB_ENRICHMENT_ENGINE:-go}
+  LOG_LEVEL: INFO
+  # Python Prometheus counters/histograms otherwise mirror every bounded
+  # family with an unused `_created` series, consuming ~2,463 tenant series.
+  PROMETHEUS_DISABLE_CREATED_SERIES: "true"
+  CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+  R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
+  R2_DOMAIN_URL: ${R2_DOMAIN_URL}
+  R2_BUCKET: ${R2_BUCKET}
+  TYPESENSE_HOST: ${TYPESENSE_HOST}
+  TYPESENSE_PORT: ${TYPESENSE_PORT}
+  TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
+  TYPESENSE_OPERATIONS_KEY: ${TYPESENSE_OPERATIONS_KEY}
+  # Proxy provider — applies to boards with ``"proxy": true`` in their
+  # monitor_config / scraper_config (see src/shared/proxy.py).
+  PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
+  WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
+  WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  # Exact, default-off Go sitemap monitor handoff.
+  SITEMAP_GO_BOARD_IDS: ${SITEMAP_GO_BOARD_IDS:-}
+  # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
+  WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
+  # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
+  WORKDAY_GO_BOARD_ID: ${WORKDAY_GO_BOARD_ID:-}
+  WORKDAY_GO_BOARD_IDS: ${WORKDAY_GO_BOARD_IDS:-}
+  WORKDAY_GO_PERCENT: ${WORKDAY_GO_PERCENT:-0}
+  # Default-off Go detail handoff and one natural Python detail response capture.
+  WORKDAY_GO_DETAIL_BOARD_IDS: ${WORKDAY_GO_DETAIL_BOARD_IDS:-}
+  WORKDAY_DETAIL_CAPTURE_HOST: ${WORKDAY_DETAIL_CAPTURE_HOST:-}
+  # One existing scheduled Elastic response, saved locally for exact replay.
+  GREENHOUSE_ELASTIC_CAPTURE_PATH: ${GREENHOUSE_ELASTIC_CAPTURE_PATH:-}
+  # Exclusive Elastic rich-monitor handoff after same-byte replay admission.
+  GREENHOUSE_GO_BOARD_ID: ${GREENHOUSE_GO_BOARD_ID:-}
+  # Explicit-token rich cohort and bounded natural API response capture.
+  GREENHOUSE_GO_BOARD_IDS: ${GREENHOUSE_GO_BOARD_IDS:-}
+  GREENHOUSE_CAPTURE_TOKENS: ${GREENHOUSE_CAPTURE_TOKENS:-}
+  GREENHOUSE_GO_PERCENT: ${GREENHOUSE_GO_PERCENT:-0}
+  # Exclusive rich Ashby monitor handoff and bounded natural response capture.
+  ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
+  ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
+  ASHBY_GO_PERCENT: ${ASHBY_GO_PERCENT:-0}
+  # Strict explicit-token Lever boards use Go; set LEVER_GO_PERCENT=0 to reverse.
+  LEVER_GO_BOARD_IDS: ${LEVER_GO_BOARD_IDS:-}
+  # One bounded response from each selected natural Lever schedule.
+  LEVER_CAPTURE_TOKENS: ${LEVER_CAPTURE_TOKENS:-}
+  LEVER_GO_PERCENT: ${LEVER_GO_PERCENT:-100}
+  # JOIN embedded-data monitor defaults to Go; percentage zero reverses the route.
+  JOIN_GO_BOARD_IDS: ${JOIN_GO_BOARD_IDS:-}
+  JOIN_GO_PERCENT: ${JOIN_GO_PERCENT:-100}
+  JSONLD_GO_DETAIL_PERCENT: ${JSONLD_GO_DETAIL_PERCENT:-100}
+  DOM_GO_PARSE_ENABLED: ${DOM_GO_PARSE_ENABLED:-1}
+  DOM_GO_HTTP_ENABLED: ${DOM_GO_HTTP_ENABLED:-1}
+  JSONLD_CAPTURE_HOSTS: ${JSONLD_CAPTURE_HOSTS:-}
+  JOIN_GO_DETAIL_PERCENT: ${JOIN_GO_DETAIL_PERCENT:-100}
+  JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
+  # Default-off Go Recruitee rich monitor and natural response capture.
+  RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
+  RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-100}
+  RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
+  # SmartRecruiters monitor defaults to Go; detail remains an exact board cohort.
+  SMARTRECRUITERS_GO_BOARD_IDS: ${SMARTRECRUITERS_GO_BOARD_IDS:-}
+  SMARTRECRUITERS_GO_DETAIL_BOARD_IDS: ${SMARTRECRUITERS_GO_DETAIL_BOARD_IDS:-}
+  SMARTRECRUITERS_GO_DETAIL_PERCENT: ${SMARTRECRUITERS_GO_DETAIL_PERCENT:-100}
+  SMARTRECRUITERS_GO_PERCENT: ${SMARTRECRUITERS_GO_PERCENT:-100}
+  # Workable list remains a bounded cohort; the existing detail scraper remains scheduled.
+  WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
+  WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
+  WORKABLE_GO_DETAIL_BOARD_IDS: ${WORKABLE_GO_DETAIL_BOARD_IDS:-}
+  WORKABLE_CAPTURE_SLUGS: ${WORKABLE_CAPTURE_SLUGS:-}
+  WORKABLE_DETAIL_CAPTURE_JOBS: ${WORKABLE_DETAIL_CAPTURE_JOBS:-}
+  # Default-off Go Pinpoint rich monitor and natural response capture.
+  PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
+  PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-100}
+  PINPOINT_CAPTURE_TENANTS: ${PINPOINT_CAPTURE_TENANTS:-}
+  # Default-off direct HTTP replacement for the selected Booking DOM monitor.
+  BOOKING_GO_BOARD_ID: ${BOOKING_GO_BOARD_ID:-}
+  # Default-off Go Teamtailor RSS monitor and stable rich cohort.
+  TEAMTAILOR_RSS_GO_BOARD_IDS: ${TEAMTAILOR_RSS_GO_BOARD_IDS:-}
+  TEAMTAILOR_RSS_GO_PERCENT: ${TEAMTAILOR_RSS_GO_PERCENT:-100}
+  TEAMTAILOR_RSS_CAPTURE_HOST: ${TEAMTAILOR_RSS_CAPTURE_HOST:-}
+  # Default-off Go SuccessFactors direct Google RSS monitor.
+  SUCCESSFACTORS_RSS_GO_BOARD_IDS: ${SUCCESSFACTORS_RSS_GO_BOARD_IDS:-}
+  SUCCESSFACTORS_RSS_GO_PERCENT: ${SUCCESSFACTORS_RSS_GO_PERCENT:-100}
+  SUCCESSFACTORS_RSS_CAPTURE_HOST: ${SUCCESSFACTORS_RSS_CAPTURE_HOST:-}
+  # Personio XML/HTML monitor defaults to Go; passive feed capture remains optional.
+  PERSONIO_GO_BOARD_IDS: ${PERSONIO_GO_BOARD_IDS:-}
+  PERSONIO_GO_PERCENT: ${PERSONIO_GO_PERCENT:-100}
+  PERSONIO_CAPTURE_SLUG: ${PERSONIO_CAPTURE_SLUG:-}
+
+services:
+  # -- Redis -------------------------------------------------------
+  redis:
+    image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    restart: unless-stopped
+    network_mode: host
+    # The Sep 2026 scheduler has ~1.76m reachable scrape configs and uses
+    # ~1.05 GB. The 3 GB data ceiling covers the reviewed 3m-schedule
+    # scenario; the cgroup reserves another 1 GB for Redis overhead/BGSAVE.
+    command: redis-server --maxmemory 3gb --maxmemory-policy noeviction --bind 127.0.0.1
+    volumes:
+      - redis-data:/data
+    mem_limit: 4g
+    memswap_limit: 4g
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # -- Workers (3x HTTP, each on its own metrics port) -------------
+  # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
+  # cap monitors at five; paginating monitors must stream bounded batches.
+  worker-1:
+    profiles: [legacy]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    # Give the cli.py SIGTERM handler time to close the Postgres pool
+    # under load. Default 10s is too tight; 30s is conservative.
+    stop_grace_period: 30s
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9095"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_ROLE: worker-1
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9095"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  worker-2:
+    profiles: [legacy]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9096"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_ROLE: worker-2
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9096"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  worker-3:
+    profiles: [legacy]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9097"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_ROLE: worker-3
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9097"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  # -- Native ordinary owner; selected only by supported cold cutover --
+  ordinary-go:
+    profiles: [ordinary-go]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: ${ORDINARY_GO_RESTART_POLICY:-no}
+    network_mode: host
+    stop_grace_period: 45s
+    command: ["/usr/local/bin/go-ordinary-worker"]
+    environment:
+      <<: *common-env
+      ORDINARY_GO_WORKER_MODE: ${ORDINARY_GO_WORKER_MODE:-enabled}
+      ORDINARY_GO_RENDERED_DETAILS: ${ORDINARY_GO_RENDERED_DETAILS:-}
+      METRICS_PORT: "9104"
+      # Replace the aggregate capacity of all three HTTP workers, rather than
+      # one worker's capacity. Per-host throttle and monitor slots still apply.
+      DISCOVERY_CONCURRENCY: "60"
+      MONITOR_CONCURRENCY: "15"
+      # Collect before the 1 GiB container limit; leave room for response
+      # buffers, native/SQLite memory and transient concurrent inventories.
+      GOMEMLIMIT: 512MiB
+    volumes:
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/ca.pem
+        target: /run/lightpanda/ca.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/client.pem
+        target: /run/lightpanda/client.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/client-key.pem
+        target: /run/lightpanda/client-key.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/ca.sha256
+        target: /run/lightpanda/ca.sha256
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/server-leaf.sha256
+        target: /run/lightpanda/server-leaf.sha256
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/server-spki.sha256
+        target: /run/lightpanda/server-spki.sha256
+        read_only: true
+        bind: {create_host_path: false}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    # Keep parsing bounded to two cores and the existing memory envelope.
+    cpus: 2.0
+
+  # The former Python parents supervised this same native reaper. Keep one
+  # independent owner when the ordinary worker replaces those parents.
+  lease-reaper:
+    profiles: [ordinary-go]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s
+    command: ["/usr/local/bin/go-typesense-exporter", "--reap-leases"]
+    environment:
+      LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}
+      REDIS_URL: redis://localhost:6379/0
+      GOMEMLIMIT: 64MiB
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 128m
+
+  # -- Exporter ----------------------------------------------------
+  exporter:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # uniform with workers — gives Postgres pool time to drain
+    command: ["/usr/local/bin/exporter-entrypoint"]
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9093"
+      CRAWLER_DB_ROLE: exporter
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "4"
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+
+  # -- R2 Drain ----------------------------------------------------
+  drain:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # stale PostgreSQL claims are reaped by the next sole owner
+    command: ["/usr/local/bin/go-r2-drain"]
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9094"
+      CRAWLER_DB_ROLE: drain
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "6"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-r2-drain", "--healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 256m
+
+  # IndexNow notifier removed in #2821. Companies are no longer indexed
+  # (`/company/{slug}` is `noindex,follow` and the URLs are out of the
+  # sitemap), so there is no remaining set of URLs to push to Bing /
+  # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
+  # `apps/crawler/src/indexnow.py` are kept in the codebase but no
+  # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
+
+  # -- Browser -----------------------------------------------------
+  browser-1:
+    profiles: [legacy]
+    image: ${BROWSER_IMAGE_REF:?BROWSER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run-browser
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9098"
+      DISCOVERY_CONCURRENCY: "7"
+      MONITOR_CONCURRENCY: "4"
+      CRAWLER_DB_ROLE: browser-1
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "6"
+      # One selected scheduled Kandou detail render; no additional source request.
+      KANDOU_JSONLD_CAPTURE_URL: ${KANDOU_JSONLD_CAPTURE_URL:-}
+      # One normal scheduled Booking visit can record its main response and
+      # final DOM for an offline HTTP-vs-browser migration decision.
+      BOOKING_DOM_REPLAY_CAPTURE: ${BOOKING_DOM_REPLAY_CAPTURE:-}
+      # Bound the lifetime of each long-lived Playwright Node driver. Recycle
+      # only between claims; in-flight browser tasks are never interrupted.
+      BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9098"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 6g
+    pids_limit: 4096
+    cpus: 3.0
+
+  # -- Networkless Go Lightpanda B0 supervisor --------------------
+  # This is the production process implementation, held in exact dark mode.
+  # Dark startup reads no authority configuration and opens no socket; the
+  # networkless container publishes only a local, exact Go readiness marker.
+  lightpanda-claimant:
+    profiles: [legacy]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: none
+    stop_grace_period: 15s
+    command: ["/usr/local/bin/lightpanda-b0-supervisor"]
+    user: "10001:10001"
+    read_only: true
+    cgroup: private
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      LIGHTPANDA_B0_SUPERVISOR_MODE: dark
+    tmpfs:
+      - /run/jobseek:rw,noexec,nosuid,nodev,size=64k,uid=10001,gid=10001,mode=0700
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "--healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.25
+    pids_limit: 32
+    ulimits:
+      nofile:
+        soft: 64
+        hard: 64
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  # -- Grafana Alloy (metrics + log collector) --------------------
+  alloy:
+    image: grafana/alloy:v1.19.2@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839
+    user: "0:0"
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./alloy.river:/etc/alloy/config.river:ro
+      - alloy-data:/data-alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    environment:
+      # Leave half the cgroup for the remote-write WAL, mapped files, runtime,
+      # and Docker log tailing. GOMEMLIMIT is a soft Go heap target, not the
+      # container's hard limit.
+      GOMEMLIMIT: 256MiB
+      PROM_URL: ${GRAFANA_PROM_URL}
+      PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
+      PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
+      LOKI_URL: ${GRAFANA_LOKI_URL}
+      LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
+      LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
+    command: run --storage.path=/data-alloy --server.http.listen-addr=127.0.0.1:12346 /etc/alloy/config.river
+    mem_limit: 512m
+    cpus: 0.5
+
+volumes:
+  redis-data:
+  lightpanda-producer-socket:
+    name: jobseek-lightpanda-b0-producer-socket
+  alloy-data:
+    external: true
+    name: "${COMPOSE_PROJECT_NAME}_alloy-data"

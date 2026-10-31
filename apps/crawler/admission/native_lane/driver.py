@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from admission.native_lane.workload import PROFILES, boards, jobs, workload_sha256
+from admission.native_lane.workload import CAPTURED, PROFILES, boards, jobs, workload_sha256
 
 DATABASE = "postgresql://admission:admission@postgres:5432/admission"
 REDIS = "redis://redis:6379/0"
@@ -95,7 +95,7 @@ async def bootstrap(pool: Any, redis: Any) -> dict[str, Any]:
         )
         await redis.hset(f"board:{board_id}", mapping=cache_config(board))
     for row in jobs():
-        if row["profile"] == "jsonld_direct":
+        if row.get("preseeded", row["profile"] == "jsonld_direct"):
             await pool.execute(
                 """INSERT INTO job_posting(id,company_id,board_id,source_url,next_scrape_at)
                    VALUES($1,$2,$3,$4,NULL)""",
@@ -148,7 +148,7 @@ async def feed(pool: Any) -> dict[str, Any]:
         )
     details = []
     for row in jobs():
-        if row["profile"] != "jsonld_direct":
+        if not row.get("preseeded", row["profile"] == "jsonld_direct"):
             continue
         posting_id = identity(row["url"])
         await pool.execute(
@@ -213,10 +213,11 @@ def progress_counts(
         profile = profiles[board["slug"]]
         origin = board["domain"]
         profile["listing_requests"] = (upstream_requests or {}).get(origin + "/listing", 0)
+        detail_paths = {
+            row["origin"] + row["path"] for row in jobs() if row["profile"] == board["slug"]
+        }
         profile["detail_requests"] = sum(
-            count
-            for path, count in (upstream_requests or {}).items()
-            if path.startswith(origin + "/jobs/")
+            count for path, count in (upstream_requests or {}).items() if path in detail_paths
         )
     return {
         "expected_postings": len(expected),
@@ -332,7 +333,7 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         )
         if (
             len(rows) == len(expected)
-            and finished_boards == 3
+            and finished_boards == sum(board["monitor_seeded"] for board in boards())
             and all(row["titles"] and row["scrape_failures"] == 0 for row in rows)
             and len(descriptions) == len(expected)
             and all(row["r2_uploaded"] is True for row in descriptions)
@@ -365,7 +366,7 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         raise RuntimeError("comparison posting identities differ from input")
     if any(row["titles"][0] != expected[row["source_url"]]["title"] for row in rows):
         raise RuntimeError("comparison posting titles differ from input")
-    if any(
+    if not CAPTURED and any(
         row["employment_type"] != "full_time"
         or row["salary_min"] != 100000
         or row["salary_max"] != 120000
@@ -428,7 +429,10 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         "SELECT count(*) FROM ordinary_worker_write_fence "
         "WHERE routing_epoch=2 AND state='completed'"
     )
-    if lane == "native" and fences < 3 + 3 * 12:
+    minimum_fences = sum(board["monitor_seeded"] for board in boards()) + sum(
+        row["profile"] != "api_rich" for row in jobs()
+    )
+    if lane == "native" and fences < minimum_fences:
         raise RuntimeError("native comparison lacks completed monitor/detail authority")
     return {
         "workload_sha256": workload_sha256(),
@@ -441,7 +445,10 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         "inflight": inflight,
         "unexpected_requests": objects["unexpected_requests"],
         "peak_upstream_inflight": objects["peak_upstream_inflight"],
-        "request_counts": objects["requests"],
+        "request_counts": {
+            (hashlib.sha256(key.encode()).hexdigest() if CAPTURED else key): count
+            for key, count in objects["requests"].items()
+        },
     }
 
 

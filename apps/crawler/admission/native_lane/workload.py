@@ -2,13 +2,45 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
+import os
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-PROFILES = ("api_rich", "dom_direct", "dom_rendered", "jsonld_direct")
+_MODE = os.environ.get("NATIVE_LANE_INPUT_MODE", "generated")
+if _MODE not in ("generated", "captured"):
+    raise ValueError("unknown native comparison input mode")
+CAPTURED = _MODE == "captured"
+CORPUS = Path(__file__).with_name("corpus")
+_CAPTURE = json.loads((CORPUS / "manifest.json").read_text()) if CAPTURED else None
+_GROUPS = (
+    sorted(
+        {
+            (
+                urlsplit(row["source_url"]).hostname,
+                row["scraper_type"],
+                json.dumps(row["scraper_config"], sort_keys=True),
+            )
+            for row in _CAPTURE["cases"]
+        }
+    )
+    if _CAPTURE
+    else []
+)
+PROFILES = (
+    tuple(f"captured_{index}" for index in range(len(_GROUPS)))
+    if CAPTURED
+    else ("api_rich", "dom_direct", "dom_rendered", "jsonld_direct")
+)
 PROFILE_COUNTS = {"api_rich": 500, "dom_direct": 12, "dom_rendered": 12, "jsonld_direct": 12}
-ORIGINS = tuple(f"origin-{index}.lane.bench.test" for index in range(4))
+ORIGINS = (
+    tuple(sorted({group[0] for group in _GROUPS}))
+    if CAPTURED
+    else tuple(f"origin-{index}.lane.bench.test" for index in range(4))
+)
 
 
 def canonical(value: Any) -> bytes:
@@ -16,6 +48,28 @@ def canonical(value: Any) -> bytes:
 
 
 def jobs() -> list[dict[str, Any]]:
+    if _CAPTURE is not None:
+        rows = []
+        for record in _CAPTURE["cases"]:
+            parsed = urlsplit(record["source_url"])
+            group = (
+                parsed.hostname,
+                record["scraper_type"],
+                json.dumps(record["scraper_config"], sort_keys=True),
+            )
+            rows.append(
+                {
+                    **record,
+                    "profile": PROFILES[_GROUPS.index(group)],
+                    "origin": parsed.hostname,
+                    "path": parsed.path + ("?" + parsed.query if parsed.query else ""),
+                    "url": record["source_url"],
+                    "title": record["expected"]["title"],
+                    "preseeded": True,
+                    "delay_ms": 0,
+                }
+            )
+        return rows
     rows = []
     for origin, profile in zip(ORIGINS, PROFILES, strict=True):
         for index in range(PROFILE_COUNTS[profile]):
@@ -45,6 +99,14 @@ def jobs() -> list[dict[str, Any]]:
 
 
 def manifest() -> dict[str, Any]:
+    if _CAPTURE is not None:
+        return {
+            **_CAPTURE,
+            "fixture_transport": {
+                "skip_ssl": True,
+                "reason": "isolated fixture CA is outside native embedded production trust roots",
+            },
+        }
     return {"schema": "jobseek.native-lane-workload/v1", "jobs": jobs()}
 
 
@@ -66,6 +128,19 @@ def jsonld(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def detail_body(row: dict[str, Any]) -> bytes:
+    if CAPTURED:
+        filename = row["html_file"]
+        if Path(filename).name != filename:
+            raise ValueError("captured response path escapes corpus")
+        with gzip.open(CORPUS / filename, "rb") as stream:
+            body = stream.read((8 << 20) + 1)
+        if (
+            len(body) > 8 << 20
+            or len(body) != row["html_bytes"]
+            or hashlib.sha256(body).hexdigest() != row["html_sha256"]
+        ):
+            raise ValueError("captured response identity differs")
+        return body
     payload = canonical(jsonld(row)).decode().replace("</", "<\\/")
     if row["profile"] == "dom_rendered":
         # The raw response deliberately has no JobPosting JSON-LD script.
@@ -110,6 +185,25 @@ def listing_body(profile: str) -> bytes:
 
 
 def boards() -> list[dict[str, Any]]:
+    if CAPTURED:
+        return [
+            {
+                "slug": profile,
+                "url": next(row["url"] for row in jobs() if row["profile"] == profile),
+                "domain": group[0],
+                "crawler_type": "dom",
+                "monitor_needs_browser": False,
+                "scraper_needs_browser": False,
+                "monitor_seeded": False,
+                "metadata": {
+                    "scraper_type": group[1],
+                    "scraper_config": {**json.loads(group[2]), "skip_ssl": True},
+                    "rescrape_policy": "never",
+                    "skip_ssl": True,
+                },
+            }
+            for profile, group in zip(PROFILES, _GROUPS, strict=True)
+        ]
     result = []
     for origin, profile in zip(ORIGINS, PROFILES, strict=True):
         rendered = profile == "dom_rendered"
