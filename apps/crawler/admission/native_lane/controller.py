@@ -120,6 +120,9 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                     word
                     for word in (
                         "permission denied",
+                        "operation not permitted",
+                        "executable file not found",
+                        "stat /usr/bin/setpriv",
                         "no such file",
                         "certificate",
                         "configuration",
@@ -128,7 +131,7 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                         "connection",
                         "out of memory",
                     )
-                    if word in text.lower()
+                    if word in (text + "\n" + str(state.get("Error", ""))[:8192]).lower()
                 ]
         except Exception as error:
             row["diagnostic_failure_class"] = type(error).__name__

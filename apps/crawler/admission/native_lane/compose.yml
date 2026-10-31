@@ -145,8 +145,11 @@ services:
     <<: *common
     image: ${RENDERER_IMAGE:?exact renderer image required}
     command: [--runtime-v1-service, --listen, "0.0.0.0:9443", --service-ip, 10.0.0.5, --deployment-deny-cidr, 93.184.216.34/32, --tls-cert, /run/pki/server.pem, --tls-key, /run/pki/server-key.pem, --tls-ca, /run/pki/ca.pem, --tls-ca-sha256, "${NATIVE_LANE_CA_PIN:?}", --client-leaf-sha256, "${NATIVE_LANE_CLIENT_LEAF_PIN:?}", --client-spki-sha256, "${NATIVE_LANE_CLIENT_SPKI_PIN:?}"]
-    user: "10001:10001"
+    # Match the service entrypoint: setpriv drops to 10001 while retaining only
+    # the three capabilities needed to isolate and reap browser child UIDs.
+    user: "0:0"
     cap_drop: [ALL]
+    cap_add: [KILL, SETGID, SETUID]
     networks: {claim: {ipv4_address: 10.0.0.5}, origin: {}}
     volumes:
       - ${NATIVE_LANE_PKI:?}/ca.pem:/run/pki/ca.pem:ro
@@ -157,7 +160,7 @@ services:
     cpus: 1.5
     mem_limit: 1g
     memswap_limit: 1g
-    pids_limit: 192
+    pids_limit: 64
   legacy-simple:
     <<: *legacy
     command: [/app/.venv/bin/crawler, run]

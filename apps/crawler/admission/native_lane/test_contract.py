@@ -34,7 +34,7 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
                 "Running": False,
                 "ExitCode": 1,
                 "OOMKilled": False,
-                "Error": "PRIVATE_SHOULD_NOT_ECHO",
+                "Error": "operation not permitted PRIVATE_SHOULD_NOT_ECHO",
                 "Health": {"Status": "unhealthy"},
             },
             "RestartCount": 0,
@@ -55,6 +55,7 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
     assert rows[0]["exit_code"] == 1
     assert rows[0]["worker_startup_stages"] == ["ownership"]
     assert rows[0]["mentioned_settings"] == ["R2_BUCKET"]
+    assert "operation not permitted" in rows[0]["error_categories"]
     assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(rows)
 
 
@@ -251,6 +252,14 @@ def test_compose_contains_no_external_runtime_route_or_docker_socket() -> None:
         "exporter",
         "drain",
     }
+
+
+def test_renderer_keeps_the_production_privilege_drop_and_child_process_contract() -> None:
+    root = Path(__file__).resolve().parents[4]
+    production = yaml.safe_load((root / "deploy/lightpanda-renderer/compose.yml").read_text())
+    fixture = yaml.safe_load((Path(__file__).parent / "compose.yml").read_text())
+    for field in ("user", "cap_add", "cap_drop", "read_only", "pids_limit"):
+        assert fixture["services"]["renderer"][field] == production["services"]["renderer"][field]
 
 
 def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
