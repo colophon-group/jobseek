@@ -51,17 +51,24 @@ slots and ten candidate host domains. Preserve normal delays, circuits and
 schedules. **No Chromium fallback**, forced origin probes, manual queue/SQL/env
 repair, deadline/counter resets or raised budgets are authorized.
 
+The October 31 nightly has since advanced to **1.1.0-nightly.11423+56980afde**.
+[PR #11075](https://github.com/colophon-group/jobseek/pull/11075) pins verified
+amd64/arm64 executable and OCI-layer digests plus the independently executed
+macOS asset. Both Linux physical qualification suites passed; Required CI remains pending. This new release is
+not installed yet; retain the verified installed renderer until qualification
+and supported rollout complete.
+
 ## Current proof and open gates
 
 | Requirement | Result and remaining work |
 | --- | --- |
 | Production implementation | Native workers, shared enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain are deployed. Native restoration also passed CSV publication and currency refresh. |
 | Enabled configuration coverage | Existing admission contract qualified 8,148 monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Those existing configs are unchanged, three boards were added and none removed. Actual startup validates all 8,151 canonical/cache profiles. Reuse this proof only for unchanged contracts. |
-| Conservation and authority | The October 31 02:33 source-bound read represents all 8,151 enabled monitors: 8,122 queued and 29 valid leases. Zero missing, deadletter-only, duplicate, expired-only, token-presence or cache-domain/lane gaps. The full supported deploy restored representation without manual repairs. This is an initial read, not a completed schedule/recovery window. |
+| Conservation and authority | Before reversal, all 8,151 enabled monitors were represented. The October 31 02:52 post-reversal read represents 8,144: 8,113 queued and 31 valid leases. Seven enabled Umantis monitors are missing, with unchanged canonical board/monitor identity hashes and no deadletters, duplicates, token-presence or cache gaps. The rollback unconditionally parks their monitors after sync. A runtime-aware correction is in qualification; no manual repairs were used. |
 | Canonical/publisher/storage/export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservation, rollback and fences. Current SQL/R2/Typesense samples below qualify observed effects within their limits. |
 | Provider recovery | One former deadletter API-sniffer case naturally succeeded before 1131. Accenture, Beisen and browser API-sniffer still have processing failures; Amazon and Oracle ADF lack fresh success. Admission, requeue and active fences are not recovery. |
 | Whole-lane efficiency/freshness | **Open.** Equivalent-work improvement without material throughput/freshness regression is not established. Initial 1132 freshness has 6,368 due monitors, 16 overdue a day and 1,093 successful in the past hour; a comparable steady window is still needed. |
-| Cold reversal | Earlier supported full cold reversal passed. Fresh archived-spec reversal of the current all-Go generation remains open. The new conservation gap is closed in the initial read; verify it stays closed and qualify current canonical effects before the supported exercise. Preserve immutable rollback assets and epoch monotonicity. |
+| Cold reversal | The [current all-Go exercise](https://github.com/colophon-group/jobseek/actions/runs/41160873808) passed its workflow and restored the exact prior source/image/data and four Go actors with unchanged epoch 404. **Acceptance remains open:** independent conservation found seven missing Umantis monitors. Correct the legacy-only parking condition, deploy through the full workflow and repeat the supported reversal plus readback. |
 | Legacy-only retirement | **Open.** Complete acceptance and a schedule-based observation/recovery window before removing required compatibility. Preserve useful offline Python. |
 
 In predecessor 1130 at 20:45, 730 completed active zero-failure detail records span 27 provider
@@ -121,7 +128,7 @@ claims, two heartbeat deadlines, two task deadlines and 142 detail failures,
 predecessor runtime; it does not establish permanent error elimination.
 
 Candidate [PR #11073](https://github.com/colophon-group/jobseek/pull/11073),
-version 0.13.1133, compares 536 identical postings across rich API, direct DOM,
+version 0.13.1134, compares 536 identical postings across rich API, direct DOM,
 rendered DOM and direct JSON-LD routes. Each arm includes actual workers,
 renderer/browser, reaper, PostgreSQL, Redis, exporter, drain and Typesense.
 Bootstrap passes real PostgreSQL/Redis canonical/cache admission, production-size
@@ -130,13 +137,16 @@ has verified service identities and a strict certificate chain. No production
 ownership or HTTPS guard is weakened.
 
 The latest full Linux run passes those stages and starts the native drain, but
-its renderer fails before work begins. The fixture incorrectly overrides the
-service entrypoint's root-to-10001 privilege drop and required child-process
-capabilities. It now matches the production user, three capabilities and 64-PID
-limit. A contract test compares both Compose definitions directly. All 27 local
-tests, lint/format, typing, actionlint and Compose parsing pass. Full Linux
-qualification remains required. Bounded annotations retain safe engine/startup
-codes, not raw logs. Every failed arm has verified cleanup.
+its renderer still fails before work begins. The fixture now matches the
+production privilege-drop/capability/PID contract. Its dynamic address pools also
+exclude the fixed renderer and origin-fixture addresses, preventing bootstrap
+containers from occupying them. A regression verifies fixed addresses are outside
+automatic pools; see [Docker's static-address guidance](https://docs.docker.com/reference/cli/docker/network/connect/).
+All 28 local tests, lint/format, typing, actionlint and Compose parsing pass.
+The next comparison includes the verified latest Lightpanda 11423 pin and the
+1133 native rollback correction, so final qualification tests the combined
+candidate. Full Linux comparison remains unqualified. Bounded annotations retain
+safe engine/startup codes, not raw logs. Every failed arm has verified cleanup.
 
 The production timeout fix is deployed as 1132 through
 [PR #11074](https://github.com/colophon-group/jobseek/pull/11074). Its exact tested
@@ -151,9 +161,20 @@ stale-token, reservation and receipt recovery. Processing deadlines, lease
 budgets, concurrency and retries are unchanged. The deployment restored monitor
 representation; natural provider recovery and sustained scheduling remain open.
 
+The current-generation cold exercise exposed a separate shared rollback bug.
+`rollback_sync_previous_config` always requests Umantis monitor parking, including
+when restoring a Go runtime that already supports canonical Umantis identities.
+The [1133 correction in PR #11076](https://github.com/colophon-group/jobseek/pull/11076) selects parking from the restored image's runtime backend:
+legacy processors retain parking; Go-to-Go reversal preserves all seven monitor
+schedules. Native sync still requires native admission and legacy credential,
+quiescence, failure propagation and archived-generation barriers remain intact.
+The exercised workflow alone is insufficient: independent conservation must pass
+after the corrected reversal before closing this gate.
+
 Next delivery:
 
-1. Diagnose normal scheduling of the five tracked former-deadletter cases with
+1. Complete the runtime-aware Umantis rollback correction, full rollout and
+   repeated cold-reversal readback without manual queue repairs. Diagnose normal scheduling of the five tracked former-deadletter cases with
    bounded read-only queue rank/head, retained authority, host pacing and cache
    evidence. Later reads show new check starts for Accenture and browser
    API-sniffer, but no fresh success; no recovery is credited to 1131. Keep the restored Oracle HCM/Lever/API-sniffer representation under normal

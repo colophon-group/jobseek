@@ -2501,7 +2501,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     ]
     assert 'read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF' in rollback_sync
     assert "uv run --no-sync crawler sync" in rollback_sync
-    assert "repair_umantis_identity_cutover rollback-umantis-identity-cutover 1" in rollback_sync
+    assert '"$park_umantis_monitors" "$maintenance_backend"' in rollback_sync
     assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
         '"${forward_sync_command[@]}"', script.index("FORWARD_SYNC_STARTED=1")
@@ -2520,10 +2520,14 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
 
 
 @pytest.mark.usefixtures("bind_native_deployment_fixture")
-@pytest.mark.parametrize("maintenance_backend", ["native", "legacy"])
+@pytest.mark.parametrize(
+    ("maintenance_backend", "runtime_backend"),
+    [("native", "go"), ("native", "legacy"), ("legacy", "legacy")],
+)
 def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
     tmp_path: Path,
     maintenance_backend: str,
+    runtime_backend: str,
 ) -> None:
     script = DEPLOY_SH.read_text()
     read_exact = script[
@@ -2554,6 +2558,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             "verify_exact_csv_tree() { return 0; }",
             read_exact,
             'crawler_image_maintenance_backend() { printf "%s\\n" "$TEST_BACKEND"; }',
+            'crawler_image_runtime_backend() { printf "%s\\n" "$TEST_RUNTIME_BACKEND"; }',
             rollback_sync,
             "rollback_compose() {",
             '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "$EXPECTED_WEB_DATABASE_URL"',
@@ -2561,7 +2566,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
             '  return "$COMPOSE_STATUS"',
             "}",
             "repair_umantis_identity_cutover() {",
-            '  printf \'%s\\n\' "$1" >>"$TEST_LOG"',
+            '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
             '  return "$REPAIR_STATUS"',
             "}",
             "repair_worker_route_cutover() { :; }",
@@ -2598,6 +2603,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                     "COMPOSE_STATUS": str(compose_status),
                     "REAP_STATUS": str(reap_status),
                     "TEST_BACKEND": maintenance_backend,
+                    "TEST_RUNTIME_BACKEND": runtime_backend,
                     "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url
                     if maintenance_backend == "legacy"
                     else "",
@@ -2623,6 +2629,8 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                 if maintenance_backend == "native"
                 else "uv run --no-sync crawler sync"
             )
+            if runtime_backend == "go":
+                sync_command += " --require-native"
             assert calls[0] == (
                 f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
                 f"{expected_web_arg}-e CRAWLER_DB_ROLE=rollback-sync "
@@ -2630,7 +2638,10 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                 f"worker-1 {sync_command}"
             )
             if compose_status == 0:
-                assert calls[1] == "rollback-umantis-identity-cutover"
+                park = 0 if runtime_backend == "go" else 1
+                assert calls[1] == (
+                    f"rollback-umantis-identity-cutover {park} {maintenance_backend}"
+                )
                 assert calls[2] == f"status={expected_status}"
             else:
                 assert calls[1] == f"status={compose_status}"
@@ -2655,6 +2666,7 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
                 **os.environ,
                 "COMPOSE_STATUS": "0",
                 "TEST_BACKEND": maintenance_backend,
+                "TEST_RUNTIME_BACKEND": runtime_backend,
                 "EXPECTED_WEB_DATABASE_URL": "",
                 "REPAIR_STATUS": "0",
                 "TEST_ENV_FILE": str(env_file),

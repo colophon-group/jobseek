@@ -26,7 +26,8 @@ uses `go-ordinary-worker` in default ownership mode and self-hosted Lightpanda;
 the comparator alone uses the explicitly retained legacy target. Bootstrap and
 inspection Python runs in separate fixture/tooling containers. No container has
 the Docker socket, host networking, published ports or production credentials.
-Both Docker networks are internal. The driver rejects all database/Redis
+Both Docker networks are internal. Automatic address pools exclude the fixed
+renderer and origin-fixture addresses, so bootstrap cannot claim them. The driver rejects all database/Redis
 endpoints except its literal disposable service addresses before connecting.
 
 Bootstrap uses future canonical deadlines and the same throttle key in SQL and
