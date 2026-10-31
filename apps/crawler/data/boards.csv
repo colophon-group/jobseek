@@ -2494,6 +2494,7 @@ emory-healthcare,emory-healthcare-houston-county,https://hhc.wd5.myworkdayjobs.c
 emory-healthcare,emory-healthcare-non-clinical,https://non-clinical-emory.icims.com/jobs/search?ss=1,icims,"{""host"": ""non-clinical-emory.icims.com"", ""dedupe_job_ids_from_hosts"": [""clinical-emory.icims.com""]}",json-ld,
 emory-healthcare,emory-healthcare-nursing,https://nursing-emory.icims.com/jobs/search?hashed=-435620505&ss=1,icims,"{""host"": ""nursing-emory.icims.com"", ""dedupe_job_ids_from_hosts"": [""clinical-emory.icims.com""]}",json-ld,
 empa,empa-careers,https://apply.refline.ch/673276/search.html?form.buttons.listAll=1,dom,"{""render"": false, ""url_filter"": ""apply\\.refline\\.ch/673276/\\d+/pub""}",json-ld,
+empiria-group,empiria-group-careers,https://apply.workable.com/empiria-group/,workable,,workable,
 empirical,empirical-ashby,https://jobs.ashbyhq.com/empirical,ashby,"{""token"": ""empirical""}",skip,
 employment-opportunities-at-buzzfeed-inc,employment-opportunities-at-buzzfeed-inc-greenhouse,https://job-boards.greenhouse.io/buzzfeed,greenhouse,"{""token"": ""buzzfeed""}",skip,
 emrich-wangler-herrmann-partg-mbb,emrich-wangler-herrmann-partg-mbb-join,https://join.com/companies/taxit-kundede737,join,"{""slug"": ""taxit-kundede737""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
