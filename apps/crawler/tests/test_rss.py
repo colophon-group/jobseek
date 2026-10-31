@@ -340,6 +340,18 @@ class TestParseSfLegacyXmlItem:
 
 
 class TestTtLocationString:
+    def test_source_verified_country_fallback(self):
+        xml = f'''
+        <tt:location xmlns:tt="{_TT_NS}">
+            <tt:name>Alula</tt:name><tt:city>Tathleeth</tt:city>
+            <tt:country>Saudi Arabia</tt:country>
+        </tt:location>
+        '''
+        loc_el = ET.fromstring(xml)
+        assert _tt_location_string(loc_el, {"Alula": "Saudi Arabia"}) == "Alula, Saudi Arabia"
+        assert _tt_location_string(loc_el, {"Alula": "Jordan"}) == "Alula"
+        assert _tt_location_string(loc_el) == "Alula"
+
     def test_name_preferred(self):
         xml = f"""
         <tt:location xmlns:tt="{_TT_NS}">
@@ -1779,6 +1791,31 @@ class TestDiscover:
             }
             jobs = await discover(board, client)
             assert len(jobs) == 1
+
+    async def test_teamtailor_country_fallback_does_not_narrow_remote_region(self):
+        page_xml = _rss_xml(f'''
+            <item><title>Alula role</title><link>https://example.com/jobs/1</link>
+              <tt:locations xmlns:tt="{_TT_NS}"><tt:location><tt:name>Alula</tt:name>
+                <tt:city>Tathleeth</tt:city><tt:country>Saudi Arabia</tt:country>
+              </tt:location></tt:locations></item>
+            <item><title>Europe remote</title><link>https://example.com/jobs/2</link>
+              <remoteStatus>Fully Remote</remoteStatus>
+              <tt:locations xmlns:tt="{_TT_NS}"><tt:location><tt:name>Europe</tt:name>
+                <tt:city>Marbella</tt:city><tt:country>Spain</tt:country>
+              </tt:location></tt:locations></item>
+        ''')
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, text=page_xml))
+        ) as client:
+            board = {
+                "board_url": "https://example.teamtailor.com/jobs",
+                "metadata": {
+                    "preset": "teamtailor",
+                    "location_country_fallbacks": {"Alula": "Saudi Arabia"},
+                },
+            }
+            jobs = await discover(board, client)
+            assert [job.locations for job in jobs] == [["Alula, Saudi Arabia"], ["Europe"]]
 
     async def test_wp_job_manager_preset_uses_numbered_pages(self):
         first_page = _rss_xml(

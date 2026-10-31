@@ -30,6 +30,27 @@ func TestGroupedRSSProviderProfilesBindCanonicalFeedAndDetails(t *testing.T) {
 	}
 }
 
+func TestTeamtailorCountryFallbackProfileBinding(t *testing.T) {
+	config := profileConfig()
+	config["crawler_type"] = "rss"
+	config["board_url"] = "https://careers.example.com/jobs"
+	config["metadata"] = `{"preset":"teamtailor","feed_url":"https://careers.example.com/jobs.rss","scraper_type":"skip","location_country_fallbacks":{"Alula":"Saudi Arabia"}}`
+	profile, err := InspectRichMonitor(profileBoardID, config)
+	if err != nil || profile.RSSCountryFallbacks["Alula"] != "Saudi Arabia" {
+		t.Fatal("source-verified country fallback missing", profile, err)
+	}
+	for _, metadata := range []string{
+		`{"preset":"generic","feed_url":"https://careers.example.com/jobs.rss","scraper_type":"skip","location_country_fallbacks":{"Alula":"Saudi Arabia"}}`,
+		`{"preset":"teamtailor","scraper_type":"skip","location_country_fallbacks":{"Alula":""}}`,
+		`{"preset":"teamtailor","scraper_type":"skip","location_country_fallbacks":{"Alula":"Saudi Arabia, Jordan"}}`,
+	} {
+		config["metadata"] = metadata
+		if _, err := InspectRichMonitor(profileBoardID, config); err == nil {
+			t.Fatal("unsupported country fallback admitted", metadata)
+		}
+	}
+}
+
 func TestGovernmentJobsRefusesTenantAndFeedDrift(t *testing.T) {
 	for _, c := range []struct{ board, extra string }{
 		{"https://www.governmentjobs.com/careers/fixture", `"agency":"other"`},

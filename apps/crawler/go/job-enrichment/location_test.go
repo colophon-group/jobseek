@@ -31,6 +31,50 @@ type frozenLocation struct {
 	} `json:"cases"`
 }
 
+func TestTeamtailorUnresolvedNameCountryFallback(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "locations.sqlite")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`CREATE TABLE entry(id INTEGER PRIMARY KEY,parent_id INTEGER,loc_type TEXT,population INTEGER,languages TEXT);
+CREATE TABLE name_index(name TEXT,location_id INTEGER);CREATE INDEX idx_name ON name_index(name);
+CREATE TABLE display_name(location_id INTEGER PRIMARY KEY,name TEXT);
+INSERT INTO entry VALUES(102358,NULL,'country',0,'en');
+INSERT INTO entry VALUES(105000,102358,'city',1000000,'en');
+INSERT INTO name_index VALUES('saudi arabia',102358),('jeddah',105000);
+INSERT INTO display_name VALUES(102358,'Saudi Arabia'),(105000,'Jeddah');`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	resolver, err := OpenLocations(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resolver.Close()
+	for _, c := range []struct {
+		raw  string
+		want int64
+	}{
+		{"Alula", 0},
+		{"Alula, Saudi Arabia", 102358},
+		{"Jeddah", 105000},
+		{"Jeddah, Saudi Arabia", 105000},
+	} {
+		got, _, _, err := resolver.Resolve([]string{c.raw}, "onsite", "en", false, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.want == 0 && len(got) == 0 {
+			continue
+		}
+		if len(got) != 1 || got[0].ID == nil || *got[0].ID != c.want {
+			t.Fatalf("%q resolved to %v, want %d", c.raw, got, c.want)
+		}
+	}
+}
+
 func TestFrozenLocationParity(t *testing.T) {
 	data, err := os.ReadFile("testdata/python_location.json")
 	if err != nil {

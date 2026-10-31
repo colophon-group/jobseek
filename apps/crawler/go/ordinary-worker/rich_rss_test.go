@@ -29,6 +29,22 @@ func teamtailorRSSPage(count int) string {
 	return body.String()
 }
 
+func TestNativeTeamtailorCountryFallbackReachesRichInventory(t *testing.T) {
+	profile := teamtailorRSSProfile(t)
+	profile.RSSCountryFallbacks = map[string]string{"Alula": "Saudi Arabia"}
+	body := `<rss xmlns:tt="https://teamtailor.com/locations"><channel><item>
+<link>https://example.com/job/1</link><title>Manager</title><description>&lt;p&gt;Manage&lt;/p&gt;</description>
+<tt:locations><tt:location><tt:name>Alula</tt:name><tt:city>Tathleeth</tt:city><tt:country>Saudi Arabia</tt:country></tt:location></tt:locations>
+</item></channel></rss>`
+	client := &http.Client{Transport: richRoundTrip(func(r *http.Request) (*http.Response, error) {
+		return richHTTPResponse(r, 200, body, false), nil
+	})}
+	found, err := DiscoverRichMonitor(context.Background(), client, profile)
+	if err != nil || len(found.Jobs) != 1 || fmt.Sprint(found.Jobs[0].Locations) != "[Alula, Saudi Arabia]" {
+		t.Fatal("country fallback failed to reach native rich job", found, err)
+	}
+}
+
 func TestNativeTeamtailorPaginationPreservesFieldsAndNeverReturnsPartialFailure(t *testing.T) {
 	for _, mode := range []string{"complete", "later404", "later_reserved", "duplicate_flags", "nonliteral_flag"} {
 		t.Run(mode, func(t *testing.T) {

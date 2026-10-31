@@ -27,6 +27,10 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" && preset != "wp_job_manager" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
+	countryFallbacks, err := rssCountryFallbacks(md, preset)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -169,8 +173,32 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	}
 	profile.RSSDetailEnrichment = len(fields) > 0
 	profile.RSSResolveJobInviteIdentity = resolveIdentity
+	profile.RSSCountryFallbacks = countryFallbacks
 	profile.RSSPagination = pagination
 	return profile, nil
+}
+
+// Country fallbacks are deliberately limited to verified unresolved display
+// names on one Teamtailor source. The parser applies a mapping only when the
+// feed's own structured country agrees with its configured value.
+func rssCountryFallbacks(md map[string]json.RawMessage, preset string) (map[string]string, error) {
+	raw, present := md["location_country_fallbacks"]
+	if !present {
+		return nil, nil
+	}
+	if preset != "teamtailor" {
+		return nil, ErrUnsupportedProfile
+	}
+	var values map[string]string
+	if json.Unmarshal(raw, &values) != nil || len(values) == 0 || len(values) > 32 {
+		return nil, ErrUnsupportedProfile
+	}
+	for name, country := range values {
+		if name == "" || country == "" || len(name) > 100 || len(country) > 100 || strings.TrimSpace(name) != name || strings.TrimSpace(country) != country || strings.ContainsAny(name+country, ",\r\n") {
+			return nil, ErrUnsupportedProfile
+		}
+	}
+	return values, nil
 }
 
 var governmentJobsBoardPath = regexp.MustCompile(`^/careers/([a-z0-9][a-z0-9-]{0,63})/?$`)

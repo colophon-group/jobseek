@@ -117,7 +117,7 @@ type requestDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-func fetchPage(ctx context.Context, client requestDoer, endpoint string, result *FetchResult) ([]Job, int, error) {
+func fetchPage(ctx context.Context, client requestDoer, endpoint string, result *FetchResult, countryFallbacks map[string]string) ([]Job, int, error) {
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
 			delay := time.Duration(rand.Int63n(int64(500*time.Millisecond) << (attempt - 1)))
@@ -166,7 +166,7 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, result 
 			}
 			return nil, 0, fmt.Errorf("Teamtailor RSS returned HTTP %d", response.StatusCode)
 		}
-		return ParsePage(body)
+		return ParsePageWithCountryFallbacks(body, countryFallbacks)
 	}
 	return nil, 0, errors.New("Teamtailor RSS retry budget exhausted")
 }
@@ -174,13 +174,17 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, result 
 // Fetch follows the same 100-item offset pages and 50,000 rich-job cap as the
 // existing Python Teamtailor preset. It never emits a partial successful run.
 func Fetch(ctx context.Context, client requestDoer, feedURL string) (FetchResult, error) {
+	return FetchWithCountryFallbacks(ctx, client, feedURL, nil)
+}
+
+func FetchWithCountryFallbacks(ctx context.Context, client requestDoer, feedURL string, countryFallbacks map[string]string) (FetchResult, error) {
 	result := FetchResult{Inventory: Inventory{Jobs: []Job{}}}
 	feed, err := validFeedURL(feedURL)
 	if err != nil {
 		return result, err
 	}
 	for page := 0; page < maxPages; page++ {
-		jobs, rawItems, err := fetchPage(ctx, client, pageURL(feed, page*PageSize), &result)
+		jobs, rawItems, err := fetchPage(ctx, client, pageURL(feed, page*PageSize), &result, countryFallbacks)
 		if err != nil {
 			return result, err
 		}
@@ -225,7 +229,11 @@ func validRedirectURL(parsed *url.URL) (*url.URL, error) {
 }
 
 func FetchFeed(ctx context.Context, feedURL string) (FetchResult, error) {
+	return FetchFeedWithCountryFallbacks(ctx, feedURL, nil)
+}
+
+func FetchFeedWithCountryFallbacks(ctx context.Context, feedURL string, countryFallbacks map[string]string) (FetchResult, error) {
 	client := newClient()
 	defer client.CloseIdleConnections()
-	return Fetch(ctx, client, feedURL)
+	return FetchWithCountryFallbacks(ctx, client, feedURL, countryFallbacks)
 }

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import os
 
 import httpx
@@ -19,17 +20,59 @@ FEED_URL = "https://careers.example.com/jobs.rss"
 CONFIG = {"preset": "teamtailor", "feed_url": FEED_URL, "scraper_type": "skip"}
 
 
-def fake_binary(tmp_path, payload: dict, *, exit_code: int = 0) -> str:
+def fake_binary(
+    tmp_path, payload: dict, *, exit_code: int = 0, country_fallbacks: dict | None = None
+) -> str:
     path = tmp_path / "teamtailor-live-fake"
+    expected_extra = (
+        ["--country-fallbacks-json", json.dumps(country_fallbacks)] if country_fallbacks else []
+    )
     path.write_text(
         "#!/usr/bin/env python3\n"
         "import json, sys\n"
-        f"assert sys.argv[1:] == ['--feed-url', {FEED_URL!r}]\n"
+        f"assert sys.argv[1:3] == ['--feed-url', {FEED_URL!r}]\n"
+        f"assert sys.argv[3:] == {expected_extra!r}\n"
         f"print(json.dumps({payload!r}))\n"
         f"sys.exit({exit_code})\n"
     )
     path.chmod(0o755)
     return str(path)
+
+
+@pytest.mark.asyncio
+async def test_go_teamtailor_passes_verified_country_fallback(tmp_path):
+    fallback = {"Alula": "Saudi Arabia"}
+    url = f"{BOARD_URL}/alula"
+    runtime = GoTeamtailorRSSMonitorRuntime(
+        fake_binary(
+            tmp_path,
+            {
+                "jobs": [
+                    {
+                        "url": url,
+                        "title": "Manager",
+                        "description": "<p>Manage</p>",
+                        "locations": ["Alula, Saudi Arabia"],
+                    }
+                ],
+                "truncated": False,
+                "requests": 1,
+                "responses": 1,
+                "bytes": 100,
+                "status": 200,
+                "final_url": FEED_URL + "?offset=0&per_page=100",
+            },
+            country_fallbacks=fallback,
+        ),
+        board_id=BOARD_ID,
+    )
+    result = [
+        item
+        async for item in runtime.stream(
+            BOARD_URL, "rss", CONFIG | {"location_country_fallbacks": fallback}, None
+        )
+    ]
+    assert result[0].jobs_by_url[url].locations == ["Alula, Saudi Arabia"]
 
 
 @pytest.mark.asyncio
