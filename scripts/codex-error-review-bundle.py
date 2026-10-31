@@ -34,10 +34,8 @@ from jobseek_maintenance_provenance import (  # noqa: E402
 UTC = timezone.utc  # noqa: UP017 - systemd runs this script with Python 3.10.
 
 LONG_RUNNING_CONTAINERS = (
-    "deploy-worker-1-1",
-    "deploy-worker-2-1",
-    "deploy-worker-3-1",
-    "deploy-browser-1-1",
+    "deploy-ordinary-go-1",
+    "deploy-lease-reaper-1",
     "deploy-exporter-1",
     "deploy-drain-1",
     "deploy-redis-1",

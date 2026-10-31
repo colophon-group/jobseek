@@ -39,10 +39,8 @@ from jobseek_maintenance_provenance import (  # noqa: E402
 
 DEFAULT_EXPECTED_SERVICES = (
     "redis",
-    "worker-1",
-    "worker-2",
-    "worker-3",
-    "browser-1",
+    "ordinary-go",
+    "lease-reaper",
     "exporter",
     "drain",
     "alloy",

@@ -4,10 +4,6 @@
 // ── Application metrics (static targets per container) ────
 prometheus.scrape "crawler" {
   targets = [
-    {"__address__" = "localhost:9095", "instance" = "worker-1", "job" = "crawler"},
-    {"__address__" = "localhost:9096", "instance" = "worker-2", "job" = "crawler"},
-    {"__address__" = "localhost:9097", "instance" = "worker-3", "job" = "crawler"},
-    {"__address__" = "localhost:9098", "instance" = "browser-1", "job" = "crawler"},
     {"__address__" = "localhost:9093", "instance" = "exporter", "job" = "crawler"},
     {"__address__" = "localhost:9094", "instance" = "drain", "job" = "crawler"},
     {"__address__" = "127.0.0.1:9101", "instance" = "lightpanda-claimant", "job" = "lightpanda-b0", "runtime" = "go", "cohort" = "b0"},

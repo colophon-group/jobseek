@@ -79,10 +79,8 @@ _HTTP_429_RE = re.compile(r"(?i)(?:status|code|http(?: status)?)\D{0,8}429|429 t
 
 ROLE_CONTAINERS = {
     "crawler": (
-        "deploy-worker-1-1",
-        "deploy-worker-2-1",
-        "deploy-worker-3-1",
-        "deploy-browser-1-1",
+        "deploy-ordinary-go-1",
+        "deploy-lease-reaper-1",
         "deploy-exporter-1",
         "deploy-drain-1",
         "deploy-redis-1",
@@ -424,9 +422,9 @@ def _collect_redis_capacity_metrics(
                 [
                     "docker",
                     "exec",
-                    "deploy-worker-1-1",
-                    "/app/.venv/bin/crawler",
-                    "redis-capacity",
+                    "deploy-exporter-1",
+                    "/usr/local/bin/go-typesense-exporter",
+                    "--redis-capacity",
                     "summary",
                     "--format",
                     "prometheus",
