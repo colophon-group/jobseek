@@ -26,6 +26,12 @@ jobs:
     name: Compare complete native and legacy lanes
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        input: [generated, captured]
+    env:
+      NATIVE_LANE_INPUT_MODE: ${{ matrix.input }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,7 +46,7 @@ jobs:
         working-directory: apps/crawler
         run: |
           uv sync --frozen --group dev
-          uv run --frozen pytest admission/native_lane -q
+          NATIVE_LANE_INPUT_MODE=generated uv run --frozen pytest admission/native_lane -q
           uv run --frozen ruff check admission/native_lane
           uv run --frozen ruff format --check admission/native_lane
       - name: Build exact runtime and comparator images
@@ -147,7 +153,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: native-whole-lane-${{ github.run_id }}
+          name: native-whole-lane-${{ matrix.input }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-whole-lane/report.json
           if-no-files-found: warn
           retention-days: 1

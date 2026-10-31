@@ -96,6 +96,42 @@ coverage, live provider recovery, production freshness or final migration
 acceptance. Keep the independent deployed-fleet evidence and original gates in
 [the continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md).
 
+The workflow also runs the same six-arm accounting with
+`NATIVE_LANE_INPUT_MODE=captured`. This corpus contains 72 distinct saved HTTP
+detail responses across JSON-LD and DOM, seven source hosts and three recorded
+configurations. Every decompressed page retains its captured SHA-256. The
+workspace saves decoded HTML rather than compressed HTTP wire bytes. The
+original full response headers and network timings were not retained; this
+does not establish live publisher-policy or network-performance equivalence. The
+configuration record is bound by run time and exact reproduction of all saved
+extraction fields; an immutable original configuration snapshot is unavailable.
+Corpus qualification counts, including rejected candidates, are in
+`corpus/provenance.json`. Originals are never contacted during comparison.
+
+Captured work starts from scheduled details; there is no captured monitor or
+rendered-dependency claim. All worker, renderer and storage actors remain in
+the resource scope. Discovery, monitor scheduling and positive salary cases
+retain their independent generated scenario. The captured scenario requires
+every input title, completed SQL/detail ownership, complete uploaded description
+bytes, matching canonical SQL across arms, Typesense convergence, publisher
+policy, future-work disposition and cleanup. It reports hashed request identities.
+Both current scenarios use one machine architecture per run, rather than the
+mixed x86 crawler and ARM renderer topology of production.
+
+To qualify another existing archive without contacting sources:
+
+```sh
+DOM_GO_PARSE_ENABLED=0 uv run --frozen python -m admission.native_lane.captured_inputs \
+  --workspace /path/to/existing/.workspace --destination /path/to/new/private-inputs
+```
+
+The command refuses an existing destination, writes private files, reports only
+counts/hashes, and never edits source artifacts. Unsupported browser captures,
+missing request/configuration provenance, incomplete output, changed extraction
+and duplicates are counted separately. Qualifying inputs alone is not a
+whole-lane resource result. Keep only inputs for an active comparison or useful
+regression fixture; delete consumed private copies after freezing the corpus.
+
 After a failed native arm with no rendered inventory, the controller stops
 measurement and probes the fixed fixture through the actual resident renderer
 using its pinned mTLS identity, worker navigation options, document-actions

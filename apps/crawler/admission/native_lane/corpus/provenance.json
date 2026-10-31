@@ -1,0 +1,27 @@
+{
+  "configuration_provenance": "current record with run-time binding and exact saved-output reproduction",
+  "counts": {
+    "board_record_missing": 20,
+    "browser_dependencies_not_captured": 20,
+    "config_run_binding": 40,
+    "duplicate_input": 26,
+    "paired_html": 256,
+    "qualified": 72,
+    "recorded_output_mismatch": 67,
+    "unpaired_html": 12,
+    "unsupported_scraper": 11
+  },
+  "frozen_at_utc": "2026-10-31T11:28:54.164350+00:00",
+  "frozen_manifest_sha256": "d72be964c89fa96da74d8c1fbb2a9f4f6e9b61962f2f7ac7154442d6cbf8cd8c",
+  "network_requests": 0,
+  "qualified_html_bytes": 5423481,
+  "qualified_private_manifest_sha256": "8cfc31b716b20aece38bba45170688318887ecc31389fb086cc504a94b75dd7e",
+  "qualified_types": {
+    "dom": 10,
+    "json-ld": 62
+  },
+  "response_header_scope": "Only successful GET status and HTML content type were recorded; no original full-header or live publisher-policy claim.",
+  "schema": "jobseek.captured-direct-inputs/v1",
+  "scope": "saved decoded HTTP detail responses; no monitor or browser capture claim",
+  "whole_lane_measurement": false
+}

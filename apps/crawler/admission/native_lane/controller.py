@@ -38,7 +38,7 @@ from admission.lightpanda_b0.controller import (
 from admission.native_lane.render_diagnostic import certificate_probe
 from admission.native_lane.render_diagnostic import probe as render_probe
 from admission.native_lane.resources import PRICES, allocation, sample
-from admission.native_lane.workload import ORIGINS, PROFILES, workload_sha256
+from admission.native_lane.workload import CAPTURED, ORIGINS, PROFILES, jobs, workload_sha256
 
 HERE = Path(__file__).resolve().parent
 SUPPORT = ["postgres", "redis", "typesense", "fixture", "reaper", "exporter", "drain"]
@@ -130,9 +130,10 @@ def run(command: list[str], *, env: dict[str, str] | None = None, timeout: int =
 
 
 def compose(env: dict[str, str], *args: str, timeout: int = 60) -> str:
-    return run(
-        ["docker", "compose", "-f", str(HERE / "compose.yml"), *args], env=env, timeout=timeout
-    )
+    files = ["-f", str(HERE / "compose.yml")]
+    if CAPTURED:
+        files += ["-f", str(Path(env["NATIVE_LANE_PKI"]) / "captured-compose.json")]
+    return run(["docker", "compose", *files, *args], env=env, timeout=timeout)
 
 
 def inspect(identifier: str) -> dict[str, Any]:
@@ -680,11 +681,21 @@ def main() -> int:
         ).strip(),
         "workload_sha256": workload_sha256(),
         "images": provenance,
+        "input_mode": "captured_direct_details" if CAPTURED else "generated",
+        "input_postings": len(jobs()),
         "catalogue_prices_net_eur_per_hour": PRICES,
         "price_snapshot": "2026-10-30; same role weights as production observer",
         "arms": [],
         "limits": (
-            "Four effective profiles,536 postings, identical input and aggregate "
+            "Captured decoded HTTP detail responses; two direct scraper families; "
+            "current recorded configurations reproduce saved extraction; no captured "
+            "monitor, rendered dependency, live provider mix or mixed-host architecture claim. "
+            if CAPTURED
+            else ""
+        )
+        + (
+            ("" if CAPTURED else "Four effective profiles,536 postings, ")
+            + "Identical input and aggregate "
             "discovery4/monitor2 budgets. Full "
             "worker/render/storage/export/drain/reaper/fixture containers included. Fixture- "
             "generated production-cardinality lookup data; no actual origin or production "
@@ -714,6 +725,22 @@ def main() -> int:
                 REDIS_IMAGE=REDIS_IMAGE,
                 PYTHON_IMAGE=PYTHON_IMAGE,
             )
+            if CAPTURED:
+                _write(
+                    credential_dir / "captured-compose.json",
+                    json.dumps(
+                        {
+                            "services": {
+                                "fixture": {
+                                    "environment": {"NATIVE_LANE_INPUT_MODE": "captured"},
+                                    "networks": {"origin": {"aliases": list(ORIGINS)}},
+                                },
+                                "runner": {"environment": {"NATIVE_LANE_INPUT_MODE": "captured"}},
+                            }
+                        }
+                    ).encode(),
+                    mode=0o600,
+                )
             for ordinal, lane in enumerate(ORDER):
                 document["arms"].append(arm(env, lane, ordinal))
                 _atomic_evidence(args.output, document)
