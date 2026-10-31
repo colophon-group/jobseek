@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 
 from admission.native_lane.workload import PROFILES, boards, jobs, workload_sha256
@@ -276,6 +277,39 @@ async def wait_for_export(rows: list[Any], deadline: float) -> dict[str, Any]:
         await asyncio.sleep(0.25)
 
 
+def assert_monitor_schedule(
+    lane: str,
+    due: datetime | None,
+    score: float | None,
+    last_success: datetime | None,
+    interval_minutes: int,
+    now: float,
+) -> None:
+    message = "comparison lost its canonical future monitor schedule"
+    if due is None or score is None or interval_minutes != 1440:
+        raise RuntimeError(message)
+    due_seconds = due.timestamp()
+    if due_seconds <= now or not score > now:
+        raise RuntimeError(message)
+    if lane == "native":
+        valid = abs(score - due_seconds) <= 0.001
+    elif lane == "legacy":
+        # Python's success SQL uses database now(); its existing pipeline
+        # reschedules Redis with time.time() after host/cache/allocator work.
+        # Bound that later clock by this completed observation, retaining the
+        # full fixture interval in SQL and Redis without a guessed tolerance.
+        interval = interval_minutes * 60
+        valid = (
+            last_success is not None
+            and abs(due_seconds - last_success.timestamp() - interval) <= 0.001
+            and due_seconds <= score <= now + interval
+        )
+    else:
+        valid = False
+    if not valid:
+        raise RuntimeError(message)
+
+
 async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str, Any]:
     from src.lightpanda.admission import STABLE_COLUMNS
 
@@ -371,20 +405,23 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
                 if await redis.zcard(prefix + worker + ":" + board["domain"]):
                     raise RuntimeError("comparison left completed details queued")
         if board["monitor_seeded"]:
-            due = await pool.fetchval(
-                "SELECT next_check_at FROM job_board WHERE id=$1", identity(board["slug"])
+            schedule = await pool.fetchrow(
+                "SELECT next_check_at,last_success_at,check_interval_minutes "
+                "FROM job_board WHERE id=$1",
+                identity(board["slug"]),
             )
             worker = "browser" if board["monitor_needs_browser"] else "simple"
             score = await redis.zscore(
                 "monitors_" + worker + ":" + board["domain"], str(identity(board["slug"]))
             )
-            if (
-                due is None
-                or due.timestamp() <= time.time()
-                or score is None
-                or abs(score - due.timestamp()) > 0.001
-            ):
-                raise RuntimeError("comparison lost its canonical future monitor schedule")
+            assert_monitor_schedule(
+                lane,
+                schedule["next_check_at"],
+                score,
+                schedule["last_success_at"],
+                schedule["check_interval_minutes"],
+                time.time(),
+            )
     if await pool.fetchval("SELECT count(*) FROM job_posting WHERE next_scrape_at IS NOT NULL"):
         raise RuntimeError("comparison rescheduled a never-rescrape posting")
     fences = await pool.fetchval(

@@ -124,3 +124,11 @@ The search gate waits for the canonical title and company as well as complete
 document coverage. Preseeded jobs can already exist in Typesense while CDC
 updates are still pending. Stale fields must converge within the original
 collection deadline; persistent mismatches emit only bounded counts and fail.
+
+The native monitor gate requires the Redis due score to match canonical SQL
+within 1 ms. The unchanged Python comparator records SQL success at database
+`now()` and schedules Redis at its later pipeline clock. For that arm, SQL must
+retain the full configured day after success, and Redis must fall between that
+SQL due time and the completed observation plus the same day. Missing, past,
+early, over-delayed or changed-interval schedules fail. This uses the original
+clock contract, without adding a timing allowance or changing either runtime.

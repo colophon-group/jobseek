@@ -11,30 +11,34 @@ This continues [plan #10185](https://github.com/colophon-group/jobseek/pull/1018
 and [salary migration #10177](https://github.com/colophon-group/jobseek/pull/10177).
 A Python-free processing image alone does not close the goal.
 
-Installed **0.13.1134**, independently verified October 31 at 07:46 UTC:
+Installed **0.13.1135**, independently verified October 31 at 09:13 UTC:
 
 | Identity | Value |
 | --- | --- |
-| Source and installed data revision | `833b97059bc98c1d31e7e6ded1225ea339cb3b44` |
-| Native image | `sha256:53818d7eea99df856e9a65737f9a92910b1ce3e71acaf3f4ba07f189d89aed01` |
-| Runtime contract | `2b4ddd127e9d50c2b87895da31cd471dfdeebbdc0cecc94237995ef4609f70ce` |
+| Source and installed data revision | `cad060906a8fc11b4036ee69ac0a81e26d2a26fb` |
+| Native image | `sha256:0931acbce9062f4e003b65b1a9f79ac2d766c28632a896308f62517c0d3beabf` |
+| Runtime contract | `46a593686eeba048cfce752698d35de5b3162a1ac24097a4b40277e8ad06f314` |
 | Data contract | `41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693` |
 | Fleet | 8,151 enabled boards; schema 0041; default Go epoch 404; zero active migration plans |
 
-[PR #11077](https://github.com/colophon-group/jobseek/pull/11077) passed
-required checks and the [supported full deployment](https://github.com/colophon-group/jobseek/actions/runs/41180503620).
-All four native actors run with unchanged budgets and zero restarts/OOMs. No
-legacy processor runs; the processing image contains no Python, uv, Playwright
-or Chromium. All 8,151 enabled monitors remain represented.
+[PR #11078](https://github.com/colophon-group/jobseek/pull/11078) merged after
+exact-head required checks and fresh authority. The [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41186187072)
+and [host telemetry rollout](https://github.com/colophon-group/jobseek/actions/runs/41186187104)
+succeeded. Independent reads verify all four Go actors on the exact image with
+zero restarts/OOMs and unchanged budgets. No legacy processor runs; the
+processing image exposes no Python, uv, Playwright or Chromium commands.
 
-[PR #11078](https://github.com/colophon-group/jobseek/pull/11078) merged as
-`cad060906a8fc11b4036ee69ac0a81e26d2a26fb` after exact-head required checks
-and fresh merge authority. It fixes the native execution-series Grafana gate
-and disappearing Redis capacity samples, preserving hard errors and limits.
-The [full deployment](https://github.com/colophon-group/jobseek/actions/runs/41186187072)
-and [host observability deployment](https://github.com/colophon-group/jobseek/actions/runs/41186187104)
-are running; installed-source and actual CLI readback remain required. All times
-here are UTC.
+All 8,151 monitors remain represented: 8,127 queued and 24 valid leases, with
+zero missing, duplicate, expired-only, token-presence or cache gaps. At 09:13,
+2,150 monitors succeeded and 2,201 were checked in the preceding hour; 5,236 are
+due and none is overdue a day. These are bounded observations, not universal
+freshness or detail-backlog claims.
+
+The installed Go Redis-capacity summary now succeeds. The sampler file hash,
+six native execution series and fresh host textfile match. Its cached snapshot
+remains stale until the unchanged six-hour retry permits refresh at **12:09:18
+UTC**. No cache, last-attempt, schedule, budget or policy resets were made. All
+times here are UTC.
 
 ## Lightpanda and operating limits
 
@@ -73,7 +77,7 @@ repairs, counter/deadline resets or raised budgets.
 | Conservation and authority | At 04:44 after the resource window, all 8,151 enabled monitors remain represented: 8,137 queued and 14 valid leases. Zero missing, duplicate, deadletter-only, expired-only, token-presence or cache gaps. Canonical identity hashes unchanged. |
 | Canonical output, policy, storage and export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservations, rollback and fences. At 04:44, 1,000 completed zero-failure details span 31 provider groups with no missing titles; all 967 nonnull posting hashes match uploaded descriptions. All 968 nonempty description rows are uploaded, none pending. Ten mature search records match title/company. No failed drain/reaper events in the bounded current-runtime read; reaper recovers 16 leases without new deadletters. Nullable/retained fields and samples do not prove universal completeness. |
 | Cold reversal | **Qualified for 1133.** The [supported complete exercise](https://github.com/colophon-group/jobseek/actions/runs/41167908024) passed, with candidate-ready and restored-prior-image markers, no rollback error and promotion skipped. Independent 04:31 reads verify the exact prior source/image/data, all four Go services, unchanged epoch 404 and all 8,151 monitors (8,120 queued, 31 valid leases), with zero missing/duplicate/token/cache gaps. After restoration, 221 completed details span 15 provider groups; all 220 nonnull hashes match nonempty uploaded descriptions, none pending, and ten search records match title/company. The runtime-aware Umantis correction preserves all seven schedules. |
-| Equivalent-work efficiency | **Open.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073), version 0.13.1136, runs six alternating complete-lane arms over 536 identical rich API/direct DOM/rendered DOM/direct JSON-LD postings. Require canonical SQL, uploaded-body and search effects, equal canonical hashes, full cgroup accounting and cleanup. Linux now completes all 536 inventory and upload effects; public CA permissions are fixed under CI umask 077. The generated salary phrase now matches both Python and Go's supported input with unchanged expected values. The verifier waits for title/company CDC convergence within the original deadline; missing/stale/permanent-mismatch regressions pass. All 45 focused fixture tests pass. Six-arm completion remains unqualified. This all-AMD64 generated workload cannot establish actual-input efficiency for the production x86 crawler plus ARM renderer. |
+| Equivalent-work efficiency | **Open.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073), version 0.13.1136, runs six alternating complete-lane arms over 536 identical rich API/direct DOM/rendered DOM/direct JSON-LD postings. The latest Linux native arm completes all 536 canonical SQL, uploaded-body and search effects in 20.27 seconds, with cleanup verified. The legacy arm passes content/search checks, then fails the future monitor gate. Source and a failing regression show that the verifier wrongly requires Python's later Redis reschedule clock to equal its SQL success clock. The fix retains the native 1 ms equality check; legacy SQL must retain the full configured day after success, with Redis bounded between SQL due and the completed observation plus that day. Missing, past, early, over-delayed and changed-interval schedules still fail. All 62 focused fixture tests pass. Six-arm parity remains unqualified. Generated all-AMD64 inputs do not establish actual-input efficiency for the production x86 crawler plus ARM renderer. |
 | Production freshness and provider recovery | **Open.** At 08:21, 1,551 checks/1,356 successes in the preceding hour, 5,909 due monitors and zero overdue a day. Both lanes make progress. The two tracked API-sniffer cases retain natural successes and zero failures. Accenture, Amazon and Beisen now have natural attempts and partial SQL progress (2,000/5,678/3,500 touched rows), but still reach the unchanged ten-minute deadline. An 18-row offline replay matches Python/Go text-stage outputs; it does not identify the production bottleneck. Five read-only PostgreSQL activity snapshots show no long wait; they do not exclude a bottleneck. Do not optimize from an unproved cause. Oracle ADF's normal probe is October 31 16:23 UTC. Preserve schedules and observe recovery. |
 | Legacy-only retirement | **Open.** Complete the preceding gates and a real schedule/recovery observation window before deleting required compatibility. Preserve useful offline Python and necessary authenticated rollback assets. |
 

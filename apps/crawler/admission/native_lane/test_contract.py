@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -24,6 +25,61 @@ from cryptography.hazmat.primitives import serialization
 from admission.native_lane import controller, driver, legacy_browser, render_diagnostic
 from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
+
+
+def test_legacy_schedule_uses_its_post_processing_clock_without_losing_due_time():
+    # SQL RECORD_SUCCESS schedules at database now(); the unchanged Python
+    # pipeline schedules Redis after host/cache/allocator work at time.time().
+    # Both clocks must retain the full fixture interval, without inventing a
+    # fixed jitter tolerance or requiring the legacy clock to equal SQL.
+    success = datetime.fromtimestamp(1000, UTC)
+    due = datetime.fromtimestamp(87400, UTC)
+    driver.assert_monitor_schedule("legacy", due, 87400.25, success, 1440, 1001)
+
+
+@pytest.mark.parametrize("lane", ["native", "legacy"])
+@pytest.mark.parametrize("score", [None, 999.0, 87399.0, 87402.0])
+def test_monitor_schedule_rejects_missing_past_early_or_late_score(lane, score):
+    with pytest.raises(RuntimeError, match="future monitor schedule"):
+        driver.assert_monitor_schedule(
+            lane,
+            datetime.fromtimestamp(87400, UTC),
+            score,
+            datetime.fromtimestamp(1000, UTC),
+            1440,
+            1001,
+        )
+
+
+@pytest.mark.parametrize("lane", ["native", "legacy"])
+@pytest.mark.parametrize("due", [None, datetime.fromtimestamp(999, UTC)])
+def test_monitor_schedule_rejects_missing_or_past_sql_due(lane, due):
+    with pytest.raises(RuntimeError, match="future monitor schedule"):
+        driver.assert_monitor_schedule(
+            lane, due, 87400.25, datetime.fromtimestamp(1000, UTC), 1440, 1001
+        )
+
+
+def test_native_schedule_still_requires_exact_canonical_sql_score():
+    success = datetime.fromtimestamp(1000, UTC)
+    due = datetime.fromtimestamp(87400, UTC)
+    driver.assert_monitor_schedule("native", due, 87400.0, success, 1440, 1001)
+    with pytest.raises(RuntimeError, match="future monitor schedule"):
+        driver.assert_monitor_schedule("native", due, 87400.25, success, 1440, 1001)
+
+
+@pytest.mark.parametrize("success,interval", [(None, 1440), (999.0, 1440), (1000.0, 60)])
+def test_legacy_schedule_rejects_changed_sql_interval(success, interval):
+    stamp = datetime.fromtimestamp(success, UTC) if success is not None else None
+    with pytest.raises(RuntimeError, match="future monitor schedule"):
+        driver.assert_monitor_schedule(
+            "legacy",
+            datetime.fromtimestamp(87400, UTC),
+            87400.25,
+            stamp,
+            interval,
+            1001,
+        )
 
 
 @pytest.mark.parametrize("stale", ["missing", "title", "company"])
