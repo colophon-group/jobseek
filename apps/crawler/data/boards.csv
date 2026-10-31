@@ -6209,6 +6209,7 @@ right-search,right-search-join,https://join.com/companies/right-search,join,"{""
 rigitech,rigitech-careers,https://rigi.tech/careers/,sitemap,"{""url_filter"": ""^https://rigi\\.tech/job/[^/]+/$""}",json-ld,
 rigup,rigup-greenhouse,https://job-boards.greenhouse.io/rigup,greenhouse,"{""token"": ""rigup""}",skip,
 rillet,rillet-careers,https://jobs.ashbyhq.com/rillet,ashby,"{""token"": ""rillet""}",skip,
+rilsa,rilsa-careers-jobs-ch,https://www.jobs.ch/fr/entreprises/2b20c4c2-1491-466f-b3ad-26692c2ed10c-rilsa-sa/,jobs_ch,"{""company_id"": ""2b20c4c2-1491-466f-b3ad-26692c2ed10c"", ""locale"": ""fr""}",dom,"{""steps"": [{""tag"": ""p"", ""attr"": ""class=pt_s8"", ""field"": ""location""}, {""tag"": ""h1"", ""attr"": ""data-cy=vacancy-title"", ""field"": ""title""}, {""tag"": ""h2"", ""text"": ""\u00c0 propos de cette offre""}, {""tag"": ""p"", ""field"": ""description"", ""stop_tag"": ""h2"", ""html"": true}]}"
 rimac-group,rimac-group-careers-sf,https://careers.rimac-automobili.com/search/?q=&sortColumn=referencedate&sortDirection=desc,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.rimac-automobili.com/googlefeed.xml""}",skip,
 riot-games,riot-games-greenhouse,https://job-boards.greenhouse.io/riotgames,greenhouse,"{""token"": ""riotgames""}",skip,
 ripple,ripple-careers,https://boards.greenhouse.io/ripple,greenhouse,"{""token"": ""ripple""}",skip,
