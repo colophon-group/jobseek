@@ -40,6 +40,10 @@ func TestRealMonitorTaskDeadlinePersistsFailureAndReschedules(t *testing.T) {
 			if !entered.Load() || !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatal("fixture did not reach the owned processing deadline")
 			}
+			var diagnostic *ClaimRunError
+			if !errors.As(err, &diagnostic) || diagnostic.Phase != "task" || diagnostic.Kind != "deadline" || diagnostic.causePhase != "fetch" {
+				t.Fatal("settled deadline lost its safe failure phase")
+			}
 			if result == nil || !result.Settled || result.Cycle == nil || result.Cycle.Status != "failed" {
 				t.Fatal("controlled task deadline retained an unaccounted monitor lease")
 			}

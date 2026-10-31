@@ -24,6 +24,12 @@ x-env: &env
   CRAWLER_DB_POOL_MIN: "1"
   CRAWLER_DB_POOL_MAX: "5"
   PYTHONDONTWRITEBYTECODE: "1"
+x-legacy-env: &legacy-env
+  <<: *env
+  JSONLD_GO_DETAIL_PERCENT: "0"
+  DOM_GO_HTTP_ENABLED: "0"
+  DOM_GO_PARSE_ENABLED: "0"
+  JOB_ENRICHMENT_ENGINE: python
 x-native: &native
   <<: *common
   image: ${NATIVE_IMAGE:?exact native image required}
@@ -38,7 +44,7 @@ x-legacy: &legacy
   image: ${LEGACY_IMAGE:?exact comparator image required}
   user: "10001:10001"
   cap_drop: [ALL]
-  environment: *env
+  environment: *legacy-env
   volumes: ["${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro"]
   networks: [claim, origin]
   tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=256m,uid=10001,gid=10001,mode=0700"]
@@ -172,12 +178,12 @@ services:
   legacy-simple:
     <<: *legacy
     command: [/app/.venv/bin/crawler, run]
-    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9090"}
+    environment: {<<: *legacy-env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9090"}
     healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   legacy-browser:
     <<: *legacy
     command: [/app/.venv/bin/python, -m, admission.native_lane.legacy_browser]
-    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9091", PYTHONPATH: /fixtures}
+    environment: {<<: *legacy-env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9091", PYTHONPATH: /fixtures}
     volumes:
       - ..:/fixtures/admission:ro
       - ${NATIVE_LANE_PKI:?}/ca.pem:/run/native-lane/ca.pem:ro

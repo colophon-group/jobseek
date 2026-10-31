@@ -216,6 +216,10 @@ services:
     read_only: true
     environment:
       <<: *crawler-env
+      JSONLD_GO_DETAIL_PERCENT: "0"
+      DOM_GO_HTTP_ENABLED: "0"
+      DOM_GO_PARSE_ENABLED: "0"
+      JOB_ENRICHMENT_ENGINE: python
       DISCOVERY_CONCURRENCY: ${ADMISSION_CONCURRENCY:?1 or 4}
       METRICS_PORT: "9091"
       CRAWLER_DB_POOL_MIN: "1"

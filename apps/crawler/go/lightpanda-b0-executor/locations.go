@@ -200,22 +200,14 @@ func (l *Locations) Resolve(ctx context.Context, raw []string, fallback, languag
 	if l.resolver == nil {
 		return nil, nil, errors.New("location index closed")
 	}
-	negative := make([]string, 0, len(l.negative))
-	for key := range l.negative {
-		negative = append(negative, key)
-	}
-	results, missed, _, err := l.resolver.Resolve(raw, fallback, language, true, negative)
+	results, missed, _, err := l.resolver.ResolveWithNegativeCache(raw, fallback, language, true, l.negative)
 	if err != nil {
 		return nil, nil, err
 	}
 	if changed, err := l.backfill(ctx, missed); err != nil {
 		return nil, nil, err
 	} else if changed {
-		negative = negative[:0]
-		for key := range l.negative {
-			negative = append(negative, key)
-		}
-		results, _, _, err = l.resolver.Resolve(raw, fallback, language, true, negative)
+		results, _, _, err = l.resolver.ResolveWithNegativeCache(raw, fallback, language, true, l.negative)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - apps/crawler/admission/native_lane/**
+      - apps/crawler/go/**
+      - apps/crawler/contracts/**
+      - apps/crawler/src/lua/**
+      - apps/crawler/Dockerfile
+      - apps/crawler/VERSION
+      - apps/crawler/docker-compose.yml
+      - pilots/go-lightpanda/**
       - .github/workflows/crawler-native-whole-lane.yml
   workflow_dispatch:
 
