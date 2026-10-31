@@ -13,6 +13,23 @@ import (
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 )
 
+func TestNavigationDiagnosticCodeNeverReturnsProviderText(t *testing.T) {
+	for _, code := range []string{"CouldntResolveHost", "PeerFailedVerification", "SslCacertBadfile", "RecvError", "UrlBlocked", "Shutdown"} {
+		if got := navigationDiagnosticCode(code); got != code {
+			t.Fatal("known native diagnostic lost", code, got)
+		}
+	}
+	for _, text := range []string{"", "other", "PRIVATE_HOST", "PeerFailedVerification https://private.invalid/token", "RecvError\nPRIVATE_MESSAGE"} {
+		if navigationDiagnosticCode(text) != "other" {
+			t.Fatal("provider text escaped diagnostic allowlist")
+		}
+		failure := navigationError(text).(*navigationTransportError)
+		if failure.diagnosticCode != "other" || failure.Error() != "main-document navigation transport failed" {
+			t.Fatal("navigation error retained arbitrary provider text")
+		}
+	}
+}
+
 func TestNavigationWaitStatesAndLoaderReset(t *testing.T) {
 	s := newNavigationState("main")
 	now := time.Now()

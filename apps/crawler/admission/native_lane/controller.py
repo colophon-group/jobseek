@@ -163,6 +163,45 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                     timeout=10,
                 )
                 text = (logs.stdout + "\n" + logs.stderr)[:131072]
+                navigation_codes = {
+                    "CouldntResolveHost",
+                    "CouldntResolveProxy",
+                    "CouldntConnect",
+                    "RecvError",
+                    "SendError",
+                    "SslConnectError",
+                    "SslCertproblem",
+                    "SslCipher",
+                    "PeerFailedVerification",
+                    "SslCacertBadfile",
+                    "SslIssuerError",
+                    "SslCrlBadfile",
+                    "SslShutdownFailed",
+                    "SslPinnedpubkeynotmatch",
+                    "SslInvalidcertstatus",
+                    "SslClientcert",
+                    "OperationTimedout",
+                    "TooManyRedirects",
+                    "GotNothing",
+                    "Proxy",
+                    "UrlBlocked",
+                    "ModeBlocked",
+                    "RobotsBlocked",
+                    "Shutdown",
+                    "InvalidResponseStatus",
+                    "other",
+                }
+                row["navigation_failure_codes"] = {
+                    code: len(
+                        re.findall(
+                            r"lightpanda navigation transport code=" + code + r"(?:\s|$)", text
+                        )
+                    )
+                    for code in sorted(navigation_codes)
+                    if re.search(
+                        r"lightpanda navigation transport code=" + code + r"(?:\s|$)", text
+                    )
+                }
                 diagnostics: dict[tuple[str, str, str], int] = {}
                 phases = {
                     "claim",

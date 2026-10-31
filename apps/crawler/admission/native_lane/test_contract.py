@@ -142,6 +142,9 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
             [],
             0,
             "PRIVATE_SHOULD_NOT_ECHO\n"
+            "lightpanda navigation transport code=PeerFailedVerification\n"
+            "lightpanda navigation transport code=PRIVATE_SHOULD_NOT_ECHO\n"
+            "lightpanda navigation transport code=PeerFailedVerificationPRIVATE\n"
             "2026/10/31 04:00:00 ordinary rich monitor fetch: failed\n"
             "2026/10/31 04:00:00 ordinary rich monitor PRIVATE: failed\n"
             "2026/10/31 04:00:00 ordinary rich monitor fetch: PRIVATE\n",
@@ -158,6 +161,7 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
     )
     rows = controller.startup_diagnostics({}, ["ordinary"])
     assert rows[0]["exit_code"] == 1
+    assert rows[0]["navigation_failure_codes"] == {"PeerFailedVerification": 1}
     assert rows[0]["worker_startup_stages"] == ["ownership"]
     assert rows[0]["mentioned_settings"] == ["R2_BUCKET"]
     assert "operation not permitted" in rows[0]["error_categories"]

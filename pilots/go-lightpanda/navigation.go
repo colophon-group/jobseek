@@ -31,18 +31,36 @@ type navigationOptions struct {
 type navigationTransportError struct {
 	retryable                 bool
 	proxyAuth, proxyTransport bool
+	diagnosticCode            string
 }
 
 func (failure *navigationTransportError) Error() string {
 	return "main-document navigation transport failed"
 }
+
+// Only fixed native error identifiers may reach operational diagnostics.
+// Provider messages, URLs and arbitrary CDP error text remain private.
+func navigationDiagnosticCode(text string) string {
+	switch text {
+	case "CouldntResolveHost", "CouldntResolveProxy", "CouldntConnect", "RecvError", "SendError",
+		"SslConnectError", "SslCertproblem", "SslCipher", "PeerFailedVerification",
+		"SslCacertBadfile", "SslIssuerError", "SslCrlBadfile", "SslShutdownFailed",
+		"SslPinnedpubkeynotmatch", "SslInvalidcertstatus", "SslClientcert",
+		"OperationTimedout", "TooManyRedirects", "GotNothing", "Proxy",
+		"UrlBlocked", "ModeBlocked", "RobotsBlocked", "Shutdown", "InvalidResponseStatus":
+		return text
+	default:
+		return "other"
+	}
+}
+
 func navigationError(text string) error {
 	retryable := text == "RecvError" || text == "SendError" || text == "net::ERR_CONNECTION_RESET" ||
 		text == "net::ERR_NETWORK_CHANGED" || text == "net::ERR_SOCKET_NOT_CONNECTED"
 	upper := strings.ToUpper(text)
 	proxyAuth := strings.Contains(upper, "407") && (strings.Contains(upper, "PROXY") || strings.Contains(upper, "TUNNEL"))
 	proxyTransport := text == "Proxy" || text == "CouldntResolveProxy" || strings.Contains(upper, "ERR_PROXY_") || strings.Contains(upper, "ERR_TUNNEL_") || strings.Contains(upper, "ERR_NO_SUPPORTED_PROXIES")
-	return &navigationTransportError{retryable: retryable, proxyAuth: proxyAuth, proxyTransport: proxyTransport}
+	return &navigationTransportError{retryable: retryable, proxyAuth: proxyAuth, proxyTransport: proxyTransport, diagnosticCode: navigationDiagnosticCode(text)}
 }
 
 type navigationState struct {

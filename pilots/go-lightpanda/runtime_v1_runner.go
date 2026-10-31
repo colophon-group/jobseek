@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
+	"log"
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
@@ -97,6 +98,7 @@ func (runner runtimeV1Runner) Run(
 				Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
 			})
 		case errors.As(err, &transport):
+			log.Printf("lightpanda navigation transport code=%s", navigationDiagnosticCode(transport.diagnosticCode))
 			if config.proxy != nil {
 				failure := lightpandaadapter.ProviderFailure{Code: runtimev1.ErrorCode_ERROR_CODE_INTERNAL, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY}
 				switch {
