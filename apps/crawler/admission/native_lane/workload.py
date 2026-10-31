@@ -128,7 +128,11 @@ def detail_body(row: dict[str, Any]) -> bytes:
             raise ValueError("captured response path escapes corpus")
         with gzip.open(CORPUS / filename, "rb") as stream:
             body = stream.read((8 << 20) + 1)
-        if len(body) != row["html_bytes"] or hashlib.sha256(body).hexdigest() != row["html_sha256"]:
+        if (
+            len(body) > 8 << 20
+            or len(body) != row["html_bytes"]
+            or hashlib.sha256(body).hexdigest() != row["html_sha256"]
+        ):
             raise ValueError("captured response identity differs")
         return body
     payload = canonical(jsonld(row)).decode().replace("</", "<\\/")

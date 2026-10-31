@@ -23,7 +23,11 @@ not a request to increase production capacity.
 Each arm starts fresh PostgreSQL, Redis, Typesense and an isolated fixture/S3
 PUT sink. Native reaper, exporter and drain run in both arms. Native processing
 uses `go-ordinary-worker` in default ownership mode and self-hosted Lightpanda;
-the comparator alone uses the explicitly retained legacy target. Bootstrap and
+the comparator alone uses the explicitly retained legacy target. It explicitly selects Python for JSON-LD, DOM HTTP/parse and
+enrichment; installed Go-bridge defaults cannot silently replace its extraction.
+Reaper, exporter and drain remain common native actors in both measured lanes.
+Earlier results without these comparator settings cover the retained mixed
+worker, rather than a Python extraction baseline. Bootstrap and
 inspection Python runs in separate fixture/tooling containers. No container has
 the Docker socket, host networking, published ports or production credentials.
 Both Docker networks are internal. Automatic address pools exclude the fixed
