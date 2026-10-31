@@ -1757,6 +1757,7 @@ cloudtrucks,cloudtrucks-ashby,https://jobs.ashbyhq.com/cloudtrucks,ashby,"{""tok
 clove,clove-ashby,https://jobs.ashbyhq.com/clove,ashby,"{""token"": ""clove""}",skip,
 clover-health,clover-health-greenhouse,https://job-boards.greenhouse.io/cloverhealth,greenhouse,"{""token"": ""cloverhealth""}",skip,
 club-monaco,club-monaco-greenhouse,https://job-boards.greenhouse.io/clubmonaco,greenhouse,"{""token"": ""clubmonaco""}",skip,
+clubgolf,clubgolf-worldwide,https://jobs.clubgolf.ch/,dom,"{""render"": false, ""url_filter"": ""-j[0-9]+[.]html""}",json-ld,
 clubhouse,clubhouse-ashby,https://jobs.ashbyhq.com/clubhouse,ashby,"{""token"": ""clubhouse""}",skip,
 clutch-technologies-inc,clutch-technologies-inc-greenhouse,https://job-boards.greenhouse.io/clutch,greenhouse,"{""token"": ""clutch""}",skip,
 cm,cm-careers,https://jobs.cm.com/all-jobs,recruitee,"{""slug"": ""cmcom""}",skip,
