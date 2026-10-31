@@ -124,8 +124,11 @@ retain their independent generated scenario. The captured scenario requires
 every input title, completed SQL/detail ownership, complete uploaded description
 bytes, matching canonical SQL across arms, Typesense convergence, publisher
 policy, future-work disposition and cleanup. It reports hashed request identities.
-Both current scenarios use one machine architecture per run, rather than the
-mixed x86 crawler and ARM renderer topology of production.
+The workflow runs both scenarios on native AMD64 and ARM64 runners. Each run
+still uses one machine architecture: these results measure each architecture
+without emulation and do not reproduce cross-host networking in the mixed
+x86 crawler and ARM renderer topology of production. Artifact names include
+both architecture and input mode so reports cannot overwrite each other.
 
 To qualify another existing archive without contacting sources:
 
