@@ -272,7 +272,7 @@ LABEL org.jobseek.crawler.default-native-runtime="v1"
 CMD ["go-ordinary-worker"]
 
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
-FROM docker.io/library/python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
+FROM docker.io/library/python:3.15.0-slim-trixie@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58 AS base
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
