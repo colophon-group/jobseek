@@ -168,8 +168,12 @@ class TestParseSalary:
 
     def test_min_only(self):
         offer = {"salary": {"min": 40000, "max": None, "currency": "CHF", "period": ""}}
-        result = _parse_salary(offer)
-        assert result == {"currency": "CHF", "min": 40000, "max": None, "unit": "year"}
+        assert _parse_salary(offer) is None
+
+    def test_unknown_period_does_not_invent_annual_salary(self):
+        for period in (None, "", "UNKNOWN"):
+            offer = {"salary": {"min": 6200, "currency": "EUR", "period": period}}
+            assert _parse_salary(offer) is None
 
 
 class TestParseJob:

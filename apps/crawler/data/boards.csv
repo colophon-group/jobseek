@@ -8190,6 +8190,7 @@ zipline,zipline-careers-ng,https://boards.greenhouse.io/flyziplinenigeria,greenh
 zipline,zipline-careers-ur,https://boards.greenhouse.io/flyziplineur,greenhouse,"{""token"": ""flyziplineur""}",skip,
 ziprecruiter,ziprecruiter-greenhouse,https://job-boards.greenhouse.io/ziprecruiter,greenhouse,"{""token"": ""ziprecruiter""}",skip,
 zocdoc,zocdoc-greenhouse,https://job-boards.greenhouse.io/zocdoc,greenhouse,"{""token"": ""zocdoc""}",skip,
+zoku,zoku-recruitee,https://livezoku.recruitee.com/,recruitee,"{""slug"": ""livezoku"", ""url_filter"": {""exclude"": ""/o/open-application(?:$|[?/#])""}}",skip,
 zomato,zomato-careers,https://careers.smartrecruiters.com/Zomato1,smartrecruiters,"{""token"": ""Zomato1""}",smartrecruiters,
 zone-5-technologies,zone-5-technologies-greenhouse,https://job-boards.greenhouse.io/zone5technologies,greenhouse,"{""token"": ""zone5technologies""}",skip,
 zone-co,zone-co-greenhouse,https://job-boards.greenhouse.io/zonecompanysoftwareconsultingllc,greenhouse,"{""token"": ""zonecompanysoftwareconsultingllc""}",skip,
