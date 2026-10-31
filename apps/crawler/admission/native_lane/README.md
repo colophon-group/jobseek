@@ -119,3 +119,8 @@ Python oracle and Go both parse as USD100000–120000 yearly. The fixture regres
 checks the oracle on every distinct description; the SQL expectation remains
 unchanged. A literal `USD 100000-120000 yearly` returns no salary in both engines
 and is unsuitable for this positive-case workload.
+
+The search gate waits for the canonical title and company as well as complete
+document coverage. Preseeded jobs can already exist in Typesense while CDC
+updates are still pending. Stale fields must converge within the original
+collection deadline; persistent mismatches emit only bounded counts and fail.

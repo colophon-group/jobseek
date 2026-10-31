@@ -230,6 +230,52 @@ def progress_counts(
     }
 
 
+async def wait_for_export(rows: list[Any], deadline: float) -> dict[str, Any]:
+    """Wait for the CDC projection, including updates to preseeded documents."""
+    ids = [row["id"] for row in rows]
+    while True:
+        exported = {}
+        for offset in range(0, len(ids), 100):
+            selected = ids[offset : offset + 100]
+            parameters = urllib.parse.urlencode(
+                {
+                    "q": "*",
+                    "query_by": "title",
+                    "filter_by": "id:=[" + ",".join(selected) + "]",
+                    "per_page": len(selected),
+                    "include_fields": "id,title,company_id",
+                }
+            )
+            result = request("/collections/job_posting/documents/search?" + parameters)
+            exported.update(
+                {hit["document"]["id"]: hit["document"] for hit in result.get("hits", [])}
+            )
+        title_mismatches = sum(
+            exported.get(row["id"], {}).get("title") != row["titles"][0] for row in rows
+        )
+        company_mismatches = sum(
+            exported.get(row["id"], {}).get("company_id") != str(COMPANY) for row in rows
+        )
+        if len(exported) == len(rows) and not title_mismatches and not company_mismatches:
+            return exported
+        if time.monotonic() >= deadline:
+            print(
+                "NATIVE_LANE_PROGRESS="
+                + json.dumps(
+                    {
+                        "expected_postings": len(rows),
+                        "exported_postings": len(exported),
+                        "exported_title_mismatches": title_mismatches,
+                        "exported_company_mismatches": company_mismatches,
+                    }
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            raise RuntimeError("comparison exporter did not converge to canonical SQL")
+        await asyncio.sleep(0.25)
+
+
 async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str, Any]:
     from src.lightpanda.admission import STABLE_COLUMNS
 
@@ -299,35 +345,7 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         if objects["uploaded_objects"].get(key) != hashlib.sha256(row["html"].encode()).hexdigest():
             raise RuntimeError("comparison uploaded description bytes differ from canonical SQL")
     # Keep terminal SQL and wire results independent of each implementation's counters.
-    ids = [row["id"] for row in rows]
-    while True:
-        exported = {}
-        for offset in range(0, len(ids), 100):
-            selected = ids[offset : offset + 100]
-            parameters = urllib.parse.urlencode(
-                {
-                    "q": "*",
-                    "query_by": "title",
-                    "filter_by": "id:=[" + ",".join(selected) + "]",
-                    "per_page": len(selected),
-                    "include_fields": "id,title,company_id",
-                }
-            )
-            result = request("/collections/job_posting/documents/search?" + parameters)
-            exported.update(
-                {hit["document"]["id"]: hit["document"] for hit in result.get("hits", [])}
-            )
-        if len(exported) == len(expected):
-            break
-        if time.monotonic() >= deadline:
-            raise RuntimeError("comparison exporter did not publish the complete input")
-        await asyncio.sleep(0.25)
-    if any(
-        exported[row["id"]]["title"] != row["titles"][0]
-        or exported[row["id"]]["company_id"] != str(COMPANY)
-        for row in rows
-    ):
-        raise RuntimeError("comparison exported fields differ from canonical SQL")
+    exported = await wait_for_export(rows, deadline)
     if any(row["tdm_reserved"] for row in rows) or objects["unexpected_requests"]:
         raise RuntimeError("comparison publisher policy or request boundary differs")
     canonical_rows = [

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -23,6 +24,61 @@ from cryptography.hazmat.primitives import serialization
 from admission.native_lane import controller, driver, legacy_browser, render_diagnostic
 from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
+
+
+@pytest.mark.parametrize("stale", ["missing", "title", "company"])
+def test_export_check_waits_for_complete_canonical_projection(monkeypatch, stale) -> None:
+    row = {"id": "fixture-posting", "titles": ["Canonical title"]}
+    canonical = {"id": row["id"], "title": row["titles"][0], "company_id": str(driver.COMPANY)}
+    clock = [0.0]
+    calls = []
+
+    def search(path):
+        calls.append(path)
+        document = dict(canonical)
+        if len(calls) == 1:
+            if stale == "missing":
+                return {"hits": []}
+            document["title" if stale == "title" else "company_id"] = "stale"
+        return {"hits": [{"document": document}]}
+
+    async def pause(seconds):
+        clock[0] += seconds
+
+    monkeypatch.setattr(driver, "request", search)
+    monkeypatch.setattr(driver, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(driver.asyncio, "sleep", pause)
+    assert asyncio.run(driver.wait_for_export([row], 0.5)) == {row["id"]: canonical}
+    assert len(calls) == 2 and clock[0] == 0.25
+
+
+def test_export_check_rejects_persistently_stale_fields_at_original_deadline(
+    monkeypatch, capsys
+) -> None:
+    row = {"id": "fixture-posting", "titles": ["PRIVATE_CANONICAL_TITLE"]}
+    clock = [0.0]
+
+    async def pause(seconds):
+        clock[0] += seconds
+
+    monkeypatch.setattr(
+        driver,
+        "request",
+        lambda path: {"hits": [{"document": {"id": row["id"], "title": "stale"}}]},
+    )
+    monkeypatch.setattr(driver, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(driver.asyncio, "sleep", pause)
+    with pytest.raises(RuntimeError, match="did not converge to canonical SQL"):
+        asyncio.run(driver.wait_for_export([row], 0.5))
+    stderr = capsys.readouterr().err
+    assert "PRIVATE" not in stderr and "fixture-posting" not in stderr
+    assert clock[0] == 0.5
+    assert controller.safe_progress(stderr) == {
+        "expected_postings": 1,
+        "exported_postings": 1,
+        "exported_title_mismatches": 1,
+        "exported_company_mismatches": 1,
+    }
 
 
 def test_render_probe_uses_fixed_fixture_and_emits_only_typed_codes(monkeypatch) -> None:

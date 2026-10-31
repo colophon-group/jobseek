@@ -69,6 +69,9 @@ def safe_progress(stderr: str) -> dict[str, Any] | None:
         raw,
         (
             "expected_postings",
+            "exported_postings",
+            "exported_title_mismatches",
+            "exported_company_mismatches",
             "postings",
             "titled_postings",
             "failed_postings",
