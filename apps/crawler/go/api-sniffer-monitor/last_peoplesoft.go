@@ -2,6 +2,7 @@ package apisniffer
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 	xhtml "golang.org/x/net/html"
 )
 
-var peopleSoftCount = regexp.MustCompile(`(?i)<b>\s*([0-9]{1,6})\s*</b>\s*jobs?\s+found`)
+var peopleSoftCount = regexp.MustCompile(`(?i)<b>\s*([0-9]{1,6})\s*</b>\s*(?:jobs?\s+found|emplois?\s+trouv[eé]s?)`)
 
 const peopleSoftMore = "HRS_AGNT_RSLT_I$hdown$0"
 
@@ -63,7 +64,7 @@ func peopleSoftDate(s string) (any, error) {
 }
 
 func ParsePeopleSoftListing(source string, o LastHTTPOptions) ([]Job, int, error) {
-	if !strings.Contains(source, "HRS_AGNT_RSLT_I") || !strings.Contains(source, "Search Results List") {
+	if !strings.Contains(source, "HRS_AGNT_RSLT_I") {
 		return nil, 0, ErrInventory
 	}
 	count := peopleSoftCount.FindStringSubmatch(source)
@@ -144,7 +145,7 @@ func DiscoverPeopleSoft(ctx context.Context, o LastHTTPOptions, fetch SmallProvi
 		return nil, ErrInventory
 	}
 	bootstrap := o.Origin + "/psp/" + o.Site + "/" + o.Portal + "/HRMS/?cmd=logout"
-	if _, e := fetch(ctx, Request{Method: "GET", URL: bootstrap}); e != nil {
+	if _, e := fetch(ctx, Request{Method: "GET", URL: bootstrap}); e != nil && !peopleSoftBootstrapUnavailable(e) {
 		return nil, e
 	}
 	body, e := fetch(ctx, Request{Method: "GET", URL: o.ListingURL()})
@@ -180,4 +181,9 @@ func DiscoverPeopleSoft(ctx context.Context, o LastHTTPOptions, fetch SmallProvi
 		}
 	}
 	return nil, ErrInventory
+}
+
+func peopleSoftBootstrapUnavailable(e error) bool {
+	var status interface{ HTTPStatusCode() int }
+	return errors.As(e, &status) && status.HTTPStatusCode() == http.StatusServiceUnavailable
 }
