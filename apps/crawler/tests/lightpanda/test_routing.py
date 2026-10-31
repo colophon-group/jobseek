@@ -348,7 +348,6 @@ def test_committed_boards_have_only_fixed_b0_render_assignments() -> None:
         "browser-use-careers",
         "bunq-careers",
         "eclypsium-careers",
-        "kandou-ai-careers",
         "poke-and-wiggle-careers",
     ]
 
