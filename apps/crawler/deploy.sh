@@ -1361,7 +1361,8 @@ prepare_default_go_epoch() {
 }
 
 rollback_sync_previous_config() {
-  local crawler_ref restored_web_database_url status maintenance_backend
+  local crawler_ref restored_web_database_url status maintenance_backend runtime_backend
+  local park_umantis_monitors=1
   local -a sync_command=(uv run --no-sync crawler sync)
   local -a data_args=() restored_web_database_urls=() sync_env_args=()
 
@@ -1377,9 +1378,13 @@ rollback_sync_previous_config() {
     return 1
   }
   maintenance_backend="$(crawler_image_maintenance_backend "$crawler_ref")" || return 1
+  runtime_backend="$(crawler_image_runtime_backend "$crawler_ref")" || return 1
+  # Legacy processors cannot consume the canonical Umantis identity contract.
+  # A Go-to-Go reversal already supports it and must retain these schedules.
+  [[ "$runtime_backend" != go ]] || park_umantis_monitors=0
   if [[ "$maintenance_backend" == native ]]; then
     sync_command=(go-typesense-exporter --sync-registry)
-    if [[ "$(crawler_image_runtime_backend "$crawler_ref")" == go ]]; then
+    if [[ "$runtime_backend" == go ]]; then
       sync_command+=(--require-native)
     fi
   fi
@@ -1421,7 +1426,8 @@ rollback_sync_previous_config() {
     -e CRAWLER_DB_POOL_MAX=4 \
     worker-1 \
     "${sync_command[@]}" && \
-    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1 "$maintenance_backend" && \
+    repair_umantis_identity_cutover rollback-umantis-identity-cutover \
+      "$park_umantis_monitors" "$maintenance_backend" && \
     repair_worker_route_cutover rollback-worker-route-cutover
   then
     status=0

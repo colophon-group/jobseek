@@ -10,24 +10,23 @@ This continues [plan #10185](https://github.com/colophon-group/jobseek/pull/1018
 and [salary migration #10177](https://github.com/colophon-group/jobseek/pull/10177).
 Implementation coverage and a Python-free image alone do not close the goal.
 
-Installed **0.13.1131**:
+Installed **0.13.1132**:
 
 | Identity | Value |
 | --- | --- |
-| Source and installed data revision | `cb83396fa6e8ea37a7119a45b98b72dc4818ad2f` |
-| Native image, both crawler repositories | `sha256:4e4a802a4b160716ba6f70533892fb96c440272af6928b0430291f3fcda4576f` |
-| Runtime contract | `ed22f460f020afade602caa8ddf6d153b339685beeb7353436fb02aeb6483162` |
+| Source and installed data revision | `1a81f408e43bef8535b548f5f1e664f3e7896305` |
+| Native image, both crawler repositories | `sha256:d3850d2906f77a764bc3188e468d2550555ac6636cdc27c9ee0d0467b3375792` |
+| Runtime contract | `4a9610e027d80e5ae516d349172ea9c720e820c262e9dd3dae15e2fadcd54278` |
 | Data contract | `41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693` |
 | Fleet | 8,151 enabled boards; schema 0041; default Go epoch 404; zero active migration plans |
 
-The [full deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41135417840)
-passed on attempt one. [PR #11071](https://github.com/colophon-group/jobseek/pull/11071)
+The [full deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41159304223)
+passed on attempt one. [PR #11074](https://github.com/colophon-group/jobseek/pull/11074)
 merged after exact-head Required CI and Crawler Deploy Gate passed and fresh
-merge authority was checked. Company-OG coverage was attested for that exact
-source by successful child run 41135625423.
+merge authority was checked. Company-image coverage was attested for that exact source.
 
-The independent 22:17 read verifies native `ordinary-go`, `lease-reaper`,
-`exporter` and `drain`, started at 22:16:17, with zero restarts/OOMs and unchanged
+The independent 02:32 read verifies native `ordinary-go`, `lease-reaper`,
+`exporter` and `drain`, started at 02:31:20, with zero restarts/OOMs and unchanged
 budgets. None of the five Compose legacy-profile services runs. The processing
 image has no Python, uv, Playwright or Chromium. All times here are UTC.
 
@@ -36,7 +35,7 @@ image has no Python, uv, Playwright or Chromium. All times here are UTC.
 Installed **1.1.0-nightly.11326+948d77378**, source
 `948d773786380bae36f046639fc61e2ddddd212a`. The official
 [nightly assets](https://github.com/lightpanda-io/browser/releases/tag/nightly)
-and latest stable were rechecked October 30 at 21:57. Installed Linux binaries
+and latest stable were rechecked October 31 at 02:26. Installed Linux binaries
 still match the newest nightly; stable 1.0.2 is older. The nightly tag is reused,
 so compare asset digests and update times. ARM64 SHA-256:
 `74480d0994b0a4e02f7a4956a71bd2827954dbd6fbc18bd5df0ffb1e7258263f`;
@@ -52,17 +51,24 @@ slots and ten candidate host domains. Preserve normal delays, circuits and
 schedules. **No Chromium fallback**, forced origin probes, manual queue/SQL/env
 repair, deadline/counter resets or raised budgets are authorized.
 
+The October 31 nightly has since advanced to **1.1.0-nightly.11423+56980afde**.
+[PR #11075](https://github.com/colophon-group/jobseek/pull/11075) pins verified
+amd64/arm64 executable and OCI-layer digests plus the independently executed
+macOS asset. Both Linux qualification suites are running. This new release is
+not installed yet; retain the verified installed renderer until qualification
+and supported rollout complete.
+
 ## Current proof and open gates
 
 | Requirement | Result and remaining work |
 | --- | --- |
 | Production implementation | Native workers, shared enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain are deployed. Native restoration also passed CSV publication and currency refresh. |
 | Enabled configuration coverage | Existing admission contract qualified 8,148 monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Those existing configs are unchanged, three boards were added and none removed. Actual startup validates all 8,151 canonical/cache profiles. Reuse this proof only for unchanged contracts. |
-| Conservation and authority | The October 31 00:22 read represents 8,147 of 8,151 enabled monitors; four are deadletter-only, on Oracle HCM, Lever and two API-sniffer boards. No unexplained removals, duplicates, expired-only or cache-domain/lane gaps. Investigate this regression without manual repair; deadletters do not count as scheduled recovery. |
+| Conservation and authority | Before reversal, all 8,151 enabled monitors were represented. The October 31 02:52 post-reversal read represents 8,144: 8,113 queued and 31 valid leases. Seven enabled Umantis monitors are missing, with unchanged canonical board/monitor identity hashes and no deadletters, duplicates, token-presence or cache gaps. The rollback unconditionally parks their monitors after sync. A runtime-aware correction is in qualification; no manual repairs were used. |
 | Canonical/publisher/storage/export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservation, rollback and fences. Current SQL/R2/Typesense samples below qualify observed effects within their limits. |
 | Provider recovery | One former deadletter API-sniffer case naturally succeeded before 1131. Accenture, Beisen and browser API-sniffer still have processing failures; Amazon and Oracle ADF lack fresh success. Admission, requeue and active fences are not recovery. |
-| Whole-lane efficiency/freshness | **Open.** Freshness is improving, but equivalent-work improvement without material throughput/freshness regression is not established. |
-| Cold reversal | Earlier supported cold reversal passed. Fresh archived-spec reversal of the current all-Go generation remains open. Preserve exact immutable rollback assets and epoch monotonicity. |
+| Whole-lane efficiency/freshness | **Open.** Equivalent-work improvement without material throughput/freshness regression is not established. Initial 1132 freshness has 6,368 due monitors, 16 overdue a day and 1,093 successful in the past hour; a comparable steady window is still needed. |
+| Cold reversal | The [current all-Go exercise](https://github.com/colophon-group/jobseek/actions/runs/41160873808) passed its workflow and restored the exact prior source/image/data and four Go actors with unchanged epoch 404. **Acceptance remains open:** independent conservation found seven missing Umantis monitors. Correct the legacy-only parking condition, deploy through the full workflow and repeat the supported reversal plus readback. |
 | Legacy-only retirement | **Open.** Complete acceptance and a schedule-based observation/recovery window before removing required compatibility. Preserve useful offline Python. |
 
 In predecessor 1130 at 20:45, 730 completed active zero-failure detail records span 27 provider
@@ -121,33 +127,55 @@ claims, two heartbeat deadlines, two task deadlines and 142 detail failures,
 96 classified in detail preparation. This observation is shorter than the
 predecessor runtime; it does not establish permanent error elimination.
 
-Candidate 0.13.1132 addresses controlled monitor task expiry across profiles.
-Actual PostgreSQL/Redis reproductions on Lever, Oracle HCM and direct DOM show
-that the old path cancels before recording a failed cycle or rescheduling,
-leaving the lease for crash recovery. The candidate records one failed cycle
-and acknowledges its canonical next deadline within the existing cancellation
-grace. It performs no further origin work and preserves incomplete inventories,
-shutdown cancellation, publisher reservations and SQL/token/epoch barriers.
-All 88 focused tests/subtests pass with race checks and no skipped cases,
-including replaced-token and receipt-recovery checks. Go vet passes. The broad
-Mac run has 3,742 passes and three Word-document case failures because antiword
-is absent; the required complete Linux suite installs that dependency.
-Processing deadlines, lease budgets, concurrency and retries are unchanged.
-The reproduction does not prove the exact cause of all four observed deadletters.
+Candidate [PR #11073](https://github.com/colophon-group/jobseek/pull/11073),
+version 0.13.1133, compares 536 identical postings across rich API, direct DOM,
+rendered DOM and direct JSON-LD routes. Each arm includes actual workers,
+renderer/browser, reaper, PostgreSQL, Redis, exporter, drain and Typesense.
+Bootstrap passes real PostgreSQL/Redis canonical/cache admission, production-size
+lookups, common feed and guarded exporter ownership transfer. The HTTPS fixture
+has verified service identities and a strict certificate chain. No production
+ownership or HTTPS guard is weakened.
 
-This runtime fix is qualified separately from the controlled whole-lane
-comparison in [PR #11073](https://github.com/colophon-group/jobseek/pull/11073).
-Its required checks must pass before merge and supported rollout; deployment
-does not close the original efficiency, natural recovery, freshness, current
-cold-reversal or retirement gates. Continue the full comparison independently.
+The latest full Linux run passes those stages and starts the native drain, but
+its renderer fails before work begins. The fixture incorrectly overrides the
+service entrypoint's root-to-10001 privilege drop and required child-process
+capabilities. It now matches the production user, three capabilities and 64-PID
+limit. A contract test compares both Compose definitions directly. All 27 local
+tests, lint/format, typing, actionlint and Compose parsing pass. Full Linux
+qualification remains required. Bounded annotations retain safe engine/startup
+codes, not raw logs. Every failed arm has verified cleanup.
+
+The production timeout fix is deployed as 1132 through
+[PR #11074](https://github.com/colophon-group/jobseek/pull/11074). Its exact tested
+head is `21bee788dd582151d519191c82a9a57bee5970a5`. The real PostgreSQL/Redis
+regression reproduces on Lever, Oracle HCM and direct DOM: the old path cancels
+before recording failure or rescheduling. The replacement records one failed
+cycle and acknowledges its canonical next deadline within the existing
+cancellation grace, without further origin work. It preserves incomplete
+inventories and SQL/token/epoch/publisher barriers. All 88 focused race
+tests/subtests and the complete required Linux CI pass, including cancellation,
+stale-token, reservation and receipt recovery. Processing deadlines, lease
+budgets, concurrency and retries are unchanged. The deployment restored monitor
+representation; natural provider recovery and sustained scheduling remain open.
+
+The current-generation cold exercise exposed a separate shared rollback bug.
+`rollback_sync_previous_config` always requests Umantis monitor parking, including
+when restoring a Go runtime that already supports canonical Umantis identities.
+The 1133 correction selects parking from the restored image's runtime backend:
+legacy processors retain parking; Go-to-Go reversal preserves all seven monitor
+schedules. Native sync still requires native admission and legacy credential,
+quiescence, failure propagation and archived-generation barriers remain intact.
+The exercised workflow alone is insufficient: independent conservation must pass
+after the corrected reversal before closing this gate.
 
 Next delivery:
 
-1. Diagnose normal scheduling of the five tracked former-deadletter cases with
+1. Complete the runtime-aware Umantis rollback correction, full rollout and
+   repeated cold-reversal readback without manual queue repairs. Diagnose normal scheduling of the five tracked former-deadletter cases with
    bounded read-only queue rank/head, retained authority, host pacing and cache
-   evidence. Later reads show new Accenture/browser API-sniffer check starts
-   without fresh success; no recovery is credited to 1131. Also resolve the
-   Oracle HCM/Lever/API-sniffer deadletter-only gap. Fix shared causes
+   evidence. Later reads show new check starts for Accenture and browser
+   API-sniffer, but no fresh success; no recovery is credited to 1131. Keep the restored Oracle HCM/Lever/API-sniffer representation under normal
+   scheduling observation. Fix shared causes
    rather than force attempts or wait on an unexplained old deadline.
 2. Qualify comparable effective routes and useful output for the original
    whole-lane gate. Reuse unchanged worker/enrichment/PDF/drain/executor/policy
@@ -221,8 +249,9 @@ counts into a complete freshness/no-regression proof.
 ## Recovery, Python boundary and cleanup
 
 The earlier [cold reversal](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
-passed independent image/spec/data/actor checks without mixed ownership, before
-the final all-Go generation. Fresh proof for that generation is still required. Do not
+passed independent image/spec/data/actor checks without mixed ownership. It
+predates the final all-Go generation; do not credit it as fresh proof of that
+generation's archived-spec reversal. No new exercise has been dispatched. Do not
 rewind epoch 404. Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md):
 immutable identities, mutation locks, full quiescence, authenticated restoration,
 and stopped writers on failed restoration. No mutable tags, live rsync or partial
