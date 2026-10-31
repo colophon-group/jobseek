@@ -270,7 +270,7 @@ rollback. Available host headroom alone does not qualify a move.
 Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md): immutable
 images, complete writer quiescence, mutation locks and authenticated restoration.
 No live rsync, mutable deploy tags, partial writer restarts, forced provider work,
-manual SQL/Redis/env repair, counter/deadline reset or capacity increase.
+manual SQL/Redis/env repair, manual counter/deadline resets or capacity increases.
 Preserve current renderer/crawler budgets and presence-only Redis token reads.
 Never read, search or edit `profile_self_identifying_dom.go`.
 Before merge re-read state/draft, exact head/base and actual main, checks,
