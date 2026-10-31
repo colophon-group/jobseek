@@ -46,6 +46,15 @@ def test_route_preserves_provided_owner_and_transport_obligations(monkeypatch):
         assert not percentage_selected("board", URL, None)
 
 
+def test_exact_salary_suppression_keeps_native_direct_eligibility(monkeypatch):
+    monkeypatch.setenv("JSONLD_GO_DETAIL_PERCENT", "100")
+    target = "https://starhotels.talosats-careers.com/job/972748"
+    assert percentage_selected("board", target, {"ignore_base_salary_urls": [target]})
+    assert not percentage_selected(
+        "board", target, {"ignore_base_salary_urls": ["http://example.com/job/1"]}
+    )
+
+
 def fake_binary(tmp_path, payload, exit_code=0):
     path = tmp_path / "jsonld-fake"
     path.write_text(

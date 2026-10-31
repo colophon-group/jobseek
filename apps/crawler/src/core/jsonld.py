@@ -11,6 +11,7 @@ import html as html_module
 import json
 import re
 from html.parser import HTMLParser
+from urllib.parse import urlsplit
 
 from selectolax.lexbor import LexborHTMLParser
 
@@ -689,7 +690,41 @@ def parse_rendered_html(url: str, config: dict | None, html: str) -> JobContent:
     """Parse already-rendered HTML through the canonical JSON-LD path."""
 
     parser_config = config or {}
-    return _apply_defaults_by_url(parse_html(html, parser_config), parser_config, url)
+    ignored_salary_urls = validate_ignore_base_salary_urls(parser_config)
+    content = _apply_defaults_by_url(parse_html(html, parser_config), parser_config, url)
+    if url in ignored_salary_urls:
+        content.base_salary = None
+    return content
+
+
+def validate_ignore_base_salary_urls(config: dict) -> set[str]:
+    """Validate narrow, exact posting URLs whose published salary is unreliable."""
+    value = config.get("ignore_base_salary_urls")
+    if value is None:
+        return set()
+    if not isinstance(value, list) or len(value) > 64:
+        raise ValueError("JSON-LD ignore_base_salary_urls must be a list of at most 64 URLs")
+    urls: set[str] = set()
+    for raw in value:
+        if not isinstance(raw, str) or not raw or len(raw) > 8192:
+            raise ValueError("JSON-LD ignore_base_salary_urls must contain HTTPS URLs")
+        try:
+            parsed = urlsplit(raw)
+            valid = (
+                parsed.scheme == "https"
+                and bool(parsed.hostname)
+                and parsed.username is None
+                and parsed.password is None
+                and parsed.port in (None, 443)
+                and bool(parsed.path)
+                and not parsed.fragment
+            )
+        except ValueError:
+            valid = False
+        if not valid or raw in urls:
+            raise ValueError("JSON-LD ignore_base_salary_urls must contain unique HTTPS URLs")
+        urls.add(raw)
+    return urls
 
 
 def contains_job_posting(

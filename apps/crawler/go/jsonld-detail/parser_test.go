@@ -44,6 +44,45 @@ func TestEnfraICIMSLocationsAndSalary(t *testing.T) {
 	}
 }
 
+func TestStarhotelsExactURLSalarySuppression(t *testing.T) {
+	const target = "https://starhotels.talosats-careers.com/job/972748"
+	raw, err := os.ReadFile("testdata/starhotels_talos_salary_conflict.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := map[string]any{"ignore_base_salary_urls": []any{target}}
+	if err := ValidateConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	without, err := Parse(target, raw, nil)
+	if err != nil || without["base_salary"] == nil {
+		t.Fatalf("source salary missing before suppression: %v, %v", without, err)
+	}
+	selected, err := Parse(target, raw, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected["base_salary"] != nil || selected["title"] != without["title"] || !reflect.DeepEqual(selected["locations"], without["locations"]) || selected["description"] != without["description"] || selected["employment_type"] != without["employment_type"] || selected["date_posted"] != without["date_posted"] {
+		t.Fatalf("suppression changed another field: %v", selected)
+	}
+	withDefault, err := Parse(target, raw, map[string]any{
+		"ignore_base_salary_urls": []any{target},
+		"defaults_by_url":         map[string]any{target: map[string]any{"base_salary": map[string]any{"currency": "GBP", "min": 1}}},
+	})
+	if err != nil || withDefault["base_salary"] != nil {
+		t.Fatalf("default reintroduced a suppressed salary: %v, %v", withDefault, err)
+	}
+	other, err := Parse("https://starhotels.talosats-careers.com/job/977321", raw, config)
+	if err != nil || !reflect.DeepEqual(other["base_salary"], without["base_salary"]) {
+		t.Fatalf("other posting lost salary: %v, %v", other, err)
+	}
+	for _, invalid := range []any{"x", []any{"http://example.com/job/1"}, []any{target, target}, []any{42}} {
+		if err := ValidateConfig(map[string]any{"ignore_base_salary_urls": invalid}); err == nil {
+			t.Fatalf("accepted invalid salary suppression: %v", invalid)
+		}
+	}
+}
+
 func TestFrozenPythonParser(t *testing.T) {
 	raw, err := os.ReadFile("testdata/python_cases.json")
 	if err != nil {

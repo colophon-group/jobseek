@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from src.core.job_content import JobContent
+from src.core.jsonld import validate_ignore_base_salary_urls
 
 ASSIGNMENT_KEYS: Final = frozenset({"browser_backend", "routing_revision"})
 _REQUIRED_KEYS: Final = frozenset(
@@ -37,7 +38,10 @@ _PARSER_BOOL_KEYS: Final = frozenset(
         "ignore_valid_through",
     }
 )
-_PARSER_KEYS: Final = frozenset({"defaults", "defaults_by_url", "enrich"}) | _PARSER_BOOL_KEYS
+_PARSER_KEYS: Final = (
+    frozenset({"defaults", "defaults_by_url", "enrich", "ignore_base_salary_urls"})
+    | _PARSER_BOOL_KEYS
+)
 _ALLOWED_KEYS: Final = _REQUIRED_KEYS | _PARSER_KEYS
 _DOM_BOOL_KEYS: Final = frozenset(
     {"include_header_content", "include_document_title", "include_document_description"}
@@ -222,6 +226,10 @@ def resolve_render_assignment(
     else:
         _validate_defaults(config.get("defaults"), path="defaults")
         _validate_defaults_by_url(config.get("defaults_by_url"))
+        try:
+            validate_ignore_base_salary_urls(config)
+        except ValueError as exc:
+            raise RenderAssignmentError(str(exc)) from exc
     _validate_enrich(config.get("enrich"))
 
     canonical = _canonical_config(config)
