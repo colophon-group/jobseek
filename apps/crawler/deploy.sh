@@ -209,33 +209,22 @@ DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
-CRAWLER_STACK_SERVICES=(
-  redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant alloy
-)
-CRAWLER_RUNTIME_BACKEND="${JOBSEEK_CRAWLER_RUNTIME_BACKEND:-legacy}"
+# New releases are native-only. Older authenticated generations retain their
+# archived topology and remain available to the rollback path below.
+CRAWLER_RUNTIME_BACKEND="${JOBSEEK_CRAWLER_RUNTIME_BACKEND:-go}"
+[[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || {
+  echo "ERROR: incoming crawler runtime must use the native Go topology" >&2
+  exit 1
+}
+CRAWLER_STACK_SERVICES=(redis ordinary-go lease-reaper exporter drain alloy)
+ORDINARY_GO_WORKER_MODE=default
+ORDINARY_GO_RENDERED_DETAILS=enabled
+ORDINARY_GO_RESTART_POLICY=unless-stopped
+CRAWLER_COMPOSE_PROFILES=ordinary-go
 EXERCISE_COLD_ROLLBACK="${JOBSEEK_EXERCISE_COLD_ROLLBACK:-false}"
 case "$EXERCISE_COLD_ROLLBACK" in
-  false) ;;
-  true) [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || {
-    echo "ERROR: cold rollback exercise requires the default Go candidate" >&2; exit 1;
-  } ;;
+  false|true) ;;
   *) echo "ERROR: cold rollback exercise selection is invalid" >&2; exit 1 ;;
-esac
-case "$CRAWLER_RUNTIME_BACKEND" in
-  go)
-    CRAWLER_STACK_SERVICES=(redis ordinary-go lease-reaper exporter drain alloy)
-    ORDINARY_GO_WORKER_MODE=default
-    ORDINARY_GO_RENDERED_DETAILS=enabled
-    ORDINARY_GO_RESTART_POLICY=unless-stopped
-    CRAWLER_COMPOSE_PROFILES=ordinary-go
-    ;;
-  legacy)
-    ORDINARY_GO_WORKER_MODE=enabled
-    ORDINARY_GO_RENDERED_DETAILS=""
-    ORDINARY_GO_RESTART_POLICY=no
-    CRAWLER_COMPOSE_PROFILES=""
-    ;;
-  *) echo "ERROR: incoming crawler runtime backend is unsupported" >&2; exit 1 ;;
 esac
 MAINTENANCE_OPERATION=crawler-deploy
 MAINTENANCE_ISSUE=3409
@@ -1158,7 +1147,9 @@ ensure_reconciliation_wrapper_compatible() {
 }
 
 configure_rollback_compose_contract() {
-  local compose_file_count compose_file_value compose_files expected
+  local compose_file_count compose_file_value compose_files expected services service
+  local has_native=0 has_legacy_processors=0
+  local -a discovery_args
 
   [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || {
     echo "ERROR: restored rollback environment is unavailable or unsafe" >&2
@@ -1183,7 +1174,27 @@ configure_rollback_compose_contract() {
   if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" ]]; then
     compose_files+="${compose_files:+:}$ROLLBACK_ACTIVE_IMAGE_OVERRIDE"
   fi
-  compose_files+="${compose_files:+:}$ROLLBACK_POOL_OVERRIDE"
+  discovery_args=(-f "$DEPLOY_DIR/docker-compose.yml")
+  if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" ]]; then
+    discovery_args+=(-f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE")
+  fi
+  services="$(env -i "PATH=$PATH" "HOME=${HOME:-$DEPLOY_DIR}" \
+    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" docker compose \
+    --env-file "$ENV_FILE" "${discovery_args[@]}" config --services)" || return 1
+  while IFS= read -r service; do
+    case "$service" in
+      ordinary-go) has_native=1 ;;
+      worker-2|worker-3|browser-1) has_legacy_processors=1 ;;
+    esac
+  done <<<"$services"
+  ROLLBACK_USE_POOL_OVERRIDE=1
+  if (( has_native && ! has_legacy_processors )); then
+    # Native-only specs already declare the same bounded pools. The legacy
+    # override would recreate removed services without image definitions.
+    ROLLBACK_USE_POOL_OVERRIDE=0
+  else
+    compose_files+="${compose_files:+:}$ROLLBACK_POOL_OVERRIDE"
+  fi
   expected="COMPOSE_FILE=$compose_files"
   compose_file_count="$(grep -Ec '^COMPOSE_FILE=' "$ENV_FILE" || true)"
   compose_file_value="$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" || true)"
@@ -1211,7 +1222,9 @@ rollback_compose() {
   if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" ]]; then
     compose_args+=(-f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE")
   fi
-  compose_args+=(-f "$ROLLBACK_POOL_OVERRIDE")
+  if [[ "${ROLLBACK_USE_POOL_OVERRIDE:-1}" == 1 ]]; then
+    compose_args+=(-f "$ROLLBACK_POOL_OVERRIDE")
+  fi
   if [[ -n "${DOCKER_CONFIG:-}" ]]; then
     clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")
   fi
@@ -1572,7 +1585,7 @@ rollback_deploy() {
     candidate_compose_defines_service lightpanda-claimant
     service_discovery_status=$?
     if ((service_discovery_status == 0)); then
-      candidate_compose stop --timeout 30 lightpanda-claimant
+      stop_crawler_services 30 lightpanda-claimant
       command_status=$?
       if ((command_status == 0)); then
         candidate_claimant_quiesced=1
@@ -1590,8 +1603,7 @@ rollback_deploy() {
     # Stop every local-PostgreSQL crawler owner before restoring the archived
     # spec. Starting old and new generations together would violate the same
     # budget that this rollback is responsible for preserving.
-    candidate_compose \
-      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
+    stop_crawler_services 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
     command_status=$?
     if ((command_status == 0 && candidate_claimant_quiesced)); then
       quiesce_complete=1
@@ -2094,7 +2106,7 @@ EOF
 }
 
 # Fail before touching services if an operator one-off is still running.
-# Example: `docker compose run --rm worker-1 uv run --no-sync crawler ...`
+# Example: `docker compose run --rm worker-1 go-typesense-exporter --sync-registry`
 # receives the Compose label `com.docker.compose.oneoff=True` and otherwise
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
@@ -2243,8 +2255,8 @@ docker compose up -d redis
 # between the schema change and the new containers starting. `--timeout 60`
 # matches the app's 30s bounded drain with headroom before Docker sends
 # SIGKILL. Redis and Alloy remain available throughout.
-docker compose stop --timeout 30 lightpanda-claimant
-docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
+stop_crawler_services 30 lightpanda-claimant
+stop_crawler_services 60 worker-1 worker-2 worker-3 browser-1 ordinary-go lease-reaper exporter drain
 
 # ── Run native migrations on local Postgres ─────────────────────────
 docker run --rm \

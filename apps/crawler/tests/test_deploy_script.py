@@ -138,7 +138,7 @@ def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
 
     preflight = script.index("\nensure_deploy_disk_headroom\n")
     pull = script.index("\npull_deploy_images\n")
-    quiesce = script.index("docker compose stop --timeout 60")
+    quiesce = script.index("\nstop_crawler_services 60")
 
     assert preflight < pull < quiesce
 
@@ -221,7 +221,11 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     rollback_compose = script[
         script.index("rollback_compose() {") : script.index("rollback_compose_service_ready() {")
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
     disarm_start = script.index("disarm_deploy_rollback() {")
     disarm = script[disarm_start : script.index("compose_service_ready() {", disarm_start)]
     assert 'clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")' in rollback_compose
@@ -311,7 +315,7 @@ def test_deploy_removes_transaction_scoped_ghcr_auth_on_success_and_failure(
 def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     script = DEPLOY_SH.read_text()
 
-    quiesce = script.index("docker compose stop --timeout 60")
+    quiesce = script.index("\nstop_crawler_services 60")
     migrate = script.index("  --migrate-local\n")
     migration_command = script[script.rfind("docker run --rm", 0, migrate) : migrate]
     assert "--entrypoint /usr/local/bin/go-typesense-exporter" in migration_command
@@ -389,7 +393,7 @@ def test_production_env_omits_all_web_database_credentials() -> None:
     assert "WEB_DATABASE_URL" not in deploy_step["env"]
     assert "DATABASE_URL" not in common_env
     assert "WEB_DATABASE_URL" not in common_env
-    for service in ("worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"):
+    for service in ("worker-1", "ordinary-go", "lease-reaper", "exporter", "drain"):
         environment = compose["services"][service]["environment"]
         assert "DATABASE_URL" not in environment
         assert "WEB_DATABASE_URL" not in environment
@@ -763,6 +767,8 @@ def _install_csv_host_docker(binary_dir: Path) -> None:
         "from pathlib import Path\n"
         "import os, sys\n"
         "args = sys.argv[1:]\n"
+        "if args[:1] == ['ps'] and '--no-trunc' in args:\n"
+        "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
         "    print('')\n"
@@ -2098,7 +2104,11 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
             "rollback_deploy() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
     arm = script[
         script.index("arm_deploy_rollback() {") : script.index("disarm_deploy_rollback() {")
     ]
@@ -2176,6 +2186,8 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "import os, sys\n"
         f"events = Path({str(events)!r})\n"
         "args = sys.argv[1:]\n"
+        "if args[:1] == ['ps'] and '--no-trunc' in args:\n"
+        "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
         "    print('')\n"
@@ -2193,7 +2205,7 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "    volume = next(item for item in args if item.endswith(':/app/data:ro'))\n"
         "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
         "    if log: Path(log).write_text(volume.split(':', 1)[0] + '\\n')\n"
-        "elif args[:1] == ['compose'] and 'stop' in args:\n"
+        "elif args[:1] == ['stop'] or (args[:1] == ['compose'] and 'stop' in args):\n"
         "    with events.open('a') as output: output.write('stop\\n')\n"
         "elif args[:1] == ['compose'] and 'up' in args:\n"
         "    with events.open('a') as output: output.write('up\\n')\n"
@@ -2388,7 +2400,7 @@ def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -
     workflow = DEPLOY_WORKFLOW.read_text()
 
     marker_start = script.index("\nstart_maintenance_window\n")
-    quiesce = script.index("docker compose stop --timeout 60")
+    quiesce = script.index("\nstop_crawler_services 60")
     ready = script.index("\nwait_for_core_services\n")
     marker_stop = script.index("\nstop_maintenance_window\n", ready)
 
@@ -2427,7 +2439,7 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
     legacy_stop = script.index('docker stop --time=60 "${legacy_containers[@]}"')
     env_write = script.index('cat > "$ENV_FILE"')
     pull = script.index("\npull_deploy_images\n")
-    quiesce = script.index("docker compose stop --timeout 60")
+    quiesce = script.index("\nstop_crawler_services 60")
 
     assert (
         oneoff_guard
@@ -2445,7 +2457,11 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
 def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     script = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
 
     assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
     assert 'env -i "$NATIVE_DEPLOY_TOOLS" spec-pack' in script
@@ -2458,7 +2474,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "ACTIVE_RELEASE_MANIFEST" in script
     assert 'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"' in script
     quiesce = rollback.index(
-        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 "
+        "stop_crawler_services 60 worker-1 worker-2 worker-3 browser-1 "
         "ordinary-go lease-reaper exporter drain"
     )
     assert 'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"' in script
@@ -2740,7 +2756,11 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "rollback_deploy() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
     arm = script[
         script.index("arm_deploy_rollback() {") : script.index("disarm_deploy_rollback() {")
     ]
@@ -2828,6 +2848,9 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             binary_dir / "docker",
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
+            'if [[ "$1" == ps ]]; then '
+            f'printf "%s browser-1\\n" "{"a" * 64}"; exit 0; fi\n'
+            'if [[ "$1" == stop ]]; then printf "compose-stop\\n" >>"$TEST_LOG"; exit 0; fi\n'
             'if [[ " $* " == *" config --services "* ]]; then exit 0; fi\n'
             'action=""\n'
             'for arg in "$@"; do\n'
@@ -2891,12 +2914,23 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
 @pytest.mark.usefixtures("bind_native_deployment_fixture")
 def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
+    metadata_bin = tmp_path / "metadata-bin"
+    metadata_bin.mkdir()
+    _write_executable(
+        metadata_bin / "docker",
+        "#!/bin/sh\n"
+        'case " $* " in *" config --services "*) printf "worker-2\\n";; *) exit 99;; esac\n',
+    )
     configure = script[
         script.index("configure_rollback_compose_contract() {") : script.index(
             "rollback_compose() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
     harness = "\n".join(
         (
             "set -u",
@@ -3006,6 +3040,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             text=True,
             env={
                 **os.environ,
+                "PATH": f"{metadata_bin}:{os.environ['PATH']}",
                 "TEST_DEPLOY_DIR": str(case_dir),
                 "TEST_LOG": str(log),
                 "STOP_STATUS": str(stop_status),
@@ -3031,12 +3066,23 @@ def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
     tmp_path: Path,
 ) -> None:
     script = DEPLOY_SH.read_text()
+    metadata_bin = tmp_path / "metadata-bin"
+    metadata_bin.mkdir()
+    _write_executable(
+        metadata_bin / "docker",
+        "#!/bin/sh\n"
+        'case " $* " in *" config --services "*) printf "worker-2\\n";; *) exit 99;; esac\n',
+    )
     configure = script[
         script.index("configure_rollback_compose_contract() {") : script.index(
             "rollback_compose() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
     harness = "\n".join(
         (
             "set -u",
@@ -3113,6 +3159,7 @@ def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
             text=True,
             env={
                 **os.environ,
+                "PATH": f"{metadata_bin}:{os.environ['PATH']}",
                 "TEST_DEPLOY_DIR": str(case_dir),
                 "TEST_LOG": str(log),
                 "SYNC_STATUS": str(sync_status),
@@ -3167,7 +3214,11 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             "rollback_deploy() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
 
     deploy_dir = tmp_path / "deploy"
     release_root = deploy_dir / "releases"
@@ -3260,6 +3311,11 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         f"old_data = Path({str(old_release / 'data')!r})\n"
         f"new_data = Path({str(new_release / 'data')!r})\n"
         "args = sys.argv[1:]\n"
+        "if args[:1] == ['ps'] and '--no-trunc' in args:\n"
+        "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
+        "if args[:1] == ['stop']:\n"
+        "    with log.open('a') as output: output.write('stop\\n')\n"
+        "    sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
         "    print(''); sys.exit(0)\n"
@@ -3397,7 +3453,11 @@ def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
             "rollback_deploy() {"
         )
     ]
-    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    rollback = (
+        DEPLOY_HELPERS_SH.read_text()
+        + "\n"
+        + script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    )
 
     deploy_dir = tmp_path / "deploy"
     deploy_dir.mkdir()
@@ -3475,6 +3535,8 @@ def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
         f"expected_images = {str(image_override)!r}\n"
         f"expected_pool = {str(pool_override)!r}\n"
         "args = sys.argv[1:]\n"
+        "if args[:1] == ['ps'] and '--no-trunc' in args:\n"
+        "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
         "if 'config' in args and '--services' in args:\n"
         "    print('redis\\nworker-1\\nworker-2\\nworker-3\\n'"
         " 'browser-1\\nexporter\\ndrain\\nalloy')\n"
@@ -3671,7 +3733,7 @@ def test_deploy_copies_source_bound_native_operational_tools() -> None:
     assert 'build-deploy-tools.sh "$GITHUB_SHA"' in workflow
     initialization = script.index("\ninitialize_native_deploy_tools\n")
     preflight = script.index("\nrun_native_postgresql_preflight\n")
-    quiesce = script.index("docker compose stop --timeout 60")
+    quiesce = script.index("\nstop_crawler_services 60")
     assert initialization < preflight < quiesce
 
 
