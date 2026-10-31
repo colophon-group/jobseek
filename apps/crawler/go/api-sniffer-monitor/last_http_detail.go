@@ -93,7 +93,9 @@ func (o LastHTTPDetailOptions) ResourceMatches(raw string) bool {
 	if o.Provider == "infor" {
 		return u.Path == "/sso/SSOServlet" || u.Path == "/"+o.Dataarea+"/CandidateSelfService/lm" || u.Path == "/"+o.Dataarea+"/CandidateSelfService/controller.servlet" || u.Path == "/"+o.Dataarea+"/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation"
 	}
-	return raw == o.Endpoint || u.Path == "/psp/"+o.Site+"/"+o.Portal+"/HRMS/"
+	// Candidate Gateway appends a bare '&' after its anonymous-session
+	// redirect. Admit only that exact variant of the canonical detail URL.
+	return raw == o.Endpoint || raw == o.Endpoint+"&" || u.Path == "/psp/"+o.Site+"/"+o.Portal+"/HRMS/"
 }
 func ParseInforDetail(body []byte) (map[string]any, error) {
 	d, e := Decode(body)
