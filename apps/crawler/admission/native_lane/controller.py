@@ -123,6 +123,8 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                         "operation not permitted",
                         "executable file not found",
                         "stat /usr/bin/setpriv",
+                        "address already in use",
+                        "failed to set up container networking",
                         "no such file",
                         "certificate",
                         "configuration",

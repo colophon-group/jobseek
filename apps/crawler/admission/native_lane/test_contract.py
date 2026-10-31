@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import hashlib
 import http.client
+import ipaddress
 import json
 import os
 import socket
@@ -252,6 +253,25 @@ def test_compose_contains_no_external_runtime_route_or_docker_socket() -> None:
         "exporter",
         "drain",
     }
+
+
+def test_fixed_service_addresses_cannot_be_allocated_to_bootstrap_containers() -> None:
+    document = yaml.safe_load((Path(__file__).parent / "compose.yml").read_text())
+    for name, network in document["networks"].items():
+        configuration = network["ipam"]["config"][0]
+        subnet = ipaddress.IPv4Network(configuration["subnet"])
+        automatic = ipaddress.IPv4Network(configuration["ip_range"])
+        assert automatic.subnet_of(subnet)
+        assert automatic.num_addresses > len(document["services"]) + 2
+        for service in document["services"].values():
+            connections = service.get("networks", {})
+            if (
+                isinstance(connections, dict)
+                and (connection := connections.get(name))
+                and (address := connection.get("ipv4_address"))
+            ):
+                fixed = ipaddress.IPv4Address(address)
+                assert fixed in subnet and fixed not in automatic
 
 
 def test_renderer_keeps_the_production_privilege_drop_and_child_process_contract() -> None:

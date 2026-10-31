@@ -194,5 +194,5 @@ services:
     mem_limit: 256m
     memswap_limit: 256m
 networks:
-  claim: {internal: true, ipam: {config: [{subnet: 10.0.0.0/24}]}}
-  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24}]}}
+  claim: {internal: true, ipam: {config: [{subnet: 10.0.0.0/24, ip_range: 10.0.0.128/25}]}}
+  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24, ip_range: 11.252.0.128/25}]}}
