@@ -74,9 +74,9 @@ async def bootstrap(pool: Any, redis: Any) -> dict[str, Any]:
         board_id = identity(board["slug"])
         await pool.execute(
             """INSERT INTO job_board(id,company_id,board_slug,crawler_type,board_url,metadata,
-               monitor_needs_browser,scraper_needs_browser,check_interval_minutes,
+               monitor_needs_browser,scraper_needs_browser,throttle_key,check_interval_minutes,
                scrape_interval_hours,next_check_at)
-               VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,1440,24,now()+interval '1 day')""",
+               VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,1440,24,now()+interval '1 day')""",
             board_id,
             COMPANY,
             board["slug"],
@@ -85,6 +85,7 @@ async def bootstrap(pool: Any, redis: Any) -> dict[str, Any]:
             json.dumps(board["metadata"]),
             board["monitor_needs_browser"],
             board["scraper_needs_browser"],
+            board["domain"],
         )
         await redis.hset(f"board:{board_id}", mapping=cache_config(board))
     for row in jobs():
@@ -112,6 +113,7 @@ def cache_config(board: dict[str, Any]) -> dict[str, str]:
         "check_interval_minutes": "1440",
         "scrape_interval_hours": "24",
         "domain": board["domain"],
+        "throttle_key": board["domain"],
     }
 
 

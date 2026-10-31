@@ -15,8 +15,37 @@ import yaml
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from admission.native_lane import controller, driver
+from admission.native_lane import controller, driver, legacy_browser
 from admission.native_lane.resources import allocation, role, sample
+
+
+def test_legacy_comparator_trusts_only_fixture_ca_in_private_home(tmp_path, monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        legacy_browser.subprocess, "run", lambda args, **kw: calls.append((args, kw))
+    )
+    home, certificate = tmp_path / "home", tmp_path / "ca.pem"
+    legacy_browser.prepare_nss_database(home, certificate)
+    database = home / ".pki/nssdb"
+    assert stat.S_IMODE(database.stat().st_mode) == 0o700
+    assert len(calls) == 2
+    assert calls[0][0] == ["certutil", "-d", "sql:" + str(database), "-N", "--empty-password"]
+    assert calls[1][0] == [
+        "certutil",
+        "-d",
+        "sql:" + str(database),
+        "-A",
+        "-n",
+        "native-lane-fixture",
+        "-t",
+        "C,,",
+        "-i",
+        str(certificate),
+    ]
+    assert all(
+        call[1] == {"check": True, "capture_output": True, "timeout": 10, "umask": 0o077}
+        for call in calls
+    )
 
 
 @pytest.mark.parametrize("report_exists", [False, True])

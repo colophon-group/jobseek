@@ -127,13 +127,19 @@ postings across rich API, direct DOM, rendered DOM and direct JSON-LD routes.
 Each arm includes the actual worker, renderer/browser, reaper, PostgreSQL,
 Redis, exporter, drain and Typesense. Its first Linux run failed before work
 began because an empty proxy-list environment value is invalid in the retained
-Python settings. The fixture passes all 22 local contract tests. A separate real
+Python settings. The fixture passes all 23 local contract tests. A separate real
 PostgreSQL/Redis check found that bootstrap inserted a NULL monitor deadline
 despite the canonical NOT NULL constraint. Corrected bootstrap keeps all four
 boards future-scheduled before feed, then queues three monitors and twelve
 details in the shared due window. It passes with all production-cardinality
 lookup tables; temporary services and caches are removed afterward. This proves
 the local setup fix, not the unavailable prior CI failure's exact cause.
+Go admission also identified a missing throttle key and unsupported rendered
+TLS bypass in the generated configs. SQL/cache keys now agree and all four
+profiles pass with the expected lanes. The offline comparator uses readable
+browser binaries and imports only the fixture CA into a private ephemeral NSS
+database; rendered TLS verification stays enabled. Full container qualification
+of that comparator setup remains required.
 Bounded failure annotations expose step outcomes and safe diagnostic fields
 when selected logs return HTTP 502. The complete Linux comparison remains
 unqualified until the new-head run passes.

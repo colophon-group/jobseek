@@ -120,6 +120,8 @@ def boards() -> list[dict[str, Any]]:
             "skip_ssl": True,
         }
         if rendered:
+            del metadata["skip_ssl"]
+            del metadata["scraper_config"]["skip_ssl"]
             metadata["render"] = True
             metadata["wait"] = "load"
         if profile == "api_rich":

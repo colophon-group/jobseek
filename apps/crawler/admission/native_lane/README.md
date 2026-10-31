@@ -29,6 +29,15 @@ the Docker socket, host networking, published ports or production credentials.
 Both Docker networks are internal. The driver rejects all database/Redis
 endpoints except its literal disposable service addresses before connecting.
 
+Bootstrap uses future canonical deadlines and the same throttle key in SQL and
+the board cache, before the common feed window. All four generated board
+configurations must pass Go admission with their actual HTTP/browser lanes.
+Rendered navigation verifies TLS against the fixture CA. The isolated legacy
+browser imports that CA into its private ephemeral NSS database, following
+[Chromium's Linux trust contract](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md).
+Its browser binaries are readable by the configured unprivileged UID; certificate
+setup uses the existing container CPU/memory limits and counts as startup work.
+
 Three pairs alternate order. Both arms must finish the complete canonical job,
 description upload and Typesense work. Independent SQL, uploaded-body hashes
 and Typesense reads qualify effects; counters are not the output oracle.

@@ -159,8 +159,11 @@ services:
     healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   legacy-browser:
     <<: *legacy
-    command: [/app/.venv/bin/crawler, run-browser]
-    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9091"}
+    command: [/app/.venv/bin/python, -m, admission.native_lane.legacy_browser]
+    environment: {<<: *env, DISCOVERY_CONCURRENCY: "2", MONITOR_CONCURRENCY: "1", METRICS_PORT: "9091", PYTHONPATH: /fixtures}
+    volumes:
+      - ..:/fixtures/admission:ro
+      - ${NATIVE_LANE_PKI:?}/ca.pem:/run/native-lane/ca.pem:ro
     healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9091/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   reaper:
     <<: *native
