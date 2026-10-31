@@ -6882,6 +6882,8 @@ starbucks,starbucks-china-careers,https://starbucks.zhiye.com/,beisen,"{""tenant
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}, ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 starburst,starburst-greenhouse,https://job-boards.greenhouse.io/starburst,greenhouse,"{""token"": ""starburst""}",skip,
 starcloud,starcloud-greenhouse,https://job-boards.greenhouse.io/starcloud,greenhouse,"{""token"": ""starcloud""}",skip,
+starhotels,starhotels-intervieweb,https://zinrec.intervieweb.it/starhotels/it/career,intervieweb,"{""provider"": ""intervieweb""}",dom,"{""scope"": ""#vacancy__container"", ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""id=description__subtitle"", ""field"": ""locations"", ""regex"": ""Sede\\s*(.+?)\\s*Professione/""}, {""tag"": ""h3"", ""text"": ""Descrizione azienda"", ""field"": ""description"", ""html"": true, ""stop_attr"": ""id=description__apply-button""}]}"
+starhotels,starhotels-uk,https://starhotelsuk-careers.starhotels.com/,sitemap,"{""sitemap_url"": ""https://starhotelsuk-careers.starhotels.com/sitemap.xml"", ""url_filter"": ""/job/[0-9]+$""}",json-ld,
 stark,stark-careers,https://stark.jobs.personio.com/,personio,"{""slug"": ""stark"", ""language"": ""en""}",skip,
 starling-bank,starling-bank-careers,https://apply.workable.com/starling-bank/,workable,"{""token"": ""starling-bank""}",workable,
 starrez,starrez-greenhouse,https://job-boards.greenhouse.io/starrez,greenhouse,"{""token"": ""starrez""}",skip,
