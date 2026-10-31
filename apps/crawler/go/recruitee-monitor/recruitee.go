@@ -52,7 +52,7 @@ func truthy(value any) bool {
 func salaryUnit(value any) string {
 	raw, ok := value.(string)
 	if !ok {
-		return "year"
+		return ""
 	}
 	key := strings.ToLower(strings.TrimFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }))
 	for _, entry := range []struct{ needle, unit string }{
@@ -72,7 +72,7 @@ func salaryUnit(value any) string {
 	case "yr":
 		return "year"
 	}
-	return "year"
+	return ""
 }
 
 func optionalText(value any, field string) (string, error) {
@@ -148,11 +148,15 @@ func parseSalary(offer map[string]any) (map[string]any, error) {
 			return nil, errors.New("Recruitee salary period must be text")
 		}
 	}
+	unit := salaryUnit(salary["period"])
+	if unit == "" {
+		return nil, nil
+	}
 	return map[string]any{
 		"currency": salary["currency"],
 		"min":      salary["min"],
 		"max":      salary["max"],
-		"unit":     salaryUnit(salary["period"]),
+		"unit":     unit,
 	}, nil
 }
 

@@ -45,3 +45,34 @@ func TestParseFailsClosedOnMalformedOffers(t *testing.T) {
 		}
 	}
 }
+
+func TestParseSalaryRequiresKnownPeriod(t *testing.T) {
+	for _, tc := range []struct {
+		name, period, wantUnit string
+	}{
+		{"missing", "", ""},
+		{"unknown", "UNKNOWN", ""},
+		{"monthly", "monthly", "month"},
+		{"annual", "annual", "year"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			period := `null`
+			if tc.name != "missing" {
+				period = `"` + tc.period + `"`
+			}
+			body := []byte(`{"offers":[{"status":"published","careers_url":"https://acme.recruitee.com/o/manager","title":"Manager","salary":{"min":6200,"currency":"EUR","period":` + period + `}}]}`)
+			inventory, err := Parse(body)
+			if err != nil || len(inventory.Jobs) != 1 {
+				t.Fatalf("unexpected inventory: %#v, %v", inventory, err)
+			}
+			got := inventory.Jobs[0].BaseSalary
+			if tc.wantUnit == "" {
+				if got != nil {
+					t.Fatalf("invented salary unit for %s: %#v", tc.name, got)
+				}
+			} else if got["unit"] != tc.wantUnit || got["min"] != json.Number("6200") {
+				t.Fatalf("unexpected salary for %s: %#v", tc.name, got)
+			}
+		})
+	}
+}

@@ -126,8 +126,11 @@ def _parse_salary(offer: dict) -> dict | None:
     if sal_min is None and sal_max is None:
         return None
     currency = salary.get("currency")
-    # Recruitee defaults to ``year`` when period is missing/unknown.
-    unit = normalize_salary_unit(salary.get("period")) or "year"
+    # A missing period cannot safely be inferred from the amount. Recruitee
+    # sometimes sends monthly salaries with a null period.
+    unit = normalize_salary_unit(salary.get("period"))
+    if unit is None:
+        return None
     return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
 
 

@@ -1035,12 +1035,7 @@
           "employment_type": null,
           "job_location_type": null,
           "date_posted": null,
-          "base_salary": {
-            "currency": "EUR",
-            "min": 0,
-            "max": 12.5,
-            "unit": "year"
-          },
+          "base_salary": null,
           "metadata": null
         }
       ],
@@ -1079,12 +1074,7 @@
           "employment_type": null,
           "job_location_type": null,
           "date_posted": null,
-          "base_salary": {
-            "currency": "EUR",
-            "min": 0,
-            "max": 12.5,
-            "unit": "year"
-          },
+          "base_salary": null,
           "metadata": null
         }
       ],
@@ -2487,12 +2477,7 @@
           "employment_type": null,
           "job_location_type": null,
           "date_posted": null,
-          "base_salary": {
-            "currency": "EUR",
-            "min": 0,
-            "max": 12.5,
-            "unit": "year"
-          },
+          "base_salary": null,
           "metadata": null
         }
       ],
