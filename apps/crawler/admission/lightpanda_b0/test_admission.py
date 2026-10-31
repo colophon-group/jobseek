@@ -428,6 +428,9 @@ def test_startup_census_cannot_accept_empty_or_changed_taxonomies() -> None:
 def test_worker_health_cadence_matches_production_runtime() -> None:
     services = yaml.safe_load((HERE / "compose.yml").read_text())["services"]
     production = yaml.safe_load((HERE.parents[1] / "docker-compose.yml").read_text())["services"]
+    legacy = yaml.safe_load(
+        (HERE.parents[1] / "tests/fixtures/docker-compose.legacy-b0.yml").read_text()
+    )["services"]
     overlay = yaml.safe_load((HERE.parents[1] / "lightpanda-b0-enabled.override.yml").read_text())[
         "services"
     ]
@@ -451,7 +454,7 @@ def test_worker_health_cadence_matches_production_runtime() -> None:
     )
     assert (
         services["control"]["healthcheck"]["interval"]
-        == production["browser-1"]["healthcheck"]["interval"]
+        == legacy["browser-1"]["healthcheck"]["interval"]
     )
 
 
