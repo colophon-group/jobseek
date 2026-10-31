@@ -160,8 +160,10 @@ async def test_monitor_and_scraper_bootstrap_anonymous_session():
 async def test_french_gateway_falls_back_when_psp_bootstrap_is_unavailable():
     board = peoplesoft_listing_from_url(BOARD_URL)
     assert board is not None
-    listing = _listing().replace("Search Results List", "Résultats de recherche").replace(
-        "jobs found.", "emplois trouvés."
+    listing = (
+        _listing()
+        .replace("Search Results List", "Résultats de recherche")
+        .replace("jobs found.", "emplois trouvés.")
     )
     bootstrap_attempts = 0
 
