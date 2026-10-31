@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 import urllib.error
+import re
 
 spec = importlib.util.spec_from_file_location("migration", Path(__file__).with_name("migrate-secrets-to-doppler.py"))
 migration = importlib.util.module_from_spec(spec)
@@ -66,6 +67,12 @@ class TransferTests(unittest.TestCase):
             with self.assertRaises(migration.MigrationError) as error:
                 migration.request("dp.st.PRIVATE_FIXTURE_SENTINEL", "import_repository", {"KEY": "PRIVATE_FIXTURE_SENTINEL"})
             self.assertNotIn("PRIVATE_FIXTURE_SENTINEL", str(error.exception))
+
+    def test_workflow_never_serializes_the_entire_secret_context(self):
+        workflow = (Path(__file__).parent.parent / ".github/workflows/migrate-secrets-to-doppler.yml").read_text()
+        self.assertIsNone(re.search(r"tojson\s*\(\s*secrets\s*\)", workflow, re.I))
+        self.assertNotIn("pull_request:", workflow)
+        self.assertNotIn("schedule:", workflow)
 
 
 if __name__ == "__main__":
