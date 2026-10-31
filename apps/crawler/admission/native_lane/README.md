@@ -113,3 +113,9 @@ directory remains private. Public file modes are set explicitly after creation:
 the measurement runner's `umask 077` otherwise reduces requested `0444` to `0400`.
 The permission regression runs with both `022` and `077`. TLS verification stays
 enabled in the renderer.
+
+The generated salary phrase uses `$100,000-$120,000 per year`, which the retained
+Python oracle and Go both parse as USD100000–120000 yearly. The fixture regression
+checks the oracle on every distinct description; the SQL expectation remains
+unchanged. A literal `USD 100000-120000 yearly` returns no salary in both engines
+and is unsuitable for this positive-case workload.

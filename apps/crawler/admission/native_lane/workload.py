@@ -21,7 +21,7 @@ def jobs() -> list[dict[str, Any]]:
         for index in range(PROFILE_COUNTS[profile]):
             size = ("normal", "slow", "large")[index % 3]
             description = (
-                "<p>Build reliable Go services. Salary USD 100000-120000 yearly. "
+                "<p>Build reliable Go services. Salary $100,000-$120,000 per year. "
                 "Five years of experience. Full-time remote work.</p>"
             )
             if size == "large":

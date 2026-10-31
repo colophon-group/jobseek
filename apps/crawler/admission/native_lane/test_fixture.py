@@ -42,7 +42,7 @@ def test_workload_has_four_distinct_effective_routes_and_stable_identity() -> No
     assert len(rows) == len({row["url"] for row in rows}) == 536
     assert {row["profile"] for row in rows} == set(PROFILES)
     assert {row["origin"] for row in rows} == set(ORIGINS)
-    assert workload_sha256() == "6a06ffcc9b5cdc3de10fcbb534a65cb472c58d88cbf41579b143b7f0a284d312"
+    assert workload_sha256() == "1a00139aee761ab7e6de570f1cfea1c6658c52459a94936bf239937ce62fa82d"
     assert all(
         {row["size"] for row in rows if row["profile"] == profile} == {"normal", "slow", "large"}
         for profile in PROFILES
@@ -53,6 +53,22 @@ def test_workload_has_four_distinct_effective_routes_and_stable_identity() -> No
     assert configurations["dom_rendered"]["scraper_needs_browser"] is True
     assert configurations["dom_direct"]["scraper_needs_browser"] is False
     assert configurations["jsonld_direct"]["monitor_seeded"] is False
+
+
+def test_workload_salary_expectations_match_the_retained_python_parser() -> None:
+    from src.core.salary_extract import _extract_salary_unified_python
+
+    # Establish that the intended positive case exists in the original parser,
+    # independently of either lane's persistence and the comparison assertions.
+    for description in {row["description"] for row in jobs()}:
+        salary = _extract_salary_unified_python(description)
+        assert salary is not None
+        assert (salary.min, salary.max, salary.currency, salary.period) == (
+            100000,
+            120000,
+            "USD",
+            "yearly",
+        )
 
 
 def test_rendered_inputs_require_script_execution() -> None:
