@@ -43,8 +43,9 @@ The agent gets estimates from the test crawl via `ws run monitor`, which reports
 The `maybe-auto-merge.yml` workflow:
 
 1. Wakes on company PR changes, CI/CodeQL/Crawler Deploy Gate completion,
-   a 15 minute schedule, and manual dispatch. Every automatic wake sweeps all
-   pages of open same-repo company PRs, recovering replaced pending events.
+   a 15 minute schedule, and manual dispatch. PR and check events target their
+   same-repo PR; the scheduled sweep covers all pages of open company PRs and
+   recovers events replaced by workflow concurrency.
 2. Classifies internal non-draft `add-company/*` and `fix-crawler/*` PRs from
    trusted scripts. Config-only reconfigurations of one company use the same
    job-count and crawl-time thresholds as additions. Company deletion/renaming,

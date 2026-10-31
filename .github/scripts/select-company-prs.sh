@@ -14,9 +14,33 @@ if [[ "${EVENT_NAME:-}" == workflow_dispatch && -n "${INPUT_PR:-}" ]]; then
     exit 1
   }
   echo "$INPUT_PR" > "$prs_file"
+elif [[ "${EVENT_NAME:-}" == pull_request_target ]]; then
+  jq -er '.pull_request.number | select(type == "number" and . > 0 and floor == .)' \
+    "$GITHUB_EVENT_PATH" > "$prs_file"
+elif [[ "${EVENT_NAME:-}" == workflow_run ]]; then
+  jq -er '.workflow_run | type == "object"' "$GITHUB_EVENT_PATH" >/dev/null
+  jq -r '.workflow_run.pull_requests[]?.number | select(type == "number" and . > 0 and floor == .)' \
+    "$GITHUB_EVENT_PATH" | sort -nu > "$prs_file"
+  if [[ ! -s "$prs_file" ]]; then
+    # workflow_dispatch CI runs can omit pull_requests. Resolve their exact
+    # same-repo branch with one API call; the scheduled sweep covers events
+    # replaced by workflow concurrency.
+    branch=$(jq -r '.workflow_run.head_branch // ""' "$GITHUB_EVENT_PATH")
+    head_repo=$(jq -r '.workflow_run.head_repository.full_name // ""' "$GITHUB_EVENT_PATH")
+    if [[ "$head_repo" == "$REPO" && \
+          ( "$branch" == add-company/* || "$branch" == fix-crawler/* ) ]]; then
+      head_query=$(jq -nr --arg head "${REPO%%/*}:$branch" '$head | @uri')
+      prs_json=$(gh api --paginate "repos/$REPO/pulls?state=open&head=$head_query&per_page=100")
+      jq -e -s 'length > 0 and all(.[]; type == "array")' >/dev/null <<< "$prs_json"
+      jq -rs --arg repo "$REPO" --arg branch "$branch" '
+        .[][] | select(.draft == false and .head.repo.full_name == $repo and .head.ref == $branch)
+        | .number
+      ' <<< "$prs_json" | sort -nu > "$prs_file"
+    fi
+  fi
 else
-  # Workflow-level concurrency can replace a pending event with another one.
-  # Every automatic wake reconciles the queue, including PRs beyond page one.
+  # The scheduled (or manual unscoped) sweep recovers pending events replaced
+  # by workflow concurrency, including PRs beyond page one.
   prs_json=$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100")
   jq -e -s 'length > 0 and all(.[]; type == "array")' >/dev/null <<< "$prs_json"
   jq -rs --arg repo "$REPO" --arg base "${DEFAULT_BRANCH:-main}" '
