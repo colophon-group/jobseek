@@ -804,6 +804,18 @@ func (r *LocationResolver) one(raw, fallback string) []LocationResult {
 	}
 	return empty
 }
+
+// ResolveWithNegativeCache borrows a read-only miss cache for this call. The
+// caller must serialize resolver use and cache mutation. No borrowed state is
+// retained after return, including errors; Resolve's owned-cache contract stays
+// unchanged for existing callers.
+func (r *LocationResolver) ResolveWithNegativeCache(raw []string, fallback, language string, tracking bool, negative map[string]bool) ([]LocationResult, []string, []LocationMiss, error) {
+	previous := r.negative
+	r.negative = negative
+	defer func() { r.negative = previous }()
+	return r.Resolve(raw, fallback, language, tracking, nil)
+}
+
 func (r *LocationResolver) Resolve(raw []string, fallback, language string, tracking bool, negative []string) ([]LocationResult, []string, []LocationMiss, error) {
 	r.reset()
 	r.language = language

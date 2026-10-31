@@ -28,6 +28,25 @@ func TestConfigurationDiagnosticsKeepCodeOwnedCausePhaseAndFatalSentinel(t *test
 	}
 }
 
+func TestMonitorTimeoutDiagnosticKeepsTrustedPhaseAndDeadlineIdentity(t *testing.T) {
+	private := fmt.Errorf("never-print-private: %w", queue.ErrConfiguration)
+	for _, tc := range []struct {
+		phase, want string
+		cause       error
+	}{
+		{"fetch", "fetch", private},
+		{"processing", "preparation", claimRunError("preparation", private)},
+		{"processing", "posting_write", claimRunError("posting_write", private)},
+		{"processing", "processing", &ClaimRunError{Phase: "never-print-private", Kind: "never-print-private", cause: private}},
+	} {
+		err := claimRunTimeout(tc.phase, tc.cause)
+		var diagnostic *ClaimRunError
+		if !errors.As(err, &diagnostic) || diagnostic.Phase != "task" || diagnostic.Kind != "deadline" || diagnostic.causePhase != tc.want || !errors.Is(err, context.DeadlineExceeded) || errors.Is(err, queue.ErrConfiguration) || strings.Contains(err.Error(), "never-print") {
+			t.Fatalf("timeout lost trusted phase, changed failure identity or leaked context: %s", tc.want)
+		}
+	}
+}
+
 func TestProcessingFailureDiagnosticsRetainCauseWithoutDatabaseMessages(t *testing.T) {
 	for _, tc := range []struct{ code, kind string }{
 		{"57014", "query_cancelled"}, {"40P01", "deadlock"}, {"55P03", "lock_timeout"}, {"23514", "database"},

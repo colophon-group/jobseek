@@ -3,6 +3,7 @@ package enrichment
 import (
 	"database/sql"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -89,6 +90,11 @@ func TestFrozenLocationParity(t *testing.T) {
 		actual, keys, misses, err := r.Resolve(c.Raw, c.Fallback, c.Language, c.Tracking, c.Negative)
 		if err != nil {
 			t.Fatalf("case %d %q: %v", i, c.Raw, err)
+		}
+		negative := maps.Clone(r.negative)
+		cached, cachedKeys, cachedMisses, cachedErr := r.ResolveWithNegativeCache(c.Raw, c.Fallback, c.Language, c.Tracking, negative)
+		if cachedErr != nil || !reflect.DeepEqual(cached, c.Expected) || !reflect.DeepEqual(cachedKeys, keys) || !reflect.DeepEqual(cachedMisses, c.LocationMisses) || !reflect.DeepEqual(negative, r.negative) {
+			t.Fatalf("case %d borrowed negative cache changed frozen Python parity or cache ownership", i)
 		}
 		if !reflect.DeepEqual(actual, c.Expected) {
 			t.Errorf("case %d %q: got %v want %v", i, c.Raw, locationIDs(actual), locationIDs(c.Expected))

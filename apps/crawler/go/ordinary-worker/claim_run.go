@@ -74,6 +74,18 @@ func claimRunError(phase string, err error) error {
 	return diagnostic
 }
 
+func claimRunTimeout(phase string, cause error) error {
+	diagnostic := claimRunError(phase, cause).(*ClaimRunError)
+	timeout := claimRunError("task", context.DeadlineExceeded).(*ClaimRunError)
+	timeout.causePhase = diagnostic.causePhase
+	if timeout.causePhase == "" {
+		timeout.causePhase = diagnostic.codePhase
+	}
+	// Keep the existing deadline-only identity: a racing preparation error
+	// must not become a fatal configuration error after timeout settlement.
+	return timeout
+}
+
 type GreenhouseClaimResult struct {
 	TaskKind                                             queue.Kind
 	Cycle                                                *queue.GreenhouseCycleResult
@@ -191,7 +203,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			if _, err := settleWithContext(cleanup, terminal); err != nil {
 				return result, err
 			}
-			return result, claimRunError("task", context.DeadlineExceeded)
+			return result, claimRunTimeout(phase, cause)
 		}
 		// A reservation can race native preparation or a chunk write. Keep it
 		// monotonic and skip failure accounting under the fresh canonical lock.

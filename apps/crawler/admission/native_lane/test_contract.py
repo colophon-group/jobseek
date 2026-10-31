@@ -27,6 +27,34 @@ from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
 
 
+@pytest.mark.parametrize("service", ["legacy-simple", "legacy-browser", "b0-control"])
+def test_retained_comparator_selects_python_extraction_and_enrichment(monkeypatch, service):
+    from src.runtime import dom_go_http, dom_go_parse, job_enrichment_go, jsonld_go_detail
+
+    root = Path(__file__).resolve().parent
+    path = root / "compose.yml"
+    key = service
+    if service == "b0-control":
+        path = root.parent / "lightpanda_b0/compose.yml"
+        key = "control"
+    environment = yaml.safe_load(path.read_text())["services"][key]["environment"]
+    for name in (
+        "JSONLD_GO_DETAIL_PERCENT",
+        "DOM_GO_HTTP_ENABLED",
+        "DOM_GO_PARSE_ENABLED",
+        "JOB_ENRICHMENT_ENGINE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+        if name in environment:
+            monkeypatch.setenv(name, environment[name])
+    assert not dom_go_parse.enabled()
+    assert not dom_go_http.eligible("https://origin-0.lane.bench.test/jobs/1", {})
+    assert not jsonld_go_detail.percentage_selected(
+        "fixture", "https://origin-0.lane.bench.test/jobs/1", {}
+    )
+    assert not job_enrichment_go.enabled()
+
+
 def test_legacy_schedule_uses_its_post_processing_clock_without_losing_due_time():
     # SQL RECORD_SUCCESS schedules at database now(); the unchanged Python
     # pipeline schedules Redis after host/cache/allocator work at time.time().
