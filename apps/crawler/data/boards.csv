@@ -2699,6 +2699,8 @@ exowatt,exowatt-careers,https://jobs.lever.co/exowatt,lever,"{""token"": ""exowa
 exp,exp-pinpoint,https://exp.pinpointhq.com,pinpoint,"{""slug"": ""exp""}",skip,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
 expeditors,expeditors-careers,https://careers.smartrecruiters.com/expeditors,smartrecruiters,,smartrecruiters,
+experimental,experimental-europe,https://careers.experimentalgroup.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.experimentalgroup.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.experimentalgroup\\.com/jobs/[0-9]+""}",json-ld,"{""description_selector"": ""section.company-links div.prose""}"
+experimental,experimental-uk,https://harri.com/egw-careers,dom,"{""render"": true, ""url_filter"": ""^https://harri\\.com/[^/]+/job/[0-9]+"", ""url_transform"": {""find"": ""\\?.*$"", ""replace"": """"}, ""resource_policy"": ""auto"", ""bot_protection"": false}",json-ld,"{""render"": true}"
 explorium,explorium-careers,https://www.explorium.ai/careers/,sitemap,"{""sitemap_url"": ""https://www.explorium.ai/sitemap.xml"", ""url_filter"": ""/blog/position/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""from"": 0, ""field"": ""description"", ""stop"": ""SHARE"", ""html"": true}]}"
 express,express-careers,https://jobs-express.icims.com/,icims,"{""host"": ""jobs-express.icims.com"", ""dedupe_job_ids_from_hosts"": [""careers-express.icims.com""]}",json-ld,
 express,express-corporate,https://careers-express.icims.com/,icims,"{""host"": ""careers-express.icims.com""}",json-ld,
