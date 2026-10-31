@@ -476,6 +476,10 @@ def test_renderer_keeps_the_production_privilege_drop_and_child_process_contract
     fixture = yaml.safe_load((Path(__file__).parent / "compose.yml").read_text())
     for field in ("user", "cap_add", "cap_drop", "read_only", "pids_limit", "tmpfs"):
         assert fixture["services"]["renderer"][field] == production["services"]["renderer"][field]
+    assert (
+        "${NATIVE_LANE_PKI:?}/fixture-ca.crt:/etc/ssl/certs/native-lane-fixture.crt:ro"
+        in fixture["services"]["renderer"]["volumes"]
+    )
 
 
 def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
@@ -499,19 +503,27 @@ def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
     # The renderer mounts this public trust bundle at the OS CA path. Its
     # isolated browser UID differs from the parent credential owner (10001).
     assert public_bundle.stat().st_mode & stat.S_IROTH
+    public_root = directory / "fixture-ca.crt"
+    assert public_root.read_bytes() == (directory / "ca.pem").read_bytes()
+    assert public_root.stat().st_mode & stat.S_IROTH
+    root = x509.load_pem_x509_certificate(public_root.read_bytes())
+    assert hashlib.sha256(root.public_bytes(serialization.Encoding.DER)).hexdigest() == pins["ca"]
     assert all(
         not path.stat().st_mode & (stat.S_IRGRP | stat.S_IROTH)
         for path in directory.glob("*-key.pem")
     )
     assert all(
         stat.S_IMODE(path.stat().st_mode)
-        == {"server-key.pem": 0o400, "ca-bundle.pem": 0o444}.get(path.name, 0o600)
+        == {"server-key.pem": 0o400, "ca-bundle.pem": 0o444, "fixture-ca.crt": 0o444}.get(
+            path.name, 0o600
+        )
         for path in directory.iterdir()
     )
 
 
+@pytest.mark.parametrize("ca_file", ["ca-bundle.pem", "fixture-ca.crt"])
 def test_description_sink_verifies_fixture_tls_identity_and_preserves_bytes(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, ca_file
 ) -> None:
     monkeypatch.setattr(controller, "run", lambda *args, **kwargs: "")
     directory = tmp_path / "pki"
@@ -525,7 +537,7 @@ def test_description_sink_verifies_fixture_tls_identity_and_preserves_bytes(
     )
     thread = threading.Thread(target=service.serve_forever, daemon=True)
     thread.start()
-    context = ssl.create_default_context(cafile=str(directory / "ca-bundle.pem"))
+    context = ssl.create_default_context(cafile=str(directory / ca_file))
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     client = http.client.HTTPSConnection("fixture", service.server_port, context=context, timeout=3)
     monkeypatch.setattr(

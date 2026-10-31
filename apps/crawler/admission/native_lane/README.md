@@ -104,3 +104,9 @@ client identity. Typed stage/outcome/error codes and HTML byte counts are emitte
 HTML, certificates, credentials and arbitrary errors are never printed. The
 existing raw stdio probe remains a separate diagnostic. Neither counts toward
 completion or efficiency, and all disposable containers are still removed.
+
+The disposable PKI supplies a public Go HTTPS trust bundle and a separate
+fixture root at `/etc/ssl/certs/native-lane-fixture.crt`, the directory Lightpanda
+scans before bundle fallback. Both public files are readable by the isolated
+browser UID; private keys retain their restricted modes and the host PKI
+directory remains private. TLS verification stays enabled in both runtimes.

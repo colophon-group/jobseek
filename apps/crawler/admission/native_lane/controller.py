@@ -387,6 +387,9 @@ def pki(directory: Path, native_image: str) -> dict[str, str]:
     # (10002), not just the parent credential owner (10001). Private keys below
     # retain their restricted modes; the host PKI directory remains private.
     _write(directory / "ca-bundle.pem", root_bundle.encode() + b"\n" + ca_pem, 0o444)
+    # Lightpanda scans individual files in /etc/ssl/certs before its bundle
+    # fallback. Install the fixture root there explicitly for its isolated UID.
+    _write(directory / "fixture-ca.crt", ca_pem, 0o444)
     for name, (certificate, private_key) in pairs.items():
         certificate = key_identifiers(certificate, key)
         _write(
