@@ -33,6 +33,8 @@ MERGE_GAP_SECONDS = 180
 MONITORED_SERVICES = frozenset(
     {
         "redis",
+        "ordinary-go",
+        "lease-reaper",
         "worker-1",
         "worker-2",
         "worker-3",

@@ -145,7 +145,7 @@ def test_validate_results_requires_all_crawler_scrape_targets_healthy() -> None:
     now = 1_800_000_000.0
     missing = _healthy_results(now)
     missing["crawler_up"].pop()
-    with pytest.raises(verify.VerificationError, match="crawler scrape target.*worker-3"):
+    with pytest.raises(verify.VerificationError, match="crawler scrape target.*ordinary-go"):
         verify.validate_results(missing, now=now, max_age_seconds=300)
 
     unhealthy = _healthy_results(now)
@@ -201,7 +201,7 @@ def test_validate_results_rejects_unexpected_or_duplicate_crawler_target() -> No
 
     missing_timestamp = _healthy_results(now)
     missing_timestamp["crawler_up_timestamp"].pop()
-    with pytest.raises(verify.VerificationError, match="crawler scrape target.*worker-3"):
+    with pytest.raises(verify.VerificationError, match="crawler scrape target.*ordinary-go"):
         verify.validate_results(missing_timestamp, now=now, max_age_seconds=300)
 
 
@@ -288,7 +288,7 @@ def test_capability_budget_covers_registry_bounded_fleet_with_headroom() -> None
     ) * len(RUNTIME_OUTCOMES["scrape"])
     fleet_maximum = len(verify.CAPABILITY_PIPELINE_INSTANCES) * per_process
 
-    assert fleet_maximum == 2_144
+    assert fleet_maximum == 536
     assert fleet_maximum < verify.SERIES_BUDGETS["crawler_capability_series"]
     assert (
         verify.SERIES_BUDGETS["crawler_capability_series"] < verify.SERIES_BUDGETS["crawler_series"]

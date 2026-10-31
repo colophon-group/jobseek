@@ -182,11 +182,18 @@ def test_window_marker_is_stopped_and_restoration_failure_is_nonzero(monkeypatch
         "_run_bounded",
         lambda *_args, **_kwargs: maintenance.CommandResult(0, False, False, 5.0),
     )
-    monkeypatch.setattr(maintenance, "_restoration_failures", lambda _services: ["worker-2"])
+    checked = []
+
+    def ready(service):
+        checked.append(service)
+        return service != "ordinary-go"
+
+    monkeypatch.setattr(maintenance, "_service_is_ready", ready)
     monkeypatch.setattr(maintenance, "_stop_window_marker", stopped.append)
 
     assert maintenance._run_window(args, _provenance()) == 70
     assert stopped == ["marker"]
+    assert set(checked) == {"redis", "ordinary-go", "lease-reaper", "exporter", "drain", "alloy"}
     assert "status=restoration-failed" in capsys.readouterr().out
 
 
