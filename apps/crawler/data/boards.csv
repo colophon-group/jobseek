@@ -2434,6 +2434,7 @@ edo,edo-greenhouse,https://job-boards.greenhouse.io/edo,greenhouse,"{""token"": 
 educate,educate-greenhouse,https://job-boards.greenhouse.io/educate,greenhouse,"{""token"": ""educate""}",skip,
 edwards-lifesciences,edwards-lifesciences-edwards-workday,https://edwards.wd5.myworkdayjobs.com/EdwardsCareers,workday,"{""company"": ""edwards"", ""wd_instance"": ""wd5"", ""site"": ""EdwardsCareers""}",workday,
 eei,eei-greenhouse,https://job-boards.greenhouse.io/eei,greenhouse,"{""token"": ""eei""}",skip,
+ef-education-first,ef-education-first-global,https://jobs.ef.com/en/sites/ef/jobs,oracle_hcm,"{""host"": ""fa-evad-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1001""}",oracle_hcm,"{""enrich"": [""description""]}"
 effectual,effectual-greenhouse,https://job-boards.greenhouse.io/effectual,greenhouse,"{""token"": ""effectual""}",skip,
 efficient-computer,efficient-computer-greenhouse,https://job-boards.greenhouse.io/efficientcomputer,greenhouse,"{""token"": ""efficientcomputer""}",skip,
 efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,oracle_hcm,"{""host"": ""fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1001""}",oracle_hcm,"{""host"": ""fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_1001"", ""enrich"": [""description""]}"
