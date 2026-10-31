@@ -2928,6 +2928,7 @@ forum-ventures,forum-ventures-ashby,https://jobs.ashbyhq.com/forum-ventures,ashb
 forward-networks,forward-networks-greenhouse,https://job-boards.greenhouse.io/forwardnetworks,greenhouse,"{""token"": ""forwardnetworks""}",skip,
 fospha,fospha-greenhouse,https://job-boards.greenhouse.io/fosphamarketing,greenhouse,"{""token"": ""fosphamarketing""}",skip,
 fossa,fossa-greenhouse,https://job-boards.greenhouse.io/fossainc,greenhouse,"{""token"": ""fossainc""}",skip,
+fosun-infrastructure,fosun-infrastructure-careers,https://www.fosuninfra.com/jobs.html,inline,"{""render"": false, ""include_hidden"": true, ""item_boundary_tag"": ""h4"", ""require_zero_proof"": true, ""steps"": [{""tag"": ""h4"", ""attr"": ""class=gdlr-core-accordion-item-title"", ""field"": ""title"", ""regex"": ""^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\u3001(.+)$""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true}], ""defaults"": {""locations"": [""Xining, Qinghai, China""]}}",skip,
 fotokite,fotokite-careers,https://fotokite.bamboohr.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/careers/\\d+""}",json-ld,"{""render"": true}"
 found,found-greenhouse,https://job-boards.greenhouse.io/found,greenhouse,"{""token"": ""found""}",skip,
 foundation-risk-partners,foundation-risk-partners-greenhouse,https://job-boards.greenhouse.io/foundationriskpartners,greenhouse,"{""token"": ""foundationriskpartners""}",skip,
