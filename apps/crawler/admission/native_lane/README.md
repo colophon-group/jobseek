@@ -64,6 +64,9 @@ networks and volumes; temporary credentials are deleted when the controller
 exits. No raw upstream/job content or subprocess environment is an artifact.
 Missing output, unequal canonical results, OOM/restarts, incomplete sampling or
 failed cleanup fail the run. A failed arm stops subsequent arms.
+Incomplete work reports numeric posting/title/failure/upload counts for each
+effective profile and the successful-monitor count, plus bounded service state
+and worker diagnostic counters. It still fails the arm and verifies cleanup.
 Compact success measurements and bounded failure diagnostics also appear in CI
 annotations, so the required CI reader can inspect them when raw logs are unavailable.
 

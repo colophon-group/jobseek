@@ -49,7 +49,15 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
             [],
             0,
             "PRIVATE_SHOULD_NOT_ECHO",
-            "ordinary worker startup stage: ownership\nR2_BUCKET PRIVATE_SHOULD_NOT_ECHO",
+            "ordinary worker startup stage: ownership\nR2_BUCKET PRIVATE_SHOULD_NOT_ECHO\n"
+            + json.dumps(
+                {
+                    "phase": "detail_failure",
+                    "kind": "failed",
+                    "cause_phase": "detail_preparation",
+                    "secret": "PRIVATE_SHOULD_NOT_ECHO",
+                }
+            ),
         ),
     )
     rows = controller.startup_diagnostics({}, ["ordinary"])
@@ -57,7 +65,63 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
     assert rows[0]["worker_startup_stages"] == ["ownership"]
     assert rows[0]["mentioned_settings"] == ["R2_BUCKET"]
     assert "operation not permitted" in rows[0]["error_categories"]
+    assert rows[0]["worker_diagnostic_counts"] == [
+        {
+            "phase": "detail_failure",
+            "kind": "failed",
+            "cause_phase": "detail_preparation",
+            "count": 1,
+        }
+    ]
     assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(rows)
+
+
+def test_collect_progress_preserves_counts_without_source_content() -> None:
+    expected = {
+        "PRIVATE_URL_A": {"profile": "api_rich"},
+        "PRIVATE_URL_B": {"profile": "jsonld_direct"},
+    }
+    result = driver.progress_counts(
+        [
+            {
+                "source_url": "PRIVATE_URL_A",
+                "titles": ["PRIVATE_TITLE"],
+                "scrape_failures": 0,
+                "tdm_reserved": False,
+            }
+        ],
+        [{"source_url": "PRIVATE_URL_A", "r2_uploaded": True, "html": "PRIVATE_BODY"}],
+        2,
+        expected,
+    )
+    assert result["expected_postings"] == 2
+    assert result["postings"] == result["titled_postings"] == 1
+    assert result["description_rows"] == result["uploaded_description_rows"] == 1
+    assert result["successful_monitors"] == 2
+    assert result["profiles"]["api_rich"]["uploaded"] == 1
+    assert result["profiles"]["jsonld_direct"]["postings"] == 0
+    assert "PRIVATE_" not in json.dumps(result)
+
+
+def test_comparison_failure_progress_rejects_extra_fields_and_invalid_counts() -> None:
+    result = controller.ComparisonFailure(
+        1,
+        "NATIVE_LANE_PROGRESS="
+        + json.dumps(
+            {
+                "postings": 12,
+                "failed_postings": -1,
+                "reserved_postings": True,
+                "private": "PRIVATE_SHOULD_NOT_ECHO",
+                "profiles": {"api_rich": {"postings": 12, "private": "PRIVATE_SHOULD_NOT_ECHO"}},
+            }
+        ),
+    ).diagnostic
+    assert result["progress"]["postings"] == 12
+    assert "failed_postings" not in result["progress"]
+    assert "reserved_postings" not in result["progress"]
+    assert result["progress"]["profiles"]["api_rich"] == {"postings": 12}
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(result)
 
 
 def test_legacy_comparator_trusts_only_fixture_ca_in_private_home(tmp_path, monkeypatch) -> None:

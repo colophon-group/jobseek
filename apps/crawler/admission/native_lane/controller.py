@@ -36,17 +36,61 @@ from admission.lightpanda_b0.controller import (
     _write,
 )
 from admission.native_lane.resources import PRICES, allocation, sample
-from admission.native_lane.workload import ORIGINS, workload_sha256
+from admission.native_lane.workload import ORIGINS, PROFILES, workload_sha256
 
 HERE = Path(__file__).resolve().parent
 SUPPORT = ["postgres", "redis", "typesense", "fixture", "reaper", "exporter", "drain"]
 ORDER = ("native", "legacy", "legacy", "native", "native", "legacy")
 
 
+def safe_progress(stderr: str) -> dict[str, Any] | None:
+    match = re.search(r"NATIVE_LANE_PROGRESS=(\{[^\n]{1,8192}\})", stderr)
+    if match is None:
+        return None
+    try:
+        raw = json.loads(match[1])
+    except ValueError:
+        return None
+    if not isinstance(raw, dict):
+        return None
+
+    def counts(value: Any, names: tuple[str, ...]) -> dict[str, int]:
+        if not isinstance(value, dict):
+            return {}
+        return {
+            name: number
+            for name in names
+            if type(number := value.get(name)) is int and 0 <= number <= 10_000_000
+        }
+
+    result: dict[str, Any] = counts(
+        raw,
+        (
+            "expected_postings",
+            "postings",
+            "titled_postings",
+            "failed_postings",
+            "reserved_postings",
+            "description_rows",
+            "uploaded_description_rows",
+            "successful_monitors",
+        ),
+    )
+    profiles = raw.get("profiles")
+    if isinstance(profiles, dict):
+        result["profiles"] = {
+            profile: counts(
+                profiles.get(profile), ("postings", "descriptions", "uploaded", "failed")
+            )
+            for profile in PROFILES
+        }
+    return result
+
+
 class ComparisonFailure(RuntimeError):
     def __init__(self, code: int, stderr: str) -> None:
         super().__init__("comparison subprocess failed")
-        self.diagnostic = {
+        self.diagnostic: dict[str, Any] = {
             "exit_code": code,
             "error_types": sorted(set(re.findall(r"\b([A-Z][A-Za-z]+Error)\b", stderr)))[:8],
             "driver_lines": sorted(
@@ -56,6 +100,8 @@ class ComparisonFailure(RuntimeError):
                 )
             )[:8],
         }
+        if (progress := safe_progress(stderr)) is not None:
+            self.diagnostic["progress"] = progress
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None, timeout: int = 60) -> str:
@@ -105,6 +151,53 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                     timeout=10,
                 )
                 text = (logs.stdout + "\n" + logs.stderr)[:131072]
+                diagnostics: dict[tuple[str, str, str], int] = {}
+                phases = {
+                    "claim",
+                    "task",
+                    "heartbeat",
+                    "monitor_failure",
+                    "detail_failure",
+                    "detail_preparation",
+                    "posting_write",
+                    "monitor",
+                    "scrape",
+                }
+                kinds = {
+                    "failed",
+                    "deadline",
+                    "unacknowledged",
+                    "authority_lost",
+                    "observation",
+                    "configuration",
+                    "canceled",
+                    "timeout",
+                }
+                for line in text.splitlines():
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(event, dict):
+                        continue
+                    phase, kind = event.get("phase"), event.get("kind")
+                    cause = event.get("cause_phase", "")
+                    if (
+                        isinstance(phase, str)
+                        and isinstance(kind, str)
+                        and phase in phases
+                        and kind in kinds
+                    ):
+                        key = (
+                            phase,
+                            kind,
+                            cause if isinstance(cause, str) and cause in phases else "",
+                        )
+                        diagnostics[key] = diagnostics.get(key, 0) + 1
+                row["worker_diagnostic_counts"] = [
+                    {"phase": phase, "kind": kind, "cause_phase": cause, "count": count}
+                    for (phase, kind, cause), count in sorted(diagnostics.items())[:16]
+                ]
                 row["worker_startup_stages"] = sorted(
                     set(re.findall(r"ordinary worker startup stage: ([a-z_]{1,40})", text))
                 )[:8]
@@ -410,7 +503,7 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
         if isinstance(error, ComparisonFailure):
             failure["diagnostic"] = error.diagnostic
         result["failure"] = failure
-        if stage == "startup":
+        if stage in ("startup", "collect"):
             result["startup_diagnostics"] = startup_diagnostics(env, services)
     finally:
         try:

@@ -141,7 +141,7 @@ production privilege-drop/capability/PID contract. Its dynamic address pools als
 exclude the fixed renderer and origin-fixture addresses, preventing bootstrap
 containers from occupying them. A regression verifies fixed addresses are outside
 automatic pools; see [Docker's static-address guidance](https://docs.docker.com/reference/cli/docker/network/connect/).
-All 28 local tests, lint/format, typing, actionlint and Compose parsing pass.
+All 30 local tests, lint/format, typing, actionlint and Compose parsing pass.
 The renderer's private key now uses the required `0400` mode and its temporary
 filesystem matches the isolated child UID and 16 MiB production contract. A local
 qualification feeds the generated certificate bundle and exact comparison
@@ -149,7 +149,11 @@ arguments through the actual Go service argument/TLS loader and exact client
 identity validator; all pass. Temporary keys, source and Go cache are removed.
 The next comparison includes the verified latest Lightpanda 11423 pin and the
 1133 native rollback correction, so final qualification tests the combined
-candidate. Full Linux comparison remains unqualified. Bounded annotations retain
+candidate. The next Linux run starts all actors and reaches work collection, then times out
+before complete canonical, monitor and upload work. The failure report now
+retains bounded counts by effective profile, plus current service state and
+allowlisted worker phase/kind counters, before cleanup. No deadline, capacity
+or completion requirement is relaxed. Full Linux comparison remains unqualified. Bounded annotations retain
 safe engine/startup codes, not raw logs. Every failed arm has verified cleanup.
 
 The production timeout fix is deployed as 1132 through

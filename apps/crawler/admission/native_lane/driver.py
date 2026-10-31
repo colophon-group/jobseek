@@ -7,13 +7,14 @@ import asyncio
 import hashlib
 import json
 import os
+import sys
 import time
 import urllib.parse
 import urllib.request
 import uuid
 from typing import Any
 
-from admission.native_lane.workload import boards, jobs, workload_sha256
+from admission.native_lane.workload import PROFILES, boards, jobs, workload_sha256
 
 DATABASE = "postgresql://admission:admission@postgres:5432/admission"
 REDIS = "redis://redis:6379/0"
@@ -176,6 +177,36 @@ async def feed(pool: Any) -> dict[str, Any]:
     return {"due": due, "monitors": len(monitors), "details": len(details)}
 
 
+def progress_counts(
+    rows: list[Any], descriptions: list[Any], successful_monitors: int, expected: dict[str, Any]
+) -> dict[str, Any]:
+    profiles = {
+        profile: {"postings": 0, "descriptions": 0, "uploaded": 0, "failed": 0}
+        for profile in PROFILES
+    }
+    for row in rows:
+        profile = expected.get(row["source_url"], {}).get("profile")
+        if profile in profiles:
+            profiles[profile]["postings"] += 1
+            profiles[profile]["failed"] += int(bool(row["scrape_failures"]))
+    for row in descriptions:
+        profile = expected.get(row["source_url"], {}).get("profile")
+        if profile in profiles:
+            profiles[profile]["descriptions"] += 1
+            profiles[profile]["uploaded"] += int(row["r2_uploaded"] is True)
+    return {
+        "expected_postings": len(expected),
+        "postings": len(rows),
+        "titled_postings": sum(bool(row["titles"]) for row in rows),
+        "failed_postings": sum(bool(row["scrape_failures"]) for row in rows),
+        "reserved_postings": sum(bool(row["tdm_reserved"]) for row in rows),
+        "description_rows": len(descriptions),
+        "uploaded_description_rows": sum(row["r2_uploaded"] is True for row in descriptions),
+        "successful_monitors": successful_monitors,
+        "profiles": profiles,
+    }
+
+
 async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str, Any]:
     from src.lightpanda.admission import STABLE_COLUMNS
 
@@ -205,6 +236,12 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         ):
             break
         if time.monotonic() >= deadline:
+            print(
+                "NATIVE_LANE_PROGRESS="
+                + json.dumps(progress_counts(rows, descriptions, finished_boards, expected)),
+                file=sys.stderr,
+                flush=True,
+            )
             raise RuntimeError("comparison did not finish canonical, monitor and upload work")
         await asyncio.sleep(0.25)
     if {row["source_url"] for row in rows} != set(expected):
