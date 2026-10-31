@@ -76,7 +76,7 @@ async def bootstrap(pool: Any, redis: Any) -> dict[str, Any]:
             """INSERT INTO job_board(id,company_id,board_slug,crawler_type,board_url,metadata,
                monitor_needs_browser,scraper_needs_browser,check_interval_minutes,
                scrape_interval_hours,next_check_at)
-               VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,1440,24,NULL)""",
+               VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,1440,24,now()+interval '1 day')""",
             board_id,
             COMPANY,
             board["slug"],

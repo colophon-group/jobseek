@@ -127,11 +127,16 @@ postings across rich API, direct DOM, rendered DOM and direct JSON-LD routes.
 Each arm includes the actual worker, renderer/browser, reaper, PostgreSQL,
 Redis, exporter, drain and Typesense. Its first Linux run failed before work
 began because an empty proxy-list environment value is invalid in the retained
-Python settings. The corrected fixture passes all 22 local contract tests.
-The next Linux comparison also failed; its selected log endpoint returns HTTP
-502. Bounded failure annotations expose step outcomes and safe diagnostic fields
-through the required CI tool, without raw stderr or environments. The complete
-comparison remains unqualified until the new-head run passes.
+Python settings. The fixture passes all 22 local contract tests. A separate real
+PostgreSQL/Redis check found that bootstrap inserted a NULL monitor deadline
+despite the canonical NOT NULL constraint. Corrected bootstrap keeps all four
+boards future-scheduled before feed, then queues three monitors and twelve
+details in the shared due window. It passes with all production-cardinality
+lookup tables; temporary services and caches are removed afterward. This proves
+the local setup fix, not the unavailable prior CI failure's exact cause.
+Bounded failure annotations expose step outcomes and safe diagnostic fields
+when selected logs return HTTP 502. The complete Linux comparison remains
+unqualified until the new-head run passes.
 
 The same batch addresses controlled monitor task expiry across types. The actual
 PostgreSQL/Redis regression reproduces on Lever, Oracle HCM and direct DOM:
