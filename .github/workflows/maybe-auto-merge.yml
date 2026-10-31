@@ -57,6 +57,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
           INPUT_PR: ${{ github.event.inputs.pr || '' }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |

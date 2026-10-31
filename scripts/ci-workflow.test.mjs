@@ -2536,6 +2536,7 @@ test("maybe-auto-merge reconciles the queue on automatic and required gate wakes
   assert.match(maybeAutoMergeWorkflow, /schedule:\n    - cron: "\*\/15 \* \* \* \*"/);
   assert.match(maybeAutoMergeWorkflow, /workflow_dispatch:/);
   assert.match(job, /select-company-prs\.sh/);
+  assert.match(job, /GITHUB_EVENT_PATH: \$\{\{ github\.event_path \}\}/);
   assert.match(job, /ref: \$\{\{ github\.workflow_sha \}\}/);
   assert.match(job, /continuing the company queue/);
 });
@@ -3041,7 +3042,9 @@ test("company reconfiguration authority excludes source, identity deletion, and 
 function runCompanyPrSelector(pages, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), "select-company-prs-"));
   const output = join(dir, "output");
+  const eventPath = join(dir, "event.json");
   const gh = join(dir, "gh");
+  writeFileSync(eventPath, JSON.stringify(options.payload ?? {}));
   writeFileSync(gh, `#!/bin/sh
 test "$1 $2" = "api --paginate" || exit 4
 printf '%s\n' "$MOCK_PAGES"
@@ -3055,6 +3058,7 @@ exit "$MOCK_STATUS"
       PATH: `${dir}:${process.env.PATH}`,
       GH_TOKEN: "fake", REPO: "colophon-group/jobseek",
       RUNNER_TEMP: dir, GITHUB_OUTPUT: output,
+      GITHUB_EVENT_PATH: eventPath,
       EVENT_NAME: options.event ?? "schedule", INPUT_PR: options.pr ?? "",
       MOCK_PAGES: pages.map((page) => JSON.stringify(page)).join("\n"),
       MOCK_STATUS: String(options.status ?? 0),
@@ -3078,12 +3082,45 @@ test("company queue selection paginates and includes config reconfiguration bran
       pr(4, "fix-crawler/fork", { head: { ref: "fix-crawler/fork", repo: { full_name: "external/jobseek" } } }),
       pr(5, "add-company/other-base", { base: { ref: "other" } })],
   ];
-  for (const event of ["schedule", "pull_request_target", "workflow_run"]) {
-    const result = runCompanyPrSelector(pages, { event });
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, "1\n2\n");
-    assert.match(result.outputs, /^count=2$/m);
-  }
+  const result = runCompanyPrSelector(pages, { event: "schedule" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "1\n2\n");
+  assert.match(result.outputs, /^count=2$/m);
+});
+
+test("company PR and check events target their own PR", () => {
+  const opened = runCompanyPrSelector([], {
+    event: "pull_request_target", status: 1,
+    payload: { pull_request: { number: 123 } },
+  });
+  assert.equal(opened.status, 0, opened.stderr);
+  assert.equal(opened.stdout, "123\n");
+
+  const checked = runCompanyPrSelector([], {
+    event: "workflow_run", status: 1,
+    payload: { workflow_run: { pull_requests: [{ number: 321 }] } },
+  });
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.equal(checked.stdout, "321\n");
+
+  const dispatched = runCompanyPrSelector([[{
+    number: 456, draft: false, base: { ref: "main" },
+    head: { ref: "add-company/example", repo: { full_name: "colophon-group/jobseek" } },
+  }]], {
+    event: "workflow_run",
+    payload: { workflow_run: { pull_requests: [], head_branch: "add-company/example",
+      head_repository: { full_name: "colophon-group/jobseek" } } },
+  });
+  assert.equal(dispatched.status, 0, dispatched.stderr);
+  assert.equal(dispatched.stdout, "456\n");
+
+  const unrelated = runCompanyPrSelector([], {
+    event: "workflow_run", status: 1,
+    payload: { workflow_run: { pull_requests: [], head_branch: "main",
+      head_repository: { full_name: "colophon-group/jobseek" } } },
+  });
+  assert.equal(unrelated.status, 0, unrelated.stderr);
+  assert.equal(unrelated.stdout, "");
 });
 
 test("company queue manual retry validates the PR and listing failures fail closed", () => {
