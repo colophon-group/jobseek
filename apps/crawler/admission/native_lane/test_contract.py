@@ -48,7 +48,10 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
         lambda *a, **kw: subprocess.CompletedProcess(
             [],
             0,
-            "PRIVATE_SHOULD_NOT_ECHO",
+            "PRIVATE_SHOULD_NOT_ECHO\n"
+            "2026/10/31 04:00:00 ordinary rich monitor fetch: failed\n"
+            "2026/10/31 04:00:00 ordinary rich monitor PRIVATE: failed\n"
+            "2026/10/31 04:00:00 ordinary rich monitor fetch: PRIVATE\n",
             "ordinary worker startup stage: ownership\nR2_BUCKET PRIVATE_SHOULD_NOT_ECHO\n"
             + json.dumps(
                 {
@@ -71,7 +74,8 @@ def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch)
             "kind": "failed",
             "cause_phase": "detail_preparation",
             "count": 1,
-        }
+        },
+        {"phase": "fetch", "kind": "failed", "cause_phase": "", "count": 1},
     ]
     assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(rows)
 
@@ -122,6 +126,37 @@ def test_comparison_failure_progress_rejects_extra_fields_and_invalid_counts() -
     assert "reserved_postings" not in result["progress"]
     assert result["progress"]["profiles"]["api_rich"] == {"postings": 12}
     assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(result)
+
+
+def test_progress_distinguishes_rendered_monitor_attempt_from_upstream_request() -> None:
+    result = driver.progress_counts(
+        [],
+        [],
+        0,
+        {},
+        [
+            {
+                "board_slug": "dom_rendered",
+                "checked": True,
+                "succeeded": False,
+                "consecutive_failures": 1,
+                "last_error": "PRIVATE_SHOULD_NOT_ECHO",
+            }
+        ],
+        {
+            "origin-2.lane.bench.test/listing": 1,
+            "origin-2.lane.bench.test/jobs/dom_rendered/0": 2,
+            "PRIVATE_SHOULD_NOT_ECHO": 10,
+        },
+    )
+    counts = result["profiles"]["dom_rendered"]
+    assert counts["monitor_checked"] == counts["monitor_failures"] == 1
+    assert counts["monitor_succeeded"] == 0
+    assert counts["listing_requests"] == 1
+    assert counts["detail_requests"] == 2
+    safe = controller.safe_progress("NATIVE_LANE_PROGRESS=" + json.dumps(result))
+    assert safe is not None and safe["profiles"]["dom_rendered"] == counts
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(safe)
 
 
 def test_legacy_comparator_trusts_only_fixture_ca_in_private_home(tmp_path, monkeypatch) -> None:

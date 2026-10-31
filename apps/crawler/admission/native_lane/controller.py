@@ -80,7 +80,18 @@ def safe_progress(stderr: str) -> dict[str, Any] | None:
     if isinstance(profiles, dict):
         result["profiles"] = {
             profile: counts(
-                profiles.get(profile), ("postings", "descriptions", "uploaded", "failed")
+                profiles.get(profile),
+                (
+                    "postings",
+                    "descriptions",
+                    "uploaded",
+                    "failed",
+                    "monitor_checked",
+                    "monitor_succeeded",
+                    "monitor_failures",
+                    "listing_requests",
+                    "detail_requests",
+                ),
             )
             for profile in PROFILES
         }
@@ -162,6 +173,16 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                     "posting_write",
                     "monitor",
                     "scrape",
+                    "startup",
+                    "fetch",
+                    "processing",
+                    "preflight",
+                    "cycle",
+                    "failure",
+                    "receipt",
+                    "settlement",
+                    "transport_selection",
+                    "host_success",
                 }
                 kinds = {
                     "failed",
@@ -172,12 +193,30 @@ def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[s
                     "configuration",
                     "canceled",
                     "timeout",
+                    "query_cancelled",
+                    "deadlock",
+                    "lock_timeout",
+                    "database",
                 }
                 for line in text.splitlines():
+                    # The native worker uses Go's standard logger, whose safe
+                    # ClaimRunError text follows its timestamp. Do not discard
+                    # those errors by expecting JSON-only structured logging.
+                    message = re.search(
+                        r"ordinary rich monitor ([a-z_]+): ([a-z_]+)"
+                        r"(?: cause_phase=([a-z_]+))?(?:\s|$)",
+                        line,
+                    )
                     try:
                         event = json.loads(line)
                     except ValueError:
-                        continue
+                        if message is None:
+                            continue
+                        event = {
+                            "phase": message[1],
+                            "kind": message[2],
+                            "cause_phase": message[3] or "",
+                        }
                     if not isinstance(event, dict):
                         continue
                     phase, kind = event.get("phase"), event.get("kind")

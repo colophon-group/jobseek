@@ -66,7 +66,11 @@ Missing output, unequal canonical results, OOM/restarts, incomplete sampling or
 failed cleanup fail the run. A failed arm stops subsequent arms.
 Incomplete work reports numeric posting/title/failure/upload counts for each
 effective profile and the successful-monitor count, plus bounded service state
-and worker diagnostic counters. It still fails the arm and verifies cleanup.
+and worker diagnostic counters. Per-route monitor outcomes and upstream request
+counts distinguish unclaimed work from attempted rendering. Native diagnostic
+text is parsed using the worker's bounded error format; arbitrary messages and
+request identities never enter failure annotations. An incomplete arm still
+fails and verifies cleanup.
 Compact success measurements and bounded failure diagnostics also appear in CI
 annotations, so the required CI reader can inspect them when raw logs are unavailable.
 

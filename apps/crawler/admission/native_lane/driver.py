@@ -12,6 +12,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from admission.native_lane.workload import PROFILES, boards, jobs, workload_sha256
@@ -178,7 +179,12 @@ async def feed(pool: Any) -> dict[str, Any]:
 
 
 def progress_counts(
-    rows: list[Any], descriptions: list[Any], successful_monitors: int, expected: dict[str, Any]
+    rows: list[Any],
+    descriptions: list[Any],
+    successful_monitors: int,
+    expected: dict[str, Any],
+    monitor_states: Sequence[Any] = (),
+    upstream_requests: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     profiles = {
         profile: {"postings": 0, "descriptions": 0, "uploaded": 0, "failed": 0}
@@ -194,6 +200,23 @@ def progress_counts(
         if profile in profiles:
             profiles[profile]["descriptions"] += 1
             profiles[profile]["uploaded"] += int(row["r2_uploaded"] is True)
+    for board in monitor_states:
+        profile = board["board_slug"]
+        if profile in profiles:
+            profiles[profile].update(
+                monitor_checked=int(board["checked"]),
+                monitor_succeeded=int(board["succeeded"]),
+                monitor_failures=board["consecutive_failures"],
+            )
+    for board in boards():
+        profile = profiles[board["slug"]]
+        origin = board["domain"]
+        profile["listing_requests"] = (upstream_requests or {}).get(origin + "/listing", 0)
+        profile["detail_requests"] = sum(
+            count
+            for path, count in (upstream_requests or {}).items()
+            if path.startswith(origin + "/jobs/")
+        )
     return {
         "expected_postings": len(expected),
         "postings": len(rows),
@@ -236,9 +259,23 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
         ):
             break
         if time.monotonic() >= deadline:
+            monitor_states = await pool.fetch(
+                "SELECT board_slug,last_checked_at IS NOT NULL AS checked,"
+                "last_success_at IS NOT NULL AS succeeded,consecutive_failures FROM job_board"
+            )
+            objects = request("/report", storage=True)
             print(
                 "NATIVE_LANE_PROGRESS="
-                + json.dumps(progress_counts(rows, descriptions, finished_boards, expected)),
+                + json.dumps(
+                    progress_counts(
+                        rows,
+                        descriptions,
+                        finished_boards,
+                        expected,
+                        monitor_states,
+                        objects["requests"],
+                    )
+                ),
                 file=sys.stderr,
                 flush=True,
             )
