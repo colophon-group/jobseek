@@ -40,7 +40,7 @@ class _SnapshotChanged(ValueError):
 
 
 _TRANSIENT_STATUSES = frozenset({202, 401, 403, 429})
-_PAGE_COUNT_RE = re.compile(r"\bPage\s+\d+\s+of\s+(\d+)\b", re.IGNORECASE)
+_PAGE_COUNT_RE = re.compile(r"\b(?:Page\s+\d+\s+of|Pagina\s+\d+\s+di)\s+(\d+)\b", re.IGNORECASE)
 _SECTION_RE = re.compile(
     r"[\"']section[\"']\s*:\s*[\"']([^\"']+)[\"']",
     re.IGNORECASE,
@@ -109,11 +109,17 @@ def _canonical_job_url(raw_url: str, board_url: str) -> str | None:
         return None
     parsed = urlparse(candidate)
     segments = [segment for segment in parsed.path.split("/") if segment]
+    prefix = ""
+    if len(segments) == 4:
+        board_segments = [segment for segment in urlparse(board_url).path.split("/") if segment]
+        if len(board_segments) < 2 or segments[0] != board_segments[0]:
+            return None
+        prefix = f"/{segments.pop(0)}"
     if len(segments) != 3 or segments[0].lower() != "jobs":
         return None
     if not segments[1] or re.fullmatch(r"[A-Za-z]{2}", segments[2]) is None:
         return None
-    return f"https://{parsed.hostname}/jobs/{segments[1]}/{segments[2].lower()}/"
+    return f"https://{parsed.hostname}{prefix}/jobs/{segments[1]}/{segments[2].lower()}/"
 
 
 def _parse_job_urls(page: str, board_url: str) -> set[str]:

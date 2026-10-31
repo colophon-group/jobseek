@@ -78,12 +78,60 @@ class TestParsing:
 
     def test_page_count_uses_advertised_maximum(self):
         assert _page_count("Page 1 of 3 ... Page 1 of 3") == 3
+        assert _page_count("Pagina 1 di 2 ... Pagina 2 di 2") == 2
+
+    def test_zinrec_prefixed_urls_are_tenant_bound(self):
+        board = "https://zinrec.intervieweb.it/starhotels/it/career"
+        assert _canonical_job_url("/starhotels/jobs/role-101/it/", board) == (
+            "https://zinrec.intervieweb.it/starhotels/jobs/role-101/it/"
+        )
+        assert _canonical_job_url("/jobs/standard-102/en/", board) == (
+            "https://zinrec.intervieweb.it/jobs/standard-102/en/"
+        )
+        assert _canonical_job_url("/other/jobs/wrong-103/it/", board) is None
+        assert (
+            _canonical_job_url("https://evil.example/starhotels/jobs/wrong-104/it/", board) is None
+        )
+        assert _canonical_job_url("/starhotels/jobs/wrong-105/italian/", board) is None
 
     def test_page_count_defaults_to_one(self):
         assert _page_count("No pagination") == 1
 
 
 class TestMonitor:
+    async def test_zinrec_italian_snapshot_converges_on_27_unique_jobs(self):
+        board = "https://zinrec.intervieweb.it/starhotels/it/career"
+
+        def listing(start: int, stop: int, page: int) -> str:
+            links = "".join(
+                f'<a href="/starhotels/jobs/role-{number}/it/">Role</a>'
+                for number in range(start, stop)
+            )
+            return f"Pagina {page} di 2 {links}"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                body = (
+                    '<input id="url-for-announces" value="/app.php?module=newcareer">'
+                    '<a data-order="name" class="active">Name</a>'
+                    '<script>{"section":"starhotels"}</script>'
+                    "vacancyListCareer researchAnnounces " + listing(1, 16, 1)
+                )
+                return httpx.Response(200, text=body, request=request)
+            assert request.method == "POST"
+            assert parse_qs(request.content.decode())["page"] == ["2"]
+            return httpx.Response(
+                200,
+                json={"success": True, "data": listing(16, 28, 2)},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": board}, client)
+
+        assert len(result) == 27
+        assert "https://zinrec.intervieweb.it/starhotels/jobs/role-27/it/" in result
+
     async def test_discovers_all_post_paginated_jobs(self):
         seen: list[tuple[str, str]] = []
 
