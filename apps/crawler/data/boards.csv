@@ -7185,6 +7185,7 @@ tecan,tecan-jobstreet,https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn
 tech-holding,tech-holding-greenhouse,https://job-boards.greenhouse.io/techholding,greenhouse,"{""token"": ""techholding""}",skip,
 tech-mahindra,tech-mahindra-careers-smartrecruiters,https://careers.smartrecruiters.com/TechMahindraLtd1,smartrecruiters,"{""company_identifier"": ""TechMahindraLtd1""}",smartrecruiters,
 techland,techland-careers,https://careers.smartrecruiters.com/TechlandSA,smartrecruiters,"{""token"": ""TechlandSA""}",smartrecruiters,
+technogym,technogym-careers,https://careers.technogym.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.technogym.com/googlefeed.xml""}",skip,
 technology,technology-recruitee,https://technology.recruitee.com,recruitee,"{""token"": ""technology""}",skip,
 techtorch,techtorch-ashby,https://jobs.ashbyhq.com/techtorch,ashby,"{""token"": ""techtorch""}",skip,
 tecovas,tecovas-greenhouse,https://job-boards.greenhouse.io/tecovas,greenhouse,"{""token"": ""tecovas""}",skip,
