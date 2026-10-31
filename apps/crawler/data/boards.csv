@@ -5742,6 +5742,7 @@ pixellot,pixellot-careers,https://www.pixellot.tv/career/,dom,"{""url_filter"": 
 pjt-partners,pjt-partners-careers-workday,https://pjtpartners.wd1.myworkdayjobs.com/Careers,workday,"{""company"": ""pjtpartners"", ""wd_instance"": ""wd1"", ""site"": ""Careers""}",workday,
 placements-io,placements-io-greenhouse,https://job-boards.greenhouse.io/placementsio,greenhouse,"{""token"": ""placementsio""}",skip,
 placer-ai,placer-ai-greenhouse,https://job-boards.greenhouse.io/placerlabs,greenhouse,"{""token"": ""placerlabs""}",skip,
+plachutta,plachutta-careers,https://www.plachutta.at/karriere/,sitemap,"{""sitemap_url"": ""https://www.plachutta.at/wso_jobs-sitemap.xml"", ""url_filter"": ""^https?://(?:www\\.)?plachutta\\.at/job/""}",dom,"{""scope"": ""article.wso_jobs"", ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=wso-intro-job-time"", ""field"": ""employment_type"", ""regex"": ""^(Vollzeit|Teilzeit|fallweise)""}, {""text"": ""Aufgabenbereiche"", ""field"": ""description"", ""stop"": ""Hier bewerben"", ""html"": true}], ""defaults"": {""locations"": [""Vienna, Austria""]}}"
 plaid,plaid-ashby,https://jobs.ashbyhq.com/plaid,ashby,"{""token"": ""plaid""}",skip,
 plaid,plaid-careers,https://jobs.lever.co/plaid,lever,"{""token"": ""plaid""}",skip,
 plain,plain-ashby,https://jobs.ashbyhq.com/plain,ashby,"{""token"": ""plain""}",skip,
