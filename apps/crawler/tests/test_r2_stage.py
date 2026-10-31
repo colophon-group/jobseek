@@ -6,14 +6,59 @@ versions now hash only the normalized HTML that ``put_description`` uploads.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.core.description_store import content_hash
+from src.core.jsonld import parse_rendered_html
 from src.processing.r2_stage import (
+    _build_r2_extras,
     _compute_r2_hash,
     _compute_r2_hash_legacy,
     _deep_sort,
     _deep_sort_legacy,
     _stage_r2_pending,
 )
+
+
+def test_starhotels_salary_suppression_reaches_staging_boundary():
+    target = "https://starhotels.talosats-careers.com/job/972748"
+    other = "https://starhotels.talosats-careers.com/job/977321"
+    fixture = (
+        Path(__file__).parent.parent
+        / "go/jsonld-detail/testdata/starhotels_talos_salary_conflict.html"
+    ).read_text()
+    config = {"ignore_base_salary_urls": [target]}
+
+    def staged_fields(url: str) -> tuple[dict, tuple]:
+        content = parse_rendered_html(url, config, fixture)
+        values = dict(
+            title=content.title,
+            description=content.description,
+            language="en",
+            locations=content.locations,
+            localizations=None,
+            extras=content.extras,
+            metadata=content.metadata,
+            date_posted=content.date_posted,
+            base_salary=content.base_salary,
+            employment_type=content.employment_type,
+            job_location_type=content.job_location_type,
+        )
+        compat = _build_r2_extras(
+            **{
+                k: v
+                for k, v in values.items()
+                if k not in {"description", "language", "localizations"}
+            }
+        )
+        pending = _stage_r2_pending(**values)
+        assert pending is not None and pending[0] == content.description
+        return compat, pending
+
+    suppressed, _ = staged_fields(target)
+    retained, _ = staged_fields(other)
+    assert "base_salary" not in suppressed
+    assert retained["base_salary"] == {"currency": "GBP", "min": 13, "max": 13, "unit": "year"}
 
 
 class TestDeepSort:
