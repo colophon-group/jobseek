@@ -2546,6 +2546,8 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /label-pr\.sh/);
   assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
   assert.match(maybeAutoMergeScript, /merge_company_csv_rebase\.py/);
+  assert.match(maybeAutoMergeScript, /census_conflicted=true[\s\S]*uv run --frozen python -m src\.lightpanda\.census/);
+  assert.match(maybeAutoMergeWorkflow, /astral-sh\/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4/);
   assert.doesNotMatch(maybeAutoMergeScript, /grep -qxF/);
   assert.match(maybeAutoMergeScript, /dispatch-pr-checks\.sh/);
   assert.match(maybeAutoMergeScript, /required_ci_state\(\)/);

@@ -49,6 +49,8 @@ jobs:
           cp .github/scripts/dispatch-pr-checks.sh "$RUNNER_TEMP/trusted-scripts/dispatch-pr-checks.sh"
           chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
 
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
       - name: Select PRs
         id: prs
         env:
