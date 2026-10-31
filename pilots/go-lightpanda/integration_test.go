@@ -17,17 +17,17 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
 
-const lightpandaPinnedDarwinArm64SHA256 = "a107cbaac77c0ecd0b5815958b7fbbf7bbad66e19ea984afda8a8bf3c022bbdd"
+const lightpandaPinnedDarwinArm64SHA256 = "273a4659510f8c48e6c5f26a2eee6aa20051632210cbf0f59975ac705056c44f"
 
 var lightpandaPinnedSHA256 = map[string]string{
-	"amd64": "9dec394124212f796724d4d32737ba66fdf0319ae6faaf8a1df8cccb4a70e23f",
-	"arm64": "74480d0994b0a4e02f7a4956a71bd2827954dbd6fbc18bd5df0ffb1e7258263f",
+	"amd64": "19f3fee25fb14bb75a1e0c1e0f8ab9cce842950544e4a144fbad3884c94b98a3",
+	"arm64": "97710997faea70bb0f22f9b07ba3a9701b47dbb6a71f679150b040e70c565cf3",
 }
 
 func TestLightpandaIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.1.0-nightly.11326+948d77378 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11423+56980afde integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -118,7 +118,7 @@ func TestLightpandaIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.1.0-nightly.11326+948d77378 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11423+56980afde integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -183,7 +183,7 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda 1.1.0-nightly.11326+948d77378 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.1.0-nightly.11423+56980afde integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
