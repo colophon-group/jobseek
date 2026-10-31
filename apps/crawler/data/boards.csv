@@ -7686,7 +7686,7 @@ uptalent-io,uptalent-io-careers,https://apply.workable.com/uptalent-dot-i-o,work
 upvest,upvest-careers,https://jobs.ashbyhq.com/upvest,ashby,,skip,
 upwork,upwork-greenhouse,https://job-boards.greenhouse.io/upwork,greenhouse,"{""token"": ""upwork""}",skip,
 ura,ura-greenhouse,https://job-boards.greenhouse.io/oura,greenhouse,"{""token"": ""oura""}",skip,
-urban-drinks-factory,urban-drinks-factory-jobs,https://www.supernaturalclub.ch/pages/jobs,inline,"{""fetch_contains"": ""Nos postes ouverts"", ""item_boundary_tag"": ""summary"", ""require_zero_proof"": true, ""steps"": [{""tag"": ""summary"", ""field"": ""title""}, {""tag"": ""p"", ""text"": ""Lieu"", ""field"": ""location"", ""regex"": ""Lieu\\s*:\\s*(.+)""}, {""tag"": ""p"", ""text"": ""Taux d"", ""field"": ""description"", ""html"": true, ""stop"": ""Tu veux rejoindre"", ""from"": 0}]}",skip,
+urban-drinks-factory,urban-drinks-factory-jobs,https://www.supernaturalclub.ch/pages/jobs,inline,"{""fetch_contains"": ""Nos postes ouverts"", ""item_boundary_tag"": ""summary"", ""require_zero_proof"": true, ""steps"": [{""tag"": ""summary"", ""field"": ""title""}, {""tag"": ""p"", ""text"": ""Lieu"", ""field"": ""location"", ""regex"": ""Lieu\\s*:\\s*(.+)""}, {""tag"": ""p"", ""text"": ""Taux d"", ""field"": ""description"", ""html"": true, ""stop"": ""Tu veux rejoindre"", ""from"": 0}], ""preserve_single_location"": true}",skip,
 urban-outfitters,urban-outfitters-careers,https://stores-na-urbn.icims.com/,icims,,json-ld,
 urban-outfitters,urban-outfitters-homeoffice-eu,https://homeoffice-eu-urbn.icims.com/,icims,,json-ld,
 urban-outfitters,urban-outfitters-homeoffice-na,https://homeoffice-na-urbn.icims.com/,icims,,json-ld,
