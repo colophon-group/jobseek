@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-10-31 19:54 UTC**. The migration goal remains active.
+Current checkpoint: **2026-10-31 20:15 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -99,14 +99,28 @@ active sources, but do not prove repair of that inactive historical row.
    Do not force work, reset backoff, replace the route wholesale or add Chromium.
    Establish whether this is a migration regression or an upstream/source failure;
    make the smallest shared fix if needed and preserve the enabled board.
-2. **Close the original requirement audit after that diagnosis.** Current-release
+2. **Qualify the original named browser/title case.** Its zero-active-job state
+   does not close the original requirement. Readback at 20:05 records 21 empty
+   cycles, 34 historical postings at three or more failures, and one missing-title
+   row among those failures. The last nonempty monitor was October 30. Current
+   committed reference fixtures do not retain the actual failed extraction input.
+   A one-row candidate uses the existing native BambooHR monitor and HTTP
+   `api_sniffer` detail configuration, matching nine tenant-normalized reference
+   boards. It preserves the board key, origin and full tenant inventory scope;
+   it adds no engine or runtime version change. Native registry admission and
+   the existing multi-provider Python-oracle/parser tests pass locally, as does
+   offline CSV/census validation. Required CI and supported data-only publication
+   remain before normal runtime qualification. Require a complete API inventory
+   and correct required-title/detail output, or explicit upstream empty/gone
+   classification; do not infer repair from inactive records or fabricate output.
+3. **Close the original requirement audit after both diagnoses.** Current-release
    installation, CSV/SQL/queue and original UUID checks, downstream effects,
    controlled comparisons and production stability are qualified within their
-   stated limits. Keep large existing backlogs, historical inactive data and old
-   hash metadata explicit. They do not justify rewriting approved offline/control
-   Python. New-company variants and renderer relocation remain separate work.
-   Preserve the qualified rollback assets through the affected normal schedule
-   observation, then use supported retirement rather than deleting them manually.
+   stated limits. Keep large existing backlogs and old hash metadata explicit.
+   They do not justify rewriting approved offline/control Python. New-company
+   variants and renderer relocation remain separate work. Preserve qualified
+   rollback assets through the affected normal schedule observation, then use
+   supported retirement rather than deleting them manually.
 
 All five tracked formerly deadlettered monitor cases are active with zero
 consecutive failures after natural 1139 successes: Accenture, Beisen, both
