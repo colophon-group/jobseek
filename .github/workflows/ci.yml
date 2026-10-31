@@ -2050,15 +2050,56 @@ jobs:
   data-validation:
     name: Data Validation
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: docker.io/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_registry_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_registry_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/typesense-exporter/go.mod
+          cache-dependency-path: apps/crawler/go/typesense-exporter/go.sum
+
       - run: python scripts/validate_data_csv.py
         working-directory: apps/crawler
+
+      - name: Validate prepared native registry in scratch PostgreSQL
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          INPUT_PR: ${{ github.event.inputs.pr || '' }}
+          GO_TYPESENSE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_registry_test?sslmode=disable
+          REGISTRY_TEST_DATA_DIR: ../../data
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            base="$PR_BASE_SHA"
+          elif [[ "$EVENT_NAME" == workflow_dispatch && -n "$INPUT_PR" ]]; then
+            base="$(git merge-base HEAD origin/main)"
+          else
+            base="$(git rev-parse HEAD^)"
+          fi
+          git show "$base:apps/crawler/data/boards.csv" > "$RUNNER_TEMP/native-registry-base-boards.csv"
+          test -s "$RUNNER_TEMP/native-registry-base-boards.csv"
+          cd apps/crawler/go/typesense-exporter
+          REGISTRY_TEST_BASE_BOARDS="$RUNNER_TEMP/native-registry-base-boards.csv" \
+            go test -count=1 -run '^TestRegistry(PostgresActualRepository|NativePreparedBeisenAndDetailEligibility|NativeChangedRepositoryBoards)$' .
 
   migration-drift:
     name: Migration Drift
