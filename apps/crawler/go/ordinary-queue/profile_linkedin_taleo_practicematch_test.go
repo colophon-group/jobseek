@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -72,7 +71,11 @@ func TestLinkedInTaleoPracticeMatchCurrentRegistryBindings(t *testing.T) {
 		})
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 38, "taleo": 4, "practicematch": 4}) {
-		t.Fatal("registry changed", counts)
+	// Every current row is checked above. Ordinary company additions must not
+	// require a source change merely to update a frozen catalogue denominator.
+	for provider := range profiles {
+		if counts[provider] == 0 {
+			t.Fatal("provider has no canonical registry coverage", provider)
+		}
 	}
 }

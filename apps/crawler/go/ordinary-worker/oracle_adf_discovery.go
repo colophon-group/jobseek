@@ -218,6 +218,13 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 		return out, err
 	}
 	observation := &lastHTTPObservation{}
+	stage := "bootstrap"
+	fetchFailure := func(err error) (string, error) {
+		if err == nil {
+			err = errOracleADF
+		}
+		return "", err
+	}
 	fetch := func(call context.Context, r api.Request, stateless bool) (string, error) {
 		next := client
 		if stateless {
@@ -243,27 +250,27 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 				text := string(body)
 				classified, e := dom.ClassifyDocument(text, dom.Object{}, r.URL)
 				if e != nil || classified["classification"] == "challenge" {
-					return "", errOracleADF
+					return "", &DiscoveryError{Kind: "challenge", cause: errOracleADF}
 				}
 				return text, nil
 			}
 			// Mutating form actions are never retried in the same session.
 			if r.Method == "POST" {
-				return "", errOracleADF
+				return fetchFailure(e)
 			}
 			if response != nil && (response.status == 404 || response.status == 410) && stateless {
 				return "", nil
 			}
 			var de *DiscoveryError
 			if call.Err() != nil || errors.As(e, &de) && de.Kind == "body_limit" {
-				return "", errOracleADF
+				return fetchFailure(e)
 			}
 			status := 0
 			if response != nil {
 				status = response.status
 			}
 			if attempt == 2 || status != 0 && status != 200 && status != 401 && status != 403 && status != 408 && status != 425 && status != 429 && status < 500 {
-				return "", errOracleADF
+				return fetchFailure(e)
 			}
 			if e := wait(ctx, time.Duration(500*(1<<attempt))*time.Millisecond); e != nil {
 				return "", e
@@ -271,15 +278,31 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 		}
 		return "", errOracleADF
 	}
-	finish := func(e error) (RichDiscovery, error) { return RichDiscovery{Response: observation.latest()}, e }
+	finish := func(e error) (RichDiscovery, error) {
+		if e != nil {
+			kind, status := "oracle_adf_"+stage, 0
+			var failure *DiscoveryError
+			if errors.As(e, &failure) {
+				status = failure.Status
+				switch failure.Kind {
+				case "http_status", "request_failed", "body_failed", "body_limit", "challenge":
+					kind += "_" + failure.Kind
+				}
+			}
+			e = &DiscoveryError{Kind: kind, Status: status, cause: e}
+		}
+		return RichDiscovery{Response: observation.latest()}, e
+	}
 	source, err := fetch(ctx, api.Request{Method: "GET", URL: p.Endpoint}, false)
 	if err != nil {
 		return finish(err)
 	}
+	stage = "session"
 	fields, page, err := adfSession(source)
 	if err != nil {
 		return finish(err)
 	}
+	stage = "listing"
 	rows, more, err := adfRows(source, 0)
 	if err != nil || len(rows) > options.MaxItems {
 		return finish(errOracleADF)
@@ -313,6 +336,7 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 		fields.Set("javax.faces.ViewState", updates["javax.faces.ViewState"])
 		return updates, nil
 	}
+	stage = "pagination"
 	for event := 0; more; event++ {
 		if event >= options.MaxItems || len(rows) >= options.MaxItems {
 			return finish(errOracleADF)
@@ -327,6 +351,7 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 		}
 		rows, more = append(rows, next...), nextMore
 	}
+	stage = "seed"
 	updates, err := postAction(0, true)
 	if err != nil {
 		return finish(err)
@@ -347,6 +372,7 @@ func discoverOracleADF(ctx context.Context, verified *http.Client, p queue.Green
 	if err != nil {
 		return finish(errOracleADF)
 	}
+	stage = "detail_scan"
 	matched := 0
 	urls := []string{}
 	floor := max(int64(0), seed-int64(options.MaxScan))
