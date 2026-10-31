@@ -197,7 +197,7 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 					}
 					m.claimError()
 					log.Print(claimRunError("claim", err))
-					if errors.Is(err, queue.ErrAuthorityLost) || errors.Is(err, queue.ErrConfiguration) || errors.Is(err, queue.ErrUnsupportedProfile) {
+					if runtimeFatalError(err) {
 						failures <- claimRunError("claim", err)
 						return
 					}
@@ -237,7 +237,7 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 				}
 				m.active.Add(-1)
 				m.progress(id)
-				if err != nil && (errors.Is(err, queue.ErrAuthorityLost) || errors.Is(err, queue.ErrConfiguration) || errors.Is(err, queue.ErrUnsupportedProfile) || errors.Is(err, ErrDrainTimeout)) {
+				if runtimeFatalError(err) {
 					failures <- err
 					return
 				}
@@ -296,6 +296,17 @@ wait:
 	case <-timer.C:
 		return ErrDrainTimeout
 	}
+}
+
+// A changed cache snapshot fences one claim, including its writes and ACK.
+// Its next claim must pass fresh epoch/ownership/config checks. Keep unrelated
+// tasks alive instead of cancelling the process during registry publication.
+// All other authority loss and unsafe cancellation still terminate the worker.
+func runtimeFatalError(err error) bool {
+	if errors.Is(err, queue.ErrConfiguration) || errors.Is(err, queue.ErrUnsupportedProfile) || errors.Is(err, ErrDrainTimeout) {
+		return true
+	}
+	return errors.Is(err, queue.ErrAuthorityLost) && queue.AuthorityLossReason(err) != "cache_snapshot"
 }
 
 // Nonfatal failures retain their attempts for recovery. Emit only the existing

@@ -29,6 +29,9 @@ func (e *ClaimRunError) Error() string {
 	if e.detailProfile != "" {
 		message += " profile=" + e.detailProfile
 	}
+	if reason := queue.AuthorityLossReason(e.cause); reason != "" {
+		message += " authority_reason=" + reason
+	}
 	return message
 }
 func (e *ClaimRunError) Unwrap() error { return e.cause }

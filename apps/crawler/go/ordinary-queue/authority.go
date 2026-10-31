@@ -43,6 +43,10 @@ func authorityError(err error) error {
 	if errors.As(err, &callback) {
 		return callback
 	}
+	var rejected authorityRejection
+	if errors.As(err, &rejected) {
+		return rejected
+	}
 	for _, known := range []error{ErrAuthorityLost, ErrConfiguration, ErrObservation, ErrUnsupportedProfile, context.Canceled, context.DeadlineExceeded} {
 		if errors.Is(err, known) {
 			return known
@@ -242,7 +246,7 @@ func (a *Authority) transactionWithin(ctx context.Context, retire bool, budget t
 			return err
 		}
 		if !called || epoch != a.epoch {
-			return ErrAuthorityLost
+			return epochRejection
 		}
 		if err := fn(ctx, tx); err != nil {
 			return err
@@ -272,14 +276,14 @@ func (a *Authority) current(ctx context.Context, claim *Claim) error {
 		return ErrObservation
 	}
 	if claim.configDigest != "" && configDigest(config) != claim.configDigest {
-		return ErrAuthorityLost
+		return cacheSnapshotRejection
 	}
 	alive, err := a.queue.Heartbeat(ctx, &claim.task)
 	if err != nil {
 		return err
 	}
 	if !alive {
-		return ErrAuthorityLost
+		return leaseRejection
 	}
 	return nil
 }
@@ -406,7 +410,7 @@ func (a *Authority) claim(ctx context.Context, worker WorkerType, detailsOnly bo
 				return err
 			}
 			if oldStepAt == nil || current.orderedCount < 2 || int(*oldStep) != current.orderedStep+1 || int(*oldStep) >= current.orderedCount {
-				return ErrAuthorityLost
+				return fenceRejection
 			}
 		}
 		nextState := "active"
@@ -476,7 +480,7 @@ func (a *Authority) require(ctx context.Context, tx pgx.Tx, claim *Claim, state 
 		var postingBoard string
 		if err := tx.QueryRow(ctx, "SELECT board_id::text FROM public.job_posting WHERE id=$1::uuid AND board_id=$2::uuid FOR UPDATE", claim.task.ID, claim.boardID).Scan(&postingBoard); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, ErrAuthorityLost
+				return nil, fenceRejection
 			}
 			return nil, err
 		}
@@ -485,7 +489,7 @@ func (a *Authority) require(ctx context.Context, tx pgx.Tx, claim *Claim, state 
   WHERE task_kind=$1 AND task_id=$2::uuid AND board_id=$3::uuid AND routing_epoch=$4
   AND claim_token=$5 AND config_sha256=$6 AND state=$7 FOR UPDATE`, string(claim.task.Kind), claim.task.ID, claim.boardID, a.epoch, claim.task.claimToken, claim.configDigest, state).Scan(&due)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAuthorityLost
+		return nil, fenceRejection
 	}
 	return due, err
 }
@@ -592,7 +596,7 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		}
 		equal := func(x, y *time.Time) bool { return x == nil && y == nil || x != nil && y != nil && x.Equal(*y) }
 		if !equal(retained, receipt.nextDue) || !equal(canonical, receipt.nextDue) {
-			return ErrAuthorityLost
+			return receiptRejection
 		}
 		var retainedHost *string
 		var retainedStep *int16
@@ -602,13 +606,13 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 			return err
 		}
 		if (retainedHost == nil) != (receipt.learnedHost == nil) || retainedHost != nil && *retainedHost != *receipt.learnedHost {
-			return ErrAuthorityLost
+			return receiptRejection
 		}
 		if (retainedStep == nil) != (receipt.nextDetailStep == nil) || retainedStep != nil && *retainedStep != *receipt.nextDetailStep || !equal(retainedAt, receipt.nextDetailAt) {
-			return ErrAuthorityLost
+			return receiptRejection
 		}
 		if (retainedHash == nil) != (receipt.nextDetailHash == nil) || retainedHash != nil && *retainedHash != *receipt.nextDetailHash {
-			return ErrAuthorityLost
+			return receiptRejection
 		}
 		if retainedStep != nil {
 			current, err := a.currentWorkdayDetail(ctx, tx, claim)
@@ -616,7 +620,7 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 				return err
 			}
 			if current.orderedCount < 2 || int(*retainedStep) != current.orderedStep+1 || int(*retainedStep) >= current.orderedCount {
-				return ErrAuthorityLost
+				return receiptRejection
 			}
 		}
 		var accepted bool
@@ -640,7 +644,7 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 			return err
 		}
 		if !accepted {
-			return ErrAuthorityLost
+			return acknowledgementRejection
 		}
 		return nil
 	})
