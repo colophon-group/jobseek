@@ -91,6 +91,9 @@ jobs:
           scripts/vercel-promotion-identity.test.mjs
           scripts/narrowed-secret-transfer.test.mjs
 
+      - name: Test bounded Doppler secret migration
+        run: python3 scripts/test-migrate-secrets-to-doppler.py
+
       - name: Check dates on changed blog content
         if: github.event_name == 'pull_request'
         env:
