@@ -97,6 +97,7 @@ jobs:
                   "exit_code": diagnostic.get("exit_code"),
                   "driver_lines": diagnostic.get("driver_lines"),
                   "error_types": diagnostic.get("error_types"),
+                  "startup_diagnostics": arm.get("startup_diagnostics"),
                   "pair": arm.get("pair"), "postings": output.get("postings"),
                   "canonical_sha256": output.get("canonical_sha256"),
                   "completion_seconds": arm.get("completion_seconds"),

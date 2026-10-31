@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
@@ -77,10 +77,97 @@ def inspect(identifier: str) -> dict[str, Any]:
     return json.loads(run(["docker", "inspect", identifier]))[0]
 
 
+def startup_diagnostics(env: dict[str, str], services: list[str]) -> list[dict[str, Any]]:
+    output = []
+    for service in services:
+        row: dict[str, Any] = {"service": service}
+        try:
+            identifier = compose(env, "ps", "-a", "-q", service).strip()
+            if not identifier:
+                row["state"] = "missing"
+            else:
+                item = inspect(identifier)
+                state = item["State"]
+                row.update(
+                    running=bool(state["Running"]),
+                    exit_code=int(state["ExitCode"]),
+                    oom=bool(state["OOMKilled"]),
+                    restarts=int(item["RestartCount"]),
+                )
+                health = state.get("Health", {}).get("Status", "none")
+                row["health"] = (
+                    health if health in ("none", "starting", "healthy", "unhealthy") else "unknown"
+                )
+                logs = subprocess.run(
+                    ["docker", "logs", "--tail", "80", identifier],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                text = (logs.stdout + "\n" + logs.stderr)[:131072]
+                row["worker_startup_stages"] = sorted(
+                    set(re.findall(r"ordinary worker startup stage: ([a-z_]{1,40})", text))
+                )[:8]
+                row["mentioned_settings"] = sorted(
+                    set(
+                        re.findall(
+                            r"\b(?:R2_|ORDINARY_GO_|LIGHTPANDA_|TYPESENSE_|GO_TYPESENSE_)[A-Z0-9_]+\b",
+                            text,
+                        )
+                    )
+                )[:16]
+                row["error_categories"] = [
+                    word
+                    for word in (
+                        "permission denied",
+                        "no such file",
+                        "certificate",
+                        "configuration",
+                        "ownership",
+                        "lookup",
+                        "connection",
+                        "out of memory",
+                    )
+                    if word in text.lower()
+                ]
+        except Exception as error:
+            row["diagnostic_failure_class"] = type(error).__name__
+        output.append(row)
+    return output
+
+
+def key_identifiers(
+    certificate: x509.Certificate, issuer: ec.EllipticCurvePrivateKey
+) -> x509.Certificate:
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(certificate.subject)
+        .issuer_name(certificate.issuer)
+        .public_key(certificate.public_key())
+        .serial_number(certificate.serial_number)
+        .not_valid_before(certificate.not_valid_before_utc)
+        .not_valid_after(certificate.not_valid_after_utc)
+    )
+    for extension in certificate.extensions:
+        builder = builder.add_extension(extension.value, extension.critical)
+    return (
+        builder.add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(certificate.public_key()), critical=False
+        )
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(issuer.public_key()), critical=False
+        )
+        .sign(issuer, hashes.SHA256())
+    )
+
+
 def pki(directory: Path, native_image: str) -> dict[str, str]:
     directory.mkdir(mode=0o700)
     ca = x509.load_pem_x509_certificate(CA_PEM)
     key = ec.derive_private_key(CA_SCALAR, ec.SECP256R1())
+    # Python 3.13's strict verifier requires these identifiers on the fixture chain.
+    ca = key_identifiers(ca, key)
+    ca_pem = ca.public_bytes(serialization.Encoding.PEM)
     pairs = {
         "server": _leaf(
             ca,
@@ -100,12 +187,12 @@ def pki(directory: Path, native_image: str) -> dict[str, str]:
             ca,
             key,
             "native-lane-fixture",
-            [x509.DNSName(host) for host in ORIGINS],
+            [x509.DNSName(host) for host in (*ORIGINS, "fixture")],
             ExtendedKeyUsageOID.SERVER_AUTH,
         ),
     }
     pins = {"ca": hashlib.sha256(ca.public_bytes(serialization.Encoding.DER)).hexdigest()}
-    _write(directory / "ca.pem", CA_PEM, 0o600)
+    _write(directory / "ca.pem", ca_pem, 0o600)
     root_bundle = run(
         [
             "docker",
@@ -119,8 +206,9 @@ def pki(directory: Path, native_image: str) -> dict[str, str]:
             "/etc/ssl/certs/ca-certificates.crt",
         ]
     )
-    _write(directory / "ca-bundle.pem", root_bundle.encode() + b"\n" + CA_PEM, 0o600)
+    _write(directory / "ca-bundle.pem", root_bundle.encode() + b"\n" + ca_pem, 0o600)
     for name, (certificate, private_key) in pairs.items():
+        certificate = key_identifiers(certificate, key)
         _write(
             directory / f"{name}.pem", certificate.public_bytes(serialization.Encoding.PEM), 0o600
         )
@@ -317,6 +405,8 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
         if isinstance(error, ComparisonFailure):
             failure["diagnostic"] = error.diagnostic
         result["failure"] = failure
+        if stage == "startup":
+            result["startup_diagnostics"] = startup_diagnostics(env, services)
     finally:
         try:
             compose(env, "down", "--volumes", "--remove-orphans", "--timeout", "15", timeout=90)

@@ -14,7 +14,8 @@ x-env: &env
   TYPESENSE_HOST: typesense
   TYPESENSE_PORT: "8108"
   TYPESENSE_OPERATIONS_KEY: admission
-  R2_ENDPOINT_URL: http://fixture:8080
+  R2_ENDPOINT_URL: https://fixture:8080
+  SSL_CERT_FILE: /run/native-lane/ca-bundle.pem
   R2_BUCKET: descriptions
   R2_ACCESS_KEY_ID: fixture
   R2_SECRET_ACCESS_KEY: fixture
@@ -30,6 +31,7 @@ x-native: &native
   cap_drop: [ALL]
   networks: [claim]
   environment: *env
+  volumes: ["${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro"]
   tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700"]
 x-legacy: &legacy
   <<: *common
@@ -37,6 +39,7 @@ x-legacy: &legacy
   user: "10001:10001"
   cap_drop: [ALL]
   environment: *env
+  volumes: ["${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro"]
   networks: [claim, origin]
   tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=256m,uid=10001,gid=10001,mode=0700"]
   cpus: 1.75
@@ -110,7 +113,9 @@ services:
     command: [/app/.venv/bin/python, -m, admission.native_lane.driver, --phase, "${NATIVE_LANE_PHASE:?}", --lane, "${NATIVE_LANE_ARM:?}"]
     environment: {<<: *env, PYTHONPATH: /fixtures}
     networks: [claim]
-    volumes: [..:/fixtures/admission:ro]
+    volumes:
+      - ..:/fixtures/admission:ro
+      - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro
   ordinary:
     <<: *native
     command: [/usr/local/bin/go-ordinary-worker]
@@ -124,6 +129,7 @@ services:
       MONITOR_CONCURRENCY: "2"
       GOMEMLIMIT: 512MiB
     volumes:
+      - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro
       - ${NATIVE_LANE_PKI:?}/ca.pem:/run/lightpanda/ca.pem:ro
       - ${NATIVE_LANE_PKI:?}/client.pem:/run/lightpanda/client.pem:ro
       - ${NATIVE_LANE_PKI:?}/client-key.pem:/run/lightpanda/client-key.pem:ro
@@ -164,6 +170,7 @@ services:
     volumes:
       - ..:/fixtures/admission:ro
       - ${NATIVE_LANE_PKI:?}/ca.pem:/run/native-lane/ca.pem:ro
+      - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro
     healthcheck: {test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9091/',timeout=2)"], interval: 30s, timeout: 5s, retries: 3, start_period: 30s}
   reaper:
     <<: *native

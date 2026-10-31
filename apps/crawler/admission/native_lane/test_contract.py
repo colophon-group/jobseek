@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import http.client
 import json
 import os
+import socket
+import ssl
 import stat
 import subprocess
 import sys
@@ -16,7 +20,42 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from admission.native_lane import controller, driver, legacy_browser
+from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
+
+
+def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch) -> None:
+    monkeypatch.setattr(controller, "compose", lambda *a, **kw: "fixture-container")
+    monkeypatch.setattr(
+        controller,
+        "inspect",
+        lambda identifier: {
+            "State": {
+                "Running": False,
+                "ExitCode": 1,
+                "OOMKilled": False,
+                "Error": "PRIVATE_SHOULD_NOT_ECHO",
+                "Health": {"Status": "unhealthy"},
+            },
+            "RestartCount": 0,
+            "Config": {"Env": ["PRIVATE_SHOULD_NOT_ECHO"]},
+        },
+    )
+    monkeypatch.setattr(
+        controller.subprocess,
+        "run",
+        lambda *a, **kw: subprocess.CompletedProcess(
+            [],
+            0,
+            "PRIVATE_SHOULD_NOT_ECHO",
+            "ordinary worker startup stage: ownership\nR2_BUCKET PRIVATE_SHOULD_NOT_ECHO",
+        ),
+    )
+    rows = controller.startup_diagnostics({}, ["ordinary"])
+    assert rows[0]["exit_code"] == 1
+    assert rows[0]["worker_startup_stages"] == ["ownership"]
+    assert rows[0]["mentioned_settings"] == ["R2_BUCKET"]
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(rows)
 
 
 def test_legacy_comparator_trusts_only_fixture_ca_in_private_home(tmp_path, monkeypatch) -> None:
@@ -217,7 +256,7 @@ def test_compose_contains_no_external_runtime_route_or_docker_socket() -> None:
 def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
     tmp_path, monkeypatch
 ) -> None:
-    monkeypatch.setattr(controller, "run", lambda *args, **kwargs: controller.CA_PEM.decode())
+    monkeypatch.setattr(controller, "run", lambda *args, **kwargs: "")
     directory = tmp_path / "pki"
     pins = controller.pki(directory, "unused-test-image")
     certificate = x509.load_pem_x509_certificate((directory / "server.pem").read_bytes())
@@ -232,6 +271,55 @@ def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
     assert (directory / "server-leaf.sha256").read_text() == pins["server-leaf"] + "\n"
     assert stat.S_IMODE(directory.stat().st_mode) == 0o700
     assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in directory.iterdir())
+
+
+def test_description_sink_verifies_fixture_tls_identity_and_preserves_bytes(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(controller, "run", lambda *args, **kwargs: "")
+    directory = tmp_path / "pki"
+    controller.pki(directory, "unused-test-image")
+    service = tls_server(
+        ("127.0.0.1", 0),
+        FixtureState(),
+        directory / "fixture.pem",
+        directory / "fixture-key.pem",
+        storage=True,
+    )
+    thread = threading.Thread(target=service.serve_forever, daemon=True)
+    thread.start()
+    context = ssl.create_default_context(cafile=str(directory / "ca-bundle.pem"))
+    client = http.client.HTTPSConnection("fixture", service.server_port, context=context, timeout=3)
+    monkeypatch.setattr(
+        client,
+        "_create_connection",
+        lambda address, timeout, source_address: socket.create_connection(
+            ("127.0.0.1", address[1]), timeout
+        ),
+    )
+    try:
+        body = b"<p>Native description over verified TLS.</p>"
+        path = "/descriptions/job/fixture/en/latest.html"
+        client.request("PUT", path, body)
+        response = client.getresponse()
+        assert response.status == 200
+        response.read()
+        client.request("GET", "/report")
+        response = client.getresponse()
+        assert response.status == 200
+        assert json.loads(response.read())["uploaded_objects"] == {
+            path: hashlib.sha256(body).hexdigest()
+        }
+        with (
+            socket.create_connection(("127.0.0.1", service.server_port), timeout=3) as sock,
+            pytest.raises(ssl.SSLCertVerificationError),
+        ):
+            context.wrap_socket(sock, server_hostname="untrusted.invalid")
+    finally:
+        client.close()
+        service.shutdown()
+        service.server_close()
+        thread.join(timeout=3)
 
 
 def test_resource_cost_uses_actual_completed_work_and_caps_role_share() -> None:

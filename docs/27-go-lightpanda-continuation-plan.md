@@ -147,12 +147,22 @@ Go transfer command succeeds locally. No production ownership guard is weakened.
 Bounded annotations expose safe failure diagnostics and successful per-arm
 CPU/memory/cost results and image identities when selected logs return HTTP 502.
 Measured sampling duration remains distinct from later inspection elapsed time.
-The complete Linux comparison remains
-unqualified until the new-head run passes.
+The next run passed those stages and failed while starting the actors. The
+fixture's HTTP description endpoint violates the Go drain's HTTPS-only contract.
+The sink and report reader now use HTTPS with a verified fixture service SAN and
+a read-only CA bundle; fixture certificates include the key identifiers required
+by Python 3.13's strict verifier. A real TLS PUT/report regression verifies exact
+uploaded bytes and rejects the wrong hostname. Bounded startup annotations expose
+service exit/health and safe diagnostic codes without persisting raw logs.
+The complete Linux comparison remains unqualified until the new-head run passes.
 
-The production timeout fix proceeds independently in
-[PR #11074](https://github.com/colophon-group/jobseek/pull/11074), so benchmark
-fixture changes do not keep restarting its required qualification. The actual
+The production timeout fix merged independently in
+[PR #11074](https://github.com/colophon-group/jobseek/pull/11074), exact tested head
+`21bee788dd582151d519191c82a9a57bee5970a5`, after Required CI, Crawler Deploy Gate,
+native queue/worker and installed-image parity passed. Merge source
+`1a81f408e43bef8535b548f5f1e664f3e7896305` is undergoing the
+[full deployment](https://github.com/colophon-group/jobseek/actions/runs/41159304223);
+installed 1132 and natural recovery are not yet verified. The actual
 PostgreSQL/Redis regression reproduces on Lever, Oracle HCM and direct DOM:
 the old path cancels before recording failure or rescheduling, leaving its lease
 for crash recovery. The candidate records one failed cycle and acknowledges its
@@ -161,8 +171,8 @@ further origin work, preserves incomplete inventories, and retains the existing
 SQL/token/epoch/publisher barriers. All 88 focused tests/subtests pass with real PostgreSQL/Redis and race checks,
 including cancellation, stale-token, reservation and existing receipt recovery
 cases. Vet passes. The broad Mac run has 3,742 passes and three Word-document
-case failures because `antiword` is absent; Linux CI installs that required
-dependency and must pass the complete module before the runtime fix merges.
+case failures because `antiword` is absent; the complete Linux CI passed with
+that dependency installed.
 The whole-lane comparison remains a separate migration completion gate. Processing
 deadlines, lease budgets, concurrency and retries are unchanged. This reproduction
 does not by itself prove that all four production deadletters had that cause.

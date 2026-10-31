@@ -131,20 +131,35 @@ def handler(state: FixtureState, *, storage: bool) -> type[http.server.BaseHTTPR
     return Handler
 
 
+def tls_server(
+    address: tuple[str, int],
+    state: FixtureState,
+    certificate: Path,
+    private_key: Path,
+    *,
+    storage: bool,
+) -> http.server.ThreadingHTTPServer:
+    service = http.server.ThreadingHTTPServer(address, handler(state, storage=storage))
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certificate, private_key)
+    service.socket = context.wrap_socket(service.socket, server_side=True)
+    return service
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--certificate", type=Path, required=True)
     parser.add_argument("--private-key", type=Path, required=True)
     args = parser.parse_args()
     state = FixtureState()
-    upstream = http.server.ThreadingHTTPServer(("0.0.0.0", 443), handler(state, storage=False))
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
-    context.load_cert_chain(args.certificate, args.private_key)
-    upstream.socket = context.wrap_socket(upstream.socket, server_side=True)
+    upstream = tls_server(
+        ("0.0.0.0", 443), state, args.certificate, args.private_key, storage=False
+    )
+    sink = tls_server(("0.0.0.0", 8080), state, args.certificate, args.private_key, storage=True)
     threading.Thread(target=upstream.serve_forever, daemon=True).start()
     Path("/tmp/ready").touch()
-    http.server.ThreadingHTTPServer(("0.0.0.0", 8080), handler(state, storage=True)).serve_forever()
+    sink.serve_forever()
 
 
 if __name__ == "__main__":

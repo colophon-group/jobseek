@@ -32,7 +32,7 @@ def identity(value: str) -> uuid.UUID:
 
 
 def request(path: str, *, storage: bool = False) -> dict[str, Any]:
-    base = "http://fixture:8080" if storage else "http://typesense:8108"
+    base = "https://fixture:8080" if storage else "http://typesense:8108"
     headers = {} if storage else {"X-TYPESENSE-API-KEY": "admission"}
     with urllib.request.urlopen(
         urllib.request.Request(base + path, headers=headers), timeout=5

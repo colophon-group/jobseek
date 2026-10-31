@@ -37,6 +37,9 @@ browser imports that CA into its private ephemeral NSS database, following
 [Chromium's Linux trust contract](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md).
 Its browser binaries are readable by the configured unprivileged UID; certificate
 setup uses the existing container CPU/memory limits and counts as startup work.
+The description sink also serves HTTPS with the fixture service identity. Actors
+and the report reader trust its CA through a read-only bundle, preserving the
+Go drain's required HTTPS endpoint contract.
 
 Three pairs alternate order. Both arms must finish the complete canonical job,
 description upload and Typesense work. Independent SQL, uploaded-body hashes
