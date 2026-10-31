@@ -432,6 +432,7 @@ alvys,alvys-greenhouse,https://job-boards.greenhouse.io/alvys,greenhouse,"{""tok
 alx-africa,alx-africa-greenhouse,https://job-boards.greenhouse.io/alxafrica,greenhouse,"{""token"": ""alxafrica""}",skip,
 amada-senior-care-north-shore,amada-senior-care-north-shore-careers,https://amadaseniorcarenorthshore.applytojob.com/,jazzhr,,jazzhr,
 amae-health,amae-health-greenhouse,https://job-boards.greenhouse.io/amaehealth,greenhouse,"{""token"": ""amaehealth""}",skip,
+aman-group,aman-group-careers,https://aman.wd103.myworkdayjobs.com/AmanGroupExternal,workday,"{""company"": ""aman"", ""wd_instance"": ""wd103"", ""site"": ""AmanGroupExternal""}",workday,
 amazon,amazon-careers,https://www.amazon.jobs/en/search,amazon,,skip,
 amber,amber-ashby,https://jobs.ashbyhq.com/amber,ashby,"{""token"": ""amber""}",skip,
 ambiencehealthcare,ambiencehealthcare-ashby,https://jobs.ashbyhq.com/ambiencehealthcare,ashby,"{""token"": ""ambiencehealthcare""}",skip,
