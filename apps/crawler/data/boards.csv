@@ -7325,6 +7325,7 @@ the-pharmacy-hub,the-pharmacy-hub-greenhouse,https://job-boards.greenhouse.io/th
 the-pok-mon-company-international,the-pok-mon-company-international-greenhouse,https://job-boards.greenhouse.io/pokemoncareers,greenhouse,"{""token"": ""pokemoncareers""}",skip,
 the-quality-group,the-quality-group-greenhouse,https://job-boards.greenhouse.io/thequalitygroupgmbh2,greenhouse,"{""token"": ""thequalitygroupgmbh2""}",skip,
 the-rec-hub,the-rec-hub-join,https://join.com/companies/rec-hubcom,join,"{""slug"": ""rec-hubcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+the-rooster-antiparos,the-rooster-antiparos-workable,https://apply.workable.com/theroosterantiparos/,workable,"{""token"": ""theroosterantiparos""}",workable,
 the-trade-desk,the-trade-desk-greenhouse,https://job-boards.greenhouse.io/thetradedesk,greenhouse,"{""token"": ""thetradedesk""}",skip,
 the-united-firm-la-liga-defensora-apc,the-united-firm-la-liga-defensora-apc-greenhouse,https://job-boards.greenhouse.io/unitedfirm,greenhouse,"{""token"": ""unitedfirm""}",skip,
 the-virtus-solution,the-virtus-solution-greenhouse,https://job-boards.greenhouse.io/thevirtussolution,greenhouse,"{""token"": ""thevirtussolution""}",skip,
