@@ -101,6 +101,7 @@ jobs:
                   "startup_diagnostics": arm.get("startup_diagnostics"),
                   "render_probe": arm.get("render_probe"),
                   "resident_render_probe": arm.get("resident_render_probe"),
+                  "certificate_probe": arm.get("certificate_probe"),
                   "pair": arm.get("pair"), "postings": output.get("postings"),
                   "canonical_sha256": output.get("canonical_sha256"),
                   "completion_seconds": arm.get("completion_seconds"),

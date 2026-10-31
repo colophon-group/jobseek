@@ -106,6 +106,42 @@ def test_resident_probe_uses_worker_navigation_and_hides_tls_errors(monkeypatch)
     }
 
 
+def test_certificate_probe_compares_real_uids_and_trust_without_exposing_content(monkeypatch):
+    calls = []
+
+    def execute(command, **kwargs):
+        calls.append(command)
+        assert kwargs == {"capture_output": True, "timeout": 15}
+        assert command[-1] == "https://origin-2.lane.bench.test/listing"
+        return subprocess.CompletedProcess(
+            command, 1, b"PRIVATE_BODY", b"PeerFailedVerification PRIVATE"
+        )
+
+    monkeypatch.setattr(render_diagnostic.subprocess, "run", execute)
+    result = render_diagnostic.certificate_probe("a" * 64)
+    assert [(row["uid"], row["trust"]) for row in result] == [
+        (10001, "system"),
+        (10001, "explicit"),
+        (10002, "system"),
+        (10002, "explicit"),
+    ]
+    assert [command[3] for command in calls] == ["10001:10001"] * 2 + ["10002:10002"] * 2
+    assert ["--ca-cert" in command for command in calls] == [False, True, False, True]
+    assert all(row["peer_verification_failed"] for row in result)
+    assert "PRIVATE" not in json.dumps(result)
+
+
+def test_certificate_probe_rejects_foreign_identifier_and_hides_timeout(monkeypatch):
+    def expired(command, **kwargs):
+        raise subprocess.TimeoutExpired("PRIVATE_COMMAND", 15, output=b"PRIVATE_BODY")
+
+    monkeypatch.setattr(render_diagnostic.subprocess, "run", expired)
+    assert render_diagnostic.certificate_probe("foreign") == [{"state": "invalid_container"}]
+    result = render_diagnostic.certificate_probe("a" * 64)
+    assert all(row["diagnostic_failure_class"] == "TimeoutExpired" for row in result)
+    assert "PRIVATE" not in json.dumps(result)
+
+
 def test_resident_probe_is_guarded_before_connecting(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_DATABASE_URL", "")
     monkeypatch.setenv("REDIS_URL", "")

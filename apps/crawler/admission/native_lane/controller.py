@@ -35,6 +35,7 @@ from admission.lightpanda_b0.controller import (
     _memory_events,
     _write,
 )
+from admission.native_lane.render_diagnostic import certificate_probe
 from admission.native_lane.render_diagnostic import probe as render_probe
 from admission.native_lane.resources import PRICES, allocation, sample
 from admission.native_lane.workload import ORIGINS, PROFILES, workload_sha256
@@ -604,6 +605,7 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
                 result["render_probe"] = render_probe(
                     identifier, inspect(identifier)["Config"]["Entrypoint"]
                 )
+                result["certificate_probe"] = certificate_probe(identifier)
             except Exception as diagnostic_error:
                 result["render_probe"] = {
                     "diagnostic_failure_class": type(diagnostic_error).__name__

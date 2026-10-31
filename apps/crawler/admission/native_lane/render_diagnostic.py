@@ -230,3 +230,44 @@ def probe(identifier: str, entrypoint: list[str]) -> dict[str, Any]:
         return output
     except Exception as error:
         return {"diagnostic_failure_class": type(error).__name__}
+
+
+def certificate_probe(identifier: str) -> list[dict[str, Any]]:
+    """Compare system and explicit fixture trust under the two real UIDs."""
+    if not re.fullmatch(r"[a-f0-9]{12,64}", identifier):
+        return [{"state": "invalid_container"}]
+    results = []
+    for uid in (10001, 10002):
+        for trust in ("system", "explicit"):
+            row: dict[str, Any] = {"uid": uid, "trust": trust}
+            command = [
+                "docker",
+                "exec",
+                "--user",
+                f"{uid}:{uid}",
+                identifier,
+                "/usr/bin/env",
+                "-i",
+                "LIGHTPANDA_DISABLE_CORE_DUMP=1",
+                "LIGHTPANDA_DISABLE_TELEMETRY=true",
+                "/usr/local/bin/lightpanda",
+                "fetch",
+                "--dump",
+                "html",
+                "--log-level",
+                "error",
+            ]
+            if trust == "explicit":
+                command.extend(["--ca-cert", "/etc/ssl/certs/native-lane-fixture.crt"])
+            command.append("https://" + ORIGINS[2] + "/listing")
+            try:
+                result = subprocess.run(command, capture_output=True, timeout=15)
+                row.update(
+                    exit_code=result.returncode,
+                    html_bytes=len(result.stdout),
+                    peer_verification_failed=b"PeerFailedVerification" in result.stderr[:131072],
+                )
+            except Exception as error:
+                row["diagnostic_failure_class"] = type(error).__name__
+            results.append(row)
+    return results
