@@ -604,6 +604,7 @@ arcis-golf,arcis-golf-careers,https://arcis.wd12.myworkdayjobs.com/extNa,workday
 arena-ai,arena-ai-greenhouse,https://job-boards.greenhouse.io/arenaphysica,greenhouse,"{""token"": ""arenaphysica""}",skip,
 arenanet,arenanet-ashby,https://jobs.ashbyhq.com/arenanet,ashby,"{""token"": ""arenanet""}",skip,
 arenanet,arenanet-greenhouse,https://job-boards.greenhouse.io/arenanet,greenhouse,"{""token"": ""arenanet""}",skip,
+arev-collection,arev-collection-careers,https://arevcollection.talentnest.com/en,dom,"{""url_filter"": ""^https?://arevcollection\\.talentnest\\.com/(?:en/|fr/)?posting/[0-9]+(?:\\?.*)?$""}",json-ld,
 arine,arine-greenhouse,https://job-boards.greenhouse.io/arine,greenhouse,"{""token"": ""arine""}",skip,
 aritzia,aritzia-careers,https://aritzia.wd3.myworkdayjobs.com/external,workday,,workday,
 arize-ai,arize-ai-greenhouse,https://job-boards.greenhouse.io/arizeai,greenhouse,"{""token"": ""arizeai""}",skip,
