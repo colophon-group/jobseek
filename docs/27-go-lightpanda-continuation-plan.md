@@ -122,7 +122,7 @@ claims, two heartbeat deadlines, two task deadlines and 142 detail failures,
 predecessor runtime; it does not establish permanent error elimination.
 
 Candidate [PR #11073](https://github.com/colophon-group/jobseek/pull/11073),
-version 0.13.1132, adds a controlled whole-lane comparison with 536 identical
+version 0.13.1133, adds a controlled whole-lane comparison with 536 identical
 postings across rich API, direct DOM, rendered DOM and direct JSON-LD routes.
 Each arm includes the actual worker, renderer/browser, reaper, PostgreSQL,
 Redis, exporter, drain and Typesense. Its first Linux run failed before work
