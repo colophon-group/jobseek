@@ -23,9 +23,10 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		h[k] = i
 	}
 	counts := map[string]int{}
+	profiles := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1", "onlyfy": "onlyfy.public-detail/v1", "tupu360": "tupu360.public-detail/v1", "phuketall": "phuketall.public-detail/v1"}
 	for _, row := range rows[1:] {
 		scraper := row[h["scraper_type"]]
-		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile, "paycor": "paycor.public-detail/v1", "recruiterbox": "recruiterbox.public-detail/v1", "veryeast": "veryeast.public-detail/v1", "onlyfy": "onlyfy.public-detail/v1", "tupu360": "tupu360.public-detail/v1", "phuketall": "phuketall.public-detail/v1"}[scraper]
+		want := profiles[scraper]
 		if want == "" {
 			continue
 		}
@@ -93,7 +94,11 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 41, "jazzhr": 24, "taleo": 5, "jobconvo": 1, "paycor": 3, "recruiterbox": 1, "veryeast": 2, "onlyfy": 6, "tupu360": 3, "phuketall": 1}) {
-		t.Fatal("registry changed", counts)
+	// Bind all current rows and retain positive coverage for each family,
+	// without making unrelated company additions invalidate this contract test.
+	for provider := range profiles {
+		if counts[provider] == 0 {
+			t.Fatal("provider has no canonical registry coverage", provider)
+		}
 	}
 }
