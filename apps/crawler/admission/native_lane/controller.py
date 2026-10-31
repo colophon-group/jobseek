@@ -690,6 +690,8 @@ def main() -> int:
             "Captured decoded HTTP detail responses; two direct scraper families; "
             "current recorded configurations reproduce saved extraction; no captured "
             "monitor, rendered dependency, live provider mix or mixed-host architecture claim. "
+            "Both arms use the existing canonical skip_ssl fixture exception because "
+            "the native HTTP trust roots are embedded; no production TLS-cost claim. "
             if CAPTURED
             else ""
         )

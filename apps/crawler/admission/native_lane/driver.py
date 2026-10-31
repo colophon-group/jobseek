@@ -213,10 +213,11 @@ def progress_counts(
         profile = profiles[board["slug"]]
         origin = board["domain"]
         profile["listing_requests"] = (upstream_requests or {}).get(origin + "/listing", 0)
+        detail_paths = {
+            row["origin"] + row["path"] for row in jobs() if row["profile"] == board["slug"]
+        }
         profile["detail_requests"] = sum(
-            count
-            for path, count in (upstream_requests or {}).items()
-            if path.startswith(origin + "/jobs/")
+            count for path, count in (upstream_requests or {}).items() if path in detail_paths
         )
     return {
         "expected_postings": len(expected),

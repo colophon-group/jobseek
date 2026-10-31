@@ -100,7 +100,13 @@ def jobs() -> list[dict[str, Any]]:
 
 def manifest() -> dict[str, Any]:
     if _CAPTURE is not None:
-        return _CAPTURE
+        return {
+            **_CAPTURE,
+            "fixture_transport": {
+                "skip_ssl": True,
+                "reason": "isolated fixture CA is outside native embedded production trust roots",
+            },
+        }
     return {"schema": "jobseek.native-lane-workload/v1", "jobs": jobs()}
 
 
@@ -191,8 +197,9 @@ def boards() -> list[dict[str, Any]]:
                 "monitor_seeded": False,
                 "metadata": {
                     "scraper_type": group[1],
-                    "scraper_config": json.loads(group[2]),
+                    "scraper_config": {**json.loads(group[2]), "skip_ssl": True},
                     "rescrape_policy": "never",
+                    "skip_ssl": True,
                 },
             }
             for profile, group in zip(PROFILES, _GROUPS, strict=True)

@@ -111,6 +111,11 @@ configuration record is bound by run time and exact reproduction of all saved
 extraction fields; an immutable original configuration snapshot is unavailable.
 Corpus qualification counts, including rejected candidates, are in
 `corpus/provenance.json`. Originals are never contacted during comparison.
+Native direct HTTP uses embedded production trust roots rather than the system
+CA store. Both captured arms therefore use the same explicit `skip_ssl` fixture
+exception as generated direct requests. The recorded extraction configuration
+and page bytes remain intact; the workload hash includes this transport
+override. This does not measure production certificate-verification cost.
 
 Captured work starts from scheduled details; there is no captured monitor or
 rendered-dependency claim. All worker, renderer and storage actors remain in

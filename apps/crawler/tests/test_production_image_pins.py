@@ -15,6 +15,9 @@ TYPESENSE_IMAGE = (
 
 def test_crawler_services_require_immutable_production_images() -> None:
     compose = (ROOT / "apps/crawler/docker-compose.yml").read_text(encoding="utf-8")
+    retained_legacy = (ROOT / "apps/crawler/tests/fixtures/docker-compose.legacy-b0.yml").read_text(
+        encoding="utf-8"
+    )
     deploy = (ROOT / "apps/crawler/deploy.sh").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/deploy-crawler-browser.yml").read_text(encoding="utf-8")
 
@@ -22,7 +25,8 @@ def test_crawler_services_require_immutable_production_images() -> None:
     assert f'REDIS_IMAGE="{REDIS_IMAGE}"' in deploy
     assert "docker pull redis:8-alpine" not in deploy
     assert "CRAWLER_IMAGE_REF must be an immutable GHCR digest" in compose
-    assert "BROWSER_IMAGE_REF must be an immutable GHCR digest" in compose
+    assert "BROWSER_IMAGE_REF" not in compose
+    assert "BROWSER_IMAGE_REF must be an immutable GHCR digest" in retained_legacy
     assert "CRAWLER_IMAGE_TAG:-latest" not in compose
     assert "id: build-slim" in workflow
     assert "target: native" in workflow
