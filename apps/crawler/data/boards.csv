@@ -5781,6 +5781,7 @@ planet-fitness,planet-fitness-corporate,https://corporatecareers-planetfitness.i
 planet-pharma,planet-pharma-careers,https://careers.planet-pharma.com,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/jb/"", ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""repeat"", ""selector"": ""#loadMore"", ""wait_ms"": 3000}]}",json-ld,"{""render"": true}"
 planetscale,planetscale-greenhouse,https://job-boards.greenhouse.io/planetscale,greenhouse,"{""token"": ""planetscale""}",skip,
 planhat,planhat-pinpoint,https://planhat.pinpointhq.com,pinpoint,"{""slug"": ""planhat""}",skip,
+planitswiss,planitswiss-careers,https://www.planitswiss.com/careers,dom,"{""render"": false, ""url_filter"": ""^https://www\\.planitswiss\\.com/_files/ugd/[^?#]+\\.pdf$""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""(?m)^([A-Z][^\\n]{5,80}(?:\\s*\\([^\\n]{1,30}\\))?)\\s*Location:"", ""location_pattern"": ""Location:\\s*([^\\n]+)""}"
 planner5d,planner5d-pinpoint,https://planner5d.pinpointhq.com,pinpoint,"{""slug"": ""planner5d""}",skip,
 planqc,planqc-personio,https://planqc-gmbh.jobs.personio.de/,personio,"{""slug"": ""planqc-gmbh""}",skip,
 planradar-gmbh,planradar-gmbh-greenhouse,https://job-boards.greenhouse.io/planradar,greenhouse,"{""token"": ""planradar""}",skip,
