@@ -161,6 +161,7 @@ print('captured_cases=72; scraper_families=2; network_requests=0')
 """
     result = subprocess.run(
         [sys.executable, "-c", script],
+        cwd=Path(__file__).resolve().parents[2],
         env={**os.environ, "NATIVE_LANE_INPUT_MODE": "captured", "DOM_GO_PARSE_ENABLED": "0"},
         capture_output=True,
         text=True,

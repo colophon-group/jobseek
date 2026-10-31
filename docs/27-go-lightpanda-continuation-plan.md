@@ -34,12 +34,14 @@ zero missing, duplicate, expired-only, token-presence or cache gaps. At 10:19,
 due and none is overdue a day. These bounded observations do not establish
 universal freshness or a cleared detail backlog.
 
-The installed Go Redis-capacity summary succeeds. The host sampler correctly
-retains its separately deployed source `cad060906a8fc11b4036ee69ac0a81e26d2a26fb`;
-its file hash, six native execution series and fresh host textfile match. Its
-unchanged six-hour retry next permits cached snapshot refresh at **12:09:18
-UTC**. No cache, last-attempt, schedule, budget or policy resets were made. All
-times here are UTC.
+The installed Go Redis-capacity summary succeeds. At **12:12 UTC**, independent
+readback verifies the host sampler's normal scheduled refresh: snapshot time
+12:09:57, fresh cache, published availability one and successful completed unit.
+The sampler correctly retains its separately deployed source
+`cad060906a8fc11b4036ee69ac0a81e26d2a26fb` and its qualified file hash; runtime
+health still attests source `c9140316abcf22e5cc6b17316af35c4290c0adba`. The
+observation performed no extra capacity scan. No cache, last-attempt, schedule,
+budget or policy reset was made. All times here are UTC.
 
 ## Lightpanda and operating limits
 
@@ -78,7 +80,7 @@ repairs, counter/deadline resets or raised budgets.
 | Conservation and authority | At 04:44 after the resource window, all 8,151 enabled monitors remain represented: 8,137 queued and 14 valid leases. Zero missing, duplicate, deadletter-only, expired-only, token-presence or cache gaps. Canonical identity hashes unchanged. |
 | Canonical output, policy, storage and export | Real PostgreSQL/Redis contracts cover insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservations, rollback and fences. Fresh 1136 readback at 10:28 covers 629 recent completed zero-failure details across 25 provider groups. All 626 nonnull posting hashes match their uploaded SQL description rows; all 630 nonempty locale rows are marked uploaded, none pending. Ten mature Typesense records match canonical title/company. No failed drain event occurs in this bounded window. Both canonical fleet identity hashes match the qualified cold-reversal baseline. Nullable fields and samples do not prove universal completeness. |
 | Cold reversal | **Qualified for 1133.** The [supported complete exercise](https://github.com/colophon-group/jobseek/actions/runs/41167908024) passed, with candidate-ready and restored-prior-image markers, no rollback error and promotion skipped. Independent 04:31 reads verify the exact prior source/image/data, all four Go services, unchanged epoch 404 and all 8,151 monitors (8,120 queued, 31 valid leases), with zero missing/duplicate/token/cache gaps. After restoration, 221 completed details span 15 provider groups; all 220 nonnull hashes match nonempty uploaded descriptions, none pending, and ten search records match title/company. The runtime-aware Umantis correction preserves all seven schedules. |
-| Equivalent-work efficiency | **Corrected final-head comparison pending.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073) completed all six generated 536-posting arms with identical canonical output and cleanup. Its retained worker inherited default Go detail bridges, so its resource results cover a mixed implementation rather than a Python extraction baseline. Do not use those numbers as final legacy-Python acceptance. PR #11080 explicitly selects Python JSON-LD, DOM and enrichment for both offline comparators and runs generated plus 72 captured-detail arms. Go reaper/exporter/drain remain common actors and count in both lanes. Mixed production x86/ARM and live workload limits remain explicit. |
+| Equivalent-work efficiency | **Corrected generated comparison qualified; captured/mixed scope open.** Runtime-only [PR #11081](https://github.com/colophon-group/jobseek/pull/11081), exact source `ef7eb52affa698937aff046c4775382953249cc3`, completes all six 536-posting arms with one canonical output hash and verified cleanup. Controls explicitly select Python JSON-LD/DOM extraction and enrichment; Go reaper/exporter/drain remain common measured actors. Mean measured-actor lifetime CPU is 21.29 seconds native / 41.23 Python, sampled peak memory 454.4 / 915.3 MiB, retained memory 436.7 / 867.0 MiB and completion 19.96 / 34.77 seconds. Modeled window allocation is EUR 0.00002392 / 0.00004917 per 1,000 correct postings; startup CPU is separate from that cost window, and modeled allocation is not billed savings. This generated AMD64 scenario does not qualify captured workload or mixed production architecture. The current topology candidate's generated comparison also passes; its first captured arm failed fixture TLS trust before extraction and cleaned up. The local fixture correction is described below. |
 | Production freshness and provider recovery | **Open.** At 10:19, 2,386 monitor successes / 2,462 checks in the preceding hour, 4,986 due and zero overdue a day. At 10:28, 2,737 zero-failure details were scraped in the preceding hour, but 1,869,019 details remain due and 1,808,891 overdue a day. The three tracked large monitors retain six/two/five failures and valid recurring representations; they lack new recovery. Both tracked API-sniffer cases retain their 04:34/04:35 successes but now have one failure each and queued retries. Queue and deadletter-marker overlap alone does not attribute the delay, and generic cursor observations do not prove default-owner selection behavior. Observe natural work and do not repair schedules or force attempts. Oracle ADF's normal probe remains 16:23 UTC. |
 | Legacy-only retirement | **Open.** Complete the preceding gates and a real schedule/recovery observation window before deleting required compatibility. Preserve useful offline Python and necessary authenticated rollback assets. |
 
@@ -166,10 +168,14 @@ private captures.
 
 ## Prepared production-only retirement batch
 
-The separate topology candidate in PR #11080 is rebased onto merged source
-`6958509bd19d0e82f55680b31a833042f4699a21` (0.13.1136). Version 0.13.1137 is still next after the current-main check. The coherent batch is published as [PR #11080](https://github.com/colophon-group/jobseek/pull/11080); merge remains subject to the acceptance gates below. All 324 tests across ten deployment,
-rollback, Compose, host, Grafana, Alloy and maintenance suites pass on this
-rebased implementation.
+This unreleased **0.13.1138** topology batch is rebased onto merged runtime
+source `6934e672a1e10ac5557c025af23f127197af3bbd` (0.13.1137), in
+[PR #11080](https://github.com/colophon-group/jobseek/pull/11080). The location
+and timeout fixes are already upstream; no Go implementation change remains
+in this PR. All 324 operational tests passed on the preceding deployment
+implementation; 112 current comparison/admission and affected deployment tests
+pass after this rebase. Exact-head CI, numerical acceptance and the changed
+restoration cold exercise remain required.
 
 It removes `worker-2`, `worker-3` and `browser-1` from the production spec.
 `worker-1` remains an off-profile Go maintenance carrier for authenticated sync.
@@ -185,7 +191,7 @@ coherent retirement batch through required CI, then exercise the supported full
 cold reversal because Compose and restoration contracts change. Keep historical
 captures deleted and preserve only the current handoff and recovery assets.
 
-## Native finishing fixes in the retirement batch
+## Native finishing fixes already merged in PR #11081
 
 The shared location path now borrows its read-only miss cache under the existing
 executor mutex, removing the map-to-slice-to-map rebuild for every posting.
@@ -229,7 +235,7 @@ x86/ARM topology. The independent 536-posting generated scenario retains its
 monitor scheduling and browser contracts. All 78 native comparison-fixture tests and 23 ARM admission-fixture tests
 (101 total), including exact-byte and extraction replay of the captured corpus,
 pass locally.
-In PR #11080 the workflow runs both modes on its final candidate; numerical acceptance is
+The workflow runs both modes on the final candidate; numerical acceptance is
 still pending. Current captured-input qualification is useful evidence, not a
 completed whole-lane result or permission to retire required compatibility.
 
@@ -240,35 +246,28 @@ generated results inherited Go extraction defaults; they remain functional
 parity evidence and are superseded for Python-baseline resource acceptance. The
 new final-head generated and captured results must be inspected before release.
 
-## Immediate runtime finishing batch
+## Immediate release sequence and captured transport correction
 
-Release the shared location-cache allocation correction and trusted timeout-phase
-diagnostics independently of the separate production-topology retirement in
-[PR #11080](https://github.com/colophon-group/jobseek/pull/11080). These changes
-preserve the current Compose and supported restoration contracts. They let
-natural large-provider work benefit from the bounded allocation fix and make
-subsequent settled timeout diagnostics useful while the full retirement
-acceptance and recovery window remain open. This does not assert a production
-timeout cause or a recovery result.
+Runtime-only [PR #11081](https://github.com/colophon-group/jobseek/pull/11081)
+merged as `6934e672a1e10ac5557c025af23f127197af3bbd` after Required CI, deployment
+gate, corrected generated comparison, physical ARM B0 admission and fresh merge
+authority passed. Its supported complete rollout is running; installed-state
+qualification is still pending. This topology candidate is rebased onto that
+merged source with version 0.13.1138. Its Go implementation is already upstream;
+this PR changes retirement, restoration and isolated acceptance fixtures.
+The full migration, captured/mixed resource scope, applicable natural provider
+recovery and changed-restoration cold exercise remain required. At 11:33 the
+tracked providers still lack new successful recovery; normal retries remain
+represented and untouched.
 
-The location resolver borrows its read-only negative cache under the existing
-executor mutex and restores owned state after every call, including errors.
-All 322 frozen Python location cases and real PostgreSQL/Redis race contracts
-passed on the identical Go implementation. Timeout diagnostics retain trusted
-fetch/preparation/posting-write phases, with unchanged deadline-only error
-identity, fencing, scheduling, failure accounting and grace.
-
-Offline ordinary and ARM controls now explicitly select Python JSON-LD/DOM
-extraction and enrichment. Earlier ordinary resource results inherited Go
-detail bridges and cannot qualify a Python extraction baseline. Common native
-reaper/exporter/drain actors remain in both measured lanes. The whole-lane
-workflow runs on native runtime changes; inspect exact-head numeric results
-before relying on them. Captured detail replay and changed-topology cold
-reversal remain in PR #11080. Strict Lightpanda and Go HTTP, original production
-budgets, normal schedules and the complete full-migration objective are unchanged.
-
-The immediate branch passes 65 native comparison-fixture tests plus 23 ARM
-admission-fixture tests (88 total). It runs the generated complete-lane
-comparison with Python extraction explicitly selected; the captured mode stays
-in PR #11080. Rebase that topology candidate and assign the next current VERSION
-after this runtime-only batch merges.
+The native HTTP client uses embedded pinned CA roots. The first captured arm
+therefore could not trust the isolated fixture's self-signed root even though
+its system CA file was mounted. The corrected captured scenario uses the same
+explicit canonical `skip_ssl` fixture exception as generated direct requests
+in both arms. Page bytes and recorded extraction configurations remain intact;
+the workload hash and limits record the transport override. This does not
+measure production certificate-verification cost. Request-progress counts now
+match each captured path instead of assuming `/jobs/`. All 78 fixture tests
+and three focused progress checks pass. Independently built offline Go parsers
+match every saved extraction field on all 72 pages; temporary binaries/cache
+were removed. Whole-lane captured acceptance remains unqualified.
