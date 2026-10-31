@@ -77,6 +77,15 @@ egress. Crawler: two CPUs, 1 GiB, GOMEMLIMIT 512 MiB, discovery 60, monitors 15
 and ten candidate host domains. Redis ownership tokens are presence-only reads.
 Never read, search or edit `profile_self_identifying_dom.go`.
 
+**Operator-approved Python boundary, October 31:** port performance-sensitive
+crawler paths to Go. Keep Lightpanda host firewall/containment, deployment
+verification and other host infrastructure tooling in Python. Those protected
+operator tools may touch live host state through their existing authorized
+workflows; they do not execute crawler extraction, enrichment or per-task
+fallbacks. Their retained language is not an outstanding migration requirement.
+Keep useful isolated workspace, labeller, test-oracle and offline Python too.
+Do not expand this work into a host security/control-plane rewrite.
+
 ## Verified comparisons and their limits
 
 At PR #11080 source `c932b824c3056541cc53760f30d1336e58e2ae3a`, all **45 checks

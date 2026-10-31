@@ -533,15 +533,121 @@ def test_workflow_annotation_exposes_safe_results_without_raw_diagnostics(tmp_pa
     level = "notice" if mode == "success" else "error"
     assert result.stdout.startswith("::" + level + " title=Native whole-lane comparison::")
     assert "PRIVATE_SHOULD_NOT_ECHO" not in result.stdout
-    summary = json.loads(result.stdout.split("::", 2)[2])
+    annotations = [json.loads(line.split("::", 2)[2]) for line in result.stdout.splitlines()]
+    summary = annotations[0]
     assert summary["steps"]["MEASUREMENT_OUTCOME"] == "failure"
     assert summary["complete"] == (mode == "success")
     assert len(summary["arms"]) == int(mode != "missing")
     if mode != "missing":
-        assert summary["arms"][0]["driver_lines"] == [42]
         assert summary["arms"][0]["postings"] == 536
-        assert summary["arms"][0]["resource"]["cpu_seconds"] == 12
-        assert summary["arms"][0]["groups"]["crawler"]["mean_cpu_cores"] == 0.3
+        assert annotations[1]["driver_lines"] == [42]
+        assert annotations[1]["resource"]["cpu_seconds"] == 12
+        assert annotations[1]["groups"]["crawler"]["mean_cpu_cores"] == 0.3
+
+
+def test_six_arm_annotations_preserve_last_failure_and_numbers_with_reader_limit(tmp_path):
+    workflow = (
+        Path(__file__).resolve().parents[4] / ".github/workflows/crawler-native-whole-lane.yml"
+    )
+    steps = yaml.safe_load(workflow.read_text())["jobs"]["measure"]["steps"]
+    script = next(
+        step["run"] for step in steps if step.get("name") == "Expose bounded comparison report"
+    )
+    services = [
+        "postgres",
+        "redis",
+        "typesense",
+        "fixture",
+        "reaper",
+        "exporter",
+        "drain",
+        "ordinary",
+        "renderer",
+    ]
+    arms = [
+        {
+            "lane": "native" if index % 2 == 0 else "legacy",
+            "pair": index // 2,
+            "cleanup": True,
+            "completion_seconds": 20.123456789,
+            "output": {"postings": 536, "canonical_sha256": "1" * 64},
+            "resource": {
+                "cpu_seconds": 12.123456789,
+                "duration_seconds": 55.123456789,
+                "sampled_peak_working_memory_bytes": 483606528,
+                "retained_working_memory_bytes": 472780800,
+                "samples": 550,
+                "groups": {
+                    name: {
+                        "mean_cpu_cores": 0.1234567890123456,
+                        "mean_working_memory_bytes": 100000000.12345678,
+                    }
+                    for name in ("crawler", "renderer", "postgresql", "typesense", "fixture")
+                },
+                "services": [
+                    {
+                        "service": name,
+                        "cpu_seconds": 1.123456789,
+                        "startup_cpu_seconds": 1.123456789,
+                        "lifetime_cpu_seconds": 2.246913578,
+                        "lifetime_memory_peak_bytes": 165019648,
+                        "memory_limit_bytes": 536870912,
+                    }
+                    for name in services
+                ],
+            },
+        }
+        for index in range(6)
+    ]
+    arms[-1]["failure"] = {
+        "stage": "collect",
+        "class": "ComparisonFailure",
+        "diagnostic": {
+            "exit_code": 1,
+            "driver_lines": [42],
+            "error_types": ["RuntimeError"],
+            "progress": {"postings": {"count": 535}},
+            "stderr": "PRIVATE_SHOULD_NOT_ECHO",
+        },
+    }
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "complete": False,
+                "failure_class": "RuntimeError",
+                "arms": arms,
+                "source_revision": "a" * 40,
+                "runtime_contract_sha256": "b" * 64,
+                "workload_sha256": "c" * 64,
+            }
+        )
+    )
+    environment = {key: os.environ[key] for key in ("PATH", "HOME") if key in os.environ}
+    environment.update(
+        REPORT_PATH=str(report),
+        FIXTURE_OUTCOME="success",
+        IMAGES_OUTCOME="success",
+        MEASUREMENT_OUTCOME="failure",
+    )
+    result = subprocess.run(
+        ["/bin/bash", "-e", "-c", script],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in result.stdout
+    messages = [line.split("::", 2)[2] for line in result.stdout.splitlines()]
+    assert all(len(message) <= 4096 for message in messages)
+    annotations = [json.loads(message) for message in messages]
+    assert len(annotations) == 7
+    assert annotations[0]["arms"][-1]["stage"] == "collect"
+    assert annotations[0]["arms"][-1]["cleanup"] is True
+    assert annotations[-1]["progress"]["postings"]["count"] == 535
+    assert annotations[-1]["resource"]["cpu_seconds"] == 12.123456789
+    assert len(annotations[-1]["services"]) == 9
 
 
 def test_literal_fixture_environment_loads_real_queue_settings_without_connections() -> None:
