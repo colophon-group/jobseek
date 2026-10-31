@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-10-31 17:35 UTC**. The migration goal remains active.
+Current checkpoint: **2026-10-31 17:56 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -85,7 +85,11 @@ installed drain. This does not prove every object was uploaded by this generatio
    cancellation and command rejection. There was no panic or OOM. The runtime
    intentionally exits on authority loss; determine whether this was claim-local
    fencing or worker-wide authority loss before changing behavior. Preserve all
-   write/token/epoch fences. Re-run a stable production window after resolution.
+   write/token/epoch fences. A fresh 17:43–17:52 window has stable generations,
+   no restart increment and no OOM. Its baseline includes the earlier restart.
+   The completed fence near the exit matches current stable configuration and
+   canonical due time, while the full cache snapshot differs. Candidate 1140
+   below isolates this refusal to its claim; production acceptance is pending.
 2. **Resolve or classify Oracle ADF's observed failure.** Its natural 1139 attempt
    at 17:10 failed during fetch after about three seconds. The existing Go HTTP
    JSF route previously reproduced all 52 live jobs; do not replace it wholesale
@@ -118,6 +122,27 @@ failed because a temporary local extractor lacked character maps. All 38 affecte
 document cases passed with that fixture corrected, without production source
 changes. `go vet`, required CI and the native race/integration jobs passed.
 
+## Shared claim-fencing and ADF follow-up
+
+Candidate **0.13.1140** keeps rejecting stale cache snapshots, including stale
+writes and acknowledgement, but lets unrelated work continue instead of stopping
+the entire worker. Subsequent claims still revalidate epoch/ownership/config.
+Global/uncategorized authority loss, lease/fence/receipt failures, invalid
+configuration and unsafe cancellation remain fatal. Fixed code-owned reasons
+identify epoch, cache, lease, fence, receipt or acknowledgement refusal without
+exposing cache values, identifiers, tokens or SQL messages.
+
+Oracle ADF retains bootstrap/session/listing/pagination/seed/detail-scan failure
+stage and bounded HTTP/transport categories instead of collapsing them all to an
+incomplete-inventory error. Existing GET backoff, single-attempt POST, session,
+resource binding, inventory completion and publisher-reservation checks remain.
+This supplies evidence for the next normal attempt; it does not claim recovery
+of the observed provider failure or change transport.
+
+Focused real PostgreSQL 18/Redis race checks and both-module vet pass, including
+committed-receipt/lease retention and concurrent-work isolation. Required CI,
+its PostgreSQL 17 checks, immutable rollout and production acceptance are pending.
+
 ## Comparable efficiency and limits
 
 All four scenarios at the tested 1139 head completed **six alternating arms**
@@ -149,7 +174,14 @@ The stable pre-batch 1137 production window at 16:41–16:50 covered 831 success
 monitors and 867 successful details, with 361 skips excluded, over 539.26 seconds.
 Whole-lane means were 3.18 CPU cores and 10.86 GiB working memory. Seven monitors
 and 76 details failed. This actual mixed-work accounting is not equivalent-work
-Python evidence. The final 1139 window is **unqualified** because of the restart.
+Python evidence. The original 17:09–17:18 window is **unqualified** because of the restart.
+A fresh 17:43–17:52 window qualifies fixed processing generations with no restart
+increment/OOM: 953 successful monitors, 612 successful details and 238 excluded
+skips over 539.87 seconds. Whole-lane means are 3.61 CPU cores and 11.11 GiB working
+memory. Five monitors and 75 details failed, with 153 monitor and ten detail
+circuit deferrals and six claim errors; this is not an error-free release.
+Crawler host minima are 11.56 GiB available memory and 34.32 GiB root disk.
+These actual mixed-work counts are not equivalent-work savings evidence.
 
 ## Cold reversal, Lightpanda and operational boundaries
 
@@ -164,7 +196,7 @@ by the seven-file monitor-progress change. Preserve explicit rollback target
 1137 source `6934e672a1e10ac5557c025af23f127197af3bbd`, image
 `sha256:05aebf3cc204f9256319433d849f9b97e127fb1db31fc894cd3c7ec281144172`.
 
-Latest official assets were rechecked at 16:18: installed/pinned Lightpanda
+Latest official assets were rechecked at 17:56: installed/pinned Lightpanda
 **1.1.0-nightly.11423+56980afde**, executable source
 `56980afdec3ad177072e7a180cb05da838bc1744`; stable 1.0.2 is older.
 [Official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly).

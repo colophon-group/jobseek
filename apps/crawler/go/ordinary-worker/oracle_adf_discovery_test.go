@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -151,8 +153,55 @@ func TestOracleADFFullIdentityAndLateFailures(t *testing.T) {
 			} else if e == nil || len(found.Jobs) != 0 {
 				t.Fatal("partial ADF inventory leaked", mode)
 			}
+			if mode == "post-failure" || mode == "redirect" || mode == "missing-state" {
+				kind, status := "oracle_adf_pagination_http_status", 503
+				if mode == "redirect" {
+					status = 302
+				} else if mode == "missing-state" {
+					kind, status = "oracle_adf_session", 0
+				}
+				var failure *DiscoveryError
+				if !errors.As(e, &failure) || failure.Kind != kind || failure.Status != status || mode != "missing-state" && posts != 1 {
+					t.Fatal("ADF failure lost phase/status or retried a mutating action")
+				}
+			}
 			if strings.Contains(mode, "reserved") && (found.Response == nil || !found.Response.reserved || !domVerificationResponseMatches(p, config, found.Response)) {
 				t.Fatal("late publisher reservation lost canonical binding")
+			}
+		})
+	}
+}
+
+func TestOracleADFBootstrapFailureRetainsStatusAndRetryBudget(t *testing.T) {
+	for _, status := range []int{403, 503, 404} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			config := adfTestConfig()
+			profile, err := queue.InspectRichMonitor("11111111-1111-4111-8111-111111111111", config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			options, err := queue.OracleADFMonitorOptions(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var calls atomic.Int32
+			client := verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				w.WriteHeader(status)
+				fmt.Fprint(w, "private body with token and https://private.invalid")
+			}))
+			waits := 0
+			found, err := discoverOracleADF(context.Background(), client, profile, config, options, func(context.Context, time.Duration) error { waits++; return nil })
+			var failure *DiscoveryError
+			expected := int32(3)
+			if status == 404 {
+				expected = 1
+			}
+			if !errors.As(err, &failure) || failure.Kind != "oracle_adf_bootstrap_http_status" || failure.Status != status || calls.Load() != expected || waits != int(expected)-1 || len(found.Jobs) != 0 {
+				t.Fatal("bootstrap failure lost safe status, changed retries or emitted partial work")
+			}
+			if strings.Contains(err.Error(), "private") || strings.Contains(err.Error(), "https://") {
+				t.Fatal("ADF diagnostic exposed publisher content")
 			}
 		})
 	}
