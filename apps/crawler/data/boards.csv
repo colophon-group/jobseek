@@ -4576,6 +4576,7 @@ lumos,lumos-greenhouse,https://job-boards.greenhouse.io/lumosfiber,greenhouse,"{
 lumos-identity,lumos-identity-careers,https://job-boards.greenhouse.io/lumos,greenhouse,"{""token"": ""lumos""}",skip,
 lunar,lunar-ashby,https://jobs.ashbyhq.com/lunar,ashby,"{""token"": ""lunar""}",skip,
 lunar-energy,lunar-energy-greenhouse,https://job-boards.greenhouse.io/lunarenergy,greenhouse,"{""token"": ""lunarenergy""}",skip,
+lungarno-collection,lungarno-collection-careers,https://lungarnocollection.teamtailor.com/jobs,rss,"{""preset"": ""generic"", ""feed_url"": ""https://lungarnocollection.teamtailor.com/jobs.rss""}",json-ld,
 luno,luno-greenhouse,https://job-boards.greenhouse.io/luno,greenhouse,"{""token"": ""luno""}",skip,
 lush,lush-pinpoint,https://lush.pinpointhq.com,pinpoint,"{""slug"": ""lush""}",skip,
 lush-handmade-cosmetics,lush-handmade-cosmetics-greenhouse,https://job-boards.greenhouse.io/lush,greenhouse,"{""token"": ""lush""}",skip,
