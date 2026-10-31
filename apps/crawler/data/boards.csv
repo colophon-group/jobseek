@@ -4144,6 +4144,7 @@ kepler-group,kepler-group-greenhouse,https://job-boards.greenhouse.io/keplergrou
 kering,kering-careers,https://careers.kering.com,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 kernal-biologics-inc,kernal-biologics-inc-greenhouse,https://job-boards.greenhouse.io/kernalbio,greenhouse,"{""token"": ""kernalbio""}",skip,
 kernel,kernel-ashby,https://jobs.ashbyhq.com/kernel,ashby,"{""token"": ""kernel""}",skip,
+kerten-hospitality,kerten-hospitality-worldwide,https://careers.kertenhospitality.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.kertenhospitality.com/jobs.rss""}",skip,
 kesko,kesko-jobylon,https://cdn.jobylon.com/jobs/companies/2413/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""2413""}",json-ld,
 kestra,kestra-ashby,https://jobs.ashbyhq.com/kestra,ashby,"{""token"": ""kestra""}",skip,
 ketryx,ketryx-greenhouse,https://job-boards.greenhouse.io/ketryx,greenhouse,"{""token"": ""ketryx""}",skip,
