@@ -40,6 +40,7 @@ type RuntimeConfig struct {
 	concurrency, monitorConcurrency                                                               int
 	leaseTTL, heartbeat, taskTimeout, shutdownGrace, cancellationGrace, idleBackoff, stallTimeout time.Duration
 	njoynTaskTimeout                                                                              time.Duration
+	monitorProgressTimeout                                                                        bool
 	delay                                                                                         float64
 	maxDomains                                                                                    int
 	internalHosts                                                                                 []string
@@ -158,6 +159,7 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 		*option.dest = time.Duration(value) * time.Second
 	}
 	c.njoynTaskTimeout = c.taskTimeout
+	c.monitorProgressTimeout = getenv("ORDINARY_GO_TASK_TIMEOUT_SECONDS") == ""
 	if getenv("ORDINARY_GO_TASK_TIMEOUT_SECONDS") == "" {
 		c.njoynTaskTimeout = replay.NjoynMaxDurationMS * time.Millisecond
 	}

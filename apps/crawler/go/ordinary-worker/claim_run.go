@@ -315,6 +315,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 							return err
 						}
 					}
+					if err := pulseMonitorProgress(ctx); err != nil {
+						return err
+					}
 				}
 			} else {
 				processed, err := WriteGreenhouseInventory(ctx, cycle, preparer, inventory)

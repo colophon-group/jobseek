@@ -17,6 +17,7 @@ import (
 )
 
 type runtimeServices struct {
+	progress     func()
 	monitorSlots chan struct{}
 	claim        func(context.Context) (*queue.Claim, error)
 	claimDetail  func(context.Context) (*queue.Claim, error)
@@ -33,6 +34,9 @@ type claimLeaseGuard struct {
 	settled                             bool
 	parent                              context.Context
 	processingDeadline, failureDeadline time.Time
+	progressTimeout                     *monitorProgressContext
+	failureGrace                        time.Duration
+	onProgress                          func()
 }
 type claimLeaseGuardKey struct{}
 
@@ -45,7 +49,14 @@ func monitorFailureContext(ctx context.Context) (context.Context, context.Cancel
 		return nil, nil, false
 	}
 	deadline, ok := ctx.Deadline()
-	if !ok || !deadline.Equal(guard.processingDeadline) || !time.Now().Before(guard.failureDeadline) {
+	failureDeadline := guard.failureDeadline
+	if guard.progressTimeout != nil {
+		deadline, ok = guard.progressTimeout.expiredDeadline()
+		failureDeadline = deadline.Add(guard.failureGrace)
+	} else if !ok || !deadline.Equal(guard.processingDeadline) {
+		return nil, nil, false
+	}
+	if !ok || !time.Now().Before(failureDeadline) {
 		return nil, nil, false
 	}
 	guard.mu.Lock()
@@ -54,7 +65,7 @@ func monitorFailureContext(ctx context.Context) (context.Context, context.Cancel
 	if settled {
 		return nil, nil, false
 	}
-	cleanup, cancel := context.WithDeadline(context.WithoutCancel(ctx), guard.failureDeadline)
+	cleanup, cancel := context.WithDeadline(context.WithoutCancel(ctx), failureDeadline)
 	stop := context.AfterFunc(guard.parent, cancel)
 	return cleanup, func() { stop(); cancel() }, true
 }
@@ -74,11 +85,9 @@ func settleClaim(ctx context.Context, fn func() error) error {
 }
 
 func runLeasedClaim(parent context.Context, c RuntimeConfig, s runtimeServices, claim *queue.Claim, m *runtimeMetrics) (*GreenhouseClaimResult, error) {
-	deadline := time.Now().Add(runtimeClaimTimeout(c, claim.Descriptor()))
-	ctx, cancel := context.WithDeadline(parent, deadline)
+	ctx, cancel, guard := newClaimProcessingContext(parent, c, claim.Descriptor())
 	defer cancel()
-	guard := &claimLeaseGuard{parent: parent, processingDeadline: deadline,
-		failureDeadline: deadline.Add(c.cancellationGrace - min(100*time.Millisecond, c.cancellationGrace/10))}
+	guard.onProgress = s.progress
 	ctx = context.WithValue(ctx, claimLeaseGuardKey{}, guard)
 	stopped := make(chan struct{})
 	beatDone := make(chan error, 1)
@@ -208,6 +217,7 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 				m.active.Add(1)
 				started := time.Now()
 				executionServices := s
+				executionServices.progress = func() { m.progress(id) }
 				if reservedMonitor {
 					executionServices.monitorSlots = nil
 				}

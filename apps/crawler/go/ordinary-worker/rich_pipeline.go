@@ -157,6 +157,9 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 						return result, claimRunError("detail_enqueue", err)
 					}
 				}
+				if err := pulseMonitorProgress(ctx); err != nil {
+					return result, err
+				}
 				continue
 			}
 			publisher, ok := sink.(interface {
@@ -169,6 +172,11 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 				if _, err := publisher.EnqueueURLDetail(ctx, detail); err != nil {
 					return result, claimRunError("detail_enqueue", err)
 				}
+			}
+		}
+		if len(batch) > 0 || len(urls) > 0 {
+			if err := pulseMonitorProgress(ctx); err != nil {
+				return result, err
 			}
 		}
 	}
