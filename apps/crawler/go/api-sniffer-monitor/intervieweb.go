@@ -34,10 +34,19 @@ func InterviewebJobURL(raw, board string) (string, bool) {
 		return "", false
 	}
 	parts := strings.FieldsFunc(parsed.Path, func(r rune) bool { return r == '/' })
+	prefix := ""
+	if len(parts) == 4 {
+		boardParts := strings.FieldsFunc(b.Path, func(r rune) bool { return r == '/' })
+		if len(boardParts) < 2 || parts[0] != boardParts[0] {
+			return "", false
+		}
+		prefix = "/" + parts[0]
+		parts = parts[1:]
+	}
 	if len(parts) != 3 || !strings.EqualFold(parts[0], "jobs") || len(parts[2]) != 2 || !asciiLetters(parts[2]) {
 		return "", false
 	}
-	return "https://" + strings.ToLower(u.Hostname()) + "/jobs/" + parts[1] + "/" + strings.ToLower(parts[2]) + "/", true
+	return "https://" + strings.ToLower(u.Hostname()) + prefix + "/jobs/" + parts[1] + "/" + strings.ToLower(parts[2]) + "/", true
 }
 
 func asciiLetters(s string) bool {
@@ -93,7 +102,7 @@ func ParseInterviewebPage(body, board string) (InterviewebPage, error) {
 			}
 		}
 	}
-	pattern, err := dom.CompileURLPattern(`(?i)\bPage\s+\d+\s+of\s+(\d+)\b`)
+	pattern, err := dom.CompileURLPattern(`(?i)\b(?:Page\s+\d+\s+of|Pagina\s+\d+\s+di)\s+(\d+)\b`)
 	if err != nil {
 		return p, err
 	}

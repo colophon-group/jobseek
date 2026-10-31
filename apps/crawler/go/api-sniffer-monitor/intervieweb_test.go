@@ -3,6 +3,7 @@ package apisniffer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -58,6 +59,56 @@ func TestInterviewebMatchesActualPythonURLsCountersAndProtocol(t *testing.T) {
 				t.Fatal("pagination endpoint, section or ordering changed", endpoint, section, order, err)
 			}
 		})
+	}
+}
+
+func TestInterviewebZinrecPrefixedURLsAndItalianPagination(t *testing.T) {
+	board := "https://zinrec.intervieweb.it/starhotels/it/career"
+	for _, test := range []struct {
+		raw, want string
+	}{
+		{"/starhotels/jobs/assistant-manager-101/it/", "https://zinrec.intervieweb.it/starhotels/jobs/assistant-manager-101/it/"},
+		{"/jobs/standard-102/en/", "https://zinrec.intervieweb.it/jobs/standard-102/en/"},
+		{"/other/jobs/wrong-103/it/", ""},
+		{"https://evil.example/starhotels/jobs/wrong-104/it/", ""},
+		{"/starhotels/jobs/wrong-105/italian/", ""},
+	} {
+		got, ok := InterviewebJobURL(test.raw, board)
+		if got != test.want || ok != (test.want != "") {
+			t.Fatalf("canonical URL %q: got %q, %v; want %q", test.raw, got, ok, test.want)
+		}
+	}
+	page, err := ParseInterviewebPage(`Pagina 1 di 2 <a href="/starhotels/jobs/assistant-manager-101/it/">Role</a>`, board)
+	if err != nil || page.Pages != 2 || !reflect.DeepEqual(page.URLs, []string{"https://zinrec.intervieweb.it/starhotels/jobs/assistant-manager-101/it/"}) {
+		t.Fatalf("Italian page not parsed: %+v, %v", page, err)
+	}
+}
+
+func TestInterviewebZinrecConvergesOn27UniqueJobs(t *testing.T) {
+	board := "https://zinrec.intervieweb.it/starhotels/it/career"
+	o, err := TenthProviderOptionsFromMetadata("intervieweb", board, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listing := func(start, end, page int) string {
+		body := fmt.Sprintf("Pagina %d di 2 ", page)
+		for i := start; i <= end; i++ {
+			body += fmt.Sprintf(`<a href="/starhotels/jobs/role-%d/it/">Role</a>`, i)
+		}
+		return body
+	}
+	rows, err := DiscoverInterviewebSnapshot(context.Background(), o, func(_ context.Context, request Request) ([]byte, error) {
+		if request.Method == "GET" {
+			return []byte(`<input id="url-for-announces" value="/app.php?module=newcareer"><a data-order="name" class="active">Name</a><script>{"section":"starhotels"}</script>vacancyListCareer researchAnnounces ` + listing(1, 15, 1)), nil
+		}
+		if request.Method != "POST" || !strings.Contains(request.Body, "page=2") {
+			t.Fatalf("unexpected pagination request: %+v", request)
+		}
+		body, _ := json.Marshal(map[string]any{"success": true, "data": listing(16, 27, 2)})
+		return body, nil
+	})
+	if err != nil || len(rows) != 27 || rows[0] != "https://zinrec.intervieweb.it/starhotels/jobs/role-1/it/" {
+		t.Fatalf("27-job snapshot not recovered: %d rows, %v", len(rows), err)
 	}
 }
 
