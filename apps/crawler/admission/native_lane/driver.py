@@ -64,6 +64,9 @@ async def bootstrap(pool: Any, redis: Any) -> dict[str, Any]:
         WHERE location_id=1 AND locale='en' AND is_display=true;
         INSERT INTO occupation_name SELECT id,'en',slug,true FROM occupation;
         INSERT INTO seniority_name SELECT id,'en',slug,true FROM seniority;
+        INSERT INTO exporter_state(key,value) VALUES(
+            'last_export_ts:typesense:job_posting',
+            '1970-01-01T00:00:00+00:00|00000000-0000-0000-0000-000000000000');
         SELECT setval('public.lightpanda_b0_routing_epoch_seq',2,true);
     """)
     await pool.execute(

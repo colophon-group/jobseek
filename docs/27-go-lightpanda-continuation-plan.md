@@ -140,13 +140,19 @@ profiles pass with the expected lanes. The offline comparator uses readable
 browser binaries and imports only the fixture CA into a private ephemeral NSS
 database; rendered TLS verification stays enabled. Full container qualification
 of that comparator setup remains required.
+The next Linux run passed bootstrap and schema setup, then failed the guarded
+exporter ownership transfer because the empty fixture had no saved cursor.
+Bootstrap now initializes a compatible beginning-of-stream cursor; the unchanged
+Go transfer command succeeds locally. No production ownership guard is weakened.
 Bounded annotations expose safe failure diagnostics and successful per-arm
 CPU/memory/cost results and image identities when selected logs return HTTP 502.
 Measured sampling duration remains distinct from later inspection elapsed time.
 The complete Linux comparison remains
 unqualified until the new-head run passes.
 
-The same batch addresses controlled monitor task expiry across types. The actual
+The production timeout fix proceeds independently in
+[PR #11074](https://github.com/colophon-group/jobseek/pull/11074), so benchmark
+fixture changes do not keep restarting its required qualification. The actual
 PostgreSQL/Redis regression reproduces on Lever, Oracle HCM and direct DOM:
 the old path cancels before recording failure or rescheduling, leaving its lease
 for crash recovery. The candidate records one failed cycle and acknowledges its
@@ -156,7 +162,8 @@ SQL/token/epoch/publisher barriers. All 88 focused tests/subtests pass with real
 including cancellation, stale-token, reservation and existing receipt recovery
 cases. Vet passes. The broad Mac run has 3,742 passes and three Word-document
 case failures because `antiword` is absent; Linux CI installs that required
-dependency and must pass the complete module and benchmark before merge. Processing
+dependency and must pass the complete module before the runtime fix merges.
+The whole-lane comparison remains a separate migration completion gate. Processing
 deadlines, lease budgets, concurrency and retries are unchanged. This reproduction
 does not by itself prove that all four production deadletters had that cause.
 
