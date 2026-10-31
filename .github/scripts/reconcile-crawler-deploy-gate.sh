@@ -28,6 +28,23 @@ prs="$(jq -r '.[].number' <<<"$prs_json")"
   exit 0
 }
 
+# With no open deployment hold, every ready PR has the same gate decision.
+# Read holds once for the common path; re-read before posting a new success so
+# a hold opened during this sweep cannot be ignored by that write.
+read_holds() {
+  local holds
+  holds="$(gh issue list --repo "$REPO" --state open \
+    --label 'deployment-hold:crawler' --limit 100 --json number)" || return 1
+  jq -e 'type == "array"' <<<"$holds" >/dev/null || return 1
+  printf '%s' "$holds"
+}
+
+holds_json="$(read_holds)" || {
+  echo "ERROR: could not read crawler deployment holds" >&2
+  exit 1
+}
+hold_count="$(jq length <<<"$holds_json")"
+
 # Every event reconciles every open PR from current repository state. Combined
 # with the workflow's single non-cancelling job concurrency group, this keeps an
 # older evaluator from overwriting a newer hold decision and makes a replacement
@@ -41,7 +58,7 @@ while IFS= read -r pr; do
   # Re-read state and identity immediately before evaluation. The queue listing
   # can be stale by the time a serialized run reaches a later PR.
   pr_json="$(
-    gh pr view "$pr" --repo "$REPO" --json state,isDraft,headRefOid
+    gh pr view "$pr" --repo "$REPO" --json state,isDraft,headRefOid,statusCheckRollup
   )" || {
     echo "ERROR: could not refresh PR #$pr before reconciliation" >&2
     exit 1
@@ -50,7 +67,8 @@ while IFS= read -r pr; do
     type == "object" and
     (.state | type == "string") and
     (.isDraft | type == "boolean") and
-    (.headRefOid | type == "string")
+    (.headRefOid | type == "string") and
+    (.statusCheckRollup | type == "array")
   ' <<<"$pr_json" >/dev/null || {
     echo "ERROR: PR #$pr refresh returned malformed JSON" >&2
     exit 1
@@ -69,14 +87,35 @@ while IFS= read -r pr; do
     exit 1
   }
 
+  current_gate_state="$(jq -r '
+    [.statusCheckRollup[]
+      | select(.__typename == "StatusContext" and .context == "Crawler Deploy Gate")
+      | .state] | last // "" | ascii_downcase
+  ' <<<"$pr_json")"
+
   state=failure
   description="Draft PR; no merge authority is granted"
   if [[ "$draft" == "false" ]]; then
-    description="Crawler deployment is held"
-    if PR="$pr" DRAFT=false \
-      .github/scripts/check-crawler-deploy-gate.sh; then
+    if [[ "$hold_count" == 0 ]]; then
+      # An unchanged success belongs to this exact head SHA. No file query or
+      # status API call is needed while holds are absent.
+      if [[ "$current_gate_state" == success ]]; then
+        echo "PR #$pr crawler deployment gate unchanged"
+        continue
+      fi
+      holds_now="$(read_holds)" || {
+        echo "ERROR: could not refresh crawler deployment holds" >&2
+        exit 1
+      }
+    else
+      holds_now="$holds_json"
+    fi
+    if [[ "$(jq length <<<"$holds_now")" == 0 ]] || \
+      PR="$pr" DRAFT=false .github/scripts/check-crawler-deploy-gate.sh; then
       state=success
       description="No crawler deployment hold applies"
+    else
+      description="Crawler deployment is held"
     fi
   fi
 
@@ -84,9 +123,12 @@ while IFS= read -r pr; do
   # number of statuses per SHA/context, so a long-lived PR can exhaust its
   # allowance even when its gate decision never changed. The combined-status
   # endpoint returns the latest status for each context.
-  status_json="$(
-    gh api "repos/$REPO/commits/$head_sha/status"
-  )" || {
+  if [[ "$state" == success && "$current_gate_state" == success ]]; then
+    echo "PR #$pr crawler deployment gate unchanged"
+    continue
+  fi
+
+  status_json="$(gh api "repos/$REPO/commits/$head_sha/status")" || {
     echo "ERROR: could not read current gate status for PR #$pr" >&2
     exit 1
   }

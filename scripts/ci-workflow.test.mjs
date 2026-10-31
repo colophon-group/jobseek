@@ -319,9 +319,11 @@ if [[ "$1 $2" == "pr list" ]]; then
   exit 0
 fi
 if [[ "$1 $2" == "pr view" ]]; then
-  jq -c --argjson number "$3" '
+  jq -c --argjson number "$3" --argjson statuses "$MOCK_STATUSES" '
     .[] | select(.number == $number) |
-    {state: (.state // "OPEN"), isDraft, headRefOid}
+    {state: (.state // "OPEN"), isDraft, headRefOid,
+     statusCheckRollup: ($statuses | map({__typename: "StatusContext",
+       context, state: (.state | ascii_upcase)}))}
   ' <<<"$MOCK_PRS"
   exit 0
 fi
@@ -3473,6 +3475,16 @@ test("crawler gate does not repost an unchanged status", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /gate unchanged/);
   assert.doesNotMatch(result.calls, /\/statuses\//);
+  assert.doesNotMatch(result.calls, /\/pulls\/|\/commits\//);
+  assert.equal((result.calls.match(/issue list/g) ?? []).length, 1);
+});
+
+test("crawler gate skips file classification for a new ready PR when no hold exists", () => {
+  const result = runCrawlerDeployReconciler();
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.calls, /statuses\/a{40}.*-f state=success/);
+  assert.doesNotMatch(result.calls, /\/pulls\//);
 });
 
 test("a stale queued evaluator converges every PR to the current hold state", () => {
@@ -3487,7 +3499,7 @@ test("a stale queued evaluator converges every PR to the current hold state", ()
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.calls, /statuses\/a{40}.*-f state=failure/);
   assert.match(result.calls, /statuses\/b{40}.*-f state=failure/);
-  assert.equal((result.calls.match(/issue list/g) ?? []).length, 2);
+  assert.equal((result.calls.match(/issue list/g) ?? []).length, 3);
 });
 
 test("workflow-dispatched CI publishes the Required CI status context", () => {
