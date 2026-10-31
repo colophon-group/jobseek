@@ -3270,6 +3270,7 @@ grail,grail-lever,https://jobs.lever.co/grailbio,lever,"{""token"": ""grailbio""
 gram-games,gram-games-greenhouse,https://job-boards.greenhouse.io/gramgamescareers,greenhouse,"{""token"": ""gramgamescareers""}",skip,
 grand,grand-ashby,https://jobs.ashbyhq.com/grand,ashby,"{""token"": ""grand""}",skip,
 grand-games,grand-games-lever,https://jobs.lever.co/grand,lever,"{""token"": ""grand""}",skip,
+grand-hotel-huis-ter-duin,grand-hotel-huis-ter-duin-worldwide,https://www.nmbrshire.com/External/OJCustomer3/AssignmentList.aspx?guidExtSoftware=031e05a7-ec11-4bd8-88d7-ce92c14db0b3,dom,"{""render"": false, ""url_filter"": ""/External/OJCustomer3/AssignmentView[.]aspx""}",json-ld,"{""description_selector"": "".assignment-description""}"
 grant-thornton,grant-thornton-australia,https://grantthorntonaus.wd105.myworkdayjobs.com/GTA,workday,"{""company"": ""grantthorntonaus"", ""wd_instance"": ""wd105"", ""site"": ""GTA""}",workday,
 grant-thornton,grant-thornton-austria,https://grantthorntonaustria.recruitee.com/,recruitee,"{""slug"": ""grantthorntonaustria"", ""api_base"": ""https://grantthorntonaustria.recruitee.com""}",skip,
 grant-thornton,grant-thornton-belgium,https://careers.grantthornton.be/l/nl/,recruitee,"{""slug"": ""careers-analytics"", ""api_base"": ""https://careers.grantthornton.be""}",skip,
