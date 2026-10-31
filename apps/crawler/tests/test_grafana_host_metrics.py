@@ -63,6 +63,7 @@ def _healthy_results(now: float) -> dict:
         "active_series": [_row(6000)],
         "crawler_series": [_row(1000)],
         "crawler_capability_series": [_row(500)],
+        "native_execution_series": [_row(6)],
         "crawler_created_series": [_row(0)],
         "redis_series": [_row(100)],
         "unix_series": [_row(1200)],
@@ -286,13 +287,32 @@ def test_capability_budget_covers_registry_bounded_fleet_with_headroom() -> None
     per_process = (len(all_monitor_types()) + 1) * len(RUNTIME_OUTCOMES["monitor"]) + (
         len(all_scraper_types()) + 1
     ) * len(RUNTIME_OUTCOMES["scrape"])
-    fleet_maximum = len(verify.CAPABILITY_PIPELINE_INSTANCES) * per_process
+    fleet_maximum = (
+        len(verify.CAPABILITY_PIPELINE_INSTANCES) * per_process
+        + verify.EXPECTED_NATIVE_EXECUTION_SERIES
+    )
 
-    assert fleet_maximum == 536
+    assert fleet_maximum == 542
     assert fleet_maximum < verify.SERIES_BUDGETS["crawler_capability_series"]
     assert (
         verify.SERIES_BUDGETS["crawler_capability_series"] < verify.SERIES_BUDGETS["crawler_series"]
     )
+
+
+def test_native_execution_metrics_replace_retired_capability_metrics() -> None:
+    now = 1_800_000_000.0
+    native = _healthy_results(now)
+    native["crawler_capability_series"] = [_row(6)]
+    verify.validate_results(native, now=now, max_age_seconds=300)
+    assert (
+        "crawler_runtime_(capability_)?executions_total"
+        in verify.QUERIES["crawler_capability_series"]
+    )
+    assert 'instance="ordinary-go"' in verify.QUERIES["native_execution_series"]
+    for missing in ([], [_row(0)], [_row(5)], [_row(7)]):
+        native["native_execution_series"] = missing
+        with pytest.raises(verify.VerificationError, match="execution outcomes are incomplete"):
+            verify.validate_results(native, now=now, max_age_seconds=300)
 
 
 def test_failures_include_query_value_timestamp_age_and_role() -> None:

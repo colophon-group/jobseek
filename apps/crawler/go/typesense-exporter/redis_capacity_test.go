@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"reflect"
@@ -12,6 +13,80 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+// Reproduce the paired nil replies observed during the live inventory scan.
+// The other commands still execute against real Redis and retain their values.
+type capacityMissingSampleHook struct{ ttlError error }
+
+func (h capacityMissingSampleHook) DialHook(next redis.DialHook) redis.DialHook          { return next }
+func (h capacityMissingSampleHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook { return next }
+func (h capacityMissingSampleHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return func(ctx context.Context, commands []redis.Cmder) error {
+		err := next(ctx, commands)
+		missing := false
+		for _, command := range commands {
+			args := command.Args()
+			if command.Name() == "memory" && len(args) > 2 && args[2] == "scrape:vanished" {
+				command.SetErr(redis.Nil)
+				missing = true
+			}
+			if command.Name() == "pttl" && len(args) > 1 && args[1] == "scrape:vanished" {
+				command.SetErr(h.ttlError)
+			}
+		}
+		if missing {
+			return redis.Nil
+		}
+		return err
+	}
+}
+
+func TestCapacitySummaryToleratesMissingTTLSamplesAndRejectsOtherErrors(t *testing.T) {
+	for _, missing := range []bool{true, false} {
+		t.Run(map[bool]string{true: "vanished", false: "other-error"}[missing], func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			client := capacityRedisFixture(t, ctx)
+			for _, key := range []string{"scrape:vanished", "scrape:retained"} {
+				if err := client.HSet(ctx, key, "domain", "example.test").Err(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := capacityKeySnapshot(ctx, client)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ttlError := error(redis.Nil)
+			if !missing {
+				ttlError = errors.New("PRIVATE_REDIS_ERROR")
+			}
+			client.AddHook(capacityMissingSampleHook{ttlError: ttlError})
+			snapshot, err := capacityInventory(ctx, client, false, time.Now)
+			if !missing {
+				if err == nil || err.Error() != "capacity sample TTL unavailable" {
+					t.Fatalf("TTL error was masked or leaked: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, family := range snapshot.Families {
+				if family.Name == "scrape_config" {
+					found = true
+					if family.Keys != 2 || family.SampleSize != 1 || family.SamplePersistent != 1 || family.EstimatedBytes <= 0 {
+						t.Fatal("valid sample lost", family)
+					}
+				}
+			}
+			after, err := capacityKeySnapshot(ctx, client)
+			if !found || err != nil || !reflect.DeepEqual(before, after) {
+				t.Fatal("summary changed Redis state", err)
+			}
+		})
+	}
+}
 
 func capacityRedisFixture(t *testing.T, ctx context.Context) *redis.Client {
 	t.Helper()
