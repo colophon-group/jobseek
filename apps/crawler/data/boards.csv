@@ -827,6 +827,7 @@ backbase,backbase-greenhouse,https://job-boards.greenhouse.io/workatbackbase,gre
 backblaze-external-website,backblaze-external-website-greenhouse,https://job-boards.greenhouse.io/backblaze,greenhouse,"{""token"": ""backblaze""}",skip,
 backflip-ai,backflip-ai-careers,https://jobs.ashbyhq.com/backflip,ashby,"{""token"": ""backflip""}",skip,
 backmarket,backmarket-ashby,https://jobs.ashbyhq.com/backmarket,ashby,"{""token"": ""backmarket""}",skip,
+badrutts-palace-hotel,badrutts-palace-hotel-careers,https://jobs.badruttscareers.com/en-GB/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.badruttscareers.com/en-GB/jobs.rss""}",skip,
 bae-systems,bae-systems-callen-lenz,https://callenlenz.teamtailor.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://callenlenz.teamtailor.com/jobs.rss""}",skip,
 bae-systems,bae-systems-careers-global,https://jobsearch.baesystems.com/browse-jobs,sitemap,"{""sitemap_url"": ""https://jobsearch.baesystems.com/jobs-sitemap.xml"", ""url_filter"": ""^https://jobsearch\\.baesystems\\.com/job/[^/?#]+/?$""}",json-ld,
 bae-systems,bae-systems-careers-se,https://baesystems.varbi.com/se/,dom,"{""render"": false, ""url_filter"": ""/what:job/jobID:""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop_count"": 50}, {""text"": ""Ort"", ""match_regex"": ""(?i)^\\s*Ort\\s*$"", ""offset"": 1, ""field"": ""location"", ""from"": 0}]}"
