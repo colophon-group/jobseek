@@ -29,10 +29,35 @@ type runtimeServices struct {
 // cancel it because that acknowledgement correctly removed its own lease.
 // This local guard never replaces the cross-process SQL/token barriers.
 type claimLeaseGuard struct {
-	mu      sync.Mutex
-	settled bool
+	mu                                  sync.Mutex
+	settled                             bool
+	parent                              context.Context
+	processingDeadline, failureDeadline time.Time
 }
 type claimLeaseGuardKey struct{}
+
+// Only this runner's processing deadline may use the remaining cancellation
+// grace to persist a failed monitor cycle. It grants no additional origin work
+// or authority: SQL/token fences still decide every write and acknowledgement.
+func monitorFailureContext(ctx context.Context) (context.Context, context.CancelFunc, bool) {
+	guard, _ := ctx.Value(claimLeaseGuardKey{}).(*claimLeaseGuard)
+	if guard == nil || !errors.Is(ctx.Err(), context.DeadlineExceeded) || guard.parent.Err() != nil {
+		return nil, nil, false
+	}
+	deadline, ok := ctx.Deadline()
+	if !ok || !deadline.Equal(guard.processingDeadline) || !time.Now().Before(guard.failureDeadline) {
+		return nil, nil, false
+	}
+	guard.mu.Lock()
+	settled := guard.settled
+	guard.mu.Unlock()
+	if settled {
+		return nil, nil, false
+	}
+	cleanup, cancel := context.WithDeadline(context.WithoutCancel(ctx), guard.failureDeadline)
+	stop := context.AfterFunc(guard.parent, cancel)
+	return cleanup, func() { stop(); cancel() }, true
+}
 
 func settleClaim(ctx context.Context, fn func() error) error {
 	guard, _ := ctx.Value(claimLeaseGuardKey{}).(*claimLeaseGuard)
@@ -49,9 +74,11 @@ func settleClaim(ctx context.Context, fn func() error) error {
 }
 
 func runLeasedClaim(parent context.Context, c RuntimeConfig, s runtimeServices, claim *queue.Claim, m *runtimeMetrics) (*GreenhouseClaimResult, error) {
-	ctx, cancel := context.WithTimeout(parent, runtimeClaimTimeout(c, claim.Descriptor()))
+	deadline := time.Now().Add(runtimeClaimTimeout(c, claim.Descriptor()))
+	ctx, cancel := context.WithDeadline(parent, deadline)
 	defer cancel()
-	guard := &claimLeaseGuard{}
+	guard := &claimLeaseGuard{parent: parent, processingDeadline: deadline,
+		failureDeadline: deadline.Add(c.cancellationGrace - min(100*time.Millisecond, c.cancellationGrace/10))}
 	ctx = context.WithValue(ctx, claimLeaseGuardKey{}, guard)
 	stopped := make(chan struct{})
 	beatDone := make(chan error, 1)

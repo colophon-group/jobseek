@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — October 30, 2026
+## Current checkpoint — October 31, 2026
 
 The goal is **active**: deliver the full production crawler migration to Go and
 self-hosted Lightpanda or proven Go HTTP/API routes, preserve every enabled board
@@ -58,11 +58,11 @@ repair, deadline/counter resets or raised budgets are authorized.
 | --- | --- |
 | Production implementation | Native workers, shared enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain are deployed. Native restoration also passed CSV publication and currency refresh. |
 | Enabled configuration coverage | Existing admission contract qualified 8,148 monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Those existing configs are unchanged, three boards were added and none removed. Actual startup validates all 8,151 canonical/cache profiles. Reuse this proof only for unchanged contracts. |
-| Conservation and authority | At 22:30 all 8,151 enabled monitors are represented: 8,132 queued and 19 validly leased; zero missing, duplicate, expired-only, token-presence or cache-domain/lane gaps. Canonical identity/key hashes match before rollout. Earlier full frontier reconciliation found no unexplained eligible removals. No manual repairs were used. |
+| Conservation and authority | The October 31 00:22 read represents 8,147 of 8,151 enabled monitors; four are deadletter-only, on Oracle HCM, Lever and two API-sniffer boards. No unexplained removals, duplicates, expired-only or cache-domain/lane gaps. Investigate this regression without manual repair; deadletters do not count as scheduled recovery. |
 | Canonical/publisher/storage/export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservation, rollback and fences. Current SQL/R2/Typesense samples below qualify observed effects within their limits. |
 | Provider recovery | One former deadletter API-sniffer case naturally succeeded before 1131. Accenture, Beisen and browser API-sniffer still have processing failures; Amazon and Oracle ADF lack fresh success. Admission, requeue and active fences are not recovery. |
 | Whole-lane efficiency/freshness | **Open.** Freshness is improving, but equivalent-work improvement without material throughput/freshness regression is not established. |
-| Cold reversal | Supported full cold reversal passed; preserve exact immutable rollback assets and epoch monotonicity. |
+| Cold reversal | Earlier supported cold reversal passed. Fresh archived-spec reversal of the current all-Go generation remains open. Preserve exact immutable rollback assets and epoch monotonicity. |
 | Legacy-only retirement | **Open.** Complete acceptance and a schedule-based observation/recovery window before removing required compatibility. Preserve useful offline Python. |
 
 In predecessor 1130 at 20:45, 730 completed active zero-failure detail records span 27 provider
@@ -121,12 +121,33 @@ claims, two heartbeat deadlines, two task deadlines and 142 detail failures,
 96 classified in detail preparation. This observation is shorter than the
 predecessor runtime; it does not establish permanent error elimination.
 
+Candidate 0.13.1132 addresses controlled monitor task expiry across profiles.
+Actual PostgreSQL/Redis reproductions on Lever, Oracle HCM and direct DOM show
+that the old path cancels before recording a failed cycle or rescheduling,
+leaving the lease for crash recovery. The candidate records one failed cycle
+and acknowledges its canonical next deadline within the existing cancellation
+grace. It performs no further origin work and preserves incomplete inventories,
+shutdown cancellation, publisher reservations and SQL/token/epoch barriers.
+All 88 focused tests/subtests pass with race checks and no skipped cases,
+including replaced-token and receipt-recovery checks. Go vet passes. The broad
+Mac run has 3,742 passes and three Word-document case failures because antiword
+is absent; the required complete Linux suite installs that dependency.
+Processing deadlines, lease budgets, concurrency and retries are unchanged.
+The reproduction does not prove the exact cause of all four observed deadletters.
+
+This runtime fix is qualified separately from the controlled whole-lane
+comparison in [PR #11073](https://github.com/colophon-group/jobseek/pull/11073).
+Its required checks must pass before merge and supported rollout; deployment
+does not close the original efficiency, natural recovery, freshness, current
+cold-reversal or retirement gates. Continue the full comparison independently.
+
 Next delivery:
 
 1. Diagnose normal scheduling of the five tracked former-deadletter cases with
    bounded read-only queue rank/head, retained authority, host pacing and cache
-   evidence. At 22:30 their last-check timestamps have not advanced since 20:30;
-   no recovery is credited to 1131. Resolve a measured shared cause across types
+   evidence. Later reads show new Accenture/browser API-sniffer check starts
+   without fresh success; no recovery is credited to 1131. Also resolve the
+   Oracle HCM/Lever/API-sniffer deadletter-only gap. Fix shared causes
    rather than force attempts or wait on an unexplained old deadline.
 2. Qualify comparable effective routes and useful output for the original
    whole-lane gate. Reuse unchanged worker/enrichment/PDF/drain/executor/policy
@@ -199,8 +220,9 @@ counts into a complete freshness/no-regression proof.
 
 ## Recovery, Python boundary and cleanup
 
-The complete [cold reversal](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
-passed independent image/spec/data/actor checks without mixed ownership. Do not
+The earlier [cold reversal](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
+passed independent image/spec/data/actor checks without mixed ownership, before
+the final all-Go generation. Fresh proof for that generation is still required. Do not
 rewind epoch 404. Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md):
 immutable identities, mutation locks, full quiescence, authenticated restoration,
 and stopped writers on failed restoration. No mutable tags, live rsync or partial
