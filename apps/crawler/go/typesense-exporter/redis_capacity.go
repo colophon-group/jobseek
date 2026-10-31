@@ -288,10 +288,13 @@ func capacityInventory(ctx context.Context, c *redis.Client, exact bool, clock f
 			} else if !errors.Is(e, redis.Nil) {
 				return s, errors.New("capacity sample unavailable")
 			}
-			if ttl[i].Err() != nil {
+			// A sampled key can disappear while the inventory is running.
+			// Treat a missing TTL like the paired missing MEMORY USAGE reply.
+			ttlErr := ttl[i].Err()
+			if ttlErr != nil && !errors.Is(ttlErr, redis.Nil) {
 				return s, errors.New("capacity sample TTL unavailable")
 			}
-			if ttl[i].Val() == -time.Nanosecond {
+			if ttlErr == nil && ttl[i].Val() == -time.Nanosecond {
 				row.SamplePersistent++
 			}
 		}

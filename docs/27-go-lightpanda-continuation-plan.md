@@ -11,23 +11,30 @@ This continues [plan #10185](https://github.com/colophon-group/jobseek/pull/1018
 and [salary migration #10177](https://github.com/colophon-group/jobseek/pull/10177).
 A Python-free processing image alone does not close the goal.
 
-Installed **0.13.1133**, independently verified October 31 at 04:12 UTC:
+Installed **0.13.1134**, independently verified October 31 at 07:46 UTC:
 
 | Identity | Value |
 | --- | --- |
-| Source and installed data revision | `d7e696b9fbd0ca74e7ad14f1c6d05a6e3a95b92d` |
-| Native image | `sha256:f2a0fea4a2b6639bbfab4cd823b94ed1013cdd5a16a6627b0fa07e908c489539` |
-| Runtime contract | `a3fd17f836ff7056c2b10567c95b0c736c51b4e73db689ad1985464efdd82e70` |
+| Source and installed data revision | `833b97059bc98c1d31e7e6ded1225ea339cb3b44` |
+| Native image | `sha256:53818d7eea99df856e9a65737f9a92910b1ce3e71acaf3f4ba07f189d89aed01` |
+| Runtime contract | `2b4ddd127e9d50c2b87895da31cd471dfdeebbdc0cecc94237995ef4609f70ce` |
 | Data contract | `41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693` |
 | Fleet | 8,151 enabled boards; schema 0041; default Go epoch 404; zero active migration plans |
 
-[PR #11076](https://github.com/colophon-group/jobseek/pull/11076) merged after
-exact-head Required CI and Crawler Deploy Gate passed and fresh merge authority
-was checked. The [full deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41166591674)
-succeeded. Four native services (`ordinary-go`, `lease-reaper`, `exporter`,
-`drain`) started at 04:09:59 with zero restarts/OOMs and unchanged budgets. None
-of the five legacy-profile services runs. The production processing image has
-no Python, uv, Playwright or Chromium. All times here are UTC.
+[PR #11077](https://github.com/colophon-group/jobseek/pull/11077) passed
+required checks and the [supported full deployment](https://github.com/colophon-group/jobseek/actions/runs/41180503620).
+All four native actors run with unchanged budgets and zero restarts/OOMs. No
+legacy processor runs; the processing image contains no Python, uv, Playwright
+or Chromium. All 8,151 enabled monitors remain represented.
+
+[PR #11078](https://github.com/colophon-group/jobseek/pull/11078) merged as
+`cad060906a8fc11b4036ee69ac0a81e26d2a26fb` after exact-head required checks
+and fresh merge authority. It fixes the native execution-series Grafana gate
+and disappearing Redis capacity samples, preserving hard errors and limits.
+The [full deployment](https://github.com/colophon-group/jobseek/actions/runs/41186187072)
+and [host observability deployment](https://github.com/colophon-group/jobseek/actions/runs/41186187104)
+are running; installed-source and actual CLI readback remain required. All times
+here are UTC.
 
 ## Lightpanda and operating limits
 
@@ -66,8 +73,8 @@ repairs, counter/deadline resets or raised budgets.
 | Conservation and authority | At 04:44 after the resource window, all 8,151 enabled monitors remain represented: 8,137 queued and 14 valid leases. Zero missing, duplicate, deadletter-only, expired-only, token-presence or cache gaps. Canonical identity hashes unchanged. |
 | Canonical output, policy, storage and export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservations, rollback and fences. At 04:44, 1,000 completed zero-failure details span 31 provider groups with no missing titles; all 967 nonnull posting hashes match uploaded descriptions. All 968 nonempty description rows are uploaded, none pending. Ten mature search records match title/company. No failed drain/reaper events in the bounded current-runtime read; reaper recovers 16 leases without new deadletters. Nullable/retained fields and samples do not prove universal completeness. |
 | Cold reversal | **Qualified for 1133.** The [supported complete exercise](https://github.com/colophon-group/jobseek/actions/runs/41167908024) passed, with candidate-ready and restored-prior-image markers, no rollback error and promotion skipped. Independent 04:31 reads verify the exact prior source/image/data, all four Go services, unchanged epoch 404 and all 8,151 monitors (8,120 queued, 31 valid leases), with zero missing/duplicate/token/cache gaps. After restoration, 221 completed details span 15 provider groups; all 220 nonnull hashes match nonempty uploaded descriptions, none pending, and ten search records match title/company. The runtime-aware Umantis correction preserves all seven schedules. |
-| Equivalent-work efficiency | **Open.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073), version 0.13.1135, runs six alternating complete-lane arms over 536 identical rich API/direct DOM/rendered DOM/direct JSON-LD postings. Require all canonical SQL, uploaded-body and search effects, equal canonical hashes, bounded cgroup CPU/RAM accounting and verified cleanup. The latest Linux arm completes 524; its rendered monitor fails before a listing request. The resident diagnostic identifies `PeerFailedVerification`, while the same-origin raw stdio render succeeds. The latest candidate installs the public fixture CA separately in Lightpanda's scanned certificate directory, alongside the existing Go trust bundle, with child-readable public files and unchanged private-key isolation. The regression fails against the previous PKI constructor; 37 focused tests pass, including real fixture TLS with both trust formats. The four-way Linux probe proves that controller UID10001 succeeds with system and explicit trust while isolated UID10002 fails both. The measurement runner uses `umask 077`; the imported file writer filters requested `0444` to `0400`. A new restrictive-umask regression fails against the old constructor. The fix explicitly restores `0444` on only the two public trust files; private keys and the host PKI directory remain restricted. No failed arm qualifies as completed work. The latest Linux run now completes all 536 postings and uploads, then reaches the salary assertion. The original fixture phrase is unsupported in both Python and Go; the next candidate uses a salary phrase both parse as the same expected USD100000–120000 yearly. The positive-case regression fails before that fixture correction. The salary-corrected Linux arm passes salary and uploaded-body checks, then reaches the Typesense field gate. The verifier now waits for title/company convergence as well as document count within its existing deadline, with stale-update and permanent-mismatch regressions. All six arms remain unqualified. Required CI/native queue/native worker passed on the preceding candidate with the fixed 15-second transaction deadline. |
-| Production freshness and provider recovery | **Open.** At 04:44: 4,936 due monitors, 13 overdue a day, 2,361 successes/2,559 checks in the preceding hour. The two tracked API-sniffer cases (HTTP and browser) naturally succeed after restoration at 04:35/04:34 with failure counters zero. Accenture is quarantined after five failures; Amazon and Beisen still lack fresh success. Detail backlog remains large; active/completed fences alone are insufficient. Oracle ADF has its normal October 31 16:23 probe. Observe actual schedule/recovery windows; investigate shared causes using bounded read-only evidence, never force attempts. |
+| Equivalent-work efficiency | **Open.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073), version 0.13.1136, runs six alternating complete-lane arms over 536 identical rich API/direct DOM/rendered DOM/direct JSON-LD postings. Require canonical SQL, uploaded-body and search effects, equal canonical hashes, full cgroup accounting and cleanup. Linux now completes all 536 inventory and upload effects; public CA permissions are fixed under CI umask 077. The generated salary phrase now matches both Python and Go's supported input with unchanged expected values. The verifier waits for title/company CDC convergence within the original deadline; missing/stale/permanent-mismatch regressions pass. All 45 focused fixture tests pass. Six-arm completion remains unqualified. This all-AMD64 generated workload cannot establish actual-input efficiency for the production x86 crawler plus ARM renderer. |
+| Production freshness and provider recovery | **Open.** At 08:21, 1,551 checks/1,356 successes in the preceding hour, 5,909 due monitors and zero overdue a day. Both lanes make progress. The two tracked API-sniffer cases retain natural successes and zero failures. Accenture, Amazon and Beisen now have natural attempts and partial SQL progress (2,000/5,678/3,500 touched rows), but still reach the unchanged ten-minute deadline. An 18-row offline replay matches Python/Go text-stage outputs; it does not identify the production bottleneck. Five read-only PostgreSQL activity snapshots show no long wait; they do not exclude a bottleneck. Do not optimize from an unproved cause. Oracle ADF's normal probe is October 31 16:23 UTC. Preserve schedules and observe recovery. |
 | Legacy-only retirement | **Open.** Complete the preceding gates and a real schedule/recovery observation window before deleting required compatibility. Preserve useful offline Python and necessary authenticated rollback assets. |
 
 Continue in batches across shared contracts and multiple types:
@@ -79,7 +86,7 @@ Continue in batches across shared contracts and multiple types:
    qualify all four effective profiles in the same iteration, and complete all
    six arms. Do not add speculative infrastructure or repeatedly rerun unchanged
    checks. The candidate includes latest Lightpanda and the 1133 rollback fix;
-   its fixture lint, format and typing pass; inspect the concrete UID/trust differential in the next full Linux run.
+   its 45 focused fixture tests, lint, format and typing pass. Inspect bounded canonical mismatch counts if convergence still fails.
 3. After reversal and warmup, bind one stable whole-lane resource/freshness window
    to the actual installed crawler/renderer identities. Keep errors, skips,
    detail backlog, provider mix and accounting limits visible. Observe natural
