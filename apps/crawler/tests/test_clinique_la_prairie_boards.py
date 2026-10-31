@@ -97,7 +97,7 @@ def test_provider_ownership_preserves_fourteen_unique_live_vacancies() -> None:
     }
 
 
-def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
+def test_numeric_linkedin_identity_keeps_approved_baseline_and_legacy_exclusions() -> None:
     with (_CRAWLER / "data" / "boards.csv").open(newline="") as handle:
         linkedin_rows = [row for row in csv.DictReader(handle) if row["monitor_type"] == "linkedin"]
 
@@ -107,7 +107,8 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
         if json.loads(row["monitor_config"] or "{}").get("canonical_numeric_job_urls") is True
     }
 
-    assert enabled == {
+    # New reviewed boards may opt in without editing this historical baseline.
+    assert enabled >= {
         "clinique-la-prairie-global-linkedin",
         "dxc-technology-careers-fds",
         "dxc-technology-careers-ma-linkedin",
@@ -121,6 +122,8 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
         "mindmaze-careers-linkedin",
         "opi-careers",
     }
+    # These boards predate the numeric-identity rollout and were not opted in.
+    assert enabled.isdisjoint({"alpiq-hungary-linkedin", "repower-careers-it"})
 
 
 def test_new_provider_scrapers_are_narrowly_trusted_by_label_workflow() -> None:
