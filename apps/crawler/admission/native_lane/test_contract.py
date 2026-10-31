@@ -398,8 +398,17 @@ def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
     )
     assert (directory / "server-leaf.sha256").read_text() == pins["server-leaf"] + "\n"
     assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+    public_bundle = directory / "ca-bundle.pem"
+    # The renderer mounts this public trust bundle at the OS CA path. Its
+    # isolated browser UID differs from the parent credential owner (10001).
+    assert public_bundle.stat().st_mode & stat.S_IROTH
     assert all(
-        stat.S_IMODE(path.stat().st_mode) == (0o400 if path.name == "server-key.pem" else 0o600)
+        not path.stat().st_mode & (stat.S_IRGRP | stat.S_IROTH)
+        for path in directory.glob("*-key.pem")
+    )
+    assert all(
+        stat.S_IMODE(path.stat().st_mode)
+        == {"server-key.pem": 0o400, "ca-bundle.pem": 0o444}.get(path.name, 0o600)
         for path in directory.iterdir()
     )
 
@@ -420,6 +429,7 @@ def test_description_sink_verifies_fixture_tls_identity_and_preserves_bytes(
     thread = threading.Thread(target=service.serve_forever, daemon=True)
     thread.start()
     context = ssl.create_default_context(cafile=str(directory / "ca-bundle.pem"))
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     client = http.client.HTTPSConnection("fixture", service.server_port, context=context, timeout=3)
     monkeypatch.setattr(
         client,
