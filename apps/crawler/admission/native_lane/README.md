@@ -109,4 +109,7 @@ The disposable PKI supplies a public Go HTTPS trust bundle and a separate
 fixture root at `/etc/ssl/certs/native-lane-fixture.crt`, the directory Lightpanda
 scans before bundle fallback. Both public files are readable by the isolated
 browser UID; private keys retain their restricted modes and the host PKI
-directory remains private. TLS verification stays enabled in both runtimes.
+directory remains private. Public file modes are set explicitly after creation:
+the measurement runner's `umask 077` otherwise reduces requested `0444` to `0400`.
+The permission regression runs with both `022` and `077`. TLS verification stays
+enabled in the renderer.

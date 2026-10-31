@@ -391,6 +391,10 @@ def pki(directory: Path, native_image: str) -> dict[str, str]:
     # Lightpanda scans individual files in /etc/ssl/certs before its bundle
     # fallback. Install the fixture root there explicitly for its isolated UID.
     _write(directory / "fixture-ca.crt", ca_pem, 0o444)
+    # The CI runner uses umask 077. os.open's creation mode is filtered by
+    # that mask, so explicitly restore only the two public trust files.
+    for name in ("ca-bundle.pem", "fixture-ca.crt"):
+        (directory / name).chmod(0o444)
     for name, (certificate, private_key) in pairs.items():
         certificate = key_identifiers(certificate, key)
         _write(

@@ -518,12 +518,17 @@ def test_renderer_keeps_the_production_privilege_drop_and_child_process_contract
     )
 
 
+@pytest.mark.parametrize("creation_umask", [0o022, 0o077])
 def test_pki_matches_the_installed_fixed_renderer_endpoint_and_private_modes(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, creation_umask
 ) -> None:
     monkeypatch.setattr(controller, "run", lambda *args, **kwargs: "")
     directory = tmp_path / "pki"
-    pins = controller.pki(directory, "unused-test-image")
+    previous_umask = os.umask(creation_umask)
+    try:
+        pins = controller.pki(directory, "unused-test-image")
+    finally:
+        os.umask(previous_umask)
     certificate = x509.load_pem_x509_certificate((directory / "server.pem").read_bytes())
     names = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
     assert [str(value) for value in names.get_values_for_type(x509.IPAddress)] == ["10.0.0.5"]
