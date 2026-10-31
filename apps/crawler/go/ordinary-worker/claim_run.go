@@ -113,7 +113,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if task.Worker == queue.Browser && renderer == nil {
 		return result, claimRunError("startup", queue.ErrConfiguration)
 	}
-	settle := func(cycle *queue.GreenhouseCycleResult) (*GreenhouseClaimResult, error) {
+	settleWithContext := func(ctx context.Context, cycle *queue.GreenhouseCycleResult) (*GreenhouseClaimResult, error) {
 		result.Cycle = cycle
 		if cycle == nil || cycle.Receipt == nil {
 			return result, claimRunError("receipt", queue.ErrConfiguration)
@@ -123,6 +123,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		result.Settled = true
 		return result, nil
+	}
+	settle := func(cycle *queue.GreenhouseCycleResult) (*GreenhouseClaimResult, error) {
+		return settleWithContext(ctx, cycle)
 	}
 	if receipt := claim.RecoveredReceipt(); receipt != nil {
 		return settle(&queue.GreenhouseCycleResult{Receipt: receipt, Status: "recovered"})
@@ -172,11 +175,23 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	}
 	failure := func(phase string, cause error) (*GreenhouseClaimResult, error) {
 		cycle.InvalidateInventory()
-		if ctx.Err() != nil {
-			return result, claimRunError(phase, ctx.Err())
-		}
 		if errors.Is(cause, queue.ErrAuthorityLost) {
 			return result, claimRunError(phase, cause)
+		}
+		if ctx.Err() != nil {
+			cleanup, cancel, ok := monitorFailureContext(ctx)
+			if !ok {
+				return result, claimRunError(phase, ctx.Err())
+			}
+			defer cancel()
+			terminal, err := cycle.FinishFailure(cleanup, "native_task_timeout_failed")
+			if err != nil {
+				return result, claimRunError("failure", err)
+			}
+			if _, err := settleWithContext(cleanup, terminal); err != nil {
+				return result, err
+			}
+			return result, claimRunError("task", context.DeadlineExceeded)
 		}
 		// A reservation can race native preparation or a chunk write. Keep it
 		// monotonic and skip failure accounting under the fresh canonical lock.
@@ -489,8 +504,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	result.DiscoveryCancelled = ctx.Err() != nil
 	result.Discovered = len(discovery.Jobs)
 	if ctx.Err() != nil {
-		cycle.InvalidateInventory()
-		return result, claimRunError("fetch", ctx.Err())
+		return failure("fetch", ctx.Err())
 	}
 	if reserved := workdayReservation; reserved != nil {
 		policy := reserved.PolicyURL
