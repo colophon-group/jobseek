@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LinguiClientProvider } from "@/components/providers/LinguiProvider";
 import { LocaleGuard } from "@/components/LocaleGuard";
+import { ServiceShutdownNotice } from "@/components/ServiceShutdownNotice";
 import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { JsonLd } from "@/lib/seo";
@@ -179,6 +180,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               ],
             }} />
             {children}
+            <ServiceShutdownNotice />
           </LinguiClientProvider>
         </ThemeProvider>
         <Analytics />

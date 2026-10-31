@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Give the shutdown message the mobile banner slot. Cookie consent returns
+ * after dismissal without changing its consent or preference state. */
+html:has([data-service-shutdown-notice]) [data-cookie-banner] {
+  display: none;
+}
+
 /* Reserve the detail column for the whole page, including company/watchlist
  * controls. Keep the selector on each page (not the shared app layout) so a
  * page retained by Next's Activity boundary cannot narrow another route. */
