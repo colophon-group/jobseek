@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 8163,
-    "boards_sha256": "153806b6c890723a96dd5ec507826dbeac053778e433885521837032051ddf99",
+    "boards_row_count": 8164,
+    "boards_sha256": "39bb4643415601fb96707fc12d7e99ca82ad54685907272a3f13277c9c58f7e9",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "86e902261e28a56e6e953ad658121464fc7d6b696b7ed7cde28dfce06f29d770",
+  "manifest_sha256": "8c916801c7d488518ebb1396e39d34ce6066e0b4dab045972ab00cd7d72bc322",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
