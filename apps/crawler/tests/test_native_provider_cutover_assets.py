@@ -76,7 +76,8 @@ def test_worker_route_cutover_uses_current_image_after_forward_and_rollback_sync
     assert rollback.index("uv run --no-sync crawler sync") < rollback.index(
         "repair_worker_route_cutover rollback-worker-route-cutover"
     )
+    normalized_rollback = " ".join(rollback.replace("\\\n", " ").split())
     assert (
         "repair_umantis_identity_cutover rollback-umantis-identity-cutover "
-        '1 "$maintenance_backend" &&' in rollback
+        '"$park_umantis_monitors" "$maintenance_backend" &&' in normalized_rollback
     )
