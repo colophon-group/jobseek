@@ -108,6 +108,8 @@ else
       conflicted=$(git diff --name-only --diff-filter=U)
       [[ -z "$conflicted" ]] && break
 
+      census_conflicted=false
+
       for file in $conflicted; do
         if [[ "$file" == "apps/crawler/VERSION" ]]; then
           git checkout --ours "$file"
@@ -117,12 +119,23 @@ else
         elif [[ "$file" == *.csv ]]; then
           git checkout --ours "$file"
           python3 "$SCRIPTS_DIR/merge_company_csv_rebase.py" "$file" REBASE_HEAD
+        elif [[ "$file" == "apps/crawler/tests/lightpanda/fixtures/census.json" ]]; then
+          census_conflicted=true
+          continue
         else
           echo "Unexpected conflict in $file; refusing to discard the PR's changes" >&2
           exit 1
         fi
         git add "$file"
       done
+
+      if "$census_conflicted"; then
+        # Rebuild from the combined boards after semantic CSV merges. Taking
+        # either conflicted JSON side would lose another company's records.
+        (cd apps/crawler && uv run --frozen python -m src.lightpanda.census \
+          --output tests/lightpanda/fixtures/census.json)
+        git add apps/crawler/tests/lightpanda/fixtures/census.json
+      fi
 
       if GIT_EDITOR=true git rebase --continue 2>/tmp/maybe-auto-merge-rebase.err; then
         if [[ -d .git/rebase-merge || -d .git/rebase-apply ]]; then
