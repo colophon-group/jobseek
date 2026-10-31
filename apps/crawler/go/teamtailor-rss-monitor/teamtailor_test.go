@@ -48,3 +48,23 @@ func TestParsePageRejectsPartialAndNonXML(t *testing.T) {
 		}
 	}
 }
+
+func TestCountryFallbackUsesMatchingSourceCountryOnly(t *testing.T) {
+	feed := `<?xml version="1.0"?><rss xmlns:tt="https://teamtailor.com/locations"><channel>
+<item><link>https://careers.example.com/jobs/1</link><title>Alula role</title><tt:locations><tt:location><tt:name>Alula</tt:name><tt:city>Tathleeth</tt:city><tt:country>Saudi Arabia</tt:country></tt:location></tt:locations></item>
+<item><link>https://careers.example.com/jobs/2</link><title>Europe remote</title><remoteStatus>Fully Remote</remoteStatus><tt:locations><tt:location><tt:name>Europe</tt:name><tt:city>Marbella</tt:city><tt:country>Spain</tt:country></tt:location></tt:locations></item>
+<item><link>https://careers.example.com/jobs/3</link><title>Jeddah role</title><tt:locations><tt:location><tt:name>Jeddah</tt:name><tt:country>Saudi Arabia</tt:country></tt:location></tt:locations></item>
+</channel></rss>`
+	fallbacks := map[string]string{"Alula": "Saudi Arabia"}
+	jobs, _, err := ParsePageWithCountryFallbacks([]byte(feed), fallbacks)
+	if err != nil || len(jobs) != 3 {
+		t.Fatal(err, len(jobs))
+	}
+	if jobs[0].Locations[0] != "Alula, Saudi Arabia" || jobs[1].Locations[0] != "Europe" || jobs[2].Locations[0] != "Jeddah" {
+		t.Fatal("source labels or country fallback changed", jobs)
+	}
+	without, _, err := ParsePageWithCountryFallbacks([]byte(feed), map[string]string{"Alula": "Jordan"})
+	if err != nil || without[0].Locations[0] != "Alula" {
+		t.Fatal("unverified country was applied", without, err)
+	}
+}

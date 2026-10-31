@@ -468,7 +468,31 @@ def _parse_sf_legacy_xml_item(
     )
 
 
-def _tt_location_string(loc_el: ET.Element) -> str | None:
+def _tt_country_fallbacks(metadata: Mapping[str, object]) -> dict[str, str]:
+    raw = metadata.get("location_country_fallbacks")
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict) or not 0 < len(raw) <= 32:
+        raise ValueError("Teamtailor location_country_fallbacks must be a nonempty map")
+    for name, country in raw.items():
+        if (
+            not isinstance(name, str)
+            or not isinstance(country, str)
+            or not name
+            or not country
+            or len(name) > 100
+            or len(country) > 100
+            or name.strip() != name
+            or country.strip() != country
+            or any(char in name + country for char in ",\r\n")
+        ):
+            raise ValueError("Invalid Teamtailor location_country_fallbacks entry")
+    return raw
+
+
+def _tt_location_string(
+    loc_el: ET.Element, country_fallbacks: dict[str, str] | None = None
+) -> str | None:
     """Build a location string from a tt:location element.
 
     Prefers tt:name when populated, falls back to "city, country".
@@ -476,6 +500,14 @@ def _tt_location_string(loc_el: ET.Element) -> str | None:
     name_el = loc_el.find(f"{{{_TT_NS}}}name")
     name = name_el.text.strip() if name_el is not None and name_el.text else ""
     if name:
+        country_el = loc_el.find(f"{{{_TT_NS}}}country")
+        country = country_el.text.strip() if country_el is not None and country_el.text else ""
+        if (
+            country_fallbacks
+            and country
+            and country_fallbacks.get(name, "").casefold() == country.casefold()
+        ):
+            return f"{name}, {country}"
         return name
 
     city_el = loc_el.find(f"{{{_TT_NS}}}city")
@@ -488,7 +520,9 @@ def _tt_location_string(loc_el: ET.Element) -> str | None:
     return city or country or None
 
 
-def _parse_tt_item(item: ET.Element) -> DiscoveredJob | None:
+def _parse_tt_item(
+    item: ET.Element, country_fallbacks: dict[str, str] | None = None
+) -> DiscoveredJob | None:
     """Parse a Teamtailor RSS item (tt: namespace)."""
     link = _text(item, "link")
     title = _text(item, "title")
@@ -503,7 +537,7 @@ def _parse_tt_item(item: ET.Element) -> DiscoveredJob | None:
     locations_el = item.find(f"{{{_TT_NS}}}locations")
     if locations_el is not None:
         for loc_el in locations_el.findall(f"{{{_TT_NS}}}location"):
-            loc_str = _tt_location_string(loc_el)
+            loc_str = _tt_location_string(loc_el, country_fallbacks)
             if loc_str:
                 locations.append(loc_str)
 
@@ -1569,6 +1603,10 @@ def validate_generic_rss_config(metadata: Mapping[str, object]) -> None:
     if not isinstance(render, bool):
         raise ValueError("RSS render must be a boolean")
     preset_name = metadata.get("preset", "generic")
+    if "location_country_fallbacks" in metadata:
+        if preset_name != "teamtailor":
+            raise ValueError("location_country_fallbacks requires Teamtailor RSS")
+        _tt_country_fallbacks(metadata)
     if preset_name != "generic":
         if (
             "pagination" in metadata
@@ -2149,6 +2187,9 @@ async def discover_stream(
     else:
         if metadata.get("description_mode") == _GENERIC_DESCRIPTION_MODE:
             parser = _parse_generic_title_employment_location_item
+        elif preset_name == "teamtailor":
+            country_fallbacks = _tt_country_fallbacks(metadata)
+            parser = lambda item: _parse_tt_item(item, country_fallbacks)  # noqa: E731
         else:
             parser = _PARSERS.get(preset_name, _parse_generic_item)
     resolve_job_invite_identity = metadata.get("resolve_job_invite_identity", False)

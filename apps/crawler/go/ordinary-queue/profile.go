@@ -28,6 +28,7 @@ type GreenhouseMonitorProfile struct {
 	RSSPagination                               *RSSPagination
 	RSSDetailEnrichment                         bool
 	RSSResolveJobInviteIdentity                 bool
+	RSSCountryFallbacks                         map[string]string
 	BoardID, CompanyID, Domain, Token, Endpoint string
 	Provider, Region, Profile                   string
 	Language                                    string

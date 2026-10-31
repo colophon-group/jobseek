@@ -305,6 +305,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "identity_migration",
             "job_filter",
             "listing_url",
+            "location_country_fallbacks",
             "locale",
             "pagination",
             "persistent_context",

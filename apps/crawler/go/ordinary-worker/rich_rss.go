@@ -89,7 +89,7 @@ func (c *rssRichClient) Do(request *http.Request) (*http.Response, error) {
 
 func discoverTeamtailorRich(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
 	observed := &rssRichClient{client: client, profile: profile}
-	found, err := teamtailor.Fetch(ctx, observed, profile.Endpoint)
+	found, err := teamtailor.FetchWithCountryFallbacks(ctx, observed, profile.Endpoint, profile.RSSCountryFallbacks)
 	if ctx.Err() != nil {
 		return RichDiscovery{}, ctx.Err()
 	}

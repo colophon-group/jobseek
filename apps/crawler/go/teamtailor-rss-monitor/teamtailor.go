@@ -58,7 +58,7 @@ func optional(value string) *string {
 	return &value
 }
 
-func parseItem(value item) (Job, bool) {
+func parseItem(value item, countryFallbacks map[string]string) (Job, bool) {
 	link := optional(value.Link)
 	if link == nil {
 		return Job{}, false
@@ -71,6 +71,11 @@ func parseItem(value item) (Job, bool) {
 	locations := make([]string, 0, len(value.Locations.Locations))
 	for _, place := range value.Locations.Locations {
 		if name := strings.TrimSpace(place.Name); name != "" {
+			if country, ok := countryFallbacks[name]; ok && strings.EqualFold(strings.TrimSpace(place.Country), country) {
+				// Only source-verified unresolved names receive a country
+				// context. Never infer a city from the provider's city field.
+				name += ", " + strings.TrimSpace(place.Country)
+			}
 			locations = append(locations, name)
 			continue
 		}
@@ -118,6 +123,10 @@ func parseItem(value item) (Job, bool) {
 // ParsePage reads one complete RSS page and returns both the number of raw
 // items and the rich jobs. Pagination uses the raw item count, as Python does.
 func ParsePage(body []byte) ([]Job, int, error) {
+	return ParsePageWithCountryFallbacks(body, nil)
+}
+
+func ParsePageWithCountryFallbacks(body []byte, countryFallbacks map[string]string) ([]Job, int, error) {
 	body = bytes.TrimPrefix(body, []byte{0xef, 0xbb, 0xbf})
 	head := bytes.ToLower(bytes.TrimSpace(body))
 	if !(bytes.HasPrefix(head, []byte("<?xml")) || bytes.HasPrefix(head, []byte("<rss")) || bytes.HasPrefix(head, []byte("<feed"))) {
@@ -143,7 +152,7 @@ func ParsePage(body []byte) ([]Job, int, error) {
 			return nil, 0, fmt.Errorf("parse Teamtailor item: %w", err)
 		}
 		items++
-		if parsed, valid := parseItem(raw); valid {
+		if parsed, valid := parseItem(raw, countryFallbacks); valid {
 			jobs = append(jobs, parsed)
 		}
 	}

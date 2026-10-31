@@ -17,7 +17,7 @@ import structlog
 
 from src.core.monitor import MonitorResult, postprocess_monitor_stream
 from src.core.monitors import DiscoveredJob, all_monitor_types
-from src.core.monitors.rss import _feed_config
+from src.core.monitors.rss import _feed_config, _tt_country_fallbacks
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -55,7 +55,10 @@ def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object
         or pw is not None
         or metadata.get("preset") != "teamtailor"
         or metadata.get("render")
-        or set(metadata) - {"preset", "feed_url"} - _BOOKKEEPING - _DOWNSTREAM
+        or set(metadata)
+        - {"preset", "feed_url", "location_country_fallbacks"}
+        - _BOOKKEEPING
+        - _DOWNSTREAM
     ):
         raise ValueError("Go Teamtailor requires an unchanged direct RSS configuration")
     resolved = _feed_config({"board_url": board_url, "metadata": metadata})
@@ -124,14 +127,16 @@ class GoTeamtailorRSSMonitorRuntime:
     ) -> AsyncIterator[MonitorResult]:
         del http
         feed_url = _eligible(board_url, monitor_type, monitor_config, pw)
+        country_fallbacks = _tt_country_fallbacks(monitor_config or {})
         started = monotonic()
         outcome = "error"
         proc = None
         try:
+            args = [self.binary, "--feed-url", feed_url]
+            if country_fallbacks:
+                args.extend(["--country-fallbacks-json", json.dumps(country_fallbacks)])
             proc = await asyncio.create_subprocess_exec(
-                self.binary,
-                "--feed-url",
-                feed_url,
+                *args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )

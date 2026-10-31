@@ -14,8 +14,9 @@ import (
 )
 
 func main() {
-	var feedURL string
+	var feedURL, fallbackJSON string
 	flag.StringVar(&feedURL, "feed-url", "", "configured Teamtailor RSS feed")
+	flag.StringVar(&fallbackJSON, "country-fallbacks-json", "", "source-verified location name to country map")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "unexpected positional argument")
@@ -25,7 +26,14 @@ func main() {
 	defer stop()
 	ctx, cancel := context.WithTimeout(parent, 5*time.Minute)
 	defer cancel()
-	result, err := teamtailorrss.FetchFeed(ctx, feedURL)
+	var fallbacks map[string]string
+	if fallbackJSON != "" {
+		if err := json.Unmarshal([]byte(fallbackJSON), &fallbacks); err != nil || len(fallbacks) == 0 || len(fallbacks) > 32 {
+			fmt.Fprintln(os.Stderr, "invalid country fallback map")
+			os.Exit(2)
+		}
+	}
+	result, err := teamtailorrss.FetchFeedWithCountryFallbacks(ctx, feedURL, fallbacks)
 	if err != nil {
 		result.Error = err.Error()
 	}
