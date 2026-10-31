@@ -112,6 +112,13 @@ claim is made. Raw samples are deleted after aggregation and readback.
 
 ## Efficiency, deployment and retention rules
 
+The current 536-posting fixture uses generated inputs. Its complete-lane runs
+qualify functionality and controlled scenario accounting; they do not alone
+establish savings on captured actual workload. Preserve the original requirement
+for comparable captured inputs and observed production workload. Match the
+production ARM64 architecture before making architecture-specific claims; do not
+replace that requirement with a synthetic density win.
+
 Natural windows have different task/provider/output mixes and cannot establish
 an equivalent-work win. Require better complete-lane CPU/RAM/density/attributable
 cost without material throughput/freshness regression. Count useful work with

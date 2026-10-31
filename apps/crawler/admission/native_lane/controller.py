@@ -35,6 +35,7 @@ from admission.lightpanda_b0.controller import (
     _memory_events,
     _write,
 )
+from admission.native_lane.render_diagnostic import probe as render_probe
 from admission.native_lane.resources import PRICES, allocation, sample
 from admission.native_lane.workload import ORIGINS, PROFILES, workload_sha256
 
@@ -547,6 +548,23 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
         result["failure"] = failure
         if stage in ("startup", "collect"):
             result["startup_diagnostics"] = startup_diagnostics(env, services)
+        progress = failure.get("diagnostic", {}).get("progress", {})
+        # Before rendered inventory exists this fixed fixture can have only
+        # its one rendered monitor, so the extra diagnostic cannot exceed C4.
+        if (
+            stage == "collect"
+            and lane == "native"
+            and progress.get("profiles", {}).get("dom_rendered", {}).get("postings") == 0
+        ):
+            try:
+                identifier = compose(env, "ps", "-q", "renderer").strip()
+                result["render_probe"] = render_probe(
+                    identifier, inspect(identifier)["Config"]["Entrypoint"]
+                )
+            except Exception as diagnostic_error:
+                result["render_probe"] = {
+                    "diagnostic_failure_class": type(diagnostic_error).__name__
+                }
     finally:
         try:
             compose(env, "down", "--volumes", "--remove-orphans", "--timeout", "15", timeout=90)

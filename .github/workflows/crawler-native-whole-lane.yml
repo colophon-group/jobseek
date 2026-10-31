@@ -99,6 +99,7 @@ jobs:
                   "error_types": diagnostic.get("error_types"),
                   "progress": diagnostic.get("progress"),
                   "startup_diagnostics": arm.get("startup_diagnostics"),
+                  "render_probe": arm.get("render_probe"),
                   "pair": arm.get("pair"), "postings": output.get("postings"),
                   "canonical_sha256": output.get("canonical_sha256"),
                   "completion_seconds": arm.get("completion_seconds"),

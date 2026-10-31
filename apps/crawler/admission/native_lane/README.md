@@ -74,6 +74,11 @@ counts distinguish unclaimed work from attempted rendering. Native diagnostic
 text is parsed using the worker's bounded error format; arbitrary messages and
 request identities never enter failure annotations. An incomplete arm still
 fails and verifies cleanup.
+When the sole rendered monitor fails before producing inventory, an existing
+typed renderer stdio request may diagnose that already-failed isolated arm. It
+uses the same container, privilege drop, limits and fixed fixture origin, emits
+only result/error codes and bounded categories, and is excluded from measurement.
+No diagnostic probe can turn an incomplete arm into success.
 Compact success measurements and bounded failure diagnostics also appear in CI
 annotations, so the required CI reader can inspect them when raw logs are unavailable.
 

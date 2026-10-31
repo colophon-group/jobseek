@@ -20,9 +20,65 @@ import yaml
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
-from admission.native_lane import controller, driver, legacy_browser
+from admission.native_lane import controller, driver, legacy_browser, render_diagnostic
 from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
+
+
+def test_render_probe_uses_fixed_fixture_and_emits_only_typed_codes(monkeypatch) -> None:
+    framing, pb = render_diagnostic.bindings()
+    value = pb.BrowserResult(
+        contract_version="crawler.runtime/v1", backend=pb.BROWSER_BACKEND_LIGHTPANDA
+    )
+    value.error.error.code = pb.ERROR_CODE_INVALID_CONFIG
+    value.error.error.disposition = pb.ERROR_DISPOSITION_INVALID_CONFIG_POLICY
+    calls = []
+
+    def execute(args, **kwargs):
+        calls.append((args, kwargs))
+        request = pb.BrowserExecutionInput.FromString(framing.decode_record(kwargs["input"], 65536))
+        assert request.plan.target_url == "https://origin-2.lane.bench.test/listing"
+        assert request.plan.navigation.timeout_ms == 30000
+        assert len(request.plan.origin_operations) == 1
+        return subprocess.CompletedProcess(
+            args,
+            0,
+            framing.encode_record(value.SerializeToString(), 65536),
+            b"certificate PRIVATE_SHOULD_NOT_ECHO",
+        )
+
+    monkeypatch.setattr(render_diagnostic.subprocess, "run", execute)
+    result = render_diagnostic.probe("a" * 64, render_diagnostic.ENTRYPOINT)
+    assert result == {
+        "exit_code": 0,
+        "error_categories": ["certificate"],
+        "outcome": "error",
+        "code": "ERROR_CODE_INVALID_CONFIG",
+        "disposition": "ERROR_DISPOSITION_INVALID_CONFIG_POLICY",
+    }
+    assert calls[0][0][-1] == "--runtime-v1-stdio"
+    assert calls[0][1]["timeout"] == 45
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in json.dumps(result)
+
+
+def test_render_probe_rejects_foreign_entrypoint_without_execution(monkeypatch) -> None:
+    def reject(*args, **kwargs):
+        raise AssertionError("must not execute")
+
+    monkeypatch.setattr(render_diagnostic.subprocess, "run", reject)
+    assert (
+        render_diagnostic.probe("a" * 64, ["PRIVATE_COMMAND"])["state"]
+        == "invalid_container_or_entrypoint"
+    )
+
+
+def test_render_probe_timeout_omits_subprocess_content(monkeypatch) -> None:
+    def expired(*args, **kwargs):
+        raise subprocess.TimeoutExpired("PRIVATE_COMMAND", 45, output=b"PRIVATE_BODY")
+
+    monkeypatch.setattr(render_diagnostic.subprocess, "run", expired)
+    result = render_diagnostic.probe("a" * 64, render_diagnostic.ENTRYPOINT)
+    assert result == {"diagnostic_failure_class": "TimeoutExpired"}
 
 
 def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch) -> None:
