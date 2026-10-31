@@ -5255,6 +5255,7 @@ odoo,odoo-careers,https://www.odoo.com/jobs?all_countries=1,dom,"{""render"": fa
 odyssey,odyssey-ashby,https://jobs.ashbyhq.com/odyssey,ashby,"{""token"": ""odyssey""}",skip,
 odysseyhotelgroup,odysseyhotelgroup-pinpoint,https://odysseyhotelgroup.pinpointhq.com,pinpoint,"{""slug"": ""odysseyhotelgroup""}",skip,
 oerlikon,oerlikon-global,https://careers.oerlikon.com/job,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.oerlikon.com/googlefeed.xml""}",skip,
+oetker-hotels,oetker-hotels-careers,https://careers.oetkerhotels.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.oetkerhotels.com/jobs.rss""}",json-ld,"{""enrich"": [""locations""]}"
 offerup,offerup-greenhouse,https://job-boards.greenhouse.io/offerup,greenhouse,"{""token"": ""offerup""}",skip,
 offerzen,offerzen-greenhouse,https://job-boards.greenhouse.io/offerzen,greenhouse,"{""token"": ""offerzen""}",skip,
 office-hours,office-hours-ashby,https://jobs.ashbyhq.com/office-hours,ashby,"{""token"": ""office-hours""}",skip,
