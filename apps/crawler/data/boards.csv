@@ -7027,6 +7027,7 @@ sustainable-talent,sustainable-talent-greenhouse,https://job-boards.greenhouse.i
 sustainment,sustainment-greenhouse,https://job-boards.greenhouse.io/sustainment,greenhouse,"{""token"": ""sustainment""}",skip,
 sutter-health,sutter-health-careers,https://jobs.sutterhealth.org/,phenom,,json-ld,
 sutter-health,sutter-health-clinicians,https://cliniciancareers.sutterhealth.org/search-jobs,sitemap,"{""sitemap_url"": ""https://cliniciancareers.sutterhealth.org/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
+sv-group,sv-group-careers,https://jobs.sv-group.com/default/,sitemap,"{""sitemap_url"": ""https://jobs.sv-group.com/sitemap.xml"", ""url_filter"": ""^https://jobs\\.sv-group\\.com/job/""}",dom,"{""scope"": "".job"", ""steps"": [{""tag"": ""div"", ""attr"": ""class=col-xs-12 fontalign-left"", ""field"": ""title""}, {""tag"": ""div"", ""text"": ""Anstellungsgrad:"", ""field"": ""employment_type"", ""regex"": ""Anstellungsgrad:\\s*(.+)"", ""optional"": true}, {""tag"": ""div"", ""text"": ""Adresse:"", ""field"": ""locations"", ""regex"": ""Adresse:\\s*(.+)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Jetzt bewerben""}]}"
 sveriges-radio,sveriges-radio-jobylon,https://cdn.jobylon.com/jobs/companies/2679/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""2679""}",json-ld,
 svetness,svetness-careers,https://job-boards.greenhouse.io/svetness,greenhouse,,skip,
 svetness,svetness-corporate,https://job-boards.greenhouse.io/svetnesscorporate,greenhouse,"{""token"": ""svetnesscorporate""}",skip,
