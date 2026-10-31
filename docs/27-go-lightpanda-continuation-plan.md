@@ -58,7 +58,7 @@ repair, deadline/counter resets or raised budgets are authorized.
 | --- | --- |
 | Production implementation | Native workers, shared enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain are deployed. Native restoration also passed CSV publication and currency refresh. |
 | Enabled configuration coverage | Existing admission contract qualified 8,148 monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Those existing configs are unchanged, three boards were added and none removed. Actual startup validates all 8,151 canonical/cache profiles. Reuse this proof only for unchanged contracts. |
-| Conservation and authority | The October 30 23:52 read represents 8,149 of 8,151 enabled monitors; two are deadletter-only, on Oracle HCM and Lever. No unexplained removals, duplicates, expired-only or cache-domain/lane gaps. The earlier 22:30 read represented every monitor. Investigate the regression; do not count deadletters as scheduled recovery. No manual repairs were used. |
+| Conservation and authority | The October 31 00:22 read represents 8,147 of 8,151 enabled monitors; four are deadletter-only, on Oracle HCM, Lever and two API-sniffer boards. No unexplained removals, duplicates, expired-only or cache-domain/lane gaps. The earlier October 30 22:30 read represented every monitor. Investigate the regression; do not count deadletters as scheduled recovery. No manual repairs were used. |
 | Canonical/publisher/storage/export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservation, rollback and fences. Current SQL/R2/Typesense samples below qualify observed effects within their limits. |
 | Provider recovery | One former deadletter API-sniffer case naturally succeeded before 1131. Accenture, Beisen and browser API-sniffer still have processing failures; Amazon and Oracle ADF lack fresh success. Admission, requeue and active fences are not recovery. |
 | Whole-lane efficiency/freshness | **Open.** Freshness is improving, but equivalent-work improvement without material throughput/freshness regression is not established. |
@@ -127,8 +127,11 @@ postings across rich API, direct DOM, rendered DOM and direct JSON-LD routes.
 Each arm includes the actual worker, renderer/browser, reaper, PostgreSQL,
 Redis, exporter, drain and Typesense. Its first Linux run failed before work
 began because an empty proxy-list environment value is invalid in the retained
-Python settings. The corrected fixture passes all 20 local contract tests;
-the complete Linux comparison remains unqualified until its new-head run passes.
+Python settings. The corrected fixture passes all 22 local contract tests.
+The next Linux comparison also failed; its selected log endpoint returns HTTP
+502. Bounded failure annotations expose step outcomes and safe diagnostic fields
+through the required CI tool, without raw stderr or environments. The complete
+comparison remains unqualified until the new-head run passes.
 
 The same batch addresses controlled monitor task expiry across types. The actual
 PostgreSQL/Redis regression reproduces on Lever, Oracle HCM and direct DOM:
@@ -142,7 +145,7 @@ cases. Vet passes. The broad Mac run has 3,742 passes and three Word-document
 case failures because `antiword` is absent; Linux CI installs that required
 dependency and must pass the complete module and benchmark before merge. Processing
 deadlines, lease budgets, concurrency and retries are unchanged. This reproduction
-does not by itself prove that both observed production deadletters had that cause.
+does not by itself prove that all four production deadletters had that cause.
 
 Next delivery:
 
@@ -150,7 +153,7 @@ Next delivery:
    bounded read-only queue rank/head, retained authority, host pacing and cache
    evidence. Later reads show new check starts for Accenture and browser
    API-sniffer, but no fresh success; no recovery is credited to 1131. Also
-   resolve the new Oracle HCM/Lever deadletter-only gap. Fix shared causes
+   resolve the Oracle HCM/Lever/API-sniffer deadletter-only gap. Fix shared causes
    rather than force attempts or wait on an unexplained old deadline.
 2. Qualify comparable effective routes and useful output for the original
    whole-lane gate. Reuse unchanged worker/enrichment/PDF/drain/executor/policy

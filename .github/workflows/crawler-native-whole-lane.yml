@@ -29,6 +29,7 @@ jobs:
         with:
           enable-cache: false
       - name: Check comparison fixture
+        id: fixture
         working-directory: apps/crawler
         run: |
           uv sync --frozen --group dev
@@ -36,6 +37,7 @@ jobs:
           uv run --frozen ruff check admission/native_lane
           uv run --frozen ruff format --check admission/native_lane
       - name: Build exact runtime and comparator images
+        id: images
         run: |
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
@@ -56,6 +58,7 @@ jobs:
             --label "org.opencontainers.image.revision=${source_sha}" \
             --target service --tag "native-lane-renderer:${source_sha}" pilots/go-lightpanda
       - name: Compare identical complete work and resource use
+        id: measurement
         working-directory: apps/crawler
         run: |
           set -euo pipefail
@@ -69,6 +72,39 @@ jobs:
             --native-image "$native" --legacy-image "$legacy" \
             --renderer-image "$renderer" --source-sha "$source_sha" \
             --output "${RUNNER_TEMP}/native-whole-lane/report.json"
+      - name: Expose bounded comparison failure
+        if: failure()
+        env:
+          FIXTURE_OUTCOME: ${{ steps.fixture.outcome }}
+          IMAGES_OUTCOME: ${{ steps.images.outcome }}
+          MEASUREMENT_OUTCOME: ${{ steps.measurement.outcome }}
+          REPORT_PATH: ${{ runner.temp }}/native-whole-lane/report.json
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ["REPORT_PATH"])
+          report = json.loads(path.read_text()) if path.is_file() else {}
+          arms = []
+          for arm in report.get("arms", []):
+              failure = arm.get("failure") or {}
+              diagnostic = failure.get("diagnostic") or {}
+              arms.append({
+                  "lane": arm.get("lane"), "stage": failure.get("stage"),
+                  "class": failure.get("class"), "cleanup": arm.get("cleanup"),
+                  "exit_code": diagnostic.get("exit_code"),
+                  "driver_lines": diagnostic.get("driver_lines"),
+                  "error_types": diagnostic.get("error_types"),
+              })
+          summary = {
+              "steps": {key: os.environ[key] for key in (
+                  "FIXTURE_OUTCOME", "IMAGES_OUTCOME", "MEASUREMENT_OUTCOME")},
+              "failure_class": report.get("failure_class"), "arms": arms,
+          }
+          message = json.dumps(summary, sort_keys=True, separators=(",", ":"))
+          message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print("::error title=Native whole-lane comparison::" + message)
+          PY
       - name: Retain compact numeric comparison
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import stat
 import subprocess
@@ -16,6 +17,67 @@ from cryptography.hazmat.primitives import serialization
 
 from admission.native_lane import controller, driver
 from admission.native_lane.resources import allocation, role, sample
+
+
+@pytest.mark.parametrize("report_exists", [False, True])
+def test_workflow_failure_annotation_excludes_raw_diagnostics(tmp_path, report_exists) -> None:
+    workflow = (
+        Path(__file__).resolve().parents[4] / ".github/workflows/crawler-native-whole-lane.yml"
+    )
+    steps = yaml.safe_load(workflow.read_text())["jobs"]["measure"]["steps"]
+    script = next(
+        step["run"] for step in steps if step.get("name") == "Expose bounded comparison failure"
+    )
+    report = tmp_path / "report.json"
+    if report_exists:
+        report.write_text(
+            json.dumps(
+                {
+                    "failure_class": "RuntimeError",
+                    "private": "PRIVATE_SHOULD_NOT_ECHO",
+                    "arms": [
+                        {
+                            "lane": "native",
+                            "cleanup": True,
+                            "failure": {
+                                "stage": "bootstrap",
+                                "class": "ComparisonFailure",
+                                "message": "PRIVATE_SHOULD_NOT_ECHO",
+                                "diagnostic": {
+                                    "exit_code": 1,
+                                    "driver_lines": [42],
+                                    "error_types": ["RuntimeError"],
+                                    "stderr": "PRIVATE_SHOULD_NOT_ECHO",
+                                },
+                            },
+                        }
+                    ],
+                }
+            )
+        )
+        report.chmod(0o600)
+    environment = {key: os.environ[key] for key in ("PATH", "HOME") if key in os.environ}
+    environment.update(
+        REPORT_PATH=str(report),
+        FIXTURE_OUTCOME="success",
+        IMAGES_OUTCOME="success",
+        MEASUREMENT_OUTCOME="failure",
+    )
+    result = subprocess.run(
+        ["/bin/bash", "-e", "-c", script],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0
+    assert result.stdout.startswith("::error title=Native whole-lane comparison::")
+    assert "PRIVATE_SHOULD_NOT_ECHO" not in result.stdout
+    summary = json.loads(result.stdout.split("::", 2)[2])
+    assert summary["steps"]["MEASUREMENT_OUTCOME"] == "failure"
+    assert len(summary["arms"]) == int(report_exists)
+    if report_exists:
+        assert summary["arms"][0]["driver_lines"] == [42]
 
 
 def test_literal_fixture_environment_loads_real_queue_settings_without_connections() -> None:
