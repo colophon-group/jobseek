@@ -38,7 +38,7 @@ export function CookieBanner({ aboveBottomBar, serverConsent }: CookieBannerProp
   }
 
   return (
-    <div className={aboveBottomBar
+    <div data-cookie-banner className={aboveBottomBar
       ? "fixed bottom-14 left-0 right-0 z-50 border-t border-info-border bg-info-bg dark:bg-[rgba(147,187,253,0.15)] backdrop-blur-sm md:static md:z-auto md:border-b md:border-t-0"
       : "border-b border-info-border bg-info-bg dark:bg-[rgba(147,187,253,0.15)] backdrop-blur-sm"
     }>

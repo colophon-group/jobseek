@@ -317,6 +317,12 @@ msgstr "Ein Stellentitel sagt nicht alles. Sag Narrowed, was dir wichtig ist. Es
 msgid "marketing.tracker.stepsTitle"
 msgstr "Ein Platz für jeden nächsten Schritt"
 
+#. Friendly heading for the dismissible site-wide service shutdown notice
+#. js-lingui-explicit-id
+#: src/components/ServiceShutdownNotice.tsx
+msgid "common.shutdown.title"
+msgstr "Ein kurzer Hinweis"
+
 #. Company selection save failed because a selected company cannot be verified
 #. js-lingui-explicit-id
 #: src/lib/company-reference-error-message.ts
@@ -2439,6 +2445,12 @@ msgstr "Zur Startseite"
 msgid "pro.billing.watchlists"
 msgstr "Zu deinen Watchlists"
 
+#. Button that dismisses only the shutdown notice, without changing cookie or marketing consent
+#. js-lingui-explicit-id
+#: src/components/ServiceShutdownNotice.tsx
+msgid "common.shutdown.dismiss"
+msgstr "Alles klar"
+
 #. Step 3 title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -2896,6 +2908,12 @@ msgstr "Jobs"
 #: app/[lang]/(app)/company/[slug]/page.tsx
 msgid "company.meta.title"
 msgstr "Jobs bei {name}"
+
+#. Shutdown notice for all visitors: thank them and promise one free month on an unnamed future service. Do not add a shutdown date, service name or product details.
+#. js-lingui-explicit-id
+#: src/components/ServiceShutdownNotice.tsx
+msgid "common.shutdown.message"
+msgstr "Jobseek wird eingestellt. Danke, dass du hier bist — das bedeutet uns viel. Du kannst unseren nächsten Service einen Monat lang kostenlos nutzen, sobald er bereit ist."
 
 #. Submit button for the Pro waiting list
 #. js-lingui-explicit-id
