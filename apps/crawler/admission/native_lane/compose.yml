@@ -115,7 +115,14 @@ services:
     networks: [claim]
     volumes:
       - ..:/fixtures/admission:ro
+      - ../../contracts:/fixtures/contracts:ro
       - ${NATIVE_LANE_PKI:?}/ca-bundle.pem:/run/native-lane/ca-bundle.pem:ro
+      - ${NATIVE_LANE_PKI:?}/ca.pem:/run/lightpanda/ca.pem:ro
+      - ${NATIVE_LANE_PKI:?}/client.pem:/run/lightpanda/client.pem:ro
+      - ${NATIVE_LANE_PKI:?}/client-key.pem:/run/lightpanda/client-key.pem:ro
+      - ${NATIVE_LANE_PKI:?}/ca.sha256:/run/lightpanda/ca.sha256:ro
+      - ${NATIVE_LANE_PKI:?}/server-leaf.sha256:/run/lightpanda/server-leaf.sha256:ro
+      - ${NATIVE_LANE_PKI:?}/server-spki.sha256:/run/lightpanda/server-spki.sha256:ro
   ordinary:
     <<: *native
     command: [/usr/local/bin/go-ordinary-worker]

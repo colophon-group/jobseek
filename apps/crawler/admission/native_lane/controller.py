@@ -557,6 +557,7 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
             and progress.get("profiles", {}).get("dom_rendered", {}).get("postings") == 0
         ):
             try:
+                result["resident_render_probe"] = runner(env, "render-probe", timeout=105)
                 identifier = compose(env, "ps", "-q", "renderer").strip()
                 result["render_probe"] = render_probe(
                     identifier, inspect(identifier)["Config"]["Entrypoint"]

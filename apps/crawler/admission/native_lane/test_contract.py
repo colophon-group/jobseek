@@ -81,6 +81,43 @@ def test_render_probe_timeout_omits_subprocess_content(monkeypatch) -> None:
     assert result == {"diagnostic_failure_class": "TimeoutExpired"}
 
 
+def test_resident_probe_uses_worker_navigation_and_hides_tls_errors(monkeypatch) -> None:
+    framing, pb = render_diagnostic.bindings()
+    request = pb.BrowserExecutionInput.FromString(
+        framing.decode_record(render_diagnostic.navigation_request(resident=True), 65536)
+    )
+    assert request.plan.navigation.transport_retries == 1
+    assert request.plan.navigation.fallback.wait_until == pb.WAIT_CONDITION_DOM_CONTENT_LOADED
+    assert request.plan.navigation.fallback.timeout_ms == 5000
+    assert len(request.plan.origin_operations) == 2
+    primary, retry = request.plan.origin_operations
+    assert retry.parent_origin_request_id == primary.origin_request_id
+    assert retry.request_fingerprint == primary.request_fingerprint
+    assert retry.operation_sequence == 2
+    assert retry.role == "transport_retry"
+
+    def reject(*args, **kwargs):
+        raise ssl.SSLError("PRIVATE_CERTIFICATE_AND_PATH")
+
+    monkeypatch.setattr(render_diagnostic.ssl, "create_default_context", reject)
+    assert render_diagnostic.resident_probe() == {
+        "stage": "tls",
+        "diagnostic_failure_class": "SSLError",
+    }
+
+
+def test_resident_probe_is_guarded_before_connecting(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_DATABASE_URL", "")
+    monkeypatch.setenv("REDIS_URL", "")
+
+    def reject():
+        raise AssertionError("must reject nonfixture environment before rendering")
+
+    monkeypatch.setattr(render_diagnostic, "resident_probe", reject)
+    with pytest.raises(RuntimeError, match="literal disposable endpoints"):
+        asyncio.run(driver.run(argparse.Namespace(phase="render-probe")))
+
+
 def test_startup_diagnostics_keep_only_service_state_and_safe_codes(monkeypatch) -> None:
     monkeypatch.setattr(controller, "compose", lambda *a, **kw: "fixture-container")
     monkeypatch.setattr(

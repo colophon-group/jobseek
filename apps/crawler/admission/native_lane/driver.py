@@ -392,6 +392,10 @@ async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str,
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     validate_environment()
+    if args.phase == "render-probe":
+        from admission.native_lane.render_diagnostic import resident_probe
+
+        return resident_probe()
     import asyncpg
     from redis.asyncio import Redis
 
@@ -425,7 +429,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--phase", choices=("health", "bootstrap", "feed", "collect"), required=True
+        "--phase", choices=("health", "bootstrap", "feed", "collect", "render-probe"), required=True
     )
     parser.add_argument("--lane", choices=("native", "legacy"), required=True)
     parser.add_argument("--timeout", type=float, default=180)

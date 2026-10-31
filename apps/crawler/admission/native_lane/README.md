@@ -95,3 +95,12 @@ Docker and cgroup v2. Do not mistake a fixture pass for complete enabled-fleet
 coverage, live provider recovery, production freshness or final migration
 acceptance. Keep the independent deployed-fleet evidence and original gates in
 [the continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md).
+
+After a failed native arm with no rendered inventory, the controller stops
+measurement and probes the fixed fixture through the actual resident renderer
+using its pinned mTLS identity, worker navigation options, document-actions
+envelope and isolated child. The runner receives only the disposable fixture's
+client identity. Typed stage/outcome/error codes and HTML byte counts are emitted;
+HTML, certificates, credentials and arbitrary errors are never printed. The
+existing raw stdio probe remains a separate diagnostic. Neither counts toward
+completion or efficiency, and all disposable containers are still removed.
