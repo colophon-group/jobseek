@@ -119,6 +119,9 @@ Status tags:
 
 ## Operations And Routines
 
+- [Doppler Credential Migration](secrets-migration.md) `[runbook]` - bounded,
+  owner-dispatched import of existing CI credentials into isolated secret stores.
+
 - [14 - Daily Error Review Routine](14-error-review-routine.md) `[routine]` -
   crawler error review workflow.
 - [15 - Daily Labelled-Postings Routine](15-data-sampling-routine.md)
