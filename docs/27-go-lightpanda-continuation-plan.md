@@ -2,278 +2,163 @@
 
 ## Current checkpoint — October 31, 2026
 
-The goal is **active**: deliver the full production crawler migration to Go and
-self-hosted Lightpanda or proven Go HTTP/API routes, preserve every enabled board
-and useful output, establish better whole-lane efficiency without material
-throughput/freshness regression, then retire reasonable legacy-only consumers.
+**Goal active:** deliver the full production crawler migration to Go and
+self-hosted Lightpanda or proven Go HTTP/API routes. Preserve every enabled board
+and useful output. Establish better whole-lane efficiency without material
+throughput/freshness regression, exercise supported reversal, then retire
+reasonable legacy-only consumers. Preserve useful isolated offline Python.
 This continues [plan #10185](https://github.com/colophon-group/jobseek/pull/10185)
 and [salary migration #10177](https://github.com/colophon-group/jobseek/pull/10177).
-Implementation coverage and a Python-free image alone do not close the goal.
+A Python-free processing image alone does not close the goal.
 
-Installed **0.13.1132**:
+Installed **0.13.1135**, independently verified October 31 at 09:13 UTC:
 
 | Identity | Value |
 | --- | --- |
-| Source and installed data revision | `1a81f408e43bef8535b548f5f1e664f3e7896305` |
-| Native image, both crawler repositories | `sha256:d3850d2906f77a764bc3188e468d2550555ac6636cdc27c9ee0d0467b3375792` |
-| Runtime contract | `4a9610e027d80e5ae516d349172ea9c720e820c262e9dd3dae15e2fadcd54278` |
+| Source and installed data revision | `cad060906a8fc11b4036ee69ac0a81e26d2a26fb` |
+| Native image | `sha256:0931acbce9062f4e003b65b1a9f79ac2d766c28632a896308f62517c0d3beabf` |
+| Runtime contract | `46a593686eeba048cfce752698d35de5b3162a1ac24097a4b40277e8ad06f314` |
 | Data contract | `41db9b8ef808b62589f09b4a4407a56155f45fe06fb5a1d0c172da4a1bd66693` |
 | Fleet | 8,151 enabled boards; schema 0041; default Go epoch 404; zero active migration plans |
 
-The [full deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41159304223)
-passed on attempt one. [PR #11074](https://github.com/colophon-group/jobseek/pull/11074)
-merged after exact-head Required CI and Crawler Deploy Gate passed and fresh
-merge authority was checked. Company-image coverage was attested for that exact source.
+[PR #11078](https://github.com/colophon-group/jobseek/pull/11078) merged after
+exact-head required checks and fresh authority. The [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41186187072)
+and [host telemetry rollout](https://github.com/colophon-group/jobseek/actions/runs/41186187104)
+succeeded. Independent reads verify all four Go actors on the exact image with
+zero restarts/OOMs and unchanged budgets. No legacy processor runs; the
+processing image exposes no Python, uv, Playwright or Chromium commands.
 
-The independent 02:32 read verifies native `ordinary-go`, `lease-reaper`,
-`exporter` and `drain`, started at 02:31:20, with zero restarts/OOMs and unchanged
-budgets. None of the five Compose legacy-profile services runs. The processing
-image has no Python, uv, Playwright or Chromium. All times here are UTC.
+All 8,151 monitors remain represented: 8,127 queued and 24 valid leases, with
+zero missing, duplicate, expired-only, token-presence or cache gaps. At 09:13,
+2,150 monitors succeeded and 2,201 were checked in the preceding hour; 5,236 are
+due and none is overdue a day. These are bounded observations, not universal
+freshness or detail-backlog claims.
 
-## Latest Lightpanda and fixed operating limits
+The installed Go Redis-capacity summary now succeeds. The sampler file hash,
+six native execution series and fresh host textfile match. Its cached snapshot
+remains stale until the unchanged six-hour retry permits refresh at **12:09:18
+UTC**. No cache, last-attempt, schedule, budget or policy resets were made. All
+times here are UTC.
 
-Installed **1.1.0-nightly.11326+948d77378**, source
-`948d773786380bae36f046639fc61e2ddddd212a`. The official
+## Lightpanda and operating limits
+
+Installed **1.1.0-nightly.11423+56980afde**, executable source
+`56980afdec3ad177072e7a180cb05da838bc1744`. The official
 [nightly assets](https://github.com/lightpanda-io/browser/releases/tag/nightly)
-and latest stable were rechecked October 31 at 02:26. Installed Linux binaries
-still match the newest nightly; stable 1.0.2 is older. The nightly tag is reused,
-so compare asset digests and update times. ARM64 SHA-256:
-`74480d0994b0a4e02f7a4956a71bd2827954dbd6fbc18bd5df0ffb1e7258263f`;
-AMD64: `9dec394124212f796724d4d32737ba66fdf0319ae6faaf8a1df8cccb4a70e23f`.
+advanced October 31. All three executable assets and both Linux OCI layers were
+independently verified. Both Linux physical suites, deployment validation and
+required CI passed before [PR #11075](https://github.com/colophon-group/jobseek/pull/11075)
+merged. Use actual executable source and asset hashes, not the moving Git tag.
 
-The verified [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41033456615)
-uses source `93a9c49bb063d70b0b0eca8d19c84e96b44d75e0` and image
-`sha256:be79daebf84690c5b40bacd9e6181432d82cc2818836a79e6c213167b4fedfff`.
-Renderer limits remain concurrency four, 128 MiB heap, 8 MiB responses, 1 GiB
-memory and zero swap, with mTLS and controlled egress. Crawler limits remain two
-Go CPU cores, 1 GiB memory, GOMEMLIMIT 512 MiB, 60 discovery slots, 15 monitor
-slots and ten candidate host domains. Preserve normal delays, circuits and
-schedules. **No Chromium fallback**, forced origin probes, manual queue/SQL/env
-repair, deadline/counter resets or raised budgets are authorized.
+The [supported renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41162854853)
+succeeded. Independent 03:16 readback verifies source
+`406d0f94ee919962da2ccb4196450344265c9445`, image
+`sha256:c09939c34ba034ee9d68ec9176f19f8ddeea04bfa816ce595409b09386133af7`,
+ARM64 executable SHA-256
+`97710997faea70bb0f22f9b07ba3a9701b47dbb6a71f679150b040e70c565cf3`
+and zero restarts/OOMs. AMD64 executable SHA-256 is
+`19f3fee25fb14bb75a1e0c1e0f8ab9cce842950544e4a144fbad3884c94b98a3`.
+Recheck the official release before the next renderer change.
 
-The October 31 nightly has since advanced to **1.1.0-nightly.11423+56980afde**.
-[PR #11075](https://github.com/colophon-group/jobseek/pull/11075) pins verified
-amd64/arm64 executable and OCI-layer digests plus the independently executed
-macOS asset. Both Linux qualification suites are running. This new release is
-not installed yet; retain the verified installed renderer until qualification
-and supported rollout complete.
+Production renderer limits remain one CPU, 1 GiB memory, zero swap, 64 PIDs,
+concurrency four, 128 MiB heap and 8 MiB responses, with mTLS, controlled egress
+and isolated child UIDs. Crawler limits remain two CPU cores, 1 GiB memory,
+GOMEMLIMIT 512 MiB, 60 discovery slots, 15 monitor slots and ten candidate host
+domains. Preserve schedules, delays and circuits. **Strict Lightpanda and Go
+HTTP; no production Chromium fallback.** No forced probes, manual queue/SQL/env
+repairs, counter/deadline resets or raised budgets.
 
-## Current proof and open gates
+## Acceptance and immediate delivery
 
-| Requirement | Result and remaining work |
+| Gate | Current evidence and next action |
 | --- | --- |
-| Production implementation | Native workers, shared enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain are deployed. Native restoration also passed CSV publication and currency refresh. |
-| Enabled configuration coverage | Existing admission contract qualified 8,148 monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Those existing configs are unchanged, three boards were added and none removed. Actual startup validates all 8,151 canonical/cache profiles. Reuse this proof only for unchanged contracts. |
-| Conservation and authority | Before reversal, all 8,151 enabled monitors were represented. The October 31 02:52 post-reversal read represents 8,144: 8,113 queued and 31 valid leases. Seven enabled Umantis monitors are missing, with unchanged canonical board/monitor identity hashes and no deadletters, duplicates, token-presence or cache gaps. The rollback unconditionally parks their monitors after sync. A runtime-aware correction is in qualification; no manual repairs were used. |
-| Canonical/publisher/storage/export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservation, rollback and fences. Current SQL/R2/Typesense samples below qualify observed effects within their limits. |
-| Provider recovery | One former deadletter API-sniffer case naturally succeeded before 1131. Accenture, Beisen and browser API-sniffer still have processing failures; Amazon and Oracle ADF lack fresh success. Admission, requeue and active fences are not recovery. |
-| Whole-lane efficiency/freshness | **Open.** Equivalent-work improvement without material throughput/freshness regression is not established. Initial 1132 freshness has 6,368 due monitors, 16 overdue a day and 1,093 successful in the past hour; a comparable steady window is still needed. |
-| Cold reversal | The [current all-Go exercise](https://github.com/colophon-group/jobseek/actions/runs/41160873808) passed its workflow and restored the exact prior source/image/data and four Go actors with unchanged epoch 404. **Acceptance remains open:** independent conservation found seven missing Umantis monitors. Correct the legacy-only parking condition, deploy through the full workflow and repeat the supported reversal plus readback. |
-| Legacy-only retirement | **Open.** Complete acceptance and a schedule-based observation/recovery window before removing required compatibility. Preserve useful offline Python. |
+| Production implementation | Native workers, enrichment, document processing, scheduling, persistence, failure handling, sync, migrations, maintenance, exporter and drain deployed. Native CSV publication and currency refresh verified. |
+| Enabled configuration coverage | Existing admission proof covers 8,148 unchanged monitor/detail configurations, 1,992,763 scheduled URLs and 47 detail groups. Three boards were subsequently added, none removed; actual startup validates all 8,151 canonical/cache profiles. Reuse proof only for unchanged contracts. |
+| Conservation and authority | At 04:44 after the resource window, all 8,151 enabled monitors remain represented: 8,137 queued and 14 valid leases. Zero missing, duplicate, deadletter-only, expired-only, token-presence or cache gaps. Canonical identity hashes unchanged. |
+| Canonical output, policy, storage and export | Real PostgreSQL/Redis parity covers insert/touch/relist/foreign identity, nullable retention, delegation, publisher reservations, rollback and fences. At 04:44, 1,000 completed zero-failure details span 31 provider groups with no missing titles; all 967 nonnull posting hashes match uploaded descriptions. All 968 nonempty description rows are uploaded, none pending. Ten mature search records match title/company. No failed drain/reaper events in the bounded current-runtime read; reaper recovers 16 leases without new deadletters. Nullable/retained fields and samples do not prove universal completeness. |
+| Cold reversal | **Qualified for 1133.** The [supported complete exercise](https://github.com/colophon-group/jobseek/actions/runs/41167908024) passed, with candidate-ready and restored-prior-image markers, no rollback error and promotion skipped. Independent 04:31 reads verify the exact prior source/image/data, all four Go services, unchanged epoch 404 and all 8,151 monitors (8,120 queued, 31 valid leases), with zero missing/duplicate/token/cache gaps. After restoration, 221 completed details span 15 provider groups; all 220 nonnull hashes match nonempty uploaded descriptions, none pending, and ten search records match title/company. The runtime-aware Umantis correction preserves all seven schedules. |
+| Equivalent-work efficiency | **Open.** [PR #11073](https://github.com/colophon-group/jobseek/pull/11073), version 0.13.1136, runs six alternating complete-lane arms over 536 identical rich API/direct DOM/rendered DOM/direct JSON-LD postings. The latest Linux native arm completes all 536 canonical SQL, uploaded-body and search effects in 20.27 seconds, with cleanup verified. The legacy arm passes content/search checks, then fails the future monitor gate. Source and a failing regression show that the verifier wrongly requires Python's later Redis reschedule clock to equal its SQL success clock. The fix retains the native 1 ms equality check; legacy SQL must retain the full configured day after success, with Redis bounded between SQL due and the completed observation plus that day. Missing, past, early, over-delayed and changed-interval schedules still fail. All 62 focused fixture tests pass. Six-arm parity remains unqualified. Generated all-AMD64 inputs do not establish actual-input efficiency for the production x86 crawler plus ARM renderer. |
+| Production freshness and provider recovery | **Open.** At 08:21, 1,551 checks/1,356 successes in the preceding hour, 5,909 due monitors and zero overdue a day. Both lanes make progress. The two tracked API-sniffer cases retain natural successes and zero failures. Accenture, Amazon and Beisen now have natural attempts and partial SQL progress (2,000/5,678/3,500 touched rows), but still reach the unchanged ten-minute deadline. An 18-row offline replay matches Python/Go text-stage outputs; it does not identify the production bottleneck. Five read-only PostgreSQL activity snapshots show no long wait; they do not exclude a bottleneck. Do not optimize from an unproved cause. Oracle ADF's normal probe is October 31 16:23 UTC. Preserve schedules and observe recovery. |
+| Legacy-only retirement | **Open.** Complete the preceding gates and a real schedule/recovery observation window before deleting required compatibility. Preserve useful offline Python and necessary authenticated rollback assets. |
 
-In predecessor 1130 at 20:45, 730 completed active zero-failure detail records span 27 provider
-groups; none lacks a title. All 729 nonnull posting hashes match nonempty uploaded
-description rows, with no pending/inflight uploads. Ten mature Typesense records
-match title and company. Locale/title array lengths have separate contracts;
-their differences alone do not establish corruption. Existing values can be
-retained by COALESCE. Drain has no PUT errors in its bounded 2,000-event read.
-One reaper sweep failed; later sweeps/lifecycle succeeded without new deadletters
-or missing configurations. Do not treat zero restarts as sufficient health.
+Continue in batches across shared contracts and multiple types:
 
-Post-window 1131 readback covers 1,000 completed active zero-failure detail
-records in 27 provider groups, with no missing titles. All 979 nonnull posting
-hashes match uploaded description rows; 984 nonempty description rows include
-five pending uploads and none inflight. Ten mature Typesense titles/companies
-match. The bounded drain has no PUT errors and all 56 reaper sweeps plus 28
-lifecycle events succeed. Nullable fields, retained values and pending uploads
-are part of the existing contract, not universal field-completeness claims.
+1. Reuse the qualified 1133 cold reversal for unchanged contracts. Keep all
+   8,151 monitor schedules represented through normal work; repeat reversal only
+   when the restoration contract changes. Never manually repair schedules.
+2. Read the current comparison's numeric diagnostics. Fix the demonstrated cause,
+   qualify all four effective profiles in the same iteration, and complete all
+   six arms. Do not add speculative infrastructure or repeatedly rerun unchanged
+   checks. The candidate includes latest Lightpanda and the 1133 rollback fix;
+   its 45 focused fixture tests, lint, format and typing pass. Inspect bounded canonical mismatch counts if convergence still fails.
+3. After reversal and warmup, bind one stable whole-lane resource/freshness window
+   to the actual installed crawler/renderer identities. Keep errors, skips,
+   detail backlog, provider mix and accounting limits visible. Observe natural
+   provider recovery and the applicable schedules.
+4. When acceptance holds, remove justified production-only Python/Playwright/
+   Chromium entrypoints and assets in one coherent batch, retaining isolated
+   tooling and authenticated rollback requirements. Verify image contents,
+   enabled profiles and operational contracts through required CI, then deploy.
 
-A separate post-window cohort covers 2,000 recently seen rich-monitor postings
-across API-sniffer, Ashby, Greenhouse and Lever. Every posting has a title and an
-uploaded description matching its current posting hash; all 2,001 description
-rows are nonempty and uploaded. No posting was separately detail-scraped during
-this runtime, and none has a detail scheduled. Multilingual description-row
-counts differ from posting counts; per-posting existence checks resolve that
-accounting difference. Twenty-three postings were inserted and 34 description
-rows updated since startup; other fields can be retained. This is bounded
-canonical state evidence, not a controlled comparison to predecessor cohorts.
+## Current production measurement
 
-## Shared writer fix and next delivery batch
+The post-reversal window runs **04:35–04:44 UTC**, after five minutes of warmup,
+with ten aligned samples per crawler/renderer/PostgreSQL/Typesense host. All
+processing generations and pinned identities are stable, with no restart/OOM;
+one background crawler container generation changes and is accounted separately.
+Over 539.21 seconds, 610 monitors and 983 details succeed, with 357 skipped
+details excluded from success counts. Mean complete-lane CPU is **3.59 cores**,
+working memory **11.18 GiB**, density **0.823 successful tasks/CPU-second**, and
+modeled compute **EUR 0.002151 per 1,000 successes**. Observed output includes 287,165
+monitor items, 1,027 detail items and 235,812 posting touches.
 
-1130 has 11 observed `posting_write: deadline` failures. Its writer uses per-row
-uncached DescribeExec statements, two round trips each, within a 15-second
-transaction and five-connection pool. Passive existing-socket RTTs span
-0.36–6.90 ms, median 1.92 ms; RTT alone does not prove the timeout cause.
+Keep the errors visible: 152 failed details, one failed monitor, 197 detail host
+circuits, one monitor host circuit, one gone monitor and 11 claim errors. The
+post-window bounded current-runtime diagnostic read includes 11 unacknowledged
+claims and detail preparation failures. Due monitors fall from 6,455 before the
+exercise to 4,936 after the window, while day-overdue monitors fall from 14 to 13;
+those are different-time snapshots spanning reversal, not a controlled rate.
+Due details remain 1,906,195, including 1,848,274 overdue a day; no zero-backlog
+claim is made. Raw samples are deleted after aggregation and readback.
 
-1131 pipelines the unchanged posting statements, resolves returned identities
-and concurrent duplicates, then pipelines description statements in the same
-fenced transaction. It preserves the 500-row atomic chunk, 15-second budget,
-five connections, uncached execution mode, SQL statements, publisher policy and
-three-attempt deadlock-only retry. This addresses a shared persistence boundary
-across rich monitor types in one iteration.
+## Efficiency, deployment and retention rules
 
-A controlled actual-PostgreSQL/Redis regression runs 15 concurrent native monitor
-claims of 500 rows each with a 6 ms read-latency envelope. Original: five complete,
-ten full rollbacks after 15.02 seconds, 10,218 socket reads. Candidate: all 15
-complete in 1.26–5.56 seconds across isolated/contract runs, 735–958 reads.
-Readback checks full effects or full rollback. All 313 focused tests/subtests
-across 24 roots pass, with race checks and no skipped cases. This proves the
-transport regression within the test envelope, not production throughput.
+The current 536-posting fixture uses generated inputs. Its complete-lane runs
+qualify functionality and controlled scenario accounting; they do not alone
+establish savings on captured actual workload. Preserve the original requirement
+for comparable captured inputs and observed production workload. Account for the actual production x86 crawler and ARM renderer before making
+architecture-specific claims; do not
+replace that requirement with a synthetic density win.
 
-The full rollout, independent installed/actor/conservation checks and initial
-natural resource window are complete. The bounded 22:30 current-runtime log
-contains no posting-write deadline failures, but still has ten unacknowledged
-claims, two heartbeat deadlines, two task deadlines and 142 detail failures,
-96 classified in detail preparation. This observation is shorter than the
-predecessor runtime; it does not establish permanent error elimination.
+Natural windows have different task/provider/output mixes and cannot establish
+an equivalent-work win. Require better complete-lane CPU/RAM/density/attributable
+cost without material throughput/freshness regression. Count useful work with
+consistent terminal/output semantics; exclude skipped details from success cost.
+Include worker, renderer, reaper, drain, Redis, PostgreSQL and Typesense costs,
+startup and retained memory, and disclose fixture/measurement limits. Modeled
+allocation is not billed savings; provisioned compute remains EUR 0.0624/hour.
+An isolated AMD64 fixture comparison is not ARM64 production performance proof.
+Do not weaken the original gate to task counts or component speedups.
 
-Candidate [PR #11073](https://github.com/colophon-group/jobseek/pull/11073),
-version 0.13.1133, compares 536 identical postings across rich API, direct DOM,
-rendered DOM and direct JSON-LD routes. Each arm includes actual workers,
-renderer/browser, reaper, PostgreSQL, Redis, exporter, drain and Typesense.
-Bootstrap passes real PostgreSQL/Redis canonical/cache admission, production-size
-lookups, common feed and guarded exporter ownership transfer. The HTTPS fixture
-has verified service identities and a strict certificate chain. No production
-ownership or HTTPS guard is weakened.
+Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md): immutable
+identities, mutation locks, complete writer quiescence, authenticated archived
+spec/data restoration and stopped writers on failed restoration. Keep epoch
+404 unless the supported protocol changes it. No mutable deploy tags, live
+rsync or partial writer restarts. Retain the active generation, journal
+references, explicit rollback target, five newest verified v3 generations and
+48-hour staging grace. Fresh merge authority must bind the exact head and
+actual main tip, with Required CI/Crawler Deploy Gate green and no holds.
 
-The latest full Linux run passes those stages and starts the native drain, but
-its renderer fails before work begins. The fixture incorrectly overrides the
-service entrypoint's root-to-10001 privilege drop and required child-process
-capabilities. It now matches the production user, three capabilities and 64-PID
-limit. A contract test compares both Compose definitions directly. All 27 local
-tests, lint/format, typing, actionlint and Compose parsing pass. Full Linux
-qualification remains required. Bounded annotations retain safe engine/startup
-codes, not raw logs. Every failed arm has verified cleanup.
+Explicit legacy Docker targets and off-profile Compose services currently serve
+isolated parity/comparison and compatibility. Workspace tools import some
+`src/processing` helpers; blanket Python deletion would remove useful setup,
+labelling, research, offline enrichment and operator functionality. Retention
+grants no mixed writers or per-task production fallback.
 
-The production timeout fix is deployed as 1132 through
-[PR #11074](https://github.com/colophon-group/jobseek/pull/11074). Its exact tested
-head is `21bee788dd582151d519191c82a9a57bee5970a5`. The real PostgreSQL/Redis
-regression reproduces on Lever, Oracle HCM and direct DOM: the old path cancels
-before recording failure or rescheduling. The replacement records one failed
-cycle and acknowledges its canonical next deadline within the existing
-cancellation grace, without further origin work. It preserves incomplete
-inventories and SQL/token/epoch/publisher barriers. All 88 focused race
-tests/subtests and the complete required Linux CI pass, including cancellation,
-stale-token, reservation and receipt recovery. Processing deadlines, lease
-budgets, concurrency and retries are unchanged. The deployment restored monitor
-representation; natural provider recovery and sustained scheduling remain open.
-
-The current-generation cold exercise exposed a separate shared rollback bug.
-`rollback_sync_previous_config` always requests Umantis monitor parking, including
-when restoring a Go runtime that already supports canonical Umantis identities.
-The 1133 correction selects parking from the restored image's runtime backend:
-legacy processors retain parking; Go-to-Go reversal preserves all seven monitor
-schedules. Native sync still requires native admission and legacy credential,
-quiescence, failure propagation and archived-generation barriers remain intact.
-The exercised workflow alone is insufficient: independent conservation must pass
-after the corrected reversal before closing this gate.
-
-Next delivery:
-
-1. Complete the runtime-aware Umantis rollback correction, full rollout and
-   repeated cold-reversal readback without manual queue repairs. Diagnose normal scheduling of the five tracked former-deadletter cases with
-   bounded read-only queue rank/head, retained authority, host pacing and cache
-   evidence. Later reads show new check starts for Accenture and browser
-   API-sniffer, but no fresh success; no recovery is credited to 1131. Keep the restored Oracle HCM/Lever/API-sniffer representation under normal
-   scheduling observation. Fix shared causes
-   rather than force attempts or wait on an unexplained old deadline.
-2. Qualify comparable effective routes and useful output for the original
-   whole-lane gate. Reuse unchanged worker/enrichment/PDF/drain/executor/policy
-   proof; use identical captured inputs for controlled comparisons and normal
-   production work for freshness. Repeat broad captures only for changed
-   contracts or unexplained gaps. Keep current errors and differing workloads
-   visible; do not label natural windows a controlled speedup.
-3. Observe actual provider failure/recovery and applicable schedules, then retire
-   proven runtime-only consumers after acceptance and the recorded rollback
-   window. Oracle ADF remains quarantined until its October 31 16:23 normal probe
-   after an October 30 fetch failure; Amazon has no fresh success. Stored errors
-   alone do not prove the current cause. No forced origin work, counter resets,
-   raised quotas or Chromium substitution are authorized.
-
-## Resource and freshness acceptance
-
-The nearby steady 1130 control ran **21:39:05–21:48:04**, ten aligned samples per
-node over 539.46 seconds, unchanged identities/budgets and no restart/OOM changes.
-It has 141 successful monitors, 720 successful details and 629 skipped details;
-25,096 monitor outputs, 901 detail outputs and 18,914 posting touches. Errors
-include 214 failed details, 209 detail host circuits, six monitor timeouts and
-11 claim errors. These remain part of the result.
-
-| Observation | Legacy reference | Steady 1130 control | Native 1131 |
-| --- | ---: | ---: | ---: |
-| Duration, seconds | 566.81 | 539.46 | 539.41 |
-| Successful monitors / details | 726 / 1,454 | 141 / 720 | 280 / 810 |
-| Mean whole-lane CPU cores | 5.43 | 3.79 | 3.87 |
-| Mean whole-lane working memory, GiB | 11.97 | 11.36 | 11.23 |
-| Successful tasks per CPU second | 0.709 | 0.421 | 0.522 |
-| Modeled compute EUR per 1,000 successes | 0.001881 | 0.004140 | 0.003369 |
-
-1131 ran **22:21:22–22:30:21**, after five minutes of warmup, ten samples per
-node. Processing identities are fixed with no restart/OOM; one other crawler
-container generation changed and is reported separately. It has 186 skipped
-details, 112,377 monitor outputs, 891 detail outputs and 83,995 posting touches.
-The window includes 121 failed details, 11 failed monitors, four monitor timeouts,
-44 detail/5 monitor host circuits, two gone monitors and nine claim errors.
-Compared with the nearby 1130 control, successful-task throughput rises **26.6%**,
-density rises **23.8%**, and modeled cost per success falls **18.6%**. CPU rises
-2.3%, memory falls 1.1%, detail throughput rises 12.5%, and detail outputs fall
-1.1%. These are observations with different workloads, not a causal claim.
-
-Natural task/provider/output mixes differ. Legacy retained logs yield 215,734
-streamed monitor outputs but 722 terminal monitor events versus 726 counter
-successes; detail outputs cannot be recovered. Native outputs are counted at
-settlement. These limits prevent an equivalent-work legacy win claim. Do not
-redefine the original gate around task counts or component speedups. Provisioned
-compute remains EUR 0.0624/hour; modeled allocation is not billed savings.
-The model covers crawler actors/Redis/Alloy plus complete renderer, PostgreSQL
-and Typesense nodes, using CPU, memory excluding inactive file pages and
-role-specific catalogue prices. Skipped details are excluded from success cost.
-
-Between 20:32 and 21:49, due monitors fall from 6,315 to 5,337 and day-overdue
-monitors from **2,697 to 18**. Greenhouse/Ashby/JOIN ready-marker/head lag remains
-zero, with original 0.5/0.5/2-second delays. JOIN has a normal open host circuit.
-1130 restored canonical deadline ordering and bounded scans past throttled hosts;
-first-time/detail fairness and host/lease budgets remain intact. Detail backlog
-must also be measured; an earlier snapshot had substantial pre-cutover overdue
-work. Preserve actual deadlines rather than inventing a zero-overdue SLO.
-
-Within the 1131 installed reads at 22:17 and 22:30, due monitors rise from
-5,891 to 6,018 while day-overdue monitors fall from 16 to 13; preceding-hour
-successes fall from 1,586 to 1,435 as the rolling window changes. Eligible
-scheduled details fall from 1,996,788 to 1,995,931, due details from 1,915,569 to
-1,915,382 and day-overdue details from 1,863,629 to 1,861,790. Zero-failure detail
-scrapes in the preceding hour rise from 3,211 to 3,680, while never-scraped
-records rise from 6,863 to 7,012. Do not turn mixed snapshots or lower long-overdue
-counts into a complete freshness/no-regression proof.
-
-## Recovery, Python boundary and cleanup
-
-The earlier [cold reversal](https://github.com/colophon-group/jobseek/actions/runs/40899557014)
-passed independent image/spec/data/actor checks without mixed ownership. It
-predates the final all-Go generation; do not credit it as fresh proof of that
-generation's archived-spec reversal. No new exercise has been dispatched. Do not
-rewind epoch 404. Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md):
-immutable identities, mutation locks, full quiescence, authenticated restoration,
-and stopped writers on failed restoration. No mutable tags, live rsync or partial
-writer restarts. Retain the active generation, journal references, explicit
-rollback target, five newest verified v3 generations and 48-hour staging grace.
-
-Untargeted image builds now inherit the native production stage. Installed-image
-CI verifies native commands and absence of Python/Playwright/Chromium. Explicit
-Python `slim`, `full` and `benchmark-browser` Docker targets, the five off-profile
-Compose services and frozen compatibility assets still serve offline parity,
-comparison and cold reversal. Qualify authenticated archived-spec restoration
-before removing current legacy entrypoints. Useful setup, labelling, research,
-offline enrichment and operator tools stay isolated; workspace code still imports
-`src/processing` helpers, so blanket Python-source deletion would remove useful
-functionality. Retention grants no mixed writers or per-task fallback.
-
-Keep one compact current checkpoint and inputs required for active work or
-supported rollback. Historical raw evidence need not be preserved. Consumed
-captures, profiles, binaries, temporary databases and build/test caches are
-removed after aggregation. Current cleanup recovered about 672 MiB locally;
-98 GiB remains free. Read-only service checks found about 36/12/63/23 GiB free
-on crawler/renderer/PostgreSQL/Typesense respectively. Their temporary output
-and probe were consumed. Preserve pinned worktrees and unrelated contributor
-changes. Update this document after each deployed batch so resumption needs no
-private historical captures.
+Keep one compact current checkpoint and inputs needed for active work or
+supported rollback. **Historical raw evidence need not be preserved.** Delete
+consumed captures, profiles, binaries, temporary databases and test/build caches
+after aggregation. Approximately 99 GiB is currently free locally. Preserve
+pinned worktrees and unrelated changes, including the root checkout's `dump.rdb`.
+Update this plan after each deployed batch so resumption requires no historical
+private captures.
