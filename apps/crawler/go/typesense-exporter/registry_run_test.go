@@ -150,6 +150,7 @@ func TestRegistryPostgresRedisEndToEndAndFailureBoundary(t *testing.T) {
 	}
 	write("companies", "slug,name\nfixture,Fixture\n")
 	write("boards", "company_slug,board_slug,board_url,monitor_type\nfixture,fixture,https://fixture.invalid/jobs,rss\n")
+	write("source_coverage_links", "company_slug,board_slug,public_url,provenance\n")
 	var schema string
 	if err := conn.QueryRow(ctx, "SHOW search_path").Scan(&schema); err != nil {
 		t.Fatal(err)
