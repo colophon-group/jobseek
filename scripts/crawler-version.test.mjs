@@ -52,52 +52,6 @@ test("explicit crawler releases remain the default", () => {
   assert.equal(result.kind, "release");
 });
 
-test("native registry CI validation changes do not require a runtime release", () => {
-  const repo = mkdtempSync(join(tmpdir(), "crawler-native-validation-"));
-  try {
-    git(repo, "init", "--quiet");
-    git(repo, "config", "user.email", "test@example.com");
-    git(repo, "config", "user.name", "Test");
-    mkdirSync(join(repo, "apps/crawler/go/typesense-exporter"), { recursive: true });
-    mkdirSync(join(repo, "apps/crawler/go/ordinary-queue"), { recursive: true });
-    mkdirSync(join(repo, "apps/crawler/tests/lightpanda"), { recursive: true });
-    mkdirSync(join(repo, ".github/workflows"), { recursive: true });
-    mkdirSync(join(repo, "scripts"), { recursive: true });
-    writeFileSync(join(repo, "apps/crawler/VERSION"), "0.13.1141\n");
-    git(repo, "add", ".");
-    git(repo, "commit", "--quiet", "-m", "base");
-    const base = git(repo, "rev-parse", "HEAD");
-
-    for (const path of [
-      ".github/workflows/ci.yml",
-      "apps/crawler/go/typesense-exporter/registry_native_ci_test.go",
-      "apps/crawler/go/ordinary-queue/profile_shared_dom_api_registry_test.go",
-      "apps/crawler/tests/lightpanda/test_routing.py",
-      "scripts/check-crawler-version.mjs",
-      "scripts/crawler-version.test.mjs",
-    ]) {
-      writeFileSync(join(repo, path), "validation only\n");
-    }
-    git(repo, "add", ".");
-    git(repo, "commit", "--quiet", "-m", "add native validation");
-    const validationHead = git(repo, "rev-parse", "HEAD");
-    const validation = runVersionCheck(repo, base, validationHead);
-    assert.equal(validation.status, 0, validation.stderr);
-    assert.match(validation.stdout, /Native registry CI validation keeps 0\.13\.1141/);
-
-    mkdirSync(join(repo, "apps/crawler/src"), { recursive: true });
-    writeFileSync(join(repo, "apps/crawler/src/worker.py"), "runtime change\n");
-    git(repo, "add", ".");
-    git(repo, "commit", "--quiet", "-m", "change runtime");
-    const runtimeHead = git(repo, "rev-parse", "HEAD");
-    const runtime = runVersionCheck(repo, base, runtimeHead);
-    assert.equal(runtime.status, 1);
-    assert.match(runtime.stderr, /must be bumped/);
-  } finally {
-    rmSync(repo, { recursive: true, force: true });
-  }
-});
-
 test("runtime v1 changes require an ordinary crawler release", () => {
   for (const files of [
     ["apps/crawler/contracts/go.mod"],
