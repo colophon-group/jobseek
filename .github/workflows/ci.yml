@@ -221,7 +221,7 @@ jobs:
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
             go_http_pilot:
-              - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/data/boards.csv,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
+              - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
             company_reference:
               - '{apps/web/**,apps/crawler/src/**,apps/crawler/go/typesense-exporter/**,apps/crawler/data/companies.csv,.github/**,scripts/company-reference*.mjs,scripts/jobseek-data-backup.py,deploy/backups/**,apps/crawler/tests/test_web_postgresql*.py,apps/crawler/tests/test_company_reference_rehearsal.py,apps/crawler/tests/test_data_backup.py,packages/mcp-server/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,patches/**}'
             boards_csv:
@@ -371,6 +371,36 @@ jobs:
             IMAGE_IDENTITY=ghcr.io/colophon-group/jobseek-sitemap-fleet-python:sha-${{ github.sha }}
           cache-from: type=gha,scope=sitemap-fleet-python
           cache-to: type=gha,mode=max,scope=sitemap-fleet-python,ignore-error=true
+
+  test-go-http-pilot-registry:
+    name: Test Go HTTP Sitemap Pilot Registry
+    needs: changes
+    if: needs.changes.outputs.boards_csv == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      # A board-only PR can change the committed fleet manifest's source rows,
+      # but it cannot change the pilot binaries. Keep that contract required
+      # without rebuilding four unchanged ARM64 shadow images per company.
+      - name: Verify committed fleet against production boards
+        working-directory: apps/crawler
+        run: |
+          uv run --frozen python -m unittest discover \
+            -s ../../pilots/go-http-sitemap/python_shadow \
+            -p 'test_runner.py' \
+            -k test_committed_fleet_exactly_mirrors_production_sitemap_configs
 
   test-go-b0-supervisor:
     name: Test Go Lightpanda B0 Supervisor
@@ -2366,6 +2396,7 @@ jobs:
       - test-web-postgresql-retirement
       - changes
       - test-go-http-pilot
+      - test-go-http-pilot-registry
       - test-go-b0-supervisor
       - test-go-b0-executor
       - test-go-ordinary
@@ -2436,6 +2467,7 @@ jobs:
           requireSuccess("data-validation");
           requireSuccess("test-company-reference", companyReference);
           requireSuccess("test-go-http-pilot", goHttpPilot);
+          requireSuccess("test-go-http-pilot-registry", boardsCsv);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
           requireSuccess("test-go-b0-executor", crawlerCode);
           requireSuccess("test-go-ordinary", crawlerCode);

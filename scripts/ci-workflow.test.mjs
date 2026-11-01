@@ -698,7 +698,6 @@ test("CI change detection uses the pinned paths-filter action", () => {
     ".github/workflows/crawler-sitemap-fleet-benchmark.yml",
     "apps/crawler/Dockerfile",
     "apps/crawler/uv.lock",
-    "apps/crawler/data/boards.csv",
     "apps/crawler/src/core/__init__.py",
     "apps/crawler/src/core/monitor.py",
     "apps/crawler/src/core/monitors/raw.py",
@@ -712,6 +711,10 @@ test("CI change detection uses the pinned paths-filter action", () => {
   for (const input of pilotInputs) {
     assert.ok(pilotFilter[1].includes(input), `pilot filter omits ${input}`);
   }
+  assert.ok(
+    !pilotFilter[1].includes("apps/crawler/data/boards.csv"),
+    "board-only changes must not rebuild pilot images",
+  );
   assert.match(workflow, /boards_csv:\n              - 'apps\/crawler\/data\/boards\.csv'/);
 });
 
@@ -781,6 +784,7 @@ test("company census fixture remains on the data-only CI path", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.outputs, /^code=false$/m);
   assert.match(result.outputs, /^crawler_code=false$/m);
+  assert.match(result.outputs, /^go_http_pilot=false$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^codeql=false$/m);
 });
@@ -1054,6 +1058,30 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
   assert.match(
     requiredCiJob,
     /requireSuccess\("test-go-http-pilot", goHttpPilot\)/,
+  );
+});
+
+test("board-only CI checks the pilot fleet without rebuilding ARM64 images", () => {
+  const registryJob = jobBlock("test-go-http-pilot-registry");
+  const requiredCiJob = jobBlock("required-ci");
+  const classified = runClassifyPrPaths({
+    files: ["apps/crawler/data/boards.csv"],
+    baseRef: "main",
+  });
+
+  assert.equal(classified.status, 0, classified.stderr);
+  assert.match(classified.outputs, /^go_http_pilot=false$/m);
+  assert.match(classified.outputs, /^boards_csv=true$/m);
+  assert.match(registryJob, /if: needs\.changes\.outputs\.boards_csv == 'true'/);
+  assert.match(
+    registryJob,
+    /-k test_committed_fleet_exactly_mirrors_production_sitemap_configs/,
+  );
+  assert.doesNotMatch(registryJob, /docker\/build-push-action/);
+  assert.match(requiredCiJob, /needs:[\s\S]*- test-go-http-pilot-registry/);
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("test-go-http-pilot-registry", boardsCsv\)/,
   );
 });
 
