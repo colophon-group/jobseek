@@ -138,3 +138,64 @@ func TestRealSourceCoverageCannotCreditUnfingerprintedConfigChange(t *testing.T)
 		t.Fatalf("changed monitor config credited complete coverage: %q %v", outcome, err)
 	}
 }
+
+func TestRealSourceCoverageStableChangeResetsScopeBetweenCompleteChecks(t *testing.T) {
+	f, a := lifecycleFixture(t, `{"_monitor_config_fingerprint":"fixture"}`)
+	ctx := context.Background()
+	first := beginLifecycle(t, a)
+	result, err := first.FinishSuccess(ctx, GreenhouseInventorySummary{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	settleLifecycle(t, f, first, result)
+	oldRevision := first.scopeRevision
+	if _, err := f.observer.Exec(ctx, `UPDATE public.job_board SET metadata=metadata||'{"token":"changed"}'::jsonb WHERE id=$1::uuid`, f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	var unchanged string
+	if err := f.observer.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id=$1::uuid`, f.task.ID).Scan(&unchanged); err != nil || unchanged != oldRevision {
+		t.Fatalf("test did not isolate stable config drift: %s %v", unchanged, err)
+	}
+	tx, err := f.observer.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	canonical, err := readCanonicalBoardConfig(ctx, tx, f.task.ID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := InspectRichMonitor(f.task.ID, canonical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondTask := first.claim.task
+	secondTask.claimToken = ordinaryID(t)
+	secondTask.Config = make(map[string]string, len(first.claim.task.Config))
+	for key, value := range first.claim.task.Config {
+		secondTask.Config[key] = value
+	}
+	secondTask.Config["metadata"] = canonical["metadata"]
+	second := &GreenhouseCycle{claim: &Claim{task: secondTask}}
+	tracked, err := second.bindSourceCoverageScope(ctx, tx, fresh.EffectiveConfigSHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.scopeRevision == oldRevision {
+		t.Fatal("effective config change retained old scope revision")
+	}
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&second.startedAt); err != nil || second.startedAt.Before(tracked) {
+		t.Fatalf("new cycle started before its revision: %v", err)
+	}
+	if err := second.recordSourceCoverage(ctx, tx, "complete"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var completed, partial, distinctRevisions int
+	if err := f.observer.QueryRow(ctx, `SELECT count(*) FILTER(WHERE outcome='complete'),count(*) FILTER(WHERE outcome='partial'),count(DISTINCT revision)
+FROM public.source_coverage_check WHERE board_id=$1::uuid`, f.task.ID).Scan(&completed, &partial, &distinctRevisions); err != nil || completed != 2 || partial != 0 || distinctRevisions != 2 {
+		t.Fatalf("stable change continuity: complete=%d partial=%d revisions=%d error=%v", completed, partial, distinctRevisions, err)
+	}
+}

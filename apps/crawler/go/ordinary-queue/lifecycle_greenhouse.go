@@ -89,17 +89,11 @@ func (a *Authority) BeginGreenhouseCycle(ctx context.Context, claim *Claim) (*Gr
 	cycle := &GreenhouseCycle{authority: a, claim: claim, identities: map[string]bool{}}
 	_, err := a.Write(ctx, claim, false, func(ctx context.Context, tx pgx.Tx) error {
 		var reserved bool
-		var trackedSince time.Time
-		if err := tx.QueryRow(ctx, `SELECT now(),board.tdm_reserved,scope.revision::text,scope.tracked_since
-FROM public.job_board board JOIN public.source_coverage_scope scope ON scope.board_id=board.id
-WHERE board.id=$1::uuid`, claim.task.ID).Scan(&cycle.startedAt, &reserved, &cycle.scopeRevision, &trackedSince); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT tdm_reserved FROM public.job_board WHERE id=$1::uuid`, claim.task.ID).Scan(&reserved); err != nil {
 			return err
 		}
 		if reserved {
 			return ErrPublisherReserved
-		}
-		if cycle.startedAt.Before(trackedSince) {
-			return ErrAuthorityLost
 		}
 		canonical, _, err := a.observeBoardConfigsState(ctx, tx, claim.task.ID, false)
 		if err != nil {
@@ -111,6 +105,16 @@ WHERE board.id=$1::uuid`, claim.task.ID).Scan(&cycle.startedAt, &reserved, &cycl
 		}
 		claimed, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
 		if err != nil || fresh.EffectiveConfigSHA256 != claimed.EffectiveConfigSHA256 {
+			return ErrAuthorityLost
+		}
+		trackedSince, err := cycle.bindSourceCoverageScope(ctx, tx, fresh.EffectiveConfigSHA256)
+		if err != nil {
+			return err
+		}
+		if err := tx.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&cycle.startedAt); err != nil {
+			return err
+		}
+		if cycle.startedAt.Before(trackedSince) {
 			return ErrAuthorityLost
 		}
 		return nil

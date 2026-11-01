@@ -42,6 +42,10 @@ func TestEvaluateScopeCoverageRequiresContinuousCompleteChecks(t *testing.T) {
 	assert("interrupted", previous, missed, "same", start.Add(-time.Hour), true)
 	assert("unknown", nil, checks, "same", start.Add(-time.Hour), true)
 	assert("unknown", previous, checks, "new", start.Add(-time.Hour), true)
+	oldScope := *previous
+	oldScope.Revision = "old"
+	newScopeChecks := []coverageCheck{{Revision: "old", Started: start.Add(time.Hour), Finished: start.Add(time.Hour + time.Minute), NextDue: start.Add(2 * time.Hour), Outcome: "complete"}, {Revision: "new", Started: end, Finished: end.Add(time.Minute), NextDue: end.Add(time.Hour), Outcome: "complete"}}
+	assert("unknown", &oldScope, newScopeChecks, "new", start.Add(time.Hour), true)
 	assert("unknown", previous, checks, "same", start.Add(time.Second), true)
 	assert("unknown", previous, checks, "same", start, true)
 	assert("unknown", previous, checks, "same", start.Add(-time.Hour), false)

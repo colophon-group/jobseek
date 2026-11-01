@@ -5,9 +5,26 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
+
+// A stable effective monitor change may not alter the registry fingerprint.
+// Bind the current Go profile under the ordinary writer fence before fetching
+// source inventory. Runtime metadata changes leave this digest unchanged.
+func (c *GreenhouseCycle) bindSourceCoverageScope(ctx context.Context, tx pgx.Tx, effectiveHash string) (time.Time, error) {
+	var tracked time.Time
+	err := tx.QueryRow(ctx, `UPDATE public.source_coverage_scope
+SET revision=CASE WHEN effective_config_sha256 IS NOT NULL AND effective_config_sha256 <> $2::char(64)
+                  THEN gen_random_uuid() ELSE revision END,
+    tracked_since=CASE WHEN effective_config_sha256 IS NOT NULL AND effective_config_sha256 <> $2::char(64)
+                       THEN clock_timestamp() ELSE tracked_since END,
+    effective_config_sha256=$2::char(64)
+WHERE board_id=$1::uuid
+RETURNING revision::text,tracked_since`, c.claim.task.ID, effectiveHash).Scan(&c.scopeRevision, &tracked)
+	return tracked, err
+}
 
 func sourceCoverageOutcome(inventory GreenhouseInventorySummary, processed, unique int, skipped string) string {
 	if !inventory.Truncated && inventory.ProcessingFiltered == 0 &&
@@ -45,6 +62,7 @@ SELECT board.id, scope.revision, $2, $3::timestamptz, clock_timestamp(),
        CASE WHEN $4::text = 'complete'
 		              AND (scope.revision::text <> $5::text
 		                   OR scope.tracked_since > $3::timestamptz
+		                   OR scope.effective_config_sha256 IS NULL
                    OR NULLIF(board.metadata ->> '_monitor_config_fingerprint', '') IS NULL
                    OR board.board_status <> 'active' OR NOT board.is_enabled)
             THEN 'partial' ELSE $4::text END

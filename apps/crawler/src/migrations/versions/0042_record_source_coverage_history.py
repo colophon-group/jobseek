@@ -19,7 +19,9 @@ def upgrade() -> None:
 CREATE TABLE public.source_coverage_scope (
     board_id uuid PRIMARY KEY REFERENCES public.job_board(id) ON DELETE CASCADE,
     revision uuid NOT NULL DEFAULT gen_random_uuid(),
-    tracked_since timestamptz NOT NULL DEFAULT clock_timestamp()
+    tracked_since timestamptz NOT NULL DEFAULT clock_timestamp(),
+    effective_config_sha256 char(64)
+        CHECK (effective_config_sha256 IS NULL OR effective_config_sha256 ~ '^[0-9a-f]{64}$')
 );
 INSERT INTO public.source_coverage_scope(board_id)
 SELECT id FROM public.job_board;
@@ -83,7 +85,8 @@ BEGIN
             VALUES (OLD.id, OLD.company_id, 'reassigned');
         END IF;
         UPDATE public.source_coverage_scope
-        SET revision = gen_random_uuid(), tracked_since = clock_timestamp()
+        SET revision = gen_random_uuid(), tracked_since = clock_timestamp(),
+            effective_config_sha256 = NULL
         WHERE board_id = NEW.id;
     END IF;
     RETURN NEW;
