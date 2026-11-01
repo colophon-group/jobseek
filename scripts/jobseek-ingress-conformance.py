@@ -428,7 +428,8 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             actual_network_rules.append((str(network), database, user, method))
     rules_match = (
         rules_match
-        and local_rules == [
+        and local_rules
+        == [
             ("all", "justup_feed_readonly", "reject"),
             ("all", "all", "trust"),
         ]
