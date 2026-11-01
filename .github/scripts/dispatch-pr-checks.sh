@@ -43,6 +43,9 @@ if [[ -z "$branch" || "$branch" == "null" ]]; then
   exit 0
 fi
 
+echo "Dispatching trusted Crawler Deploy Gate for PR #$PR"
+gh workflow run crawler-deploy-gate.yml --repo "$REPO" --ref main -f "pr=$PR"
+
 echo "Dispatching path-aware CI for PR #$PR on $branch"
 output=$(gh workflow run ci.yml --repo "$REPO" --ref "$branch" -f "pr=$PR" 2>&1) && {
   echo "$output"
