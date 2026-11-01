@@ -304,5 +304,24 @@ func TestRegistryPostgresActualRepository(t *testing.T) {
 	if companiesCount != len(tables["companies"].Rows) || boardsCount != len(boards) {
 		t.Fatalf("repository population mismatch: %d companies, %d boards", companiesCount, boardsCount)
 	}
+	links, err := prepareSourceCoverageLinks(tables["source_coverage_links"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range links {
+		var url, provenance string
+		err = conn.QueryRow(ctx, `SELECT l.public_url,l.provenance
+FROM source_coverage_public_link l
+JOIN job_board b ON b.id=l.board_id AND b.company_id=l.company_id
+JOIN company c ON c.id=b.company_id
+WHERE c.slug=$1 AND b.board_slug=$2`, link.CompanySlug, link.BoardSlug).Scan(&url, &provenance)
+		if err != nil || url != link.URL || provenance != link.Provenance {
+			t.Fatalf("public link identity mismatch for %s/%s: %q %q (%v)", link.CompanySlug, link.BoardSlug, url, provenance, err)
+		}
+	}
+	var linksCount int
+	if err = conn.QueryRow(ctx, "SELECT count(*) FROM source_coverage_public_link").Scan(&linksCount); err != nil || linksCount != len(links) {
+		t.Fatalf("repository public link population mismatch: %d != %d (%v)", linksCount, len(links), err)
+	}
 	t.Logf("committed %d companies and %d boards from actual repository; no external publication", companiesCount, boardsCount)
 }
