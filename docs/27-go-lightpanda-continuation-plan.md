@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-01 15:58 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 18:44 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -152,6 +152,24 @@ CPU/one GiB. This candidate changes only the crawler host allocation; it does
 not rename, relocate or restart Justup or renderer units. Cross-project hosting
 coordination and fresh required gates remain prerequisites for rollout.
 
+The combined candidate also removes stale aggregate registry-count assertions in
+six Go tests. Every current row still undergoes its original profile, identity,
+transport, enrichment and rejection checks; both provider/capability branches,
+existing named reference bindings and zero retained unsupported configurations
+remain required. This changes tests, not production route admission.
+
+**Downstream incident holds rollout.** Typesense had an OOM/die-137 at 18:16 UTC
+and returned 503 while reloading its index. No capacity candidate had been
+installed. Protected readback at 18:22 verifies native 1148 unchanged, the prior
+committed data revision `9259dd9638c827eb329dbf71b476b2d65f0b72fe`, complete v3
+release/eight-CSV hashes, and 8,261 enabled boards; the publication journal was
+absent at 18:31. Search recovered naturally by 18:39, with no manual restart,
+peer reset or budget change. Private production-equivalent company active/year
+facet queries and seven aliases passed at 18:43. Supported retry of the failed
+company-data sync and a fresh steady resource/readiness check must finish before
+this capacity candidate can deploy. Preserve the six-GiB search memory contract.
+
+
 1. **Resolve Oracle ADF's observed failure.** Its normal retry ran November 1 at
    17:37:14 UTC, without forced work or a backoff reset. The installed Go route
    rejected **HTTP 302 during pagination**; failures rose to 12 and its next
@@ -162,7 +180,11 @@ coordination and fresh required gates remain prerequisites for rollout.
    redirect target. The earlier exact 52-job Go HTTP result was a local candidate
    qualification, not a production success witness. Retain complete-inventory
    checks and publisher policy; do not blindly follow the redirect, force work,
-   reset backoff or add Chromium.
+   reset backoff or add Chromium. The operator authorized bounded local
+   investigation. Fresh Go HTTP controls still return pagination 302 when using
+   the advertised form action or standard AJAX headers; neither is a proven fix.
+   The latest local Lightpanda build loads 25 initial rows, but its first More
+   action leaves the count unchanged. No partial inventory or recovery is claimed.
 2. **Close the original acceptance audit after that outcome.** Native 1148 and
    the latest renderer are installed and independently verified. All four final
    comparison scenarios and the separate automatic B0 performance job passed. Preserve original boards, downstream/canonical/
