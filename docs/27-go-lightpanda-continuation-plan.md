@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-01 15:58 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 18:44 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -128,17 +128,66 @@ company-intake work, rather than new migration completion requirements.
 
 ## Remaining delivery work
 
-1. **Resolve or classify Oracle ADF's observed failure.** At 15:57 it remains
-   enabled and quarantined with 11 failures; last check October 31 at 17:10:15,
-   next normal retry **November 1 at 17:10:18.641208 UTC**. The proven Go HTTP
-   JSF route previously reproduced 52 live jobs. Installed bounded stage/status
-   diagnostics must establish migration regression versus upstream/source failure.
-   Make the smallest shared fix if needed. Do not force work, reset backoff or
-   add Chromium.
+### Requested capacity increase — candidate 0.13.1149
+
+The operator authorized increasing the Go crawler where measured headroom can
+serve outstanding demand, while preserving Justup's demo reservation. The
+17:25 UTC readback has 1,667,322 eligible details due, including 1,584,678 overdue
+a day. The preceding nine-minute normal-traffic window covered all four hosts:
+the crawler host has eight CPUs, averaged 2.88 busy cores, and retained about
+11.3 GiB available memory. The Go worker averaged 1.51 cores and peaked at
+432 MiB working memory under its existing two-CPU/one-GiB limit.
+
+Candidate 1149 gives the ordinary Go worker four CPUs, two GiB memory, a one-GiB
+Go memory target, 120 discovery slots and 30 monitor slots. Per-host throttles,
+connection budgets and the four browser execution slots remain unchanged.
+This is a bounded initial increase; installation, throughput, queue age and
+downstream pressure must be checked after the supported rollout before claiming
+that demand is met.
+
+Justup's backend coordinator confirmed that its preview allocation is on the
+separate ARM renderer host: reserve 0.5 CPU, one GiB memory, zero swap, its two-GiB
+app filesystem and an eight-GiB root free-space floor. The renderer stays at one
+CPU/one GiB. This candidate changes only the crawler host allocation; it does
+not rename, relocate or restart Justup or renderer units. Cross-project hosting
+coordination and fresh required gates remain prerequisites for rollout.
+
+The combined candidate also removes stale aggregate registry-count assertions in
+six Go tests. Every current row still undergoes its original profile, identity,
+transport, enrichment and rejection checks; both provider/capability branches,
+existing named reference bindings and zero retained unsupported configurations
+remain required. This changes tests, not production route admission.
+
+**Downstream incident holds rollout.** Typesense had an OOM/die-137 at 18:16 UTC
+and returned 503 while reloading its index. No capacity candidate had been
+installed. Protected readback at 18:22 verifies native 1148 unchanged, the prior
+committed data revision `9259dd9638c827eb329dbf71b476b2d65f0b72fe`, complete v3
+release/eight-CSV hashes, and 8,261 enabled boards; the publication journal was
+absent at 18:31. Search recovered naturally by 18:39, with no manual restart,
+peer reset or budget change. Private production-equivalent company active/year
+facet queries and seven aliases passed at 18:43. Supported retry of the failed
+company-data sync and a fresh steady resource/readiness check must finish before
+this capacity candidate can deploy. Preserve the six-GiB search memory contract.
+
+
+1. **Resolve Oracle ADF's observed failure.** Its normal retry ran November 1 at
+   17:37:14 UTC, without forced work or a backoff reset. The installed Go route
+   rejected **HTTP 302 during pagination**; failures rose to 12 and its next
+   normal retry is November 2 at 17:37:17 UTC. Readback at 17:58 verifies it remains
+   enabled, unreserved, quarantined and correctly represented in its browser
+   monitor queue, with no active host circuit or rate limit. This identifies the
+   failing stage, but does not prove a universal upstream failure or a safe
+   redirect target. The earlier exact 52-job Go HTTP result was a local candidate
+   qualification, not a production success witness. Retain complete-inventory
+   checks and publisher policy; do not blindly follow the redirect, force work,
+   reset backoff or add Chromium. The operator authorized bounded local
+   investigation. Fresh Go HTTP controls still return pagination 302 when using
+   the advertised form action or standard AJAX headers; neither is a proven fix.
+   The latest local Lightpanda build loads 25 initial rows, but its first More
+   action leaves the count unchanged. No partial inventory or recovery is claimed.
 2. **Close the original acceptance audit after that outcome.** Native 1148 and
    the latest renderer are installed and independently verified. All four final
-   comparison scenarios pass; one separate automatic B0 performance job is still
-   running at this checkpoint. Preserve original boards, downstream/canonical/
+   comparison scenarios and the separate automatic B0 performance job passed. Preserve original boards, downstream/canonical/
    publisher-policy contracts and supported reversal. Keep dated observations,
    existing backlog and sampling limits explicit. Approved control/offline Python,
    new-company variants and renderer relocation do not block this migration.
@@ -322,8 +371,11 @@ rollback. Available host headroom alone does not qualify a move.
 Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md): immutable
 images, complete writer quiescence, mutation locks and authenticated restoration.
 No live rsync, mutable deploy tags, partial writer restarts, forced provider work,
-manual SQL/Redis/env repair, manual counter/deadline resets or capacity increases.
-Preserve current renderer/crawler budgets and presence-only Redis token reads.
+manual SQL/Redis/env repair or manual counter/deadline resets. The operator has
+authorized the bounded ordinary-Go capacity increase described above, subject to
+measured headroom, Justup demo reservations and the supported rollout. Preserve
+renderer, per-host, database and browser-slot budgets and presence-only Redis
+token reads.
 Never read, search or edit `profile_self_identifying_dom.go`.
 Before merge re-read state/draft, exact head/base and actual main, checks,
 reviews/comments, rules and deployment holds; bind normal merge to that head.
