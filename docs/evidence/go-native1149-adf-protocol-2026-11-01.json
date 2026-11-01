@@ -668,5 +668,66 @@
     "1102_to1109_runtime_diff_review": "Only renderer argument propagation and directMonitorHTTP extraction/API-sniffer HTTP2 selection. DOM ADF remains on verified HTTP1 direct client in both sources; ADF dispatcher, claim runner, proxy-selection implementation, direct transport and Accept implementation are byte-identical. No ADF-specific caller change found in these files.",
     "same_unique_config_through_quarantine_release": true,
     "remaining": "Historical actual egress/environment and the current publisher/session response cause are not established by source-code identity. No current freshness recovery or safe code correction qualified."
+  },
+  "build_dependency_reconciliation": {
+    "schema": "jobseek.adf-build-dependency-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T22:11:02.640431+00:00",
+    "sources": {
+      "native1102": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "quarantine1109": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+      "installed1150": "9a62ca5a9680cc9632dbba5bf91044059f04de45"
+    },
+    "files": [
+      {
+        "path": "apps/crawler/Dockerfile",
+        "blobs": {
+          "native1102": "d511e2cee6181d7a54f5dc58b05504711cda82a6",
+          "quarantine1109": "d511e2cee6181d7a54f5dc58b05504711cda82a6",
+          "installed1150": "a008961e0ef3073eaed0dd5d9f3bcf54dbf9474f"
+        },
+        "1102_to1109_identical": true,
+        "literal_golang_versions": {
+          "native1102": [
+            "1.26.4"
+          ],
+          "quarantine1109": [
+            "1.26.4"
+          ],
+          "installed1150": [
+            "1.26.4"
+          ]
+        },
+        "1102_to1109_FROM_lines_identical": true
+      },
+      {
+        "path": "apps/crawler/go/ordinary-worker/go.mod",
+        "blobs": {
+          "native1102": "5e3ba69fb22eb39f0db0ff873b605814079391be",
+          "quarantine1109": "5e3ba69fb22eb39f0db0ff873b605814079391be",
+          "installed1150": "5e3ba69fb22eb39f0db0ff873b605814079391be"
+        },
+        "1102_to1109_identical": true
+      },
+      {
+        "path": "apps/crawler/go/ordinary-worker/go.sum",
+        "blobs": {
+          "native1102": "8a679033833a9e18216a9f5bf6d3769c0411239b",
+          "quarantine1109": "8a679033833a9e18216a9f5bf6d3769c0411239b",
+          "installed1150": "8a679033833a9e18216a9f5bf6d3769c0411239b"
+        },
+        "1102_to1109_identical": true
+      },
+      {
+        "path": ".github/workflows/deploy-crawler-browser.yml",
+        "blobs": {
+          "native1102": "a73e2eb0eb85feffc80221bbe9809ee79e7d9a41",
+          "quarantine1109": "a73e2eb0eb85feffc80221bbe9809ee79e7d9a41",
+          "installed1150": "9b44802718ca352b25e5f68b3948930e6ca92bfa"
+        },
+        "1102_to1109_identical": true
+      }
+    ],
+    "scope": "Public source/build metadata only; no forbidden profile source content, provider request or production state write. File identity does not prove historical per-attempt environment/egress or actual image/toolchain identity.",
+    "conclusion": "Dockerfile, deployment workflow and ordinary-worker go.mod/go.sum are byte-identical between native1102success and quarantine1109. Declared Go1.26.4 is unchanged. This finds no build-definition/dependency change for a new discriminating origin test; actual historical image/environment/egress/session state remains separately unproved."
   }
 }

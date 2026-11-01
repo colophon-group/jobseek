@@ -273,8 +273,11 @@ renderer generation/image and zero restart/OOM, 3.22 GiB available host memory,
    dispatcher, direct HTTP transport and Accept implementation. The 1102-to-1109
    runtime changes propagate the renderer argument and select HTTP/2 for another
    provider; ADF remains on verified direct HTTP/1. No ADF-specific caller or
-   request-code change was found through quarantine. This source comparison does
-   not establish historical per-attempt egress or session behavior. Those actual
+   request-code change was found through quarantine. Dockerfile, deployment
+   workflow and worker dependency locks also match across that interval; their
+   declared Go version remains 1.26.4. These source/build definitions do not
+   establish actual historical image, environment, per-attempt egress or session
+   behavior. Those actual
    environment observations, a working publisher-supported complete source, or a
    relevant upstream correction would provide new discriminating input. Preserve
    the current freshness gap in final acceptance.
