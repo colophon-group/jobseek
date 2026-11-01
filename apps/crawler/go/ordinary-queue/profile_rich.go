@@ -194,7 +194,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["company"] = true
 		allowed["region"] = true
 	case "recruitee":
-		allowed["slug"], allowed["api_base"] = true, true
+		allowed["slug"], allowed["api_base"], allowed["url_filter"] = true, true, true
 		allowed["company"], allowed["company_slug"] = true, true
 	case "pinpoint":
 		allowed["slug"] = true
@@ -386,6 +386,13 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		tenantEndpoint, err = richTenantEndpoint(config, md)
 		if err != nil {
 			return GreenhouseMonitorProfile{}, err
+		}
+	}
+	if config["crawler_type"] == "recruitee" {
+		// A rejected filter must fail before registry publication. The worker
+		// applies this same bounded URL policy before inventory normalization.
+		if _, err := FeedMonitorURLRules(config); err != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 		}
 	}
 	if tenantEndpoint != "" {

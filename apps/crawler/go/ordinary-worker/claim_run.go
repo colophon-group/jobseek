@@ -676,7 +676,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			return finishSuccess(terminal)
 		}
 	}
-	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" || profile.Provider == "dom" || profile.Provider == "workday" {
+	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" || profile.Provider == "dom" || profile.Provider == "workday" || profile.Provider == "recruitee" {
 		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
 		if err != nil {
 			return failure("processing", err)

@@ -48,3 +48,18 @@ func TestFeedURLProcessingCancellationCannotReturnInventory(t *testing.T) {
 		t.Fatal(got, err)
 	}
 }
+
+func TestRecruiteeURLFilterRemovesEvergreenWithoutLosingRole(t *testing.T) {
+	config := map[string]string{
+		"crawler_type": "recruitee",
+		"metadata":     `{"slug":"livezoku","url_filter":{"exclude":"/o/open-application(?:$|[?/#])"}}`,
+	}
+	jobs := []RichMonitorJob{
+		{URL: "https://livezoku.recruitee.com/o/general-manager"},
+		{URL: "https://livezoku.recruitee.com/o/open-application"},
+	}
+	got, err := applyFeedMonitorURLs(context.Background(), config, jobs)
+	if err != nil || len(got) != 1 || got[0].URL != jobs[0].URL {
+		t.Fatalf("Recruitee URL exclusion changed role inventory: %+v error=%v", got, err)
+	}
+}
