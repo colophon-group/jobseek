@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -141,6 +142,9 @@ func TestConfiguredBrowserProxyRunnerUsesTypedHopFailureWithoutProviderText(t *t
 }
 
 func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("pinned proxy child network confinement requires Linux")
+	}
 	binary := interactionIntegrationBinary(t)
 	for _, mode := range []string{"success", "public-subresource", "post-json", "cookies", "publisher", "public-redirect", "gzip", "origin-auth", "bad-auth", "private-target", "private-redirect", "private-subresource"} {
 		t.Run(mode, func(t *testing.T) {
@@ -292,6 +296,9 @@ func TestPhysicalLightpandaConfiguredProxyAuthenticationAndOriginIsolation(t *te
 }
 
 func TestPhysicalLightpandaConfiguredProxyHTTPSRejectsUntrustedOrigin(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("pinned proxy child network confinement requires Linux")
+	}
 	binary := interactionIntegrationBinary(t)
 	certificate, ca := dayforceOriginTLS(t, "93.184.216.34")
 	var originCalls, originCredentials, connectAuth, connectCalls atomic.Int64
