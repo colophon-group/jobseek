@@ -225,7 +225,14 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 			if delist {
 				result.Gone, err = c.countReturned(ctx, tx, "delist", c.claim.task.ID)
 			}
-			return err
+			if err != nil {
+				return err
+			}
+			outcome := sourceCoverageOutcome(inventory, c.processed, len(c.identities), "")
+			if status != "active" {
+				outcome = "partial"
+			}
+			return c.recordSourceCoverage(ctx, tx, outcome)
 		}
 		if inventory.Truncated {
 			result.GoneSkipped = "truncated"
@@ -244,7 +251,11 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 			}
 			result.Gone += retired
 		}
-		return tx.QueryRow(ctx, lifecycleQuery("success"), c.claim.task.ID, expected).Scan(&result.RecoveredFrom)
+		if err := tx.QueryRow(ctx, lifecycleQuery("success"), c.claim.task.ID, expected).Scan(&result.RecoveredFrom); err != nil {
+			return err
+		}
+		outcome := sourceCoverageOutcome(inventory, c.processed, len(c.identities), result.GoneSkipped)
+		return c.recordSourceCoverage(ctx, tx, outcome)
 	})
 	if err != nil {
 		return nil, err
@@ -301,10 +312,11 @@ func (c *GreenhouseCycle) finishFailure(ctx context.Context, message string, run
 			return err
 		}
 		if result.HostCircuit != nil && result.HostCircuit.OpenUntil != nil {
-			_, err := tx.Exec(ctx, "UPDATE public.job_board SET next_check_at=GREATEST(next_check_at,$2::timestamptz) WHERE id=$1::uuid", c.claim.task.ID, *result.HostCircuit.OpenUntil)
-			return err
+			if _, err := tx.Exec(ctx, "UPDATE public.job_board SET next_check_at=GREATEST(next_check_at,$2::timestamptz) WHERE id=$1::uuid", c.claim.task.ID, *result.HostCircuit.OpenUntil); err != nil {
+				return err
+			}
 		}
-		return nil
+		return c.recordSourceCoverage(ctx, tx, "failed")
 	})
 	if err != nil {
 		return nil, err

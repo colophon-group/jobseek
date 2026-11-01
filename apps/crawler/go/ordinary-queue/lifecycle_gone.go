@@ -166,7 +166,10 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		if decision.Terminal {
 			result.Gone, err = c.countReturned(ctx, tx, "delist", c.claim.task.ID)
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		return c.recordSourceCoverage(ctx, tx, "gone")
 	})
 	if err != nil {
 		return nil, err

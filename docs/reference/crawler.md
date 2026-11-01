@@ -18,6 +18,7 @@ Typesense:
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
 See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
+See [source coverage](source-coverage.md) for the private weekly Hiring Wire evidence export.
 
 ## Key Files
 
