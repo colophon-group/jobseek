@@ -3482,6 +3482,7 @@ hebbia,hebbia-greenhouse,https://job-boards.greenhouse.io/hebbia,greenhouse,"{""
 hedra,hedra-careers,https://jobs.ashbyhq.com/hedra,ashby,"{""token"": ""hedra""}",skip,
 heds-la-source,heds-la-source-careers,https://www.ecolelasource.ch/sitemap_jobs_fr.xml,sitemap,"{""sitemap_url"": ""https://www.ecolelasource.ch/sitemap_jobs_fr.xml""}",json-ld,
 hedvig,hedvig-teamtailor,https://hedvig.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://hedvig.teamtailor.com/jobs.rss""}",skip,
+hei-hotels,hei-hotels-careers,https://heihotels.wd12.myworkdayjobs.com/external_career_site,workday,,workday,
 heidelberg-materials,heidelberg-materials-careers,https://heidelbergmaterials.wd3.myworkdayjobs.com/global_hm_career_site,workday,"{""company"": ""heidelbergmaterials"", ""wd_instance"": ""wd3"", ""site"": ""Global_HM_Career_Site""}",workday,
 heidelberg-materials,heidelberg-materials-careers-benelux,https://heidelbergmaterialsbenelux.recruitee.com/,recruitee,"{""slug"": ""heidelbergmaterialsbenelux""}",skip,
 heidelberg-materials,heidelberg-materials-careers-czechia,https://heidelbergmaterials.jobs.cz/,almacareer,{},skip,
