@@ -37,6 +37,7 @@ type GreenhouseCycle struct {
 	authority        *Authority
 	claim            *Claim
 	startedAt        time.Time
+	scopeRevision    string
 	processed        int
 	legacyRetired    int
 	unisanteComplete bool
@@ -88,11 +89,29 @@ func (a *Authority) BeginGreenhouseCycle(ctx context.Context, claim *Claim) (*Gr
 	cycle := &GreenhouseCycle{authority: a, claim: claim, identities: map[string]bool{}}
 	_, err := a.Write(ctx, claim, false, func(ctx context.Context, tx pgx.Tx) error {
 		var reserved bool
-		if err := tx.QueryRow(ctx, "SELECT now(),tdm_reserved FROM public.job_board WHERE id=$1::uuid", claim.task.ID).Scan(&cycle.startedAt, &reserved); err != nil {
+		var trackedSince time.Time
+		if err := tx.QueryRow(ctx, `SELECT now(),board.tdm_reserved,scope.revision::text,scope.tracked_since
+FROM public.job_board board JOIN public.source_coverage_scope scope ON scope.board_id=board.id
+WHERE board.id=$1::uuid`, claim.task.ID).Scan(&cycle.startedAt, &reserved, &cycle.scopeRevision, &trackedSince); err != nil {
 			return err
 		}
 		if reserved {
 			return ErrPublisherReserved
+		}
+		if cycle.startedAt.Before(trackedSince) {
+			return ErrAuthorityLost
+		}
+		canonical, _, err := a.observeBoardConfigsState(ctx, tx, claim.task.ID, false)
+		if err != nil {
+			return err
+		}
+		fresh, err := InspectRichMonitor(claim.task.ID, canonical)
+		if err != nil {
+			return err
+		}
+		claimed, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
+		if err != nil || fresh.EffectiveConfigSHA256 != claimed.EffectiveConfigSHA256 {
+			return ErrAuthorityLost
 		}
 		return nil
 	})

@@ -23,7 +23,7 @@ func sourceCoverageOutcome(inventory GreenhouseInventorySummary, processed, uniq
 // checked. The migration starts all scopes at deployment time; old checks are
 // deliberately not reconstructed from latest-state fields.
 func (c *GreenhouseCycle) recordSourceCoverage(ctx context.Context, tx pgx.Tx, outcome string) error {
-	if c == nil || c.claim == nil || c.claim.task.claimToken == "" || c.startedAt.IsZero() {
+	if c == nil || c.claim == nil || c.claim.task.claimToken == "" || c.startedAt.IsZero() || c.scopeRevision == "" {
 		return ErrConfiguration
 	}
 	attempt := sha256.Sum256([]byte(c.claim.task.claimToken))
@@ -32,12 +32,14 @@ func (c *GreenhouseCycle) recordSourceCoverage(ctx context.Context, tx pgx.Tx, o
 SELECT board.id, scope.revision, $2, $3::timestamptz, clock_timestamp(),
        board.next_check_at,
        CASE WHEN $4::text = 'complete'
-              AND (NULLIF(board.metadata ->> '_monitor_config_fingerprint', '') IS NULL
+		              AND (scope.revision::text <> $5::text
+		                   OR scope.tracked_since > $3::timestamptz
+                   OR NULLIF(board.metadata ->> '_monitor_config_fingerprint', '') IS NULL
                    OR board.board_status <> 'active' OR NOT board.is_enabled)
             THEN 'partial' ELSE $4::text END
 FROM public.job_board AS board
 JOIN public.source_coverage_scope AS scope ON scope.board_id = board.id
-WHERE board.id = $1::uuid`, c.claim.task.ID, hex.EncodeToString(attempt[:]), c.startedAt, outcome)
+WHERE board.id = $1::uuid`, c.claim.task.ID, hex.EncodeToString(attempt[:]), c.startedAt, outcome, c.scopeRevision)
 	if err != nil {
 		return err
 	}

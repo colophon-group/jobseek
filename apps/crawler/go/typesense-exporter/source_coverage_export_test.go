@@ -129,4 +129,29 @@ func TestCoverageAllowlistAndHomepage(t *testing.T) {
 	if _, err := canonicalCoverageURL("http://example.com"); err == nil {
 		t.Fatal("insecure company URL accepted")
 	}
+	root, err := canonicalCoverageURL("https://Example.com")
+	if err != nil || root != "https://example.com/" {
+		t.Fatalf("noncanonical root homepage: %q %v", root, err)
+	}
+	homepagePath, err := canonicalCoverageURL("https://example.com/company")
+	if err != nil || homepagePath != "https://example.com/company" {
+		t.Fatalf("verified non-root homepage was rewritten: %q %v", homepagePath, err)
+	}
+	defaultPort, err := canonicalCoverageURL("https://Example.com:443/about/")
+	if err != nil || defaultPort != "https://example.com/about/" {
+		t.Fatalf("default HTTPS port not canonicalized: %q %v", defaultPort, err)
+	}
+	for _, unsafe := range []string{
+		"https://127.0.0.1/", "https://localhost/", "https://service.internal/",
+		"https://example.test/", "https://example.com:8080/", "https://example.com/a/../b",
+		"https://example.com/a%0Ab", "https://example.com/a\\b",
+		"https://example.com/company?ref=x", "https://example.com/company#section",
+	} {
+		if _, err := canonicalCoverageURL(unsafe); err == nil {
+			t.Fatalf("unsafe homepage accepted: %q", unsafe)
+		}
+	}
+	if !validCoverageCompanyName("A & Ü") || validCoverageCompanyName("Hidden<name>") || validCoverageCompanyName("Line\nbreak") {
+		t.Fatal("company name safety contract changed")
+	}
 }

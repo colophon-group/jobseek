@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,6 +33,8 @@ const sourceCoverageSnapshotLimit = 4 << 20
 const sourceCoverageArtifactLimit = 6 << 20
 
 var sourceCoverageSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,79}$`)
+var sourceCoverageHost = regexp.MustCompile(`^[a-z0-9.-]+\.[a-z]{2,}$`)
+var sourceCoverageHostLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`)
 
 type coverageCompany struct {
 	ID   string `json:"id"`
@@ -206,8 +209,8 @@ func buildCoverageSnapshot(ctx context.Context, tx pgx.Tx, end, now time.Time, a
 		if err != nil {
 			break
 		}
-		if strings.TrimSpace(c.Name) == "" {
-			err = fmt.Errorf("approved company %s has no name", c.ID)
+		if !validCoverageCompanyName(c.Name) {
+			err = fmt.Errorf("approved company %s has no valid public name", c.ID)
 			break
 		}
 		companyIDs[c.ID] = true
@@ -222,6 +225,14 @@ func buildCoverageSnapshot(ctx context.Context, tx pgx.Tx, end, now time.Time, a
 	}
 	if len(s.Companies) != len(approved) {
 		return s, errors.New("approved company list contains an unknown company")
+	}
+	var lostScopes int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM public.source_coverage_scope_loss
+WHERE company_id::text=ANY($1::text[]) AND lost_at >= $2 AND lost_at <= $3`, companyIDList(companyIDs), start, now).Scan(&lostScopes); err != nil {
+		return s, err
+	}
+	if lostScopes > 0 {
+		return s, fmt.Errorf("%d approved career-page scopes were deleted or reassigned during the comparison window", lostScopes)
 	}
 	boardRows, err := tx.Query(ctx, `SELECT b.id::text,b.company_id::text,COALESCE(sc.revision::text,''),COALESCE(sc.tracked_since,'epoch'::timestamptz),b.is_enabled,b.board_status,
   NULLIF(b.metadata->>'_monitor_config_fingerprint','') IS NOT NULL
@@ -264,26 +275,17 @@ WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyID
 	if err != nil {
 		return s, err
 	}
-	// A selected company's original observation must have a same-company board
-	// identity. A null/reassigned board or missing first-observation receipt is
-	// an explicit export error, including when the posting later closed.
-	var unproven int
-	err = tx.QueryRow(ctx, `SELECT count(*) FROM public.job_posting p
-LEFT JOIN public.source_coverage_posting_first o ON o.posting_id=p.id
-LEFT JOIN public.job_board b ON b.id=o.board_id
-WHERE p.company_id::text=ANY($1::text[]) AND p.first_seen_at >= $2 AND p.first_seen_at < $3
-  AND (o.posting_id IS NULL OR p.board_id IS DISTINCT FROM o.board_id OR b.company_id IS DISTINCT FROM p.company_id OR o.first_observed_at IS DISTINCT FROM p.first_seen_at)`, companyIDList(companyIDs), start, end).Scan(&unproven)
-	if err != nil {
-		return s, err
-	}
-	if unproven > 0 {
-		return s, fmt.Errorf("%d selected posting observations lack stable original board provenance", unproven)
-	}
+	// The immutable insertion receipt, not mutable first_seen_at, determines
+	// when a posting was first observed. Null, deleted, or reassigned board
+	// identity is an export error even when the posting is already closed.
 	postRows, err := tx.Query(ctx, `SELECT o.posting_id::text,o.board_id::text,o.first_observed_at,
- p.company_id=b.company_id AND p.board_id=b.id AND p.first_seen_at=o.first_observed_at
-FROM public.source_coverage_posting_first o JOIN public.job_board b ON b.id=o.board_id
+ COALESCE(p.company_id=o.company_id AND p.board_id=o.board_id
+  AND b.company_id=o.company_id AND o.revision IS NOT NULL,false)
+FROM public.source_coverage_posting_first o
 LEFT JOIN public.job_posting p ON p.id=o.posting_id
-WHERE b.company_id::text=ANY($1::text[]) AND o.first_observed_at >= $2 AND o.first_observed_at < $3
+LEFT JOIN public.job_board b ON b.id=o.board_id
+WHERE (o.company_id::text=ANY($1::text[]) OR p.company_id::text=ANY($1::text[]))
+  AND o.first_observed_at >= $2 AND o.first_observed_at < $3
 ORDER BY o.posting_id`, companyIDList(companyIDs), start, end)
 	if err != nil {
 		return s, err
@@ -291,14 +293,16 @@ ORDER BY o.posting_id`, companyIDList(companyIDs), start, end)
 	for postRows.Next() {
 		var p coveragePosting
 		var first time.Time
-		var provenance *bool
-		if err = postRows.Scan(&p.ID, &p.ScopeID, &first, &provenance); err != nil {
+		var boardID *string
+		var provenance bool
+		if err = postRows.Scan(&p.ID, &boardID, &first, &provenance); err != nil {
 			break
 		}
-		if provenance == nil || !*provenance {
+		if boardID == nil || !provenance {
 			err = errors.New("selected posting observation has reassigned or missing board provenance")
 			break
 		}
+		p.ScopeID = *boardID
 		p.FirstObserved = coverageTime(first)
 		s.Postings = append(s.Postings, p)
 		if len(s.Postings) > 100000 {
@@ -413,17 +417,54 @@ func evaluateScopeCoverage(previous *coverageCheck, checks []coverageCheck, revi
 
 func canonicalCoverageURL(raw string) (string, error) {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Port() != "" || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" {
+	if err != nil || len(raw) > 2048 || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || (u.Port() != "" && u.Port() != "443") || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || strings.ContainsAny(raw, "?#\\") {
 		return "", errors.New("approved company has no valid public HTTPS homepage")
 	}
-	if strings.HasSuffix(u.Hostname(), ".") || strings.Contains(u.Hostname(), "_") {
+	host := strings.ToLower(u.Hostname())
+	if len(host) > 253 || net.ParseIP(host) != nil || !sourceCoverageHost.MatchString(host) || privateCoverageHost(host) {
 		return "", errors.New("approved company has no valid public HTTPS homepage")
 	}
-	u.Host = strings.ToLower(u.Host)
-	if u.Path == "/" {
-		u.Path = ""
+	for _, part := range strings.Split(host, ".") {
+		if len(part) > 63 || !sourceCoverageHostLabel.MatchString(part) {
+			return "", errors.New("approved company has no valid public HTTPS homepage")
+		}
+	}
+	u.Host = host
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	for _, segment := range strings.Split(u.Path, "/") {
+		if segment == "." || segment == ".." {
+			return "", errors.New("approved company has no valid public HTTPS homepage")
+		}
+	}
+	for _, r := range u.Path {
+		if r < 0x20 || r == 0x7f {
+			return "", errors.New("approved company has no valid public HTTPS homepage")
+		}
 	}
 	return u.String(), nil
+}
+
+func privateCoverageHost(host string) bool {
+	for _, suffix := range []string{"localhost", "local", "internal", "invalid", "test", "lan", "home", "corp"} {
+		if host == suffix || strings.HasSuffix(host, "."+suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func validCoverageCompanyName(name string) bool {
+	if strings.TrimSpace(name) == "" || len(name) > 200 {
+		return false
+	}
+	for _, r := range name {
+		if r < 0x20 || r == 0x7f || r == '<' || r == '>' {
+			return false
+		}
+	}
+	return true
 }
 
 func validateCoverageDirectory(path string) error {

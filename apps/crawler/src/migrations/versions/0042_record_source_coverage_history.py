@@ -39,14 +39,25 @@ CREATE TABLE public.source_coverage_check (
 CREATE INDEX source_coverage_check_window
 ON public.source_coverage_check(board_id, revision, finished_at);
 
+CREATE TABLE public.source_coverage_scope_loss (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    board_id uuid NOT NULL,
+    company_id uuid NOT NULL,
+    lost_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    reason text NOT NULL CHECK (reason IN ('deleted', 'reassigned'))
+);
+CREATE INDEX source_coverage_scope_loss_window
+ON public.source_coverage_scope_loss(company_id, lost_at);
+
 CREATE TABLE public.source_coverage_posting_first (
     posting_id uuid PRIMARY KEY,
-    board_id uuid NOT NULL REFERENCES public.job_board(id) ON DELETE CASCADE,
-    revision uuid NOT NULL,
-    first_observed_at timestamptz NOT NULL
+    company_id uuid NOT NULL,
+    board_id uuid REFERENCES public.job_board(id) ON DELETE SET NULL,
+    revision uuid,
+    first_observed_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE INDEX source_coverage_posting_window
-ON public.source_coverage_posting_first(board_id, revision, first_observed_at);
+ON public.source_coverage_posting_first(company_id, first_observed_at);
 
 CREATE OR REPLACE FUNCTION public.jobseek_source_coverage_board_revision()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
@@ -67,6 +78,10 @@ BEGIN
        OR (OLD.metadata ->> '_monitor_config_fingerprint')
           IS DISTINCT FROM (NEW.metadata ->> '_monitor_config_fingerprint')
     THEN
+        IF OLD.company_id IS DISTINCT FROM NEW.company_id THEN
+            INSERT INTO public.source_coverage_scope_loss(board_id, company_id, reason)
+            VALUES (OLD.id, OLD.company_id, 'reassigned');
+        END IF;
         UPDATE public.source_coverage_scope
         SET revision = gen_random_uuid(), tracked_since = clock_timestamp()
         WHERE board_id = NEW.id;
@@ -78,27 +93,31 @@ CREATE TRIGGER source_coverage_board_revision
 AFTER INSERT OR UPDATE ON public.job_board
 FOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_board_revision();
 
+CREATE OR REPLACE FUNCTION public.jobseek_source_coverage_board_loss()
+RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
+BEGIN
+    INSERT INTO public.source_coverage_scope_loss(board_id, company_id, reason)
+    VALUES (OLD.id, OLD.company_id, 'deleted');
+    RETURN OLD;
+END;
+$$;
+CREATE TRIGGER source_coverage_board_loss
+BEFORE DELETE ON public.job_board
+FOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_board_loss();
+
 CREATE OR REPLACE FUNCTION public.jobseek_source_coverage_posting_first()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
 BEGIN
-    IF TG_OP = 'INSERT' THEN
-        IF NEW.board_id IS NOT NULL THEN
-            INSERT INTO public.source_coverage_posting_first
-                (posting_id, board_id, revision, first_observed_at)
-            SELECT NEW.id, scope.board_id, scope.revision, NEW.first_seen_at
-            FROM public.source_coverage_scope AS scope
-            WHERE scope.board_id = NEW.board_id;
-        END IF;
-    ELSIF NEW.first_seen_at < OLD.first_seen_at THEN
-        UPDATE public.source_coverage_posting_first
-        SET first_observed_at = LEAST(first_observed_at, NEW.first_seen_at)
-        WHERE posting_id = NEW.id;
-    END IF;
+    INSERT INTO public.source_coverage_posting_first
+        (posting_id, company_id, board_id, revision)
+    VALUES (NEW.id, NEW.company_id, NEW.board_id,
+            (SELECT scope.revision FROM public.source_coverage_scope AS scope
+             WHERE scope.board_id = NEW.board_id));
     RETURN NEW;
 END;
 $$;
 CREATE TRIGGER source_coverage_posting_first
-AFTER INSERT OR UPDATE OF first_seen_at ON public.job_posting
+AFTER INSERT ON public.job_posting
 FOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_posting_first();
 """)
 
@@ -106,8 +125,11 @@ FOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_posting_first();
 def downgrade() -> None:
     op.execute("DROP TRIGGER source_coverage_posting_first ON public.job_posting")
     op.execute("DROP FUNCTION public.jobseek_source_coverage_posting_first()")
+    op.execute("DROP TRIGGER source_coverage_board_loss ON public.job_board")
+    op.execute("DROP FUNCTION public.jobseek_source_coverage_board_loss()")
     op.execute("DROP TRIGGER source_coverage_board_revision ON public.job_board")
     op.execute("DROP FUNCTION public.jobseek_source_coverage_board_revision()")
     op.execute("DROP TABLE public.source_coverage_posting_first")
+    op.execute("DROP TABLE public.source_coverage_scope_loss")
     op.execute("DROP TABLE public.source_coverage_check")
     op.execute("DROP TABLE public.source_coverage_scope")

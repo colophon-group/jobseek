@@ -90,6 +90,7 @@ func realAuthority(t *testing.T, kind Kind, worker WorkerType, ids ...string) au
 		defer cancel()
 		_, _ = pool.Exec(ctx, "DELETE FROM descriptions WHERE posting_id=$1::uuid", task.ID)
 		_, _ = pool.Exec(ctx, "DELETE FROM job_posting WHERE id=$1::uuid", task.ID)
+		_, _ = pool.Exec(ctx, "DELETE FROM source_coverage_posting_first WHERE posting_id=$1::uuid", task.ID)
 		_, _ = pool.Exec(ctx, "DELETE FROM job_board WHERE id=$1::uuid", task.ID)
 		_, _ = pool.Exec(ctx, "DELETE FROM company WHERE id=$1::uuid", company)
 	})
