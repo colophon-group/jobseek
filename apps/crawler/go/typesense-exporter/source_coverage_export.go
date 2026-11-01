@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const sourceCoverageVersion = "jobseek-coverage-v1"
+const sourceCoverageVersion = "jobseek-coverage-v2"
 const sourceCoverageWindow = 14 * 24 * time.Hour
 const sourceCoverageGrace = 15 * time.Minute
 const sourceCoverageMaxCadence = 24 * time.Hour
@@ -47,12 +47,19 @@ type coverageInterval struct {
 	State string `json:"state"`
 }
 type coverageScope struct {
-	ID             string             `json:"id"`
-	CompanyID      string             `json:"companyId"`
-	Revision       string             `json:"revision"`
-	TrackedSince   string             `json:"trackedSince"`
-	LastVerifiedAt *string            `json:"lastVerifiedAt"`
-	Coverage       []coverageInterval `json:"coverage"`
+	ID             string              `json:"id"`
+	CompanyID      string              `json:"companyId"`
+	Revision       string              `json:"revision"`
+	TrackedSince   string              `json:"trackedSince"`
+	LastVerifiedAt *string             `json:"lastVerifiedAt"`
+	PublicLink     *coveragePublicLink `json:"publicLink"`
+	Coverage       []coverageInterval  `json:"coverage"`
+}
+type coveragePublicLink struct {
+	URL        string `json:"url"`
+	Status     string `json:"status"`
+	Provenance string `json:"provenance"`
+	ApprovedAt string `json:"approvedAt"`
 }
 type coveragePosting struct {
 	ID            string `json:"id"`
@@ -89,6 +96,7 @@ type coverageBoard struct {
 	Tracked     time.Time
 	Enabled     bool
 	Fingerprint bool
+	PublicLink  *coveragePublicLink
 }
 
 func coverageTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
@@ -189,7 +197,7 @@ func readCoverageAllowlist(path string) ([]string, error) {
 
 func buildCoverageSnapshot(ctx context.Context, tx pgx.Tx, end, now time.Time, approved []string) (coverageSnapshot, error) {
 	start := end.Add(-sourceCoverageWindow)
-	s := coverageSnapshot{SchemaVersion: 1, SourceVersion: sourceCoverageVersion, AsOf: coverageTime(end), GeneratedAt: coverageTime(now), Companies: []coverageCompany{}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
+	s := coverageSnapshot{SchemaVersion: 2, SourceVersion: sourceCoverageVersion, AsOf: coverageTime(end), GeneratedAt: coverageTime(now), Companies: []coverageCompany{}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
 	companyIDs := make(map[string]bool)
 	rows, err := tx.Query(ctx, `SELECT id::text,name,website FROM public.company WHERE slug=ANY($1::text[]) ORDER BY id`, approved)
 	if err != nil {
@@ -235,8 +243,10 @@ WHERE company_id::text=ANY($1::text[]) AND lost_at >= $2 AND lost_at <= $3`, com
 		return s, fmt.Errorf("%d approved career-page scopes were deleted or reassigned during the comparison window", lostScopes)
 	}
 	boardRows, err := tx.Query(ctx, `SELECT b.id::text,b.company_id::text,COALESCE(sc.revision::text,''),COALESCE(sc.tracked_since,'epoch'::timestamptz),b.is_enabled,b.board_status,
-  NULLIF(b.metadata->>'_monitor_config_fingerprint','') IS NOT NULL
+  NULLIF(b.metadata->>'_monitor_config_fingerprint','') IS NOT NULL,
+  link.company_id::text,link.public_url,link.provenance,link.approved_at
 FROM public.job_board b LEFT JOIN public.source_coverage_scope sc ON sc.board_id=b.id
+LEFT JOIN public.source_coverage_public_link link ON link.board_id=b.id
 WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyIDs))
 	if err != nil {
 		return s, err
@@ -244,12 +254,30 @@ WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyID
 	boards := []coverageBoard{}
 	for boardRows.Next() {
 		var b coverageBoard
-		if err = boardRows.Scan(&b.ID, &b.CompanyID, &b.Revision, &b.Tracked, &b.Enabled, &b.Status, &b.Fingerprint); err != nil {
+		var linkCompany, linkURL, provenance *string
+		var approvedAt *time.Time
+		if err = boardRows.Scan(&b.ID, &b.CompanyID, &b.Revision, &b.Tracked, &b.Enabled, &b.Status, &b.Fingerprint, &linkCompany, &linkURL, &provenance, &approvedAt); err != nil {
 			break
 		}
 		if b.Revision == "" {
 			err = errors.New("approved board lacks source coverage scope")
 			break
+		}
+		if linkURL != nil {
+			if linkCompany == nil || *linkCompany != b.CompanyID || provenance == nil || approvedAt == nil || approvedAt.After(now) {
+				err = errors.New("public career-page approval has invalid board provenance")
+				break
+			}
+			canonical, urlErr := canonicalCoverageCareerURL(*linkURL)
+			if urlErr != nil || canonical != *linkURL {
+				err = errors.New("public career-page approval has unsafe URL")
+				break
+			}
+			if *provenance != "employer-careers" && *provenance != "ats-careers" && *provenance != "reviewed-redirect" {
+				err = errors.New("public career-page approval has invalid provenance")
+				break
+			}
+			b.PublicLink = &coveragePublicLink{URL: canonical, Status: "approved", Provenance: *provenance, ApprovedAt: coverageTime(*approvedAt)}
 		}
 		boards = append(boards, b)
 		if len(boards) > 2000 {
@@ -270,7 +298,7 @@ WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyID
 			err = checkErr
 			break
 		}
-		s.Scopes = append(s.Scopes, coverageScope{ID: b.ID, CompanyID: b.CompanyID, Revision: b.Revision, TrackedSince: coverageTime(b.Tracked), LastVerifiedAt: last, Coverage: []coverageInterval{{Start: coverageTime(start), End: coverageTime(end), State: state}}})
+		s.Scopes = append(s.Scopes, coverageScope{ID: b.ID, CompanyID: b.CompanyID, Revision: b.Revision, TrackedSince: coverageTime(b.Tracked), LastVerifiedAt: last, PublicLink: b.PublicLink, Coverage: []coverageInterval{{Start: coverageTime(start), End: coverageTime(end), State: state}}})
 	}
 	if err != nil {
 		return s, err
@@ -447,7 +475,7 @@ func canonicalCoverageURL(raw string) (string, error) {
 }
 
 func privateCoverageHost(host string) bool {
-	for _, suffix := range []string{"localhost", "local", "internal", "invalid", "test", "lan", "home", "corp"} {
+	for _, suffix := range []string{"localhost", "local", "internal", "invalid", "test", "example", "onion", "arpa", "lan", "home", "corp"} {
 		if host == suffix || strings.HasSuffix(host, "."+suffix) {
 			return true
 		}
@@ -521,7 +549,9 @@ func validateExistingCoverageArtifact(data []byte, end time.Time) error {
 	if err = json.Unmarshal(decoded, &snapshot); err != nil {
 		return err
 	}
-	if snapshot.SchemaVersion != 1 || snapshot.SourceVersion != sourceCoverageVersion || snapshot.AsOf != coverageTime(end) {
+	validV1 := snapshot.SchemaVersion == 1 && snapshot.SourceVersion == "jobseek-coverage-v1"
+	validV2 := snapshot.SchemaVersion == 2 && snapshot.SourceVersion == sourceCoverageVersion
+	if (!validV1 && !validV2) || snapshot.AsOf != coverageTime(end) {
 		return errors.New("existing coverage artifact has wrong source version or period")
 	}
 	return nil

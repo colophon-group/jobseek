@@ -22,8 +22,8 @@ type registryTransactionConnection interface {
 
 func loadRegistryTables(directory string) (map[string]registryTable, error) {
 	tables := map[string]registryTable{}
-	for _, name := range []string{"occupation_domains", "occupations", "seniority", "technologies", "industries", "companies", "company_descriptions", "boards"} {
-		table, err := loadRegistryCSV(directory, name, name != "companies" && name != "boards")
+	for _, name := range []string{"occupation_domains", "occupations", "seniority", "technologies", "industries", "companies", "company_descriptions", "boards", "source_coverage_links"} {
+		table, err := loadRegistryCSV(directory, name, name != "companies" && name != "boards" && name != "source_coverage_links")
 		if err != nil {
 			return nil, err
 		}
@@ -57,6 +57,13 @@ func commitRegistryWithNativeEligibility(ctx context.Context, conn registryTrans
 	}
 	effects, err := stageRegistryBoards(ctx, tx, boards, time.Now)
 	if err != nil {
+		return empty, err
+	}
+	links, err := prepareSourceCoverageLinks(tables["source_coverage_links"])
+	if err != nil {
+		return empty, err
+	}
+	if err = stageSourceCoverageLinks(ctx, tx, links); err != nil {
 		return empty, err
 	}
 	if requireNative {
@@ -111,6 +118,9 @@ func runRegistry(args []string) error {
 	plan = append(plan, companies...)
 	boards, err := prepareRegistryBoards(tables["boards"])
 	if err != nil {
+		return err
+	}
+	if _, err = prepareSourceCoverageLinks(tables["source_coverage_links"]); err != nil {
 		return err
 	}
 	if *requireNative {

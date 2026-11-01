@@ -26,6 +26,17 @@ for name in [
     module.op = SimpleNamespace(execute=statements.append)
     module.upgrade()
 
+# Registry sync reconciles the reviewed link list in the same transaction as
+# boards. Its fixture needs the approval table; revision behavior is covered by
+# the complete local-migration integration test.
+statements.append(
+    "CREATE TABLE source_coverage_public_link ("
+    "board_id uuid PRIMARY KEY REFERENCES job_board(id) ON DELETE CASCADE,"
+    "company_id uuid NOT NULL REFERENCES company(id),"
+    "public_url text NOT NULL, provenance text NOT NULL,"
+    "approved_at timestamptz NOT NULL DEFAULT clock_timestamp())"
+)
+
 # Local taxonomy was bootstrapped from these web tables. Include its actual
 # table/column contracts, without unrelated web migrations or production data.
 for name in [

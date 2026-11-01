@@ -20,8 +20,8 @@ func TestSourceCoverageMigrationRetainsClosedOriginalsAndResetsRevisions(t *test
 	}
 	_, err := conn.Exec(ctx, `INSERT INTO public.company(id,slug,name,website) VALUES
 ('00000000-0000-0000-0000-000000000101','coverage-test','Coverage Test','https://example.com');
-INSERT INTO public.job_board(id,company_id,board_url,crawler_type,metadata)
-VALUES ('00000000-0000-0000-0000-000000000102','00000000-0000-0000-0000-000000000101','https://example.com/jobs','rss','{"_monitor_config_fingerprint":"stable"}');
+INSERT INTO public.job_board(id,company_id,board_slug,board_url,crawler_type,metadata)
+VALUES ('00000000-0000-0000-0000-000000000102','00000000-0000-0000-0000-000000000101','coverage-main','https://example.com/jobs','rss','{"_monitor_config_fingerprint":"stable"}');
 INSERT INTO public.job_posting(id,company_id,board_id,source_url,first_seen_at)
 VALUES ('00000000-0000-0000-0000-000000000106','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000102','https://example.com/jobs/legacy','2026-10-30T10:00:00Z')`)
 	if err != nil {
@@ -124,6 +124,73 @@ WHERE posting_id IN ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000
 	}
 	if len(view.Companies) != 1 || len(view.Scopes) != 1 || len(view.Postings) != 3 || view.Scopes[0].Coverage[0].State != "unknown" || view.Scopes[0].LastVerifiedAt != nil {
 		t.Fatalf("incomplete first-observation projection: %+v", view)
+	}
+	if view.Scopes[0].PublicLink != nil {
+		t.Fatal("unapproved public link was invented from the crawler URL")
+	}
+	if _, err := conn.Exec(ctx, `INSERT INTO public.job_board(id,company_id,board_slug,board_url,crawler_type,metadata)
+VALUES ('00000000-0000-0000-0000-000000000109','00000000-0000-0000-0000-000000000101','coverage-second','https://example.com/api/jobs','rss','{"_monitor_config_fingerprint":"stable"}')`); err != nil {
+		t.Fatal(err)
+	}
+	links := []sourceCoverageLinkInput{
+		{CompanySlug: "coverage-test", BoardSlug: "coverage-main", URL: "https://careers.example.com/team/jobs", Provenance: "employer-careers"},
+		{CompanySlug: "coverage-test", BoardSlug: "coverage-second", URL: "https://ats.example.org/openings", Provenance: "ats-careers"},
+	}
+	applyLinks := func(selected []sourceCoverageLinkInput) {
+		t.Helper()
+		tx, beginErr := conn.Begin(ctx)
+		if beginErr != nil {
+			t.Fatal(beginErr)
+		}
+		if linkErr := stageSourceCoverageLinks(ctx, tx, selected); linkErr != nil {
+			_ = tx.Rollback(ctx)
+			t.Fatal(linkErr)
+		}
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			t.Fatal(commitErr)
+		}
+	}
+	applyLinks(links)
+	var linkedRevision string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&linkedRevision); err != nil || linkedRevision == changedRevision {
+		t.Fatalf("approving a public link did not reset scope revision: %q %v", linkedRevision, err)
+	}
+	applyLinks(links)
+	var stableRevision string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&stableRevision); err != nil || stableRevision != linkedRevision {
+		t.Fatalf("unchanged reviewed link reset revision: %q %v", stableRevision, err)
+	}
+	linkedTx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	linkedView, err := buildCoverageSnapshot(ctx, linkedTx, periodEnd, periodEnd.Add(time.Hour), []string{"coverage-test"})
+	_ = linkedTx.Rollback(ctx)
+	if err != nil || len(linkedView.Scopes) != 2 || linkedView.Scopes[0].PublicLink == nil || linkedView.Scopes[1].PublicLink == nil || linkedView.Scopes[0].PublicLink.URL != links[0].URL || linkedView.Scopes[1].PublicLink.URL != links[1].URL {
+		t.Fatalf("reviewed multi-board links were not projected: %+v %v", linkedView.Scopes, err)
+	}
+	links[0].URL = "https://careers.example.com/new-team/jobs"
+	applyLinks(links)
+	var changedLinkRevision string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&changedLinkRevision); err != nil || changedLinkRevision == linkedRevision {
+		t.Fatalf("changed public page relabelled old coverage revision: %q %v", changedLinkRevision, err)
+	}
+	if _, err := conn.Exec(ctx, `UPDATE public.source_coverage_public_link SET public_url='http://example.com/unsafe' WHERE board_id='00000000-0000-0000-0000-000000000102'`); err != nil {
+		t.Fatal(err)
+	}
+	unsafeLinkTx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, unsafeLinkErr := buildCoverageSnapshot(ctx, unsafeLinkTx, periodEnd, periodEnd.Add(time.Hour), []string{"coverage-test"})
+	_ = unsafeLinkTx.Rollback(ctx)
+	if unsafeLinkErr == nil {
+		t.Fatal("unsafe stored public link reached export")
+	}
+	applyLinks(nil)
+	var revokedRevision string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&revokedRevision); err != nil || revokedRevision == changedLinkRevision {
+		t.Fatalf("revoked public link did not reset revision: %q %v", revokedRevision, err)
 	}
 	if _, err := conn.Exec(ctx, `INSERT INTO public.company(id,slug,name,website) VALUES
 ('00000000-0000-0000-0000-000000000107','coverage-insecure','Insecure Company','http://example.org')`); err != nil {

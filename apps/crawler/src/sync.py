@@ -1,6 +1,6 @@
 """CSV -> local crawler-state sync.
 
-Reads data/companies.csv and data/boards.csv, upserts rows into the database.
+Reads the company, board, and reviewed source-link CSVs into the database.
 The DB is derived state — CSVs are the source of truth.
 
 Local Postgres is the only allocator and transactional authority. The normal
@@ -8,7 +8,7 @@ CLI publishes Redis board queues and Typesense collections after commit. The
 legacy relational-mirror helpers remain library-only during rollback cleanup.
 
 Usage:
-    uv run python -m src.sync              # sync both CSVs
+    uv run python -m src.sync              # sync local registry data
     uv run python -m src.sync --dry-run    # show what would change
 """
 
@@ -17,7 +17,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import ipaddress
 import json
+import re
 import time
 from collections.abc import Mapping
 from contextlib import suppress
@@ -26,7 +28,8 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
+from uuid import UUID
 
 import polars as pl
 import structlog
@@ -849,6 +852,142 @@ def _load_boards() -> pl.DataFrame:
     df = pl.read_csv(path, infer_schema_length=0)
     log.info("sync.loaded_boards", count=len(df), path=str(path))
     return df
+
+
+def _load_source_coverage_links() -> pl.DataFrame:
+    path = get_data_dir() / "source_coverage_links.csv"
+    df = pl.read_csv(path, infer_schema_length=0)
+    if df.columns != ["company_slug", "board_slug", "public_url", "provenance"]:
+        raise ValueError("source coverage link registry has wrong columns")
+    return df
+
+
+def _canonical_public_career_url(raw: str) -> str:
+    if (
+        len(raw) > 2048
+        or raw.strip() != raw
+        or any(char.isspace() for char in raw)
+        or any(ord(char) < 32 or ord(char) >= 127 for char in raw)
+        or any(char in raw for char in "%?#\\")
+    ):
+        raise ValueError("invalid public career-page URL")
+    try:
+        parsed = urlsplit(raw)
+        host = (parsed.hostname or "").lower()
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("invalid public career-page URL") from exc
+    if (
+        parsed.scheme != "https"
+        or not host
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.query
+        or parsed.fragment
+        or not re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}", host)
+        or len(host) > 253
+        or any(
+            len(part) > 63 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", part)
+            for part in host.split(".")
+        )
+        or host.endswith(
+            (
+                ".local",
+                ".internal",
+                ".invalid",
+                ".test",
+                ".example",
+                ".onion",
+                ".arpa",
+                ".lan",
+                ".home",
+                ".corp",
+                ".localhost",
+            )
+        )
+        or host
+        in {
+            "localhost",
+            "local",
+            "internal",
+            "invalid",
+            "test",
+            "example",
+            "onion",
+            "arpa",
+            "lan",
+            "home",
+            "corp",
+        }
+        or any(part in {".", ".."} for part in parsed.path.split("/"))
+    ):
+        raise ValueError("invalid public career-page URL")
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("public career-page URL uses an IP address")
+    return f"https://{host}{parsed.path or '/'}"
+
+
+async def sync_source_coverage_links(
+    local_conn: asyncpg.Connection, links: pl.DataFrame, dry_run: bool
+) -> None:
+    if len(links) > 2000:
+        raise ValueError("source coverage link registry exceeds 2000 rows")
+    desired: list[tuple[str, str, str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for row in links.iter_rows(named=True):
+        company, board = row["company_slug"], row["board_slug"]
+        url, provenance = row["public_url"], row["provenance"]
+        if (
+            not isinstance(company, str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", company)
+            or not isinstance(board, str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,159}", board)
+            or provenance not in {"employer-careers", "ats-careers", "reviewed-redirect"}
+            or (company, board) in seen
+            or not isinstance(url, str)
+        ):
+            raise ValueError("invalid or duplicate public career-page approval")
+        seen.add((company, board))
+        desired.append((company, board, _canonical_public_career_url(url), provenance))
+    if dry_run:
+        return
+    board_ids: list[UUID] = []
+    for company, board, url, provenance in desired:
+        matches = await local_conn.fetch(
+            """SELECT b.id::text AS board_id,b.company_id::text AS company_id
+            FROM public.job_board b JOIN public.company c ON c.id=b.company_id
+            WHERE c.slug=$1 AND b.board_slug=$2""",
+            company,
+            board,
+        )
+        if len(matches) != 1:
+            raise ValueError(f"approved public link has no unique company board: {company}/{board}")
+        match = matches[0]
+        board_id = UUID(match["board_id"])
+        board_ids.append(board_id)
+        await local_conn.execute(
+            """INSERT INTO public.source_coverage_public_link
+            (board_id,company_id,public_url,provenance) VALUES ($1::uuid,$2::uuid,$3,$4)
+            ON CONFLICT (board_id) DO UPDATE SET
+              company_id=EXCLUDED.company_id,public_url=EXCLUDED.public_url,
+              provenance=EXCLUDED.provenance,approved_at=clock_timestamp()
+            WHERE (source_coverage_public_link.company_id,source_coverage_public_link.public_url,
+                   source_coverage_public_link.provenance)
+              IS DISTINCT FROM (EXCLUDED.company_id,EXCLUDED.public_url,EXCLUDED.provenance)""",
+            board_id,
+            UUID(match["company_id"]),
+            url,
+            provenance,
+        )
+    await local_conn.execute(
+        "DELETE FROM public.source_coverage_public_link WHERE board_id <> ALL($1::uuid[])",
+        board_ids,
+    )
 
 
 def _or_none(val: str | None) -> str | None:
@@ -3516,6 +3655,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
     companies = _load_companies()
     company_descs = _load_company_descriptions()
     boards = _load_boards()
+    source_coverage_links = _load_source_coverage_links()
 
     if len(companies) == 0 and len(boards) == 0:
         log.info("sync.empty", msg="No data in CSVs, nothing to sync")
@@ -3548,6 +3688,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                 await sync_companies(local_connection, companies, dry_run)
                 await sync_company_descriptions(local_connection, company_descs, dry_run)
                 board_effects = await sync_boards(local_connection, boards, dry_run)
+                await sync_source_coverage_links(local_connection, source_coverage_links, dry_run)
                 if not dry_run:
                     await resolve_pending_misses(local_connection)
 
