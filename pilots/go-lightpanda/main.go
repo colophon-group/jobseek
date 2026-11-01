@@ -48,7 +48,13 @@ func main() {
 		return
 	}
 	if len(args) > 0 && args[0] == runtimeV1ServiceProbeNoClient {
-		if len(args) != 4 || probeRuntimeV1ServiceWithoutClient(args[1], args[2], args[3]) != nil {
+		if len(args) != 4 {
+			_, _ = fmt.Fprintln(os.Stderr, "runtime-v1 probe arguments are invalid")
+			os.Exit(1)
+		}
+		if err := probeRuntimeV1ServiceWithoutClient(args[1], args[2], args[3]); err != nil {
+			// Probe errors are fixed categories, never addresses or certificate data.
+			_, _ = fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		return
