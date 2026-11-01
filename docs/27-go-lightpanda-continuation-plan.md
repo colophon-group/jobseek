@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-10-31 21:54 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 15:58 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -21,19 +21,25 @@ policy, schedule conservation and supported rollback. Production transport stays
 
 ## Deployed release and retirement
 
-[PR #11299](https://github.com/colophon-group/jobseek/pull/11299) merged and
-**0.13.1141** completed the [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41242427213).
-This narrow Intervieweb/Zinrec provider fix follows the qualified 1140 release;
-the comparison and production-window results below remain explicitly dated 1140.
+**0.13.1148** completed the [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41316335984)
+after [PR #11442](https://github.com/colophon-group/jobseek/pull/11442).
+This independently owned release adds native source-coverage observations and schema **0042**.
+The preceding migration fixes in [PR #11440](https://github.com/colophon-group/jobseek/pull/11440)
+read comparison postings, descriptions and completed-board state from one read-only
+repeatable-read snapshot and remove a stale provider-total assertion while checking
+every registry row and all required provider families.
 
 | Identity | Value |
 | --- | --- |
-| Tested head | `1b0383741758e0f181778686281a40b371151ea9` |
-| Runtime source | `d1a2f4243e2098daae410c10f09eae2e0144bf46` |
-| Runtime contract | `616d966236554797a9f13c9b2429fa98aaeccaa80d966f59666dc1f4edf473d5` |
-| Image | `sha256:86cfbb53072811f18f77ac5972af4f3d76db33004161e651622c8b5237c313ff` |
+| Tested 1148 PR head | `cb42323b80e6fc474359c61134db40429de65e11` |
+| Runtime source | `6b19a2ce3508e78f996624c4243f574eda3d7cae` |
+| Runtime contract | `b2f536065a07221f034b63e77c4ba38a849974a8d1d75faa041e420af9d66eb9` |
+| Image | `sha256:5f4796e02c73e8157eeeb5191796021866ec6190e7e7246f3c4cea196f394bf6` |
 
-Required CI and Crawler Deploy Gate passed before the head-bound merge.
+Required CI and Crawler Deploy Gate passed before merge. The actual merged source
+also contains the latest Lightpanda pin from PR #11438. The final renderer probe
+fix in PR #11450 has its own exact-head comparisons below; native runtime
+contract `b2f536...` is unchanged across these qualified sources.
 The rollout includes the retirement topology from
 [PR #11080](https://github.com/colophon-group/jobseek/pull/11080): `worker-2`,
 `worker-3` and `browser-1` are absent; `worker-1` is an off-profile native
@@ -42,33 +48,35 @@ Python, uv, Playwright or Chromium command. Native processing, enrichment, PDF
 extraction, scheduling, persistence, failure handling, sync, migrations,
 maintenance, currency refresh, export and description drain are implemented.
 
-Independent readback at **21:46:36** verifies exact source/image and all four
-native actors running with zero restarts/OOM
-and original budgets. The complete live environment matches the committed release,
-excluding only its documented `COMPOSE_FILE` override. A company-data preflight's
-19:34 drift rejection occurred during the full rollout; no host repair or guard
-bypass was used.
+Independent readback at **15:58:36 UTC** verifies exact source/image/VERSION,
+all four native actors running with zero restarts/OOM, and existing limits:
+ordinary worker 2 CPU / 1 GiB, 512 MiB Go heap, discovery 60 / monitor 15;
+reaper 128 MiB and exporter/drain 256 MiB. The full live environment matches the
+committed release except its documented `COMPOSE_FILE` override. The active v3
+pointer, manifest, Compose/env/success hashes and complete eight-file CSV tree
+are independently checked. All six core services are running; configured Docker
+health checks pass. Processing uses native commands with retired runtime commands absent.
 
 ## Current fleet and downstream effects
 
-At 21:46:36, the independently observed data revision is
-`ee23f1db6b13ddb15659484386dee34b6f03fd3f`, data contract
-`6a67d295e818f1e9e570c524862c75113385edc009dd65d852f7acbd6be5c309`,
-with **8,192 enabled boards**, routing epoch **404**, schema **0041** and zero
-active migration plans. A subsequent selected-row read at 21:54:09 observes data
-revision `be11e7a79b28f7a6e455152758d9a193f397c66f`, contract
-`4c14b0c2b841bc547d5ffc670fd9d23e561ea5a6bb180e8588447a15c7a6b917`.
-Company publication advances independently of runtime; the earlier fleet count
-is not a fresh census of that later revision.
+The 15:58 observation has **8,228 enabled boards**, routing epoch **404**,
+schema **0042**, zero active migration plans, data revision
+`9b027872ded9259e074ccc48d499ecf1788b24e4` and data contract
+`5d6456d55db83f5c5ffe4410d63eff51362c8f3782a6de52761b853e70411aac`.
+Company data can advance independently; refresh its installed identity before using
+these counts after subsequent intake publication.
 
-Exact immutable CSV/SQL key equality and original-subset reconciliation at 21:15
-preserve all original **8,163 board UUIDs**, plus 28 new keys at data revision
-`ca27188439e4fd08f4e10001a04a42ef9692f48d`. The original sorted UUID hash
-remains `73b4d3b1b4be51da0a610f158a64c7e6b71bddffc5dc1a0d9d8716bb5edc9e29`.
-The 21:13 atomic Redis observation represents all **8,191** enabled monitors
-at that revision exactly once: **8,177 queued + 14 valid leases**, zero missing, duplicate,
-wrong-lane, expired-only, token-presence, cache/domain or deadletter gaps.
-Refresh these identities after later publication rather than reusing saved counts.
+The **15:57:55** readback preserves every original **8,163 board UUID** and all
+**8,218 pre-cutover UUIDs**. Original sorted UUID SHA-256 remains
+`73b4d3b1b4be51da0a610f158a64c7e6b71bddffc5dc1a0d9d8716bb5edc9e29`;
+all-pre-cutover UUID SHA-256 is
+`51d44c751f289fd4d4900f3160a77e45a0fbbc378f2b7de35eb70c6a7309f216`.
+Atomic Redis observation represents **8,216 queued + 12 valid leases = 8,228**,
+with zero observed missing, duplicate, wrong-lane, expired-only, token-presence,
+cache/domain or deadletter gaps. Token values are never read.
+
+The downstream and production-window samples in the following paragraphs are
+explicitly **October 31** observations, not fresh 1148 samples.
 
 At 19:49, 5,175 monitors succeeded and 5,426 were checked in the preceding hour;
 2,030 were due and none overdue a day. The pre-existing detail backlog remains
@@ -120,21 +128,22 @@ company-intake work, rather than new migration completion requirements.
 
 ## Remaining delivery work
 
-1. **Resolve or classify Oracle ADF's observed failure.** Its natural 1139 attempt
-   at 17:10 failed during fetch after about three seconds. The existing Go HTTP
-   JSF route previously reproduced all 52 live jobs. Version 1140 adds bounded
-   stage/status diagnostics for the next scheduled retry, November 1 at 17:10 UTC.
-   Do not force work, reset backoff, replace the route wholesale or add Chromium.
-   Establish whether this is a migration regression or an upstream/source failure;
-   make the smallest shared fix if needed and preserve the enabled board.
-2. **Close the original requirement audit after the ADF diagnosis.** Current-release
-   installation, CSV/SQL/queue and original UUID checks, downstream effects,
-   controlled comparisons and production stability are qualified within their
-   stated limits. Keep large existing backlogs and old hash metadata explicit.
-   They do not justify rewriting approved offline/control Python. New-company
-   variants and renderer relocation remain separate work. Preserve qualified
-   rollback assets through the affected normal schedule observation, then use
-   supported retirement rather than deleting them manually.
+1. **Resolve or classify Oracle ADF's observed failure.** At 15:57 it remains
+   enabled and quarantined with 11 failures; last check October 31 at 17:10:15,
+   next normal retry **November 1 at 17:10:18.641208 UTC**. The proven Go HTTP
+   JSF route previously reproduced 52 live jobs. Installed bounded stage/status
+   diagnostics must establish migration regression versus upstream/source failure.
+   Make the smallest shared fix if needed. Do not force work, reset backoff or
+   add Chromium.
+2. **Close the original acceptance audit after that outcome.** Native 1148 and
+   the latest renderer are installed and independently verified. All four final
+   comparison scenarios pass; one separate automatic B0 performance job is still
+   running at this checkpoint. Preserve original boards, downstream/canonical/
+   publisher-policy contracts and supported reversal. Keep dated observations,
+   existing backlog and sampling limits explicit. Approved control/offline Python,
+   new-company variants and renderer relocation do not block this migration.
+   Preserve rollback assets through the affected normal schedule observation;
+   retire them through supported GC rather than manual deletion.
 
 All five tracked formerly deadlettered monitor cases are active with zero
 consecutive failures after natural 1139 successes: Accenture, Beisen, both
@@ -189,18 +198,27 @@ separate from these checks.
 
 ## Comparable efficiency and limits
 
-All four scenarios at the tested 1140 head completed **six alternating arms**
-with identical canonical output, description uploads, search results and cleanup.
-The control explicitly uses Python JSON-LD/DOM extraction and enrichment; Go
-reaper/exporter/drain are common measured actors.
+The final renderer-fix head `6b08c345647d06bbd9b23edf33e3304840a55649`
+passed [all four comparisons](https://github.com/colophon-group/jobseek/actions/runs/41321036234):
+**six alternating arms per scenario**, identical canonical output, uploaded
+nonempty descriptions, matching search output and successful cleanup. All nine
+actors are included. Native runtime contract is the installed 1148 contract;
+renderer code matches the reviewed merged source. The control uses Python
+JSON-LD/DOM extraction and enrichment; Go reaper/exporter/drain are common actors.
+Exact per-arm resources, source/runtime/workload/canonical hashes and image
+identities and sanitized production readbacks are in the
+[numeric report](evidence/go-native1148-comparison-2026-11-01.json).
+The earlier combined-main run 41318736961 also passed all 24 arms before this
+probe-only fix; it is not substituted for the final-head results.
 
 | Mean per complete arm, native / Python | AMD64 generated 536 | AMD64 captured 72 | ARM64 generated 536 | ARM64 captured 72 |
 | --- | --- | --- | --- | --- |
-| Completion seconds | 19.4225 / 35.6271 | 34.0694 / 65.8402 | 19.9818 / 32.1547 | 34.0806 / 65.7034 |
-| Lifetime CPU seconds | 22.1013 / 42.7822 | 18.0720 / 28.1117 | 14.1058 / 27.2471 | 16.0163 / 23.8015 |
-| Sampled peak working memory, MiB | 448.8307 / 907.5091 | 423.1576 / 814.8529 | 468.4870 / 921.2435 | 416.0964 / 822.5820 |
-| Retained working memory, MiB | 431.8529 / 855.3971 | 412.5013 / 799.1888 | 457.2630 / 867.1589 | 410.2305 / 803.8424 |
-| Modeled EUR per 1,000 correct postings | 0.0000244480 / 0.0000495612 | 0.0001900895 / 0.0004742951 | 0.0000203493 / 0.0000463863 | 0.0001883728 / 0.0004759023 |
+| Completion seconds | 20.3703 / 31.0156 | 33.9659 / 63.9735 | 19.2645 / 32.0488 | 33.9824 / 63.9868 |
+| Lifetime CPU seconds | 12.6979 / 26.3188 | 14.8628 / 23.6123 | 14.6503 / 28.2546 | 15.5594 / 23.2734 |
+| Sampled peak working memory, MiB | 453.2839 / 923.6536 | 424.2734 / 824.2331 | 461.9948 / 927.1719 | 428.3242 / 819.1523 |
+| Retained working memory, MiB | 439.0312 / 851.7969 | 413.3984 / 799.6185 | 446.9414 / 870.8451 | 416.3490 / 802.1276 |
+| Correct postings per lifetime CPU-second | 42.2245 / 20.5640 | 4.8479 / 3.0544 | 36.5864 / 18.9705 | 4.6275 / 3.0937 |
+| Modeled EUR per 1,000 correct postings | 0.0000197692 / 0.0000447642 | 0.0001748611 / 0.0004662582 | 0.0000196852 / 0.0000465327 | 0.0001862729 / 0.0004664098 |
 
 Captured inputs contain exact decoded HTML for 62 JSON-LD and ten DOM details
 from seven hosts and three recorded configurations. Both parsers reproduce saved
@@ -243,23 +261,57 @@ finished successfully before normal cutover. Independent readback verified exact
 previous 1137 source/image/data, all 14 deployment-spec presence/hash fingerprints,
 8,163 UUIDs/schedules, native actors and budgets. Promotion was skipped. A separate
 1138 normal run was safely cancelled before a deployment job existed; retirement
-and 1139 then shipped together through the full rollout above. The cold-qualified
-deploy workflow/scripts, Compose, Dockerfile and bridge contracts were unchanged
-by the 1139 monitor-progress or 1140 claim-isolation changes; immutable source
-comparison confirms that operational contract is unchanged. Preserve explicit rollback target
+and 1139 then shipped together through the full rollout above. The cold-qualified deployment workflow/scripts, Compose, Dockerfile and bridge
+contracts remain unchanged through 1148. Schema 0042 is an independently owned
+additive source-coverage change; the earlier cold exercise is not a new 1148
+reversal measurement. Rollback sync uses the authenticated previous image and
+complete previous CSV generation without rerunning its migration command. Preserve explicit rollback target
 1137 source `6934e672a1e10ac5557c025af23f127197af3bbd`, image
 `sha256:05aebf3cc204f9256319433d849f9b97e127fb1db31fc894cd3c7ec281144172`.
 
-Latest official asset digests were rechecked on October 31: installed/pinned Lightpanda
-**1.1.0-nightly.11423+56980afde**, executable source
-`56980afdec3ad177072e7a180cb05da838bc1744`; stable 1.0.2 is older.
-[Official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly).
-ARM64 SHA-256 `97710997faea70bb0f22f9b07ba3a9701b47dbb6a71f679150b040e70c565cf3`;
-AMD64 SHA-256 `19f3fee25fb14bb75a1e0c1e0f8ab9cce842950544e4a144fbad3884c94b98a3`.
-Renderer source `406d0f94ee919962da2ccb4196450344265c9445`, image
-`sha256:c09939c34ba034ee9d68ec9176f19f8ddeea04bfa816ce595409b09386133af7`.
-Recheck official identities before changing it. Host sampler source remains
-`cad060906a8fc11b4036ee69ac0a81e26d2a26fb`; do not confuse it with runtime source.
+Latest official assets were rechecked **November 1**:
+**1.1.0-nightly.11471+cebb8d51e**, upstream source
+`cebb8d51e60a68815591a5c7874823b988530aa8`,
+[official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly).
+Immutable OCI index
+`sha256:9a5f29a6d0d36e6d166a736e2f83e96f923fbc68e7569a9cc80270785039ef50`;
+ARM64 executable SHA-256
+`dfbb4a2d32867db31e6ab3ee74545e7cd5daeb847b94e0ae29a70b4732e960d4`,
+AMD64 executable SHA-256
+`49c84433d35ae81a94daebf696d48c2c3095f9d78d6f953c383e390eb6e5c76f`.
+[PR #11438](https://github.com/colophon-group/jobseek/pull/11438) passed all 53 checks
+(39 success / 14 skip), physical Linux qualification on both architectures, ARM
+renderer service smoke, bounded B0 measurement and four standard comparisons
+at exact head `82acf8f1c35296ef80dd96685d3fd54de88b1c47`, then merged as
+`2eac9b486b058be8d3d6d6e9bb50abbc1e1585ae`.
+
+[PR #11450](https://github.com/colophon-group/jobseek/pull/11450) adds a
+three-second connection-refused startup wait and fixed diagnostic categories;
+TLS success still requires the exact `certificate_required` rejection. It passed
+Required CI, Crawler Deploy Gate, both physical Linux architecture tests and the
+ARM renderer container smoke before a fresh expected-head-bound merge. All four
+comparisons subsequently passed; the separate B0 performance job remains live.
+No mTLS, resource, containment or execution-capacity guard was relaxed.
+
+The [supported recovery](https://github.com/colophon-group/jobseek/actions/runs/41323014298)
+completed successfully on renderer source
+`9c40b4418728d4b9693469725cc8fd7bf4021112`, image
+`sha256:61e9daa52dc0c955ad270440e962eb321d894c84c8e3ac455b2f2bfb19ab224b`.
+Independent **15:54:06 UTC** readback verifies the actual latest ARM64 binary
+against the official digest above, source/image labels, active marker, immutable
+verifier bytes, unchanged public certificates, sole two network endpoints and
+one TLS listener. The kernel records that listener in its TCP6 table; the
+observer checks both tables. The controller is running with **zero restarts/OOM**,
+1 CPU, 1 GiB memory, zero swap, PIDs 64 and a private cgroup namespace; actual kernel
+limits match. Current start time is **15:49:39.782878988 UTC**.
+
+The first activation at 14:04 failed predecessor cgroup attestation and contained
+the old service. A cold recovery failed its silent no-client probe and removed
+the candidate. The current recovery restored serving availability at 15:49.
+The earlier memory drift and exact suppressed probe reason remain unproved;
+success is not a retrospective diagnosis or a claim of uninterrupted service.
+The connection-refused startup race is reproduced by regression tests. No forced
+origin work, backoff reset, manual host repair or capacity increase was used.
 
 No renderer relocation has occurred. Relocation is a separate change: the default
 worker endpoint is compiled into `rendered_detail.go`, and the renderer workflow
