@@ -5153,6 +5153,7 @@ nhs,nhs-hsc-northern-ireland,https://jobs.hscni.net/Search?SearchCatID=0,dom,"{"
 nhs,nhs-scotland,https://apply.jobs.scot.nhs.uk/,dom,"{""render"": true, ""url_filter"": ""/Job/JobDetail\\?JobId=""}",json-ld,"{""render"": true}"
 nice,nice-greenhouse,https://job-boards.greenhouse.io/nice,greenhouse,"{""token"": ""nice""}",skip,
 nicoll-curtin,nicoll-curtin-careers,https://careers.nicollcurtin.com/jobs,rss,"{""preset"": ""teamtailor""}",skip,
+nidecker-group,nidecker-group-careers,https://join.com/companies/nidecker,sitemap,"{""sitemap_url"": ""https://join.com/companies/nidecker/sitemap.xml"", ""url_filter"": ""https://join.com/companies/nidecker/[^/]+$""}",json-ld,
 nielseniq,nielseniq-careers,https://jobs.smartrecruiters.com/NielsenIQ,smartrecruiters,"{""token"": ""NielsenIQ""}",smartrecruiters,
 nift,nift-greenhouse,https://job-boards.greenhouse.io/nift,greenhouse,"{""token"": ""nift""}",skip,
 nike,nike-careers,https://careers.nike.com,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,
@@ -5293,6 +5294,7 @@ odoo,odoo-careers,https://www.odoo.com/jobs?all_countries=1,dom,"{""render"": fa
 odyssey,odyssey-ashby,https://jobs.ashbyhq.com/odyssey,ashby,"{""token"": ""odyssey""}",skip,
 odysseyhotelgroup,odysseyhotelgroup-pinpoint,https://odysseyhotelgroup.pinpointhq.com,pinpoint,"{""slug"": ""odysseyhotelgroup""}",skip,
 oerlikon,oerlikon-global,https://careers.oerlikon.com/job,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.oerlikon.com/googlefeed.xml""}",skip,
+oetker-hotels,oetker-hotels-careers,https://careers.oetkerhotels.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.oetkerhotels.com/jobs.rss""}",json-ld,"{""enrich"": [""locations""]}"
 offerup,offerup-greenhouse,https://job-boards.greenhouse.io/offerup,greenhouse,"{""token"": ""offerup""}",skip,
 offerzen,offerzen-greenhouse,https://job-boards.greenhouse.io/offerzen,greenhouse,"{""token"": ""offerzen""}",skip,
 office-hours,office-hours-ashby,https://jobs.ashbyhq.com/office-hours,ashby,"{""token"": ""office-hours""}",skip,
@@ -6403,6 +6405,7 @@ sanity,sanity-ashby,https://jobs.ashbyhq.com/sanity,ashby,"{""token"": ""sanity"
 sanofi,sanofi-careers,https://sanofi.wd3.myworkdayjobs.com/SanofiCareers,workday,"{""company"": ""sanofi"", ""wd_instance"": ""wd3"", ""site"": ""SanofiCareers"", ""all_sites"": false}",workday,
 sanofi,sanofi-careers-opella,https://sanofi.wd3.myworkdayjobs.com/OpellaCareers,workday,"{""company"": ""sanofi"", ""wd_instance"": ""wd3"", ""site"": ""OpellaCareers"", ""all_sites"": false}",workday,
 sanovio,sanovio-join,https://join.com/companies/sanoviode,join,"{""slug"": ""sanoviode""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+santa-maria-novella,santa-maria-novella-careers,https://www.linkedin.com/company/smnovella1221/jobs/,linkedin,"{""company_id"": ""3343719"", ""company_slug"": ""smnovella1221""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 santander,santander-careers,https://santander.wd3.myworkdayjobs.com/santandercareers,workday,"{""company"": ""santander"", ""wd_instance"": ""wd3"", ""site"": ""santandercareers""}",workday,
 santander,santander-colombia-universia,https://jobboard.universia.net/santandercolombia,universia,"{""board_id"": ""80aad5c7-634e-4127-a715-6984ff63555b"", ""language"": ""es""}",skip,
 santander,santander-ebury,https://job-boards.greenhouse.io/ebury,greenhouse,"{""token"": ""ebury""}",skip,
