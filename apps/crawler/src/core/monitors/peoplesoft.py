@@ -36,6 +36,8 @@ _COUNT_RE = re.compile(r"<b>\s*(?P<count>\d{1,6})\s*</b>\s*jobs?\s+found", re.IG
 _GONE_STATUSES = frozenset({404, 410})
 _MORE_ACTION = "HRS_AGNT_RSLT_I$hdown$0"
 _MAX_GRID_REQUESTS = 1_001
+_BUSINESS_UNIT_LABEL = re.compile(r"^Apply (?P<name>.+) \((?P<count>\d{1,6})\) filter$")
+_FACET_ACTION = re.compile(r"^PTS_SELECT\$\d{1,4}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,7 +201,9 @@ def _value(row: LexborNode, prefix: str) -> str | None:
     return value or None
 
 
-def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[DiscoveredJob], int]:
+def _parse_listing_page(
+    page: str, board: PeopleSoftBoard, *, allow_identical_duplicates: bool = False
+) -> tuple[list[DiscoveredJob], int]:
     if "HRS_AGNT_RSLT_I" not in page or "Search Results List" not in page:
         raise ValueError("PeopleSoft response omitted the public search-result grid")
     count_match = _COUNT_RE.search(page)
@@ -208,7 +212,7 @@ def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[Discove
     expected = int(count_match.group("count"))
     document = LexborHTMLParser(page)
     jobs: list[DiscoveredJob] = []
-    seen_ids: set[str] = set()
+    seen_jobs: dict[str, DiscoveredJob] = {}
     for row in document.css("li[id^='HRS_AGNT_RSLT_I$0_row_']"):
         job_id = _value(row, "HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID")
         title = _value(row, "SCH_JOB_TITLE")
@@ -216,9 +220,6 @@ def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[Discove
         posted = _value(row, "SCH_OPENED")
         if not job_id or _JOB_ID_RE.fullmatch(job_id) is None or not title or not location:
             raise ValueError("PeopleSoft result row omitted a required job field")
-        if job_id in seen_ids:
-            raise ValueError(f"PeopleSoft result grid repeated job ID {job_id}")
-        seen_ids.add(job_id)
         try:
             date_posted = (
                 datetime.strptime(posted, "%m/%d/%Y").date().isoformat() if posted else None
@@ -231,18 +232,26 @@ def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[Discove
                 "job_id": job_id,
                 "department": _value(row, "HRS_APP_JBSCH_I_HRS_DEPT_DESCR"),
                 "job_family": _value(row, "JOB_FAMILY_LABEL"),
+                "business_unit": _value(row, "HRS_BU_DESCR")
+                if allow_identical_duplicates
+                else None,
+                "close_date": _value(row, "HRS_CLS_DT_DESCR")
+                if allow_identical_duplicates
+                else None,
             }.items()
             if value
         }
-        jobs.append(
-            DiscoveredJob(
-                url=board.detail_url(job_id),
-                title=title,
-                locations=[location],
-                date_posted=date_posted,
-                metadata=metadata,
-            )
+        job = DiscoveredJob(
+            url=board.detail_url(job_id),
+            title=title,
+            locations=[location],
+            date_posted=date_posted,
+            metadata=metadata,
         )
+        if job_id in seen_jobs and (not allow_identical_duplicates or seen_jobs[job_id] != job):
+            raise ValueError(f"PeopleSoft result grid repeated conflicting job ID {job_id}")
+        seen_jobs[job_id] = job
+        jobs.append(job)
     return jobs, expected
 
 
@@ -290,18 +299,26 @@ def _continuation_form(page: str) -> list[tuple[str, str]] | None:
     return fields
 
 
-async def fetch_all_listings(
+async def _fetch_grid(
     board: PeopleSoftBoard,
     client: httpx.AsyncClient,
+    page: str,
+    *,
+    allow_identical_duplicates: bool = False,
 ) -> list[DiscoveredJob]:
-    """Fetch the cumulative Candidate Gateway grid until its count is complete."""
+    """Fetch a cumulative Candidate Gateway grid until its raw count is complete."""
 
-    page = await fetch_peoplesoft_page(board, board.listing_url, client)
     previous_size = -1
+    previous_unique = -1
     for request_number in range(_MAX_GRID_REQUESTS):
-        jobs, expected = _parse_listing_page(page, board)
+        jobs, expected = _parse_listing_page(
+            page, board, allow_identical_duplicates=allow_identical_duplicates
+        )
         if expected > MAX_JOBS:
             raise ValueError(f"PeopleSoft advertised {expected} jobs, exceeding cap {MAX_JOBS}")
+        unique = len({str((job.metadata or {})["job_id"]) for job in jobs})
+        if allow_identical_duplicates and unique <= previous_unique:
+            raise ValueError("PeopleSoft continuation did not advance unique job identities")
         if len(jobs) == expected:
             return jobs
         if len(jobs) <= previous_size:
@@ -309,6 +326,7 @@ async def fetch_all_listings(
         if len(jobs) > expected:
             raise ValueError(f"PeopleSoft parsed {len(jobs)} jobs but advertised only {expected}")
         previous_size = len(jobs)
+        previous_unique = unique
         fields = _continuation_form(page)
         if fields is None:
             raise ValueError(
@@ -340,12 +358,167 @@ async def fetch_all_listings(
     raise ValueError("PeopleSoft exceeded the result-grid continuation limit")
 
 
+async def fetch_all_listings(
+    board: PeopleSoftBoard,
+    client: httpx.AsyncClient,
+) -> list[DiscoveredJob]:
+    """Fetch the cumulative Candidate Gateway grid until its count is complete."""
+
+    page = await fetch_peoplesoft_page(board, board.listing_url, client)
+    return await _fetch_grid(board, client, page)
+
+
+def _business_unit_facets(page: str, expected: int) -> dict[str, tuple[str, int]]:
+    document = LexborHTMLParser(page)
+    matches = [
+        group
+        for group in document.css(".facet_group_box")
+        if (heading := group.css_first("h2")) is not None
+        and heading.text(strip=True) == "Business Unit"
+    ]
+    if len(matches) != 1:
+        raise ValueError("PeopleSoft Business Unit facet is missing or ambiguous")
+    facets: dict[str, tuple[str, int]] = {}
+    actions: set[str] = set()
+    for node in matches[0].css("input[type=checkbox][id^='PTS_SELECT']"):
+        action = node.attributes.get("id", "")
+        label = node.attributes.get("aria-label", "")
+        parsed = _BUSINESS_UNIT_LABEL.fullmatch(label)
+        if parsed is None or _FACET_ACTION.fullmatch(action) is None:
+            raise ValueError("PeopleSoft Business Unit facet has an invalid option")
+        name, count = parsed.group("name"), int(parsed.group("count"))
+        if name in facets or action in actions or count < 1 or count >= 500:
+            raise ValueError(
+                "PeopleSoft Business Unit facet is duplicated or reaches the result ceiling"
+            )
+        if "checked" in node.attributes:
+            raise ValueError("PeopleSoft Business Unit listing was not reset to unfiltered state")
+        facets[name] = action, count
+        actions.add(action)
+    if not facets or len(facets) > 64 or sum(count for _, count in facets.values()) != expected:
+        raise ValueError("PeopleSoft Business Unit counts do not reconcile with the system total")
+    return facets
+
+
+def _facet_form(page: str, action: str) -> list[tuple[str, str]]:
+    document = LexborHTMLParser(page)
+    selected = document.css_first(f"input[id='{action}']")
+    if selected is None or "checked" in selected.attributes:
+        raise ValueError("PeopleSoft Business Unit selection was unavailable")
+    fields: list[tuple[str, str]] = []
+    for node in document.css("form input[name]"):
+        attributes = node.attributes
+        field_type = (attributes.get("type") or "text").casefold()
+        if "disabled" in attributes or field_type in {
+            "button",
+            "file",
+            "image",
+            "reset",
+            "submit",
+        }:
+            continue
+        if field_type in {"checkbox", "radio"} and "checked" not in attributes:
+            continue
+        name = attributes.get("name")
+        if not name or name in {"ICAction", "ICFocus", "ICXPos", "ICYPos"}:
+            continue
+        fields.append((name, attributes.get("value") or ""))
+    fields.extend(
+        ((action, "Y"), ("ICAction", action), ("ICFocus", action), ("ICXPos", "0"), ("ICYPos", "0"))
+    )
+    return fields
+
+
+async def fetch_business_unit_listings(
+    board: PeopleSoftBoard, client: httpx.AsyncClient, allowed_duplicates: frozenset[str]
+) -> list[DiscoveredJob]:
+    """Reconcile source rows and canonical IDs across disjoint public facilities."""
+
+    first = await fetch_peoplesoft_page(board, board.listing_url, client)
+    _, system_total = _parse_listing_page(first, board)
+    facets = _business_unit_facets(first, system_total)
+    seen: dict[str, DiscoveredJob] = {}
+    unit_by_id: dict[str, str] = {}
+    raw_total = 0
+    duplicate_total = 0
+    duplicate_ids: set[str] = set()
+    for name, (_, initial_count) in facets.items():
+        # Candidate Gateway facet state is sessionful. Logout/bootstrap verifies a
+        # fresh unfiltered grid before every independent partition selection.
+        page = await fetch_peoplesoft_page(board, board.listing_url, client)
+        _, current_total = _parse_listing_page(page, board)
+        current_facets = _business_unit_facets(page, current_total)
+        if current_total != system_total or {
+            key: count for key, (_, count) in current_facets.items()
+        } != {key: count for key, (_, count) in facets.items()}:
+            raise ValueError("PeopleSoft Business Unit snapshot changed during enumeration")
+        action, count = current_facets[name]
+        response = await client.post(
+            board.listing_url,
+            content=urlencode(_facet_form(page, action)).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        response.raise_for_status()
+        page = response.text
+        if not page or len(page) > MAX_HTML_CHARS:
+            raise ValueError("PeopleSoft Business Unit response was invalid")
+        jobs = await _fetch_grid(board, client, page, allow_identical_duplicates=True)
+        if len(jobs) != count or count != initial_count:
+            raise ValueError("PeopleSoft Business Unit row count changed")
+        raw_total += len(jobs)
+        for job in jobs:
+            job_id = str((job.metadata or {})["job_id"])
+            if (job.metadata or {}).get("business_unit") != name:
+                raise ValueError(
+                    f"PeopleSoft job {job_id} was returned under the wrong Business Unit"
+                )
+            if job_id in seen:
+                if unit_by_id[job_id] != name:
+                    raise ValueError(f"PeopleSoft job ID {job_id} crosses Business Units")
+                if seen[job_id] != job:
+                    raise ValueError(f"PeopleSoft repeated conflicting job ID {job_id}")
+                if job_id not in allowed_duplicates or job_id in duplicate_ids:
+                    raise ValueError(f"PeopleSoft job ID {job_id} has an unapproved duplicate")
+                duplicate_ids.add(job_id)
+                duplicate_total += 1
+                continue
+            seen[job_id] = job
+            unit_by_id[job_id] = name
+    if raw_total != system_total or len(seen) + duplicate_total != system_total:
+        raise ValueError("PeopleSoft Business Unit raw rows do not reconcile with system total")
+    return list(seen.values())
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     _ = pw
     identity = peoplesoft_listing_from_url(board["board_url"])
     if identity is None:
         raise ValueError(f"Invalid PeopleSoft Candidate Gateway URL: {board['board_url']!r}")
-    jobs = await fetch_all_listings(identity, client)
+    metadata = board.get("metadata") or {}
+    partition = metadata.get("partition_by_business_unit", False)
+    if type(partition) is not bool:
+        raise ValueError("PeopleSoft partition_by_business_unit must be a boolean")
+    if partition and identity.origin != "https://careers.nychhc.org":
+        raise ValueError("PeopleSoft Business Unit partition is not qualified for this origin")
+    allowed = metadata.get("allow_identical_duplicate_ids", [])
+    if (
+        not isinstance(allowed, list)
+        or len(allowed) > 10
+        or any(
+            not isinstance(job_id, str) or _JOB_ID_RE.fullmatch(job_id) is None
+            for job_id in allowed
+        )
+        or len(set(allowed)) != len(allowed)
+        or allowed
+        and not partition
+    ):
+        raise ValueError("PeopleSoft allow_identical_duplicate_ids is invalid")
+    jobs = (
+        await fetch_business_unit_listings(identity, client, frozenset(allowed))
+        if partition
+        else await fetch_all_listings(identity, client)
+    )
     log.info("peoplesoft.discovered", origin=identity.origin, jobs=len(jobs))
     return jobs
 

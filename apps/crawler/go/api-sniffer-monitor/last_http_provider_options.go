@@ -12,6 +12,8 @@ import (
 type LastHTTPOptions struct {
 	Provider, BoardURL, Origin, Dataarea, JobBoard, HROrganization, Site, Portal string
 	Proxy                                                                        bool
+	PartitionByBusinessUnit                                                      bool
+	AllowedDuplicateIDs                                                          map[string]bool
 }
 
 var inforToken = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
@@ -119,6 +121,27 @@ func LastHTTPOptionsFromMetadata(provider, board, metadata string) (LastHTTPOpti
 				return o, ErrInventory
 			}
 			seen[key] = true
+		}
+		if value, exists := m["partition_by_business_unit"]; exists {
+			partition, valid := value.(bool)
+			if !valid || partition && o.Origin != "https://careers.nychhc.org" {
+				return o, ErrInventory
+			}
+			o.PartitionByBusinessUnit = partition
+		}
+		if value, exists := m["allow_identical_duplicate_ids"]; exists {
+			ids, valid := value.([]any)
+			if !valid || !o.PartitionByBusinessUnit || len(ids) > 10 {
+				return o, ErrInventory
+			}
+			o.AllowedDuplicateIDs = map[string]bool{}
+			for _, raw := range ids {
+				id, valid := raw.(string)
+				if !valid || !peopleSoftID.MatchString(id) || o.AllowedDuplicateIDs[id] {
+					return o, ErrInventory
+				}
+				o.AllowedDuplicateIDs[id] = true
+			}
 		}
 	case "unisante":
 		if board != "https://emploi.unisante.ch/index.php/offres" && board != "https://emploi.unisante.ch/offres" || o.Proxy {
