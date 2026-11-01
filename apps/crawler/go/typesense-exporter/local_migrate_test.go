@@ -18,7 +18,7 @@ import (
 
 func TestLocalMigrationAssetsBindCompleteOriginalSourceChain(t *testing.T) {
 	manifest, e := loadLocalMigrations()
-	if e != nil || manifest.Head != "0041" || len(manifest.Revisions) != 41 {
+	if e != nil || manifest.Head != "0042" || len(manifest.Revisions) != 42 {
 		t.Fatal("complete migration chain", e)
 	}
 	for path, expected := range manifest.SourceHashes {
@@ -46,7 +46,7 @@ func migrationFixtureConnection(t *testing.T, ctx context.Context, name string) 
 	if e != nil || u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost" || !strings.HasSuffix(u.Path, "_ordinary_worker_test") {
 		t.Fatal("requires private local fixture")
 	}
-	if name != "jobseek_native1040_migration_go_test" && name != "jobseek_native1040_migration_python_test" {
+	if name != "jobseek_native1040_migration_go_test" && name != "jobseek_native1040_migration_python_test" && name != "jobseek_source_coverage_test" {
 		t.Fatal("unowned schema fixture name")
 	}
 	admin, e := pgx.Connect(ctx, dsn)
@@ -203,7 +203,7 @@ func TestRealLocalMigrationFreshSchemaMatchesActualAlembic(t *testing.T) {
 	nativeCommand.Env = []string{"LOCAL_DATABASE_URL=" + nativeDSN, "CRAWLER_DB_ROLE=fixture-migrate"}
 	output, e := nativeCommand.CombinedOutput()
 	var result map[string]string
-	if e != nil || json.Unmarshal(output, &result) != nil || result["schema_revision"] != "0041" {
+	if e != nil || json.Unmarshal(output, &result) != nil || result["schema_revision"] != "0042" {
 		t.Fatalf("compiled native fresh migration failed: %s", output)
 	}
 	head := result["schema_revision"]

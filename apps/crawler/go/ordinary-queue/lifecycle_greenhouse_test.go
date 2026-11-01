@@ -470,6 +470,9 @@ func TestRealOwnedLifecycleFinalizationRollbackRetainsCommittedBatch(t *testing.
 	if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE source_url=$1 AND is_active", posting.URL).Scan(&count); err != nil || count != 1 {
 		t.Fatal("terminal rollback lost prior committed chunk")
 	}
+	if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM source_coverage_check WHERE board_id=$1::uuid", f.task.ID).Scan(&count); err != nil || count != 0 {
+		t.Fatal("terminal rollback committed coverage evidence")
+	}
 	if _, err := f.observer.Exec(ctx, "DROP TRIGGER "+trigger+" ON job_board"); err != nil {
 		t.Fatal(err)
 	}
@@ -501,6 +504,10 @@ func TestRealOwnedLifecycleCrashAfterCommitRecoversChangedStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			var coverageBefore int
+			if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM source_coverage_check WHERE board_id=$1::uuid", f.task.ID).Scan(&coverageBefore); err != nil || coverageBefore != 1 {
+				t.Fatal("terminal coverage receipt absent before replay", err, coverageBefore)
+			}
 			due := result.Receipt.NextDue()
 			plan := a.ownership
 			// Process loss follows a real terminal PostgreSQL commit, before ack.
@@ -523,6 +530,10 @@ func TestRealOwnedLifecycleCrashAfterCommitRecoversChangedStatus(t *testing.T) {
 			}
 			if err := replacement.Settle(ctx, claim, claim.RecoveredReceipt()); err != nil {
 				t.Fatal(err)
+			}
+			var coverageAfter int
+			if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM source_coverage_check WHERE board_id=$1::uuid", f.task.ID).Scan(&coverageAfter); err != nil || coverageAfter != coverageBefore {
+				t.Fatal("replay duplicated coverage evidence", err, coverageAfter)
 			}
 			score, err := f.client.redis.ZScore(ctx, "monitors_simple:greenhouse", f.task.ID).Result()
 			if err != nil || score != seconds(*due) {

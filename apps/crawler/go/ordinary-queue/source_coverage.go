@@ -1,0 +1,93 @@
+// Fenced ordinary-monitor terminal receipts for durable source coverage.
+package queue
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+)
+
+// A stable effective monitor change may not alter the registry fingerprint.
+// Bind the current Go profile under the ordinary writer fence before fetching
+// source inventory. Runtime metadata changes leave this digest unchanged.
+func (c *GreenhouseCycle) bindSourceCoverageScope(ctx context.Context, tx pgx.Tx, effectiveHash string) (time.Time, error) {
+	var tracked time.Time
+	err := tx.QueryRow(ctx, `UPDATE public.source_coverage_scope
+SET revision=CASE WHEN effective_config_sha256 IS NOT NULL AND effective_config_sha256 <> $2::char(64)
+                  THEN gen_random_uuid() ELSE revision END,
+    tracked_since=CASE WHEN effective_config_sha256 IS NOT NULL AND effective_config_sha256 <> $2::char(64)
+                       THEN clock_timestamp() ELSE tracked_since END,
+    effective_config_sha256=$2::char(64)
+WHERE board_id=$1::uuid
+RETURNING revision::text,tracked_since`, c.claim.task.ID, effectiveHash).Scan(&c.scopeRevision, &tracked)
+	return tracked, err
+}
+
+func sourceCoverageOutcome(inventory GreenhouseInventorySummary, processed, unique int, skipped string) string {
+	if !inventory.Truncated && inventory.ProcessingFiltered == 0 &&
+		inventory.Discovered == processed && processed == unique && skipped == "" {
+		return "complete"
+	}
+	return "partial"
+}
+
+// recordSourceCoverage binds one monitoring observation to the same fenced
+// transaction as its canonical terminal receipt. Partial and failed work is
+// evidence of interruption, never evidence that the source was continuously
+// checked. The migration starts all scopes at deployment time; old checks are
+// deliberately not reconstructed from latest-state fields.
+func (c *GreenhouseCycle) recordSourceCoverage(ctx context.Context, tx pgx.Tx, outcome string) error {
+	if c == nil || c.claim == nil || c.claim.task.claimToken == "" || c.startedAt.IsZero() || c.scopeRevision == "" {
+		return ErrConfiguration
+	}
+	if outcome == "complete" {
+		canonical, err := readCanonicalBoardConfig(ctx, tx, c.claim.task.ID, true)
+		if err != nil {
+			return err
+		}
+		fresh, freshErr := InspectRichMonitor(c.claim.task.ID, canonical)
+		claimed, claimErr := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
+		if freshErr != nil || claimErr != nil || fresh.EffectiveConfigSHA256 != claimed.EffectiveConfigSHA256 {
+			outcome = "partial"
+		}
+	}
+	attempt := sha256.Sum256([]byte(c.claim.task.claimToken))
+	tag, err := tx.Exec(ctx, `INSERT INTO public.source_coverage_check
+    (board_id, revision, attempt_hash, started_at, finished_at, next_due_at, outcome)
+SELECT board.id, scope.revision, $2, $3::timestamptz, clock_timestamp(),
+       board.next_check_at,
+       CASE WHEN $4::text = 'complete'
+		              AND (scope.revision::text <> $5::text
+		                   OR scope.tracked_since > $3::timestamptz
+		                   OR scope.effective_config_sha256 IS NULL
+                   OR NULLIF(board.metadata ->> '_monitor_config_fingerprint', '') IS NULL
+                   OR board.board_status <> 'active' OR NOT board.is_enabled)
+            THEN 'partial' ELSE $4::text END
+FROM public.job_board AS board
+JOIN public.source_coverage_scope AS scope ON scope.board_id = board.id
+WHERE board.id = $1::uuid`, c.claim.task.ID, hex.EncodeToString(attempt[:]), c.startedAt, outcome, c.scopeRevision)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrConfiguration
+	}
+	// A checked board incrementally discards obsolete private facts. This bound
+	// keeps pruning inside the existing short monitor transaction and leaves
+	// published Justup editions responsible for their own historical evidence.
+	_, err = tx.Exec(ctx, `DELETE FROM public.source_coverage_check
+WHERE id IN (SELECT id FROM public.source_coverage_check
+             WHERE board_id=$1::uuid AND finished_at<clock_timestamp()-interval '45 days'
+             ORDER BY finished_at LIMIT 256)`, c.claim.task.ID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM public.source_coverage_posting_first
+WHERE posting_id IN (SELECT posting_id FROM public.source_coverage_posting_first
+                     WHERE board_id=$1::uuid AND first_observed_at<clock_timestamp()-interval '45 days'
+                     ORDER BY first_observed_at LIMIT 1024)`, c.claim.task.ID)
+	return err
+}

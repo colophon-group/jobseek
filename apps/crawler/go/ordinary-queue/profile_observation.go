@@ -44,6 +44,18 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
 }
 
 func (a *Authority) observeBoardConfigsState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (map[string]string, map[string]string, error) {
+	canonical, err := readCanonicalBoardConfig(ctx, tx, boardID, retiring)
+	if err != nil {
+		return nil, nil, err
+	}
+	cached, err := a.queue.redis.HGetAll(ctx, "board:"+boardID).Result()
+	if err != nil {
+		return nil, nil, ErrObservation
+	}
+	return canonical, cached, nil
+}
+
+func readCanonicalBoardConfig(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (map[string]string, error) {
 	var slug, boardURL, kind, company, metadata, check, scrape, throttle string
 	var monitorBrowser, scraperBrowser bool
 	err := tx.QueryRow(ctx, `SELECT board_slug,board_url,crawler_type,company_id::text,
@@ -54,10 +66,10 @@ func (a *Authority) observeBoardConfigsState(ctx context.Context, tx pgx.Tx, boa
    AND (board_status IN ('active','suspect','quarantined','gone_pending','gone') OR $2)
    FOR SHARE`, boardID, retiring).Scan(&slug, &boardURL, &kind, &company, &metadata, &check, &scrape, &throttle, &monitorBrowser, &scraperBrowser)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil, ErrUnsupportedProfile
+		return nil, ErrUnsupportedProfile
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	flag := func(value bool) string {
 		if value {
@@ -71,11 +83,7 @@ func (a *Authority) observeBoardConfigsState(ctx context.Context, tx pgx.Tx, boa
 		"scrape_interval_hours": scrape, "throttle_key": throttle, "domain": throttle,
 		"monitor_needs_browser": flag(monitorBrowser), "scraper_needs_browser": flag(scraperBrowser),
 	}
-	cached, err := a.queue.redis.HGetAll(ctx, "board:"+boardID).Result()
-	if err != nil {
-		return nil, nil, ErrObservation
-	}
-	return canonical, cached, nil
+	return canonical, nil
 }
 
 func (a *Authority) observeDetailOwnershipState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (WorkdayDetailProfile, map[string]string, error) {
