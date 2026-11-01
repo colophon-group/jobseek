@@ -31,11 +31,19 @@ ZERO_UUID = "00000000-0000-0000-0000-000000000000"
 BODY_LIMIT = 512 * 1024
 PART_LIMIT = 64 * 1024 * 1024
 TOTAL_LIMIT = 512 * 1024 * 1024
+SPOOL_LIMIT = 8 * 1024 * 1024 * 1024
+MAX_ACCEPTED = 4096
+RETENTION_DAYS = 7
+EXPORT_TIMEOUT_SECONDS = 600
+QUERY_TIMEOUT_SECONDS = 60
 SNAPSHOT_ROW_LIMIT = 100_000
 PAGE_ROW_LIMIT = 100
 CHANGE_ROW_LIMIT = 100
 PART_ROW_LIMIT = 100
-NAME_RE = re.compile(r"^batch-[0-9a-f]{32}-(?:manifest|part-[0-9]{4})\.json$")
+BATCH_RE = re.compile(r"^batch-[0-9a-f]{32}$")
+STAGE_RE = re.compile(r"^\.batch-[0-9a-f]{32}\.stage$")
+MANIFEST_RE = re.compile(r"^(batch-[0-9a-f]{32})/manifest\.json$")
+PART_RE = re.compile(r"^part-[0-9]{4}\.json$")
 SELECTOR_LIMIT = 16 * 1024
 MAX_COMPANIES = 100
 
@@ -295,8 +303,35 @@ def private_file_digest(path: Path, limit: int) -> str:
     return digest.hexdigest()
 
 
+def check_receipt(path: Path) -> None:
+    if (
+        path.is_symlink()
+        or not path.is_file()
+        or path.stat().st_uid != os.getuid()
+        or path.stat().st_mode & 0o022
+        or path.stat().st_size > 8192
+    ):
+        raise FeedError("Feed receipt is missing or unsafe.")
+
+
+def batch_directory(directory: Path, manifest_name: str) -> Path:
+    match = MANIFEST_RE.fullmatch(manifest_name)
+    if match is None:
+        raise FeedError("Feed manifest path is invalid.")
+    path = directory / match.group(1)
+    if (
+        path.is_symlink()
+        or not path.is_dir()
+        or path.stat().st_uid != os.getuid()
+        or path.stat().st_mode & 0o077
+    ):
+        raise FeedError("Private batch directory is missing or unsafe.")
+    return path
+
+
 def verify_pending(directory: Path, pending: dict[str, Any]) -> None:
-    path = directory / pending["manifest"]
+    batch = batch_directory(directory, pending["manifest"])
+    path = batch / "manifest.json"
     if private_file_digest(path, 1024 * 1024) != pending["sha256"]:
         raise FeedError("Pending manifest changed.")
     try:
@@ -312,22 +347,20 @@ def verify_pending(directory: Path, pending: dict[str, Any]) -> None:
         or len(manifest["parts"]) > SNAPSHOT_ROW_LIMIT // PART_ROW_LIMIT + 1
     ):
         raise FeedError("Pending manifest does not match feed state.")
-    prefix = pending["manifest"].removesuffix("manifest.json")
     counted = 0
     for part in manifest["parts"]:
         if (
             not isinstance(part, dict)
             or set(part) != {"file", "sha256", "rows"}
             or not isinstance(part["file"], str)
-            or not NAME_RE.fullmatch(part["file"])
-            or not part["file"].startswith(prefix + "part-")
+            or not PART_RE.fullmatch(part["file"])
             or not isinstance(part["sha256"], str)
             or not re.fullmatch(r"[0-9a-f]{64}", part["sha256"])
             or type(part["rows"]) is not int
             or not 1 <= part["rows"] <= PART_ROW_LIMIT
         ):
             raise FeedError("Pending part manifest is invalid.")
-        if private_file_digest(directory / part["file"], PART_LIMIT) != part["sha256"]:
+        if private_file_digest(batch / part["file"], PART_LIMIT) != part["sha256"]:
             raise FeedError("Pending part changed.")
         counted += part["rows"]
     if counted != manifest.get("rows"):
@@ -351,12 +384,18 @@ def state_lock(directory: Path):
 def load_state(directory: Path) -> dict[str, Any]:
     path = directory / "state.json"
     if not path.exists():
-        return {"schemaVersion": SCHEMA_VERSION, "cursor": None, "scope": None, "pending": None}
+        return {
+            "schemaVersion": SCHEMA_VERSION,
+            "cursor": None,
+            "scope": None,
+            "pending": None,
+            "accepted": [],
+        }
     if (
         path.is_symlink()
         or path.stat().st_uid != os.getuid()
         or path.stat().st_mode & 0o077
-        or path.stat().st_size > 8192
+        or path.stat().st_size > 1024 * 1024
     ):
         raise FeedError("Feed state file is unsafe.")
     try:
@@ -365,8 +404,10 @@ def load_state(directory: Path) -> dict[str, Any]:
         raise FeedError("Feed state cannot be read.") from exc
     if (
         not isinstance(state, dict)
-        or set(state) != {"schemaVersion", "cursor", "scope", "pending"}
+        or set(state) != {"schemaVersion", "cursor", "scope", "pending", "accepted"}
         or state["schemaVersion"] != SCHEMA_VERSION
+        or not isinstance(state["accepted"], list)
+        or len(state["accepted"]) > MAX_ACCEPTED
     ):
         raise FeedError("Feed state schema is invalid.")
     if state["cursor"] is not None:
@@ -393,8 +434,7 @@ def load_state(directory: Path) -> dict[str, Any]:
         not isinstance(pending, dict)
         or set(pending) != {"manifest", "sha256", "toCursor", "scope"}
         or not isinstance(pending["manifest"], str)
-        or not NAME_RE.fullmatch(pending["manifest"])
-        or not pending["manifest"].endswith("-manifest.json")
+        or not MANIFEST_RE.fullmatch(pending["manifest"])
         or not isinstance(pending["sha256"], str)
         or not re.fullmatch(r"[0-9a-f]{64}", pending["sha256"])
     ):
@@ -403,13 +443,126 @@ def load_state(directory: Path) -> dict[str, Any]:
         if pending["scope"] is None:
             raise FeedError("Pending feed scope is missing.")
         validate_cursor(pending["toCursor"])
+    seen = set()
+    for item in state["accepted"]:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"manifest", "sha256", "acceptedAt", "backupVerifiedAt"}
+            or not isinstance(item["manifest"], str)
+            or not MANIFEST_RE.fullmatch(item["manifest"])
+            or not isinstance(item["sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", item["sha256"])
+            or not isinstance(item["acceptedAt"], str)
+            or item["manifest"] in seen
+        ):
+            raise FeedError("Accepted feed state is invalid.")
+        parse_stamp(item["acceptedAt"])
+        if item["backupVerifiedAt"] is not None:
+            parse_stamp(item["backupVerifiedAt"])
+        seen.add(item["manifest"])
+    if pending is not None and pending["manifest"] in seen:
+        raise FeedError("Pending feed batch is already accepted.")
     return state
 
 
+def sync_directory(directory: Path) -> None:
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def remove_private_batch(path: Path) -> None:
+    if (
+        not (BATCH_RE.fullmatch(path.name) or STAGE_RE.fullmatch(path.name))
+        or path.is_symlink()
+        or not path.is_dir()
+        or path.stat().st_uid != os.getuid()
+        or path.stat().st_mode & 0o077
+    ):
+        raise FeedError("Unreferenced batch directory is unsafe.")
+    for child in path.iterdir():
+        if (
+            child.is_dir()
+            or child.is_symlink()
+            or not (
+                child.name == "manifest.json"
+                or PART_RE.fullmatch(child.name)
+                or child.name.startswith(".feed-")
+            )
+        ):
+            raise FeedError("Unreferenced batch contains an unexpected file.")
+        child.unlink()
+    path.rmdir()
+    sync_directory(path.parent)
+
+
+def recover_unreferenced(directory: Path, state: dict[str, Any]) -> None:
+    referenced = {
+        item["manifest"].split("/", 1)[0]
+        for item in [*state["accepted"], *([state["pending"]] if state["pending"] else [])]
+    }
+    for child in directory.iterdir():
+        if STAGE_RE.fullmatch(child.name) or (
+            BATCH_RE.fullmatch(child.name) and child.name not in referenced
+        ):
+            remove_private_batch(child)
+
+
+def spool_bytes(directory: Path) -> int:
+    total = 0
+    for batch in directory.iterdir():
+        if not BATCH_RE.fullmatch(batch.name):
+            continue
+        if (
+            batch.is_symlink()
+            or not batch.is_dir()
+            or batch.stat().st_uid != os.getuid()
+            or batch.stat().st_mode & 0o077
+        ):
+            raise FeedError("Feed spool contains an unsafe batch directory.")
+        for item in batch.iterdir():
+            if (
+                item.is_symlink()
+                or not item.is_file()
+                or item.stat().st_uid != os.getuid()
+                or item.stat().st_mode & 0o077
+                or not (item.name == "manifest.json" or PART_RE.fullmatch(item.name))
+            ):
+                raise FeedError("Feed spool contains an unexpected file.")
+            total += item.stat().st_size
+            if total > SPOOL_LIMIT:
+                raise FeedError("Feed spool exceeds its 8 GiB limit.")
+    return total
+
+
+def prune_eligible(directory: Path, state: dict[str, Any], now: datetime | None = None) -> int:
+    now = now or datetime.now(UTC)
+    keep, remove = [], []
+    for item in state["accepted"]:
+        accepted = parse_stamp(item["acceptedAt"])
+        if item["backupVerifiedAt"] is not None and accepted <= now - timedelta(
+            days=RETENTION_DAYS
+        ):
+            remove.append(item)
+        else:
+            keep.append(item)
+    if not remove:
+        return 0
+    # Persist the completed retention decision first. If deletion is interrupted,
+    # the next locked run sees an unreferenced directory and finishes cleanup.
+    state["accepted"] = keep
+    write_atomic(directory / "state.json", encode(state))
+    for item in remove:
+        remove_private_batch(batch_directory(directory, item["manifest"]))
+    return len(remove)
+
+
 class Parts:
-    def __init__(self, directory: Path, batch_id: str):
+    def __init__(self, directory: Path, existing_bytes: int):
         self.directory = directory
-        self.batch_id = batch_id
+        self.existing_bytes = existing_bytes
         self.parts: list[dict[str, Any]] = []
         self.rows: list[dict[str, Any]] = []
         self.size = len(encode({"schemaVersion": SCHEMA_VERSION, "rows": []}))
@@ -427,10 +580,12 @@ class Parts:
     def flush(self) -> None:
         if not self.rows:
             return
-        name = f"batch-{self.batch_id}-part-{len(self.parts) + 1:04d}.json"
+        name = f"part-{len(self.parts) + 1:04d}.json"
         data = encode({"schemaVersion": SCHEMA_VERSION, "rows": self.rows})
         if len(data) > PART_LIMIT or self.total + len(data) > TOTAL_LIMIT:
             raise FeedError("Feed export exceeds its private size limit.")
+        if self.existing_bytes + self.total + len(data) > SPOOL_LIMIT:
+            raise FeedError("Feed spool would exceed its 8 GiB limit.")
         write_atomic(self.directory / name, data)
         self.total += len(data)
         self.parts.append(
@@ -459,7 +614,11 @@ async def build_batch(
         raise FeedError("A changed company scope requires a full --reconcile snapshot.")
     kind = "snapshot" if previous is None or reconcile else "changes"
     batch_id = uuid4().hex
-    parts = Parts(directory, batch_id)
+    stage = directory / f".batch-{batch_id}.stage"
+    published = directory / f"batch-{batch_id}"
+    existing_bytes = spool_bytes(directory)
+    stage.mkdir(mode=0o700)
+    parts = Parts(stage, existing_bytes)
     last = previous
     count = 0
     complete = True
@@ -527,10 +686,14 @@ async def build_batch(
         "rows": count,
         "parts": parts.parts,
     }
-    manifest_name = f"batch-{batch_id}-manifest.json"
+    manifest_name = f"batch-{batch_id}/manifest.json"
     data = encode(manifest)
     digest = hashlib.sha256(data).hexdigest()
-    write_atomic(directory / manifest_name, data)
+    if existing_bytes + parts.total + len(data) > SPOOL_LIMIT:
+        raise FeedError("Feed spool would exceed its 8 GiB limit.")
+    write_atomic(stage / "manifest.json", data)
+    os.rename(stage, published)
+    sync_directory(directory)
     state["pending"] = {
         "manifest": manifest_name,
         "sha256": digest,
@@ -545,32 +708,52 @@ async def export(directory: Path, reconcile: bool, selector: Path | None) -> dic
     with state_lock(directory):
         companies, scope = selected_companies(selector)
         state = load_state(directory)
+        recover_unreferenced(directory, state)
+        prune_eligible(directory, state)
         if state["pending"] is not None:
             pending = state["pending"]
             if pending["scope"] != scope:
                 raise FeedError("Pending feed batch has a different company scope.")
             verify_pending(directory, pending)
             return pending
+        if len(state["accepted"]) >= MAX_ACCEPTED:
+            raise FeedError(
+                "Feed has too many retained accepted batches; verify backups and prune."
+            )
         dsn = os.environ.get("LOCAL_DATABASE_URL")
         if not dsn:
             raise FeedError("LOCAL_DATABASE_URL is required for read-only export.")
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, server_settings={"default_transaction_read_only": "on"}
+            dsn,
+            min_size=1,
+            max_size=2,
+            timeout=10,
+            command_timeout=QUERY_TIMEOUT_SECONDS,
+            server_settings={
+                "default_transaction_read_only": "on",
+                "statement_timeout": str(QUERY_TIMEOUT_SECONDS * 1000),
+                "idle_in_transaction_session_timeout": "120000",
+            },
         )
         try:
-            return await build_batch(pool, directory, state, reconcile, companies, scope)
+            async with asyncio.timeout(EXPORT_TIMEOUT_SECONDS):
+                return await build_batch(pool, directory, state, reconcile, companies, scope)
         finally:
-            await pool.close()
+            try:
+                async with asyncio.timeout(30):
+                    await pool.close()
+            except TimeoutError:
+                pool.terminate()
 
 
 def acknowledge(directory: Path, receipt_path: Path) -> dict[str, Any]:
     with state_lock(directory):
         state = load_state(directory)
+        recover_unreferenced(directory, state)
         pending = state["pending"]
         if pending is None:
             raise FeedError("There is no pending feed batch.")
-        if receipt_path.is_symlink() or receipt_path.stat().st_size > 8192:
-            raise FeedError("Import receipt is unsafe.")
+        check_receipt(receipt_path)
         try:
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
@@ -583,11 +766,53 @@ def acknowledge(directory: Path, receipt_path: Path) -> dict[str, Any]:
         ):
             raise FeedError("Import receipt does not match the pending batch.")
         verify_pending(directory, pending)
+        if len(state["accepted"]) >= MAX_ACCEPTED:
+            raise FeedError(
+                "Feed has too many retained accepted batches; verify backups and prune."
+            )
         state["cursor"] = pending["toCursor"]
         state["scope"] = pending["scope"]
+        state["accepted"].append(
+            {
+                "manifest": pending["manifest"],
+                "sha256": pending["sha256"],
+                "acceptedAt": stamp(datetime.now(UTC)),
+                "backupVerifiedAt": None,
+            }
+        )
         state["pending"] = None
         write_atomic(directory / "state.json", encode(state))
         return {"cursor": state["cursor"]}
+
+
+def mark_backup(directory: Path, receipt_path: Path, now: datetime | None = None) -> dict[str, Any]:
+    with state_lock(directory):
+        state = load_state(directory)
+        recover_unreferenced(directory, state)
+        check_receipt(receipt_path)
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise FeedError("Backup receipt cannot be read.") from exc
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != {"schemaVersion", "manifestSha256", "backupVerified"}
+            or receipt["schemaVersion"] != SCHEMA_VERSION
+            or receipt["backupVerified"] is not True
+            or not isinstance(receipt["manifestSha256"], str)
+        ):
+            raise FeedError("Backup receipt is invalid.")
+        matching = [
+            item for item in state["accepted"] if item["sha256"] == receipt["manifestSha256"]
+        ]
+        if len(matching) != 1:
+            raise FeedError("Backup receipt does not match one accepted batch.")
+        item = matching[0]
+        if item["backupVerifiedAt"] is None:
+            item["backupVerifiedAt"] = stamp(now or datetime.now(UTC))
+            write_atomic(directory / "state.json", encode(state))
+        removed = prune_eligible(directory, state, now)
+        return {"backupRecorded": True, "pruned": removed}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -604,19 +829,23 @@ def main(argv: list[str] | None = None) -> int:
     ack_parser = sub.add_parser("ack")
     ack_parser.add_argument("--directory", required=True, type=Path)
     ack_parser.add_argument("--receipt", required=True, type=Path)
+    backup_parser = sub.add_parser("backup-verified")
+    backup_parser.add_argument("--directory", required=True, type=Path)
+    backup_parser.add_argument("--receipt", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
         directory = private_directory(args.directory)
-        result = (
-            asyncio.run(export(directory, args.reconcile, args.company_ids_file))
-            if args.command == "export"
-            else acknowledge(directory, args.receipt)
-        )
-        public_receipt = (
-            {"manifest": result["manifest"], "sha256": result["sha256"]}
-            if args.command == "export"
-            else {"acknowledged": True, "cursorUpdatedAt": result["cursor"]["updatedAt"]}
-        )
+        if args.command == "export":
+            result = asyncio.run(export(directory, args.reconcile, args.company_ids_file))
+            public_receipt = {"manifest": result["manifest"], "sha256": result["sha256"]}
+        elif args.command == "ack":
+            result = acknowledge(directory, args.receipt)
+            public_receipt = {
+                "acknowledged": True,
+                "cursorUpdatedAt": result["cursor"]["updatedAt"],
+            }
+        else:
+            public_receipt = mark_backup(directory, args.receipt)
         print(json.dumps(public_receipt, separators=(",", ":")))
     except Exception as exc:
         # Driver and unexpected errors may contain DSNs or source content.

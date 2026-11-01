@@ -147,10 +147,11 @@ class FakeManyConnection(FakeConnection):
 
 
 def read_rows(directory: Path, pending: dict):
-    manifest = json.loads((directory / pending["manifest"]).read_text())
+    manifest_path = directory / pending["manifest"]
+    manifest = json.loads(manifest_path.read_text())
     rows = []
     for part in manifest["parts"]:
-        data = (directory / part["file"]).read_bytes()
+        data = (manifest_path.parent / part["file"]).read_bytes()
         assert hashlib.sha256(data).hexdigest() == part["sha256"]
         rows.extend(json.loads(data)["rows"])
     return manifest, rows
@@ -333,8 +334,10 @@ def test_partial_change_batch_requires_following_page_before_complete(tmp_path):
 def test_ack_requires_exact_receipt_and_preserves_pending_replay(tmp_path):
     target = tmp_path / "feed"
     target.mkdir(mode=0o700)
+    batch = target / ("batch-" + "a" * 32)
+    batch.mkdir(mode=0o700)
     result = feed.public_row(source_row())
-    parts = feed.Parts(target, "a" * 32)
+    parts = feed.Parts(batch, 0)
     parts.add(result)
     parts.flush()
     manifest = {
@@ -345,13 +348,14 @@ def test_ack_requires_exact_receipt_and_preserves_pending_replay(tmp_path):
         "scope": {"kind": "all_eligible"},
     }
     data = feed.encode(manifest)
-    name = "batch-" + "a" * 32 + "-manifest.json"
-    feed.write_atomic(target / name, data)
+    name = batch.name + "/manifest.json"
+    feed.write_atomic(batch / "manifest.json", data)
     digest = hashlib.sha256(data).hexdigest()
     state = {
         "schemaVersion": 1,
         "cursor": None,
         "scope": None,
+        "accepted": [],
         "pending": {
             "manifest": name,
             "sha256": digest,
@@ -366,7 +370,7 @@ def test_ack_requires_exact_receipt_and_preserves_pending_replay(tmp_path):
         feed.acknowledge(target, receipt)
     assert feed.load_state(target)["pending"] is not None
     receipt.write_text(json.dumps({"schemaVersion": 1, "manifestSha256": digest}))
-    part_path = target / parts.parts[0]["file"]
+    part_path = batch / parts.parts[0]["file"]
     original = part_path.read_bytes()
     part_path.write_bytes(original + b" ")
     with pytest.raises(feed.FeedError, match="Pending part changed"):
@@ -375,3 +379,107 @@ def test_ack_requires_exact_receipt_and_preserves_pending_replay(tmp_path):
     assert feed.acknowledge(target, receipt) == {"cursor": feed.cursor(START)}
     assert feed.load_state(target)["pending"] is None
     assert feed.load_state(target)["scope"] == {"kind": "all_eligible"}
+    assert feed.load_state(target)["accepted"][0]["sha256"] == digest
+    assert batch.is_dir()
+
+
+def test_recover_removes_only_unpublished_batches_and_incomplete_staging(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    retained = target / ("batch-" + "a" * 32)
+    orphan = target / ("batch-" + "b" * 32)
+    stage = target / (".batch-" + "c" * 32 + ".stage")
+    for path in (retained, orphan, stage):
+        path.mkdir(mode=0o700)
+        feed.write_atomic(path / "part-0001.json", b"synthetic private bytes")
+    accepted = {
+        "manifest": retained.name + "/manifest.json",
+        "sha256": "a" * 64,
+        "acceptedAt": feed.stamp(START),
+        "backupVerifiedAt": None,
+    }
+    state = {
+        "schemaVersion": 1,
+        "cursor": feed.cursor(START),
+        "scope": {"kind": "all_eligible"},
+        "pending": None,
+        "accepted": [accepted],
+    }
+    feed.recover_unreferenced(target, state)
+    assert retained.is_dir()
+    assert not orphan.exists()
+    assert not stage.exists()
+
+
+def test_next_export_replays_pending_after_cleaning_crash_orphans(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    connection = FakeConnection(source_row(), committed=True)
+
+    async def capture(_):
+        return START + timedelta(seconds=2)
+
+    state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None, "accepted": []}
+    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+        pending = asyncio.run(
+            feed.build_batch(
+                FakePool(connection), target, state, False, None, {"kind": "all_eligible"}
+            )
+        )
+    stage = target / (".batch-" + "c" * 32 + ".stage")
+    orphan = target / ("batch-" + "b" * 32)
+    for path in (stage, orphan):
+        path.mkdir(mode=0o700)
+        feed.write_atomic(path / "part-0001.json", b"interrupted bytes")
+    assert asyncio.run(feed.export(target, False, None)) == pending
+    assert not stage.exists() and not orphan.exists()
+    assert (target / pending["manifest"]).is_file()
+
+
+def test_retention_requires_accepted_backup_receipt_and_seven_days(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    batch = target / ("batch-" + "a" * 32)
+    batch.mkdir(mode=0o700)
+    feed.write_atomic(batch / "manifest.json", b"synthetic private bytes")
+    digest = hashlib.sha256(b"synthetic private bytes").hexdigest()
+    accepted = {
+        "manifest": batch.name + "/manifest.json",
+        "sha256": digest,
+        "acceptedAt": feed.stamp(START),
+        "backupVerifiedAt": None,
+    }
+    state = {
+        "schemaVersion": 1,
+        "cursor": feed.cursor(START),
+        "scope": {"kind": "all_eligible"},
+        "pending": None,
+        "accepted": [accepted],
+    }
+    feed.write_atomic(target / "state.json", feed.encode(state))
+    assert feed.prune_eligible(target, state, START + timedelta(days=8)) == 0
+    assert batch.is_dir()
+
+    backup = tmp_path / "backup-receipt.json"
+    backup.write_text(
+        json.dumps({"schemaVersion": 1, "manifestSha256": digest, "backupVerified": True})
+    )
+    assert feed.mark_backup(target, backup, START + timedelta(days=1)) == {
+        "backupRecorded": True,
+        "pruned": 0,
+    }
+    state = feed.load_state(target)
+    assert state["accepted"][0]["backupVerifiedAt"] is not None
+    assert feed.prune_eligible(target, state, START + timedelta(days=6)) == 0
+    assert batch.is_dir()
+    assert feed.prune_eligible(target, state, START + timedelta(days=8)) == 1
+    assert not batch.exists()
+    assert feed.load_state(target)["accepted"] == []
+
+
+def test_spool_limit_refuses_new_part_before_writing(tmp_path):
+    parts = feed.Parts(tmp_path, feed.SPOOL_LIMIT - 100)
+    parts.add(feed.public_row(source_row()))
+    with pytest.raises(feed.FeedError, match="spool would exceed"):
+        parts.flush()
+    assert list(tmp_path.iterdir()) == []

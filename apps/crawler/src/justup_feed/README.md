@@ -48,8 +48,13 @@ full snapshot at least once inside Justup's 24-hour evidence lifetime; changes
 alone cannot reverify postings that have not changed. Export the next batch only
 after Justup has imported and verified the current manifest and every part.
 
-The command returns the pending manifest filename and SHA-256. Re-running with
-an unacknowledged batch returns that same manifest. For a partial `changes`
+The command returns the pending manifest path, such as
+`batch-<id>/manifest.json`, and SHA-256. Parts are relative to that batch
+directory. The exporter writes a complete batch in a private staging
+directory, atomically renames it, then records the pending batch in
+`state.json`. An unpublished staging or batch directory with no state
+reference is removed on the next locked run. Re-running with an
+unacknowledged batch returns that same manifest. For a partial `changes`
 batch (`complete:false`), Justup may acknowledge only after it has durably
 staged the exact verified batch and can recover or replay it without Jobseek.
 That acknowledgement is a staging receipt, not a claim that search results
@@ -75,10 +80,31 @@ final application import fails, keep the final batch unacknowledged and replay
 it; previously acknowledged partial pages must remain durable in Justup staging.
 The operator must retain the manifest and parts through Justup acceptance and
 backup/restore verification. A crash before acknowledgement is replayed as the
-same batch; Justup must accept an exact retry idempotently. Files left by an
-interrupted export have no pending manifest in `state.json` and cannot advance
-the cursor. Inspect them before cleanup; do not delete an acknowledged bundle
-needed for rollback.
+same batch; Justup must accept an exact retry idempotently.
+
+Acknowledged bundles remain in the private directory. A verified backup job
+may produce a separate receipt containing the accepted manifest digest and
+`backupVerified:true`:
+
+```json
+{"schemaVersion":1,"manifestSha256":"<accepted manifest SHA-256>","backupVerified":true}
+```
+
+Record it with:
+
+```sh
+uv run --frozen python -m src.justup_feed backup-verified \
+  --directory /private/justup-feed \
+  --receipt /private/justup-backup-receipt.json
+```
+
+The exporter prunes an acknowledged bundle only after both this explicit
+backup receipt and seven full days since Justup acceptance. Pending bundles
+are never pruned. The total spool is capped at 8 GiB and 4,096 accepted
+bundles. If backup verification or cleanup lags, new exports fail closed
+instead of consuming unbounded disk. The backup receipt must come from the
+actual restore-verified backup process; this command cannot verify a remote
+backup merely from the JSON assertion.
 
 ## Bundle contract
 
@@ -93,7 +119,8 @@ the cursor. A scope change requires a full reconciliation snapshot before
 incremental batches can continue.
 
 Each part is a UTF-8 JSON object with `schemaVersion:1` and `rows`. The row
-allowlist is stable posting/company IDs, public company name/slug/website, title, original
+allowlist is stable posting/company IDs, public company name/slug/website,
+title, original
 source URL, active/reserved/has-content states, original first-seen and latest
 observation/update times, locales, aligned direct location IDs, names, workplace
 and geographic types, employment, salary, experience, occupation and seniority
@@ -131,6 +158,11 @@ or after the cutoff. Changed rows use the `(updated_at,id)` keyset and strict
 the complete bundle. `changes` rows include inactive and reserved transitions.
 Absence from a snapshot only means absent from that exact active/window/scope
 slice; it is never an observed closure.
+
+Each database query has a 60-second timeout and the export has a 10-minute
+overall duration limit. A timeout leaves the previous cursor unchanged; any
+incomplete staging is removed on the next locked run. These ceilings are
+operational limits, not evidence that a source with more rows is empty.
 
 ## Remaining source boundaries
 
