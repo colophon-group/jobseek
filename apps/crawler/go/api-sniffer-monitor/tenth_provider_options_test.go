@@ -34,7 +34,7 @@ func TestTenthProviderOptionsCoverCurrentFourProviderConfigurations(t *testing.T
 		}
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"intervieweb": 3, "typify": 3, "universia": 1, "talentreef": 2}) {
+	if !reflect.DeepEqual(counts, map[string]int{"intervieweb": 4, "typify": 3, "universia": 1, "talentreef": 2}) {
 		t.Fatal("four-provider configuration fixture changed", counts)
 	}
 }
