@@ -24,6 +24,9 @@ func TestRealRecurringDetailReadyOutsideBoardWindow(t *testing.T) {
 					}
 					t.Cleanup(func() {
 						_, _ = p.f.observer.Exec(context.Background(), "DELETE FROM job_posting WHERE id=$1::uuid", foreign)
+						// This fixture reuses a fixed ID across subtests. The coverage record
+						// intentionally survives posting deletion, so remove fixture data too.
+						_, _ = p.f.observer.Exec(context.Background(), "DELETE FROM source_coverage_posting_first WHERE posting_id=$1::uuid", foreign)
 					})
 					hash := int64(123)
 					detail := URLOnlyDetail{ID: foreign, BoardID: p.plan.document.Members[0].BoardID,

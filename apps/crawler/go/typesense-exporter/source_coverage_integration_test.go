@@ -169,6 +169,13 @@ DELETE FROM public.job_board WHERE id='00000000-0000-0000-0000-000000000105'`)
 	if err == nil {
 		t.Fatal("deleted no-posting board did not stop company export")
 	}
+	if _, err := conn.Exec(ctx, `DELETE FROM public.job_posting WHERE id='00000000-0000-0000-0000-000000000103'`); err != nil {
+		t.Fatal(err)
+	}
+	var retained int
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM public.source_coverage_posting_first WHERE posting_id='00000000-0000-0000-0000-000000000103'`).Scan(&retained); err != nil || retained != 1 {
+		t.Fatalf("posting deletion erased first-observation history: %d %v", retained, err)
+	}
 	python, err := filepath.Abs(filepath.Join("../..", ".venv/bin/python"))
 	if err != nil {
 		t.Fatal(err)
