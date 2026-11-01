@@ -311,26 +311,37 @@ def assert_monitor_schedule(
         raise RuntimeError(message)
 
 
-async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str, Any]:
+async def collection_snapshot(pool: Any) -> tuple[list[Any], list[Any], int]:
     from src.lightpanda.admission import STABLE_COLUMNS
 
-    deadline = time.monotonic() + timeout
-    expected = {row["url"]: row for row in jobs()}
-    while True:
-        rows = await pool.fetch(
+    # Drain publication changes the scalar pointer and uploaded flag atomically.
+    # Observe both in one snapshot, rather than combining opposite sides of it.
+    async with (
+        pool.acquire() as connection,
+        connection.transaction(isolation="repeatable_read", readonly=True),
+    ):
+        rows = await connection.fetch(
             "SELECT "
             + STABLE_COLUMNS
             + ",description_r2_hash,tdm_reserved FROM job_posting ORDER BY source_url"
         )
-        descriptions = await pool.fetch("""
+        descriptions = await connection.fetch("""
             SELECT p.id::text,p.source_url,d.locale,d.html,d.hash::text,d.r2_uploaded
             FROM descriptions d JOIN job_posting p ON p.id=d.posting_id
             ORDER BY p.source_url,d.locale
         """)
-        finished_boards = await pool.fetchval(
+        finished_boards = await connection.fetchval(
             "SELECT count(*) FROM job_board "
             "WHERE last_success_at IS NOT NULL AND consecutive_failures=0"
         )
+    return rows, descriptions, finished_boards
+
+
+async def collect(pool: Any, redis: Any, timeout: float, lane: str) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout
+    expected = {row["url"]: row for row in jobs()}
+    while True:
+        rows, descriptions, finished_boards = await collection_snapshot(pool)
         if (
             len(rows) == len(expected)
             and finished_boards == sum(board["monitor_seeded"] for board in boards())
