@@ -37,12 +37,16 @@ order. The workload roles remain in labels and this runbook. Renaming these
 provider resources does not change the guest OS hostnames, DNS, IPs, or
 running services. Infrastructure API credentials live in Doppler project
 `hetzner-infrastructure`: `prd_admin` holds a Read & Write token for bounded
-operator work, while `prd_inventory` holds a separate Read token. Neither
-config is an application or deployment environment. Use the inventory token
-for read-only checks and keep the admin token out of app and CI runtime.
+operator work, `prd_inventory` holds a separate Read token, and
+`prd_jobseek_ci` holds a distinct active credential archived from the
+Jobseek CI setup. The protected GitHub `production` environment supplies
+`HETZNER_API_TOKEN` to deployment workflows; verify it against the Doppler
+copy before changing or rotating it. Never sync the operator token there.
+Use the inventory token for read-only checks and keep the admin token out of
+app and CI runtime. The CI credential is for the existing deployment
+workflows, not an application runtime credential.
 Justup's host-scoped SSH deploy key remains in `justup-deploy/dev_murmur`;
-it is separate from both Hetzner API tokens. Jobseek's protected deployment
-credentials remain in its existing protected environment.
+it is separate from all Hetzner API tokens.
 
 The desired labels are `environment=production`, `project=jobseek`,
 `owner=jobseek-operations`, and the resource's fixed `role`. Label updates
