@@ -60,8 +60,22 @@ func TestPDFCurrentRegistryOptionsAndRejectedContracts(t *testing.T) {
 	for i, k := range rows[0] {
 		h[k] = i
 	}
+	// These known rows catch accidental PDF misclassification without freezing the
+	// total number of PDF boards as companies are added or removed.
+	referenceOCR := map[string]bool{
+		"ac-immune-careers": false,
+		"changins-main":     true,
+	}
+	seen := map[string]bool{}
 	count, ocr := 0, 0
 	for _, row := range rows[1:] {
+		slug := row[h["board_slug"]]
+		if _, known := referenceOCR[slug]; known {
+			if row[h["scraper_type"]] != "pdf" {
+				t.Fatalf("reference PDF board %q has scraper type %q", slug, row[h["scraper_type"]])
+			}
+			seen[slug] = true
+		}
 		if row[h["scraper_type"]] != "pdf" {
 			continue
 		}
@@ -72,15 +86,23 @@ func TestPDFCurrentRegistryOptionsAndRejectedContracts(t *testing.T) {
 		delete(m, "enrich")
 		o, err := PDFOptionsFromConfig(m)
 		if err != nil {
-			t.Fatal(row[h["board_slug"]], err)
+			t.Fatal(slug, err)
+		}
+		if expectedOCR, known := referenceOCR[slug]; known && o.OCR != expectedOCR {
+			t.Fatalf("reference PDF board %q OCR = %t, want %t", slug, o.OCR, expectedOCR)
 		}
 		if o.OCR {
 			ocr++
 		}
 		count++
 	}
-	if count != 52 || ocr != 4 {
-		t.Fatal(count, ocr)
+	if count == 0 || ocr == 0 {
+		t.Fatalf("registry needs PDF and OCR board coverage: PDF %d, OCR %d", count, ocr)
+	}
+	for slug := range referenceOCR {
+		if !seen[slug] {
+			t.Fatalf("reference PDF board %q is missing", slug)
+		}
 	}
 	for _, m := range []map[string]any{{"ocr_scale": 0}, {"ocr_scale": 5}, {"ocr_languages": "eng;sh"}, {"title_source": "other"}, {"require_title_pattern": true}, {"request_headers": map[string]any{"Authorization": "token"}}, {"defaults": map[string]any{"locations": []any{}}}, {"defaults": map[string]any{"base_salary": map[string]any{"min": -1}}}, {"other": true}} {
 		if _, err := PDFOptionsFromConfig(m); err == nil {
