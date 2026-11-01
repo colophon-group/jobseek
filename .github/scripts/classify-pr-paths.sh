@@ -75,7 +75,6 @@ is_go_http_pilot_path() {
     "$file" == .github/workflows/crawler-sitemap-fleet-benchmark.yml || \
     "$file" == apps/crawler/Dockerfile || \
     "$file" == apps/crawler/uv.lock || \
-    "$file" == apps/crawler/data/boards.csv || \
     "$file" == apps/crawler/src/core/__init__.py || \
     "$file" == apps/crawler/src/core/monitor.py || \
     "$file" == apps/crawler/src/core/monitors/raw.py || \
