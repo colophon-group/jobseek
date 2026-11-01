@@ -39,6 +39,9 @@ func TestTeamtailorCountryFallbackProfileBinding(t *testing.T) {
 	if err != nil || profile.RSSCountryFallbacks["Alula"] != "Saudi Arabia" {
 		t.Fatal("source-verified country fallback missing", profile, err)
 	}
+	if err := ValidateNativeBoard(profileBoardID, config); err != nil {
+		t.Fatal("Teamtailor fallback failed native registry admission", err)
+	}
 	for _, metadata := range []string{
 		`{"preset":"generic","feed_url":"https://careers.example.com/jobs.rss","scraper_type":"skip","location_country_fallbacks":{"Alula":"Saudi Arabia"}}`,
 		`{"preset":"teamtailor","scraper_type":"skip","location_country_fallbacks":{"Alula":""}}`,
@@ -48,6 +51,17 @@ func TestTeamtailorCountryFallbackProfileBinding(t *testing.T) {
 		if _, err := InspectRichMonitor(profileBoardID, config); err == nil {
 			t.Fatal("unsupported country fallback admitted", metadata)
 		}
+	}
+}
+
+func TestKertenTeamtailorBoardPassesNativeAdmission(t *testing.T) {
+	config := profileConfig()
+	config["board_slug"] = "kerten-hospitality-worldwide"
+	config["board_url"] = "https://careers.kertenhospitality.com/jobs"
+	config["crawler_type"], config["domain"], config["throttle_key"] = "rss", "rss", "rss"
+	config["metadata"] = `{"preset":"teamtailor","feed_url":"https://careers.kertenhospitality.com/jobs.rss","location_country_fallbacks":{"Alula":"Saudi Arabia"},"scraper_type":"skip"}`
+	if err := ValidateNativeBoard(profileBoardID, config); err != nil {
+		t.Fatal("Kerten board failed native registry admission", err)
 	}
 }
 
