@@ -516,7 +516,7 @@
     "stage": "complete"
   },
   "conclusion": "Current complete ADF discovery remains unqualified. Go and latest Lightpanda pagination redirect to site root and then away from the application. Fresh document/viewstate, exact publisher-generated form bytes plus all browser cookie scope, and framework window-ID alignment do not resolve it. Official entry URL exactly matches registry; no alternate entry candidate. Source cause remains unproved; no universal upstream-failure or recovery claim and no speculative runtime patch.",
-  "next_discriminating_input": "Code-backed reconciliation of caller/egress/activation behavior between native1102 production success and the later failure; then a bounded discriminating test if a concrete difference is found. A working publisher-supported complete source/session or relevant upstream correction is another possible input. Keep normal retry and no-forced-work constraints; do not repeat rejected variations without new evidence.",
+  "next_discriminating_input": "Actual historical per-attempt egress/environment evidence, a working publisher-supported complete source/session or a relevant upstream correction. The 1102-to-1109 caller/request source audit found no ADF-specific change and qualifies no new origin probe. Preserve normal retry and no-forced-work constraints; do not repeat rejected variations without new evidence.",
   "constraints": "All active investigation local. Maximum500jobs/5000detail checks retained; this follow-up used no detail scan. No production queue/counter/schedule/backoff writes, no partial inventory accepted, no Chromium. Raw URLs, cookies, view states, headers and bodies stay only in RAM and are not preserved.",
   "production_last_independent_readback_utc": "2026-11-01T20:11:42.733811+00:00",
   "installed1149_adf_and_transport_files_unchanged_from_compared1148": {
@@ -571,5 +571,102 @@
     "correction": "The existing audit referenced only the local52-job candidate and missed a separate dated native production completion. Preserve that positive witness; do not infer later ownership solely from last_success timestamps.",
     "completion_limit": "Historical native implementation/serving coverage is proved. Current original ADF pagination failure and freshness gap remain unclassified under the original final acceptance condition; this witness is not current inventory recovery or proof of no migration-related freshness regression. Goal remains active."
   },
-  "caller_and_egress_limit": "Identical ADF/direct-transport files do not independently rule out changes in effective caller, egress selection or activation behavior. Reconcile those against successful native1102 before attributing the current failure to the publisher or proposing another origin control."
+  "caller_and_egress_limit": "Source audit completed for native1102, quarantine release1109 and installed1149. ADF remains on verified direct HTTP1; source identity does not prove historical actual environment/egress/session state or the current response cause.",
+  "caller_source_reconciliation": {
+    "schema": "jobseek.adf-caller-source-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T21:30:18.672345+00:00",
+    "sources": {
+      "successful1102": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "1109_at_quarantine": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+      "installed1149": "a515fb91381a0f836ac5f8ea690fc100cabb9839"
+    },
+    "files": [
+      {
+        "file": "oracle_adf_discovery.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "277a0bc4c5db523935ecd2afba25a1c415f46e2e",
+          "1109_at_quarantine": "277a0bc4c5db523935ecd2afba25a1c415f46e2e",
+          "installed1149": "0b97cce042ec17895ac7f386c82e2a85b05353c5"
+        }
+      },
+      {
+        "file": "direct_http.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87",
+          "1109_at_quarantine": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87",
+          "installed1149": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87"
+        }
+      },
+      {
+        "file": "last_http_transport.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "2a20acebafa92434253f79217eef9b3c066ba011",
+          "1109_at_quarantine": "2a20acebafa92434253f79217eef9b3c066ba011",
+          "installed1149": "2a20acebafa92434253f79217eef9b3c066ba011"
+        }
+      },
+      {
+        "file": "rendered_monitor.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "02234af00d20926cb865fe3f401a52015af78d2f",
+          "1109_at_quarantine": "02234af00d20926cb865fe3f401a52015af78d2f",
+          "installed1149": "02234af00d20926cb865fe3f401a52015af78d2f"
+        }
+      },
+      {
+        "file": "claim_run.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "500b83fa294e9d2a475a573dbcc0e1ef51ad462d",
+          "1109_at_quarantine": "500b83fa294e9d2a475a573dbcc0e1ef51ad462d",
+          "installed1149": "b695ef229ab8d9a96b7b702bbb7b0c1a7493557d"
+        }
+      },
+      {
+        "file": "runtime.go",
+        "positive_to1109_identical": false,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "447535782caafea955ef0e31afbe99bae213cdc4",
+          "1109_at_quarantine": "3f85c73b0c9944586e670e9a5c06d534ba4bb912",
+          "installed1149": "cb7b13590f794acb9836c2f01aec2caec332e1b3"
+        }
+      },
+      {
+        "file": "proxy_http.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "e6a9cba43f0cf772339fdd804a8867562d05c46c",
+          "1109_at_quarantine": "e6a9cba43f0cf772339fdd804a8867562d05c46c",
+          "installed1149": "b1a888a48c0a11b09cab953cc3fe16bf34022351"
+        }
+      },
+      {
+        "file": "discovery.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "79c80e803c3286cfbb7b6d1d8e970317b72f4444",
+          "1109_at_quarantine": "79c80e803c3286cfbb7b6d1d8e970317b72f4444",
+          "installed1149": "79c80e803c3286cfbb7b6d1d8e970317b72f4444"
+        }
+      }
+    ],
+    "current_call_path": "runtimeClaimTransport -> directMonitorHTTP(dom) -> RunGreenhouseClaim -> NativeRenderedDetails.FetchMonitor -> discoverOracleADF; ADF keeps a fresh cookie jar and rejects redirects/partial inventories.",
+    "reviewed_current_changes": "Claim runner progress/cancellation/fencing changes, one-observation proxy/TLS selection and default ownership changes do not alter the observed ADF direct request shape; renderedMonitor dispatcher and ordinary Accept constant unchanged.",
+    "limits": "Source comparison is not proof of historical per-attempt egress/environment or universal source outage. Current original ADF freshness gap remains open; no speculative patch or new origin request.",
+    "1102_to1109_runtime_diff_review": "Only renderer argument propagation and directMonitorHTTP extraction/API-sniffer HTTP2 selection. DOM ADF remains on verified HTTP1 direct client in both sources; ADF dispatcher, claim runner, proxy-selection implementation, direct transport and Accept implementation are byte-identical. No ADF-specific caller change found in these files.",
+    "same_unique_config_through_quarantine_release": true,
+    "remaining": "Historical actual egress/environment and the current publisher/session response cause are not established by source-code identity. No current freshness recovery or safe code correction qualified."
+  }
 }

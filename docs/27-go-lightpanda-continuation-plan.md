@@ -237,12 +237,16 @@ backlog, and does not qualify a further CPU allocation increase.
    request-logic regression, not proof of a universal upstream outage or its cause.
    The [current protocol evidence](evidence/go-native1149-adf-protocol-2026-11-01.json)
    and [open follow-up](https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945)
-   record the remaining boundary. Next reconcile caller, egress selection and
-   activation behavior between the successful native 1102 source and the later
-   failure. Matching ADF/direct-transport files alone do not rule out those
-   changes. Use a code-backed difference for the next bounded discriminating
-   test; a new working publisher source/session or upstream correction is also
-   useful evidence. Preserve the current freshness gap in final acceptance.
+   record the remaining boundary. Caller reconciliation between successful
+   native 1102, release 1109 at quarantine and installed 1149 finds the same ADF
+   dispatcher, direct HTTP transport and Accept implementation. The 1102-to-1109
+   runtime changes propagate the renderer argument and select HTTP/2 for another
+   provider; ADF remains on verified direct HTTP/1. No ADF-specific caller or
+   request-code change was found through quarantine. This source comparison does
+   not establish historical per-attempt egress or session behavior. Those actual
+   environment observations, a working publisher-supported complete source, or a
+   relevant upstream correction would provide new discriminating input. Preserve
+   the current freshness gap in final acceptance.
    Do not repeat rejected header/form/window variants without new evidence,
    accept partial inventory or reset the normal retry.
 
