@@ -79,6 +79,9 @@ def _server(server_id: int, name: str, address: str, private: str) -> dict:
     return {
         "id": server_id,
         "name": name,
+        "labels": {
+            "role": {1: "crawler-browser", 2: "postgresql", 3: "typesense", 4: "murmur"}[server_id]
+        },
         "public_net": {"ipv4": {"ip": address}},
         "private_net": [{"ip": private}],
     }
@@ -86,10 +89,10 @@ def _server(server_id: int, name: str, address: str, private: str) -> dict:
 
 def test_target_discovery_is_exact_and_excludes_murmur() -> None:
     servers = [
-        _server(1, "crawler", "192.0.2.1", "10.0.0.2"),
-        _server(2, "postgresql", "192.0.2.2", "10.0.0.3"),
-        _server(3, "typesense", "192.0.2.3", "10.0.0.4"),
-        _server(4, "murmur", "192.0.2.4", "10.0.0.5"),
+        _server(1, "nbg1-node-01", "192.0.2.1", "10.0.0.2"),
+        _server(2, "nbg1-node-02", "192.0.2.2", "10.0.0.3"),
+        _server(3, "nbg1-node-03", "192.0.2.3", "10.0.0.4"),
+        _server(4, "nbg1-node-04", "192.0.2.4", "10.0.0.5"),
     ]
 
     targets = firewall.discover_targets(
@@ -107,7 +110,7 @@ def test_target_discovery_is_exact_and_excludes_murmur() -> None:
         "typesense": 3,
     }
 
-    with pytest.raises(firewall.IngressError, match="Murmur"):
+    with pytest.raises(firewall.IngressError, match="unexpected crawler server role label"):
         firewall.discover_targets(
             InventoryClient(servers),
             {
