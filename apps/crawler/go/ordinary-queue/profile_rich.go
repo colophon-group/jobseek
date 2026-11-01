@@ -224,7 +224,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "workday":
-		allowed["url_transform"] = true
+		allowed["url_filter"], allowed["url_transform"] = true, true
 		for _, key := range []string{"company", "wd_instance", "site", "all_sites", "sites", "search_text", "split_facet", "facet_union", "tenant", "board", "board_id", "employer", "site_id", "instance", "job_board", "board_slug", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
