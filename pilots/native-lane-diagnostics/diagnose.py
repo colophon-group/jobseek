@@ -10,10 +10,58 @@ from pathlib import Path
 from typing import Any
 
 
+def serialized(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()
+
+
 def digest(value: Any) -> str:
-    return hashlib.sha256(
-        json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()
-    ).hexdigest()
+    return hashlib.sha256(serialized(value)).hexdigest()
+
+
+def publication_probe(
+    postings: list[dict[str, Any]],
+    descriptions: list[dict[str, Any]],
+    profiles: dict[str, str],
+    target: str,
+) -> list[dict[str, Any]]:
+    """Test the original failed digest against bounded upload-publication seams."""
+    if len(postings) > 1024:
+        raise RuntimeError("publication probe exceeds its fixture bound")
+    rows = [{k: v for k, v in row.items() if k != "id"} for row in postings]
+    descriptions = [{k: v for k, v in row.items() if k != "id"} for row in descriptions]
+    if digest({"postings": rows, "descriptions": descriptions}) == target:
+        return []
+    encoded = [serialized(row) for row in rows]
+    prefix = hashlib.sha256(b'{"descriptions":' + serialized(descriptions) + b',"postings":[')
+    variants = {
+        "pre_upload": {"description_r2_hash": None, "to_be_enriched": False},
+        "unpublished_pointer": {"description_r2_hash": None},
+        "enrichment_pending": {"to_be_enriched": True},
+        "enrichment_settled": {"to_be_enriched": False},
+    }
+    matches = []
+    for index, row in enumerate(rows):
+        if index:
+            prefix.update(b",")
+        suffix = (b"," + b",".join(encoded[index + 1 :]) if index + 1 < len(rows) else b"") + b"]}"
+        for kind, changes in variants.items():
+            candidate = prefix.copy()
+            candidate.update(serialized(dict(row, **changes)))
+            candidate.update(suffix)
+            if candidate.hexdigest() == target:
+                matches.append({"profile": profiles[row["source_url"]], "kind": kind, "rows": 1})
+        prefix.update(encoded[index])
+    for profile in [*sorted(set(profiles.values())), "all"]:
+        selected = [
+            row for row in rows if profile == "all" or profiles[row["source_url"]] == profile
+        ]
+        if len(selected) <= 1:
+            continue
+        for kind, changes in variants.items():
+            altered = [dict(row, **changes) if row in selected else row for row in rows]
+            if digest({"postings": altered, "descriptions": descriptions}) == target:
+                matches.append({"profile": profile, "kind": kind, "rows": len(selected)})
+    return matches
 
 
 def fingerprints(
@@ -76,6 +124,9 @@ def summarize(arms: list[dict[str, Any]]) -> dict[str, Any]:
             d.get("snapshot_matches_collected") if d is not None else None for d in diagnostics
         ],
         "differing_fields": differences,
+        "publication_probe_matches": [
+            d.get("publication_probe_matches") if d is not None else None for d in diagnostics
+        ],
     }
 
 
@@ -108,6 +159,12 @@ async def snapshot() -> None:
     profiles = {row["url"]: row["profile"] for row in driver.jobs()}
     result = fingerprints(
         [dict(row) for row in rows], [dict(row) for row in descriptions], profiles
+    )
+    result["publication_probe_matches"] = publication_probe(
+        [dict(row) for row in rows],
+        [dict(row) for row in descriptions],
+        profiles,
+        "931686f1f31dab56d769a8912ddd9d3b0e1d0c8dd110caa98c2c86025f1934b3",
     )
     print("NATIVE_LANE_FIELDS=" + json.dumps(result, sort_keys=True, separators=(",", ":")))
 

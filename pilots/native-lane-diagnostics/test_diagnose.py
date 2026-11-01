@@ -4,7 +4,7 @@ import copy
 import json
 import unittest
 
-from diagnose import digest, fingerprints, summarize
+from diagnose import digest, fingerprints, publication_probe, summarize
 
 
 class FingerprintTests(unittest.TestCase):
@@ -67,6 +67,25 @@ class FingerprintTests(unittest.TestCase):
     def test_unknown_source_cannot_silently_drop_rows(self):
         with self.assertRaises(KeyError):
             fingerprints(self.postings, self.descriptions, {"another-source": "dom_rendered"})
+
+    def test_probe_identifies_exact_pre_upload_hash_without_exposing_identity(self):
+        current = copy.deepcopy(self.postings)
+        current[0].update(description_r2_hash="uploaded-hash", to_be_enriched=True)
+        prior = [{k: v for k, v in current[0].items() if k != "id"}]
+        prior[0].update(description_r2_hash=None, to_be_enriched=False)
+        descriptions = [{k: v for k, v in self.descriptions[0].items() if k != "id"}]
+        target = digest({"postings": prior, "descriptions": descriptions})
+        matches = publication_probe(current, self.descriptions, self.profiles, target)
+        self.assertEqual(matches, [{"profile": "dom_rendered", "kind": "pre_upload", "rows": 1}])
+        self.assertEqual(publication_probe(current, self.descriptions, self.profiles, "0" * 64), [])
+        current_payload = {
+            "postings": [{k: v for k, v in current[0].items() if k != "id"}],
+            "descriptions": descriptions,
+        }
+        self.assertEqual(
+            publication_probe(current, self.descriptions, self.profiles, digest(current_payload)),
+            [],
+        )
 
 
 if __name__ == "__main__":
