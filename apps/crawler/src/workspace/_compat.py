@@ -14,6 +14,9 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl
 
+from src.core.monitors.taleo_enterprise_legacy import (
+    board_from_url as taleo_enterprise_legacy_from_url,
+)
 from src.shared.adp import adp_board_from_url
 from src.shared.avature import is_avature_vendor_url
 from src.shared.beisen import beisen_board_from_url
@@ -413,7 +416,7 @@ def detect_ats_from_url(url: str) -> str | None:
         return "recruiterbox"
     if keka_board_from_url(url) is not None:
         return "keka"
-    if taleo_board_from_url(url) is not None:
+    if taleo_board_from_url(url) is not None or taleo_enterprise_legacy_from_url(url) is not None:
         return "taleo"
     if is_ukg_url(url):
         return "ukg"
@@ -1197,6 +1200,8 @@ def auto_scraper_type(
     if monitor_type == "recruiterbox":
         return ("recruiterbox", None)
     if monitor_type == "taleo":
+        if (config or {}).get("enterprise_section"):
+            return ("taleo", None)
         return ("json-ld", None)
     if monitor_type == "avature":
         return (

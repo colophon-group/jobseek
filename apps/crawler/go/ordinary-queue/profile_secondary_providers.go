@@ -171,10 +171,15 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 		profile, endpoint = "linkedin.guest-items/v1", api.LinkedInListingRequest(strings.Join(o.CompanyIDs, ","), "", 0).URL
 	case "taleo":
 		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
-		if e != nil || !o.Configured {
-			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		if e == nil && o.Configured {
+			profile, endpoint = "taleo.listing-urls/v1", o.Board.ListingURL(nil)
+		} else {
+			legacy, e := api.TaleoEnterpriseLegacyFromMetadata(config["board_url"], config["metadata"])
+			if e != nil {
+				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+			}
+			profile, endpoint = "taleo.listing-urls/v1", legacy.Listing
 		}
-		profile, endpoint = "taleo.listing-urls/v1", o.Board.ListingURL(nil)
 	case "practicematch":
 		o, e := api.PracticeMatchOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil || string(md["proxy"]) != "true" {
@@ -405,7 +410,11 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return e == nil && p.Profile == "linkedin.guest-items/v1" && p.Endpoint == api.LinkedInListingRequest(strings.Join(o.CompanyIDs, ","), "", 0).URL && o.ResourceMatches(resource)
 	case "taleo":
 		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
-		return e == nil && o.Configured && p.Profile == "taleo.listing-urls/v1" && p.Endpoint == o.Board.ListingURL(nil) && o.ResourceMatches(resource)
+		if e == nil && o.Configured {
+			return p.Profile == "taleo.listing-urls/v1" && p.Endpoint == o.Board.ListingURL(nil) && o.ResourceMatches(resource)
+		}
+		legacy, e := api.TaleoEnterpriseLegacyFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "taleo.listing-urls/v1" && p.Endpoint == legacy.Listing && legacy.ResourceMatches(resource)
 	case "practicematch":
 		o, e := api.PracticeMatchOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "practicematch.proxy-listing-urls/v1" && p.Endpoint == o.BoardURL && o.ResourceMatches(resource)
@@ -531,7 +540,11 @@ func SecondaryMonitorGone(config map[string]string, resource string, status int,
 		return false
 	case "taleo":
 		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
-		return e == nil && o.Configured && o.FirstResourceMatches(resource) && ((status == 404 || status == 410) && !disabled || disabled && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308))
+		if e == nil && o.Configured {
+			return o.FirstResourceMatches(resource) && ((status == 404 || status == 410) && !disabled || disabled && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308))
+		}
+		legacy, e := api.TaleoEnterpriseLegacyFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && legacy.ResourceMatches(resource) && (status == 404 || status == 410) && !disabled
 	case "seek":
 		return false
 	case "avature":

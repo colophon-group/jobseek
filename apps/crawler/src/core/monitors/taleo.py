@@ -16,7 +16,7 @@ from pathlib import Path
 import httpx
 import structlog
 
-from src.core.monitors import BoardGoneError, fetch_page_text, register
+from src.core.monitors import BoardGoneError, fetch_page_text, register, taleo_enterprise_legacy
 from src.core.monitors.dom import _extract_links_static, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
 from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
@@ -190,6 +190,11 @@ def _parse_page(
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     """Discover every canonical Taleo Business Edition requisition URL."""
     _ = pw
+    if enterprise := taleo_enterprise_legacy.board_from_url(board["board_url"]):
+        section = (board.get("metadata") or {}).get("enterprise_section", enterprise.listing)
+        if section != enterprise.listing:
+            raise ValueError("Taleo Enterprise section does not match the board URL")
+        return await taleo_enterprise_legacy.discover(enterprise, client)
     configured, is_configured = _board_key(board)
     resolved, first_body = await _fetch_first_page(
         configured,
@@ -297,6 +302,15 @@ async def can_handle(
 ) -> dict | None:
     """Detect direct or explicitly linked Taleo Business Edition boards."""
     _ = pw
+    if enterprise := taleo_enterprise_legacy.board_from_url(html.unescape(url)):
+        if client is None:
+            return {"enterprise_section": enterprise.listing, "jobs": "unknown"}
+        try:
+            urls = await taleo_enterprise_legacy.discover(enterprise, client)
+        except (ValueError, httpx.HTTPError):
+            log.debug("taleo_enterprise_legacy.probe_failed", url=url, exc_info=True)
+            return None
+        return {"enterprise_section": enterprise.listing, "jobs": len(urls)}
     direct = taleo_board_from_url(html.unescape(url))
     if direct is not None:
         return _result(direct) if client is None else await _probe_board(direct, client)
@@ -324,6 +338,17 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
+    if enterprise := taleo_enterprise_legacy.board_from_url(board_url):
+        if metadata.get("enterprise_section", enterprise.listing) != enterprise.listing:
+            raise ValueError("Taleo Enterprise section does not match the board URL")
+        await save_text_response(
+            artifact_dir,
+            client,
+            enterprise.listing,
+            filename="taleo-enterprise-listing.html",
+            follow_redirects=False,
+        )
+        return
     board, _is_configured = _board_key({"board_url": board_url, "metadata": metadata})
     await save_text_response(
         artifact_dir,

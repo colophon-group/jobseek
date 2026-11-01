@@ -59,3 +59,37 @@ func TestStaticProviderDetailSafetyBoundsAndIsolatedSurrogate(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveShiftedTaleoEnterpriseDetailFixtures(t *testing.T) {
+	for _, c := range []struct {
+		name, location, employment, posted string
+	}{
+		{"hyatt", "US-TX-San Antonio", "Full-time", ""},
+		{"jumeirah", "Oman-Muscat", "", "Oct 11, 2026, 5:31:35 AM"},
+		{"jumeirah_bahrain", "Bahrain", "", "Oct 7, 2026, 1:58:18 PM"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			body, err := os.ReadFile("../../tests/fixtures/taleo_enterprise/" + c.name + "_detail.html")
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, err := ParseTaleoEnterpriseDetail(string(body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			locations, ok := out["locations"].([]string)
+			if !ok || len(locations) != 1 || locations[0] != c.location {
+				t.Fatal("geographic location lost", out["locations"])
+			}
+			if got, _ := out["employment_type"].(string); got != c.employment {
+				t.Fatal("employment type differs", got)
+			}
+			if got, _ := out["date_posted"].(string); got != c.posted {
+				t.Fatal("posting date differs", got)
+			}
+			if extras, ok := out["extras"].(map[string]any); ok && extras["valid_through"] != nil {
+				t.Fatal("non-date expiry was admitted", extras)
+			}
+		})
+	}
+}

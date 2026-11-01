@@ -25,6 +25,7 @@ func FetchLinkedInTaleoPracticeMatchHTTP(ctx context.Context, client *http.Clien
 	}
 	var linkedin api.LinkedInOptions
 	var taleo api.TaleoOptions
+	var taleoLegacy api.TaleoEnterpriseLegacyBoard
 	var practice api.PracticeMatchOptions
 	var err error
 	switch p.Provider {
@@ -35,8 +36,15 @@ func FetchLinkedInTaleoPracticeMatchHTTP(ctx context.Context, client *http.Clien
 		}
 	case "taleo":
 		taleo, err = api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
-		if err != nil || !taleo.Configured || p.Profile != "taleo.listing-urls/v1" || p.Endpoint != taleo.Board.ListingURL(nil) {
-			return out, queue.ErrConfiguration
+		if err == nil && taleo.Configured {
+			if p.Profile != "taleo.listing-urls/v1" || p.Endpoint != taleo.Board.ListingURL(nil) {
+				return out, queue.ErrConfiguration
+			}
+		} else {
+			taleoLegacy, err = api.TaleoEnterpriseLegacyFromMetadata(config["board_url"], config["metadata"])
+			if err != nil || p.Profile != "taleo.listing-urls/v1" || p.Endpoint != taleoLegacy.Listing {
+				return out, queue.ErrConfiguration
+			}
 		}
 	case "practicematch":
 		practice, err = api.PracticeMatchOptionsFromMetadata(config["board_url"], config["metadata"])
@@ -125,7 +133,7 @@ func FetchLinkedInTaleoPracticeMatchHTTP(ctx context.Context, client *http.Clien
 					return nil, e
 				}
 				redirect := status == 301 || status == 302 || status == 303 || status == 307 || status == 308
-				if p.Provider == "taleo" && r.URL == p.Endpoint && !readFailed && redirect {
+				if p.Provider == "taleo" && taleoLegacy.Listing == "" && r.URL == p.Endpoint && !readFailed && redirect {
 					if api.TaleoInactiveRedirect(taleo.Board, current, observed.location) {
 						observed.providerDisabled = true
 						return nil, &DiscoveryError{Kind: "provider_gone", Status: status}
@@ -193,9 +201,19 @@ func FetchLinkedInTaleoPracticeMatchHTTP(ctx context.Context, client *http.Clien
 		}
 		return out, ctx.Err()
 	case "taleo":
-		urls, err = api.DiscoverTaleo(ctx, taleo, func(ctx context.Context, u string) ([]byte, error) {
-			return fetch(ctx, api.Request{Method: "GET", URL: u})
-		})
+		if taleoLegacy.Listing != "" {
+			var jobs []api.Job
+			jobs, err = api.DiscoverTaleoEnterpriseLegacy(ctx, taleoLegacy, func(ctx context.Context, u string) ([]byte, error) {
+				return fetch(ctx, api.Request{Method: "GET", URL: u})
+			})
+			for _, job := range jobs {
+				urls = append(urls, job.URL)
+			}
+		} else {
+			urls, err = api.DiscoverTaleo(ctx, taleo, func(ctx context.Context, u string) ([]byte, error) {
+				return fetch(ctx, api.Request{Method: "GET", URL: u})
+			})
+		}
 	case "practicematch":
 		inventory, e := api.DiscoverPracticeMatch(ctx, practice, fetch)
 		urls, out.Truncated, err = inventory.URLs, inventory.Truncated, e

@@ -176,6 +176,54 @@ func TestRealLinkedInTaleoPracticeMatchCanonicalEffectsAndConservation(t *testin
 	}
 }
 
+func TestRealTaleoEnterpriseLegacyCompleteOrNoPublishedPrefix(t *testing.T) {
+	body, err := os.ReadFile("../../tests/fixtures/taleo_enterprise/jumeirah_listing.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"complete", "source-short", "reserved503"} {
+		t.Run(mode, func(t *testing.T) {
+			board := "https://dubaiholding.taleo.net/careersection/jum_ext_quickapply/joblist.ftl?lang=en"
+			f := privateRichPipelineFixtureURL(t, "taleo", `{"enterprise_section":"https://dubaiholding.taleo.net/careersection/jum_ext_quickapply/joblist.ftl?lang=en","scraper_type":"taleo","scraper_config":{}}`, board)
+			ctx := context.Background()
+			claim, circuits := claimFixture(t, f)
+			client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if mode == "reserved503" {
+					w.Header().Set("TDM-Reservation", "1")
+					w.WriteHeader(503)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html")
+				if mode == "source-short" {
+					w.Write([]byte(strings.Replace(string(body), "19 jobs found", "20 jobs found", 1)))
+				} else {
+					w.Write(body)
+				}
+			}))
+			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
+			if err != nil || result == nil || !result.Settled {
+				t.Fatal(result, err)
+			}
+			var active bool
+			var title string
+			if err := f.pg.QueryRow(ctx, "SELECT is_active,titles[1] FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active, &title); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "complete" {
+				if result.Batches.Inserted != 19 || title != "Original" {
+					t.Fatal("complete Enterprise listing did not settle", result.Batches, active, title)
+				}
+				var scheduled int
+				if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND id<>$2::uuid AND next_scrape_at IS NOT NULL", f.board, f.original).Scan(&scheduled); err != nil || scheduled != 19 {
+					t.Fatal("Enterprise detail intents lost", scheduled, err)
+				}
+			} else if result.Batches.Inserted != 0 || !active || title != "Original" {
+				t.Fatal("failed Enterprise source modified canonical state", mode, result.Batches, active, title)
+			}
+		})
+	}
+}
+
 func TestRealPracticeMatchProxyOwnerRejectsDirectClient(t *testing.T) {
 	f := privateRichPipelineFixtureURL(t, "practicematch", `{"proxy":true,"scraper_type":"json-ld","scraper_config":{}}`, "https://employer.practicematch.com/employer/fixture/")
 	claim, circuits := claimFixture(t, f)

@@ -222,10 +222,14 @@ func ParseJazzHRDetail(source string) (map[string]any, error) {
 
 func enterpriseSpace(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }
 func ParseEnterpriseFillList(source string) ([]string, error) {
+	return parseEnterpriseFillList(source, enterpriseFillMarker, 128)
+}
+
+func parseEnterpriseFillList(source string, pattern *regexp.Regexp, maxValues int) ([]string, error) {
 	if len(source) > 8_000_000 || utf8.RuneCountInString(source) > 2_000_000 {
 		return nil, ErrInventory
 	}
-	marker := enterpriseFillMarker.FindStringIndex(source)
+	marker := pattern.FindStringIndex(source)
 	if marker == nil {
 		return nil, nil
 	}
@@ -243,7 +247,7 @@ func ParseEnterpriseFillList(source string) ([]string, error) {
 		if index < len(runes) && runes[index] == ']' {
 			return values, nil
 		}
-		if len(values) >= 128 || index >= len(runes) || runes[index] != '\'' && runes[index] != '"' {
+		if len(values) >= maxValues || index >= len(runes) || runes[index] != '\'' && runes[index] != '"' {
 			return nil, ErrInventory
 		}
 		quote := runes[index]
@@ -393,12 +397,26 @@ func ParseTaleoEnterpriseDetail(source string) (map[string]any, error) {
 	}
 	descriptionSlots := []int{11, 13}
 	locationSlot, expirySlot := 17, 27
+	shifted := false
 	if wipo >= 0 {
 		descriptionSlots = []int{wipo}
 		locationSlot, expirySlot = wipo-5, wipo-2
 		out["date_posted"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[wipo-4])))
 	} else {
-		out["employment_type"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[23])))
+		shifted = enterpriseGeoLocation(values[15]) && !enterpriseGeoLocation(values[17])
+		if shifted {
+			locationSlot = 15
+			if enterpriseEmploymentType(values[20]) {
+				out["employment_type"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[20])))
+			} else if enterpriseEmploymentType(values[23]) {
+				out["employment_type"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[23])))
+			}
+			if enterpriseDate(values[23]) {
+				out["date_posted"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[23])))
+			}
+		} else if enterpriseEmploymentType(values[23]) {
+			out["employment_type"] = staticNullable(inlineTrim(stdhtml.UnescapeString(values[23])))
+		}
 	}
 	parts := []string{}
 	for _, i := range descriptionSlots {
@@ -420,7 +438,7 @@ func ParseTaleoEnterpriseDetail(source string) (map[string]any, error) {
 			extras["qualifications"] = s
 		}
 	}
-	if expiry := inlineTrim(stdhtml.UnescapeString(values[expirySlot])); expiry != "" {
+	if expiry := inlineTrim(stdhtml.UnescapeString(values[expirySlot])); enterpriseDate(expiry) {
 		extras["valid_through"] = expiry
 	}
 	if len(extras) > 0 {
@@ -441,11 +459,53 @@ func ParseTaleoEnterpriseDetail(source string) (map[string]any, error) {
 			put("contract_duration", 12)
 		}
 	} else {
-		put("business_area", 15)
-		put("organisation", 21)
+		if shifted {
+			if values[19] != "" {
+				put("business_area", 17)
+				put("organisation", 19)
+			} else {
+				put("organisation", 17)
+			}
+		} else {
+			put("business_area", 15)
+			put("organisation", 21)
+		}
 	}
 	out["metadata"] = metadata
 	return out, nil
+}
+
+func enterpriseGeoLocation(value string) bool {
+	s := strings.ToLower(inlineTrim(stdhtml.UnescapeString(value)))
+	if s == "bahrain" || s == "china" || s == "indonesia" || s == "oman" {
+		return true
+	}
+	separator := strings.IndexByte(s, '-')
+	if separator < 2 || separator > 32 {
+		return false
+	}
+	for _, char := range s[:separator] {
+		if char != ' ' && (char < 'a' || char > 'z') {
+			return false
+		}
+	}
+	return true
+}
+
+func enterpriseDate(value string) bool {
+	return enterpriseYear.MatchString(value)
+}
+
+var enterpriseYear = regexp.MustCompile(`\b20\d{2}\b`)
+
+func enterpriseEmploymentType(value string) bool {
+	s := strings.ToLower(inlineTrim(stdhtml.UnescapeString(value)))
+	s = strings.ReplaceAll(s, "-", " ")
+	switch s {
+	case "full time", "part time", "temporary", "contract", "internship", "casual", "seasonal", "on call":
+		return true
+	}
+	return false
 }
 func ParseStaticProviderDetail(provider, source string) (map[string]any, error) {
 	switch provider {

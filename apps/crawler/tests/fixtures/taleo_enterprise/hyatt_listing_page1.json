@@ -1,0 +1,510 @@
+{
+  "requisitionList": [
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140982",
+      "contestNo": "SAN035919",
+      "column": [
+        "Hotel Guest Request Runner - Housekeeping",
+        "Grand Hyatt San Antonio",
+        "Guest Services",
+        "[\"US-TX-San Antonio\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141026",
+      "contestNo": "DUB006964",
+      "column": [
+        "Chef de Partie - Bakery",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": true,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3134827",
+      "contestNo": "JAI000903",
+      "column": [
+        "Sous Chef - Commissary",
+        "Hyatt Regency Jaipur Mansarovar",
+        "Culinary",
+        "[\"IN-RJ-Jaipur\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140994",
+      "contestNo": "DUB006963",
+      "column": [
+        "Sous Chef - Thai Cuisine",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140993",
+      "contestNo": "DUB006962",
+      "column": [
+        "Demi Chef de Partie - Thai Cuisine",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140992",
+      "contestNo": "DUB006961",
+      "column": [
+        "Commis Chef - Thai Cuisine",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141045",
+      "contestNo": "DUB006960",
+      "column": [
+        "Chef de Partie - Thai Cuisine",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141014",
+      "contestNo": "DUB006959",
+      "column": [
+        "Chef de Partie - Pastry",
+        "Park Hyatt Dubai",
+        "Culinary",
+        "[\"AE-DU-Dubai\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140991",
+      "contestNo": "GOA001474",
+      "column": [
+        "Housekeeping Host",
+        "Hyatt Place Goa Candolim",
+        "Guest Service Operations",
+        "[\"IN-Goa\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141025",
+      "contestNo": "THR000513",
+      "column": [
+        "Spa Therapist",
+        "Hyatt Regency Thrissur",
+        "Administrative",
+        "[\"IN-KL-Thrissur\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141013",
+      "contestNo": "BHO000214",
+      "column": [
+        "Host - F&B Service",
+        "Hyatt Place Bhopal Rani Kamalapati Station",
+        "Bars/Restaurants/Outlets",
+        "[\"IN-Madhya Pradesh-Bhopal\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141044",
+      "contestNo": "GUR002771",
+      "column": [
+        "Boiler Technician",
+        "Hyatt Regency Gurgaon",
+        "Engineering/Facility Maintenance",
+        "[\"IN-HR-Gurgaon\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140990",
+      "contestNo": "GUR002770",
+      "column": [
+        "Assistant -Project Manager",
+        "Hyatt Regency Gurgaon",
+        "Engineering/Facility Maintenance",
+        "[\"IN-HR-Gurgaon\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141012",
+      "contestNo": "CAR005883",
+      "column": [
+        "Hotel Assistant Manager",
+        "Carmel Valley Ranch",
+        "Hotel Operations",
+        "[\"US-CA-Carmel\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141043",
+      "contestNo": "CAR005882",
+      "column": [
+        "Front Office Manager",
+        "Carmel Valley Ranch",
+        "Front Office",
+        "[\"US-CA-Carmel\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141011",
+      "contestNo": "HON006944",
+      "column": [
+        "Assistant Director of Food & Beverage",
+        "Hyatt Regency Waikiki Beach Resort and Spa",
+        "Food and Beverage",
+        "[\"US-HI-Honolulu\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3128368",
+      "contestNo": "MAU000695",
+      "column": [
+        "Massage Therapist - On Call / Casual",
+        "Hana-Maui Resort",
+        "Spa",
+        "[\"US-HI-Maui\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3128370",
+      "contestNo": "MAU000696",
+      "column": [
+        "Massage Therapist - FT",
+        "Hana-Maui Resort",
+        "Spa",
+        "[\"US-HI-Maui\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3128418",
+      "contestNo": "MAU000694",
+      "column": [
+        "Licensed Esthetician - On Call / Casual",
+        "Hana-Maui Resort",
+        "Spa",
+        "[\"US-HI-Maui\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140936",
+      "contestNo": "PAL001397",
+      "column": [
+        "Room Attendant",
+        "Hyatt Regency Aruba Resort, Spa and Casino",
+        "Housekeeping/Laundry",
+        "[\"Caribbean Islands-AW-Palm Beach\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141010",
+      "contestNo": "SEA005633",
+      "column": [
+        "Events | Area Event Planning Manager",
+        "Hyatt Regency Seattle",
+        "Catering/Event Planning",
+        "[\"US-WA-Seattle\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3140988",
+      "contestNo": "SEA005632",
+      "column": [
+        "Events | Area Event Planning Manager (Temporary)",
+        "Hyatt Regency Seattle",
+        "Catering/Event Planning",
+        "[\"US-WA-Seattle\"]",
+        "Oct 31, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3138029",
+      "contestNo": "ORA002132",
+      "column": [
+        "Housekeeper/Room Attendant (FT)",
+        "Hyatt Regency Orange County",
+        "Housekeeping/Laundry",
+        "[\"US-CA-Orange County\"]",
+        "Oct 30, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3141009",
+      "contestNo": "AUS011067",
+      "column": [
+        "Shift Lead- Summer on Music Lane at Magdalena",
+        "Hotel Magdalena",
+        "Food and Beverage",
+        "[\"US-TX-Austin\"]",
+        "Oct 30, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    },
+    {
+      "hotJob": false,
+      "addedToJobCart": false,
+      "draft": false,
+      "alreadyAppliedOn": false,
+      "toReApply": false,
+      "jobId": "3136303",
+      "contestNo": "BAS007258",
+      "column": [
+        "Laundry Mechanic | Full-time",
+        "Hyatt Regency Lost Pines Resort and Spa",
+        "Engineering/Facility Maintenance",
+        "[\"US-TX-Bastrop - Austin\"]",
+        "Oct 30, 2026"
+      ],
+      "linkedColumn": 0,
+      "locationsColumns": [
+        3
+      ]
+    }
+  ],
+  "pagingData": {
+    "currentPageNo": 1,
+    "pageSize": 25,
+    "totalCount": 3552
+  },
+  "careerSectionUnAvailable": false
+}
