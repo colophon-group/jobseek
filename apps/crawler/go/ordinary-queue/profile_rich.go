@@ -110,7 +110,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "taleo":
-		for _, key := range []string{"host", "partition", "org", "cws", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"host", "partition", "org", "cws", "enterprise_section", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "practicematch":

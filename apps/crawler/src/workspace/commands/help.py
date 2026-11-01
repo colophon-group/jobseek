@@ -2430,7 +2430,7 @@ pageup — PageUp public static listing monitor
 
 
 MONITOR_TALEO = """\
-taleo — Taleo Business Edition static listing monitor
+taleo — Taleo Business Edition and bounded Enterprise listing monitor
 
   Listing:  GET https://{host}/{partition}/ats/careers/v2/searchResults
   Returns:  Canonical requisition URLs from server-rendered HTML
@@ -2447,6 +2447,14 @@ taleo — Taleo Business Edition static listing monitor
   instead of removing jobs. Both official TBE v2 listing themes are supported.
   Initial discovery follows only validated same-organization migrations across
   official Taleo clusters and records the resolved identity in ws.
+
+  Enterprise legacy listing: GET a verified
+  https://{tenant}.taleo.net/careersection/{section}/joblist.ftl?lang=en
+  URL with the Taleo detail scraper. The server's public fillList must contain
+  the exact advertised number of unique requisitions on one page; larger or
+  changed layouts fail closed. Newer Enterprise faceted JSON search uses the
+  configured api_sniffer POST/body paginator, with complete-total validation.
+  Official jobsearch.ftl links normalize to the matching joblist.ftl source.
 
   Detection: Direct Taleo TBE URLs or explicit links in career-page HTML.
              Blind organization guessing is disabled.

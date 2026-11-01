@@ -35,6 +35,14 @@ _DETAIL_PATH_RE = re.compile(
 )
 _JOB_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$", re.IGNORECASE)
 _WORKPLACE_RE = re.compile(r"#LI[-_ ]?(hybrid|remote|on[- ]?site)", re.IGNORECASE)
+_GEO_PREFIX_RE = re.compile(
+    r"^(?:[A-Z][A-Z ]{1,31}-|Bahrain$|China$|Indonesia$|Oman$)", re.IGNORECASE
+)
+_DATE_RE = re.compile(r"\b20\d{2}\b")
+_EMPLOYMENT_RE = re.compile(
+    r"^(?:full[ -]?time|part[ -]?time|temporary|contract|internship|casual|seasonal|on[ -]?call)$",
+    re.IGNORECASE,
+)
 
 
 def _detail_url(url: str) -> bool:
@@ -90,7 +98,11 @@ def _decode_escape(source: str, index: int) -> tuple[str, int]:
     return char, index + 1
 
 
-def _parse_fill_list(html: str) -> list[str] | None:
+def _parse_fill_list(
+    html: str,
+    marker_pattern: re.Pattern[str] = _FILL_LIST_MARKER_RE,
+    max_values: int = _MAX_VALUES,
+) -> list[str] | None:
     """Return the Taleo ``descRequisition`` string array, if present.
 
     The page is untrusted input, so this uses a small bounded parser instead of
@@ -98,7 +110,7 @@ def _parse_fill_list(html: str) -> list[str] | None:
     """
     if len(html) > _MAX_HTML_CHARS:
         raise ValueError("Taleo detail page exceeded the HTML safety cap")
-    marker = _FILL_LIST_MARKER_RE.search(html)
+    marker = marker_pattern.search(html)
     if marker is None:
         return None
 
@@ -113,7 +125,7 @@ def _parse_fill_list(html: str) -> list[str] | None:
             index += 1
         if index < len(html) and html[index] == "]":
             return values
-        if len(values) >= _MAX_VALUES:
+        if len(values) >= max_values:
             raise ValueError("Taleo fillList exceeded the value safety cap")
         if index >= len(html) or html[index] not in {"'", '"'}:
             raise ValueError("Taleo fillList contains a non-string value")
@@ -182,14 +194,37 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         part for index in description_indexes if (part := _decoded_html(values[index])) is not None
     ]
     description = "\n".join(description_parts) or None
-    location_index = wipo_description_index - 5 if wipo_description_index is not None else 17
+    # Later Enterprise tenants place geographic work location at slot 15 and
+    # property/job group at 17. The older standard layout keeps location at
+    # 17 and business area at 15. WIPO is a separate layout above.
+    shifted_layout = (
+        not wipo_layout
+        and bool(_GEO_PREFIX_RE.match(unescape(values[15]).strip()))
+        and not bool(_GEO_PREFIX_RE.match(unescape(values[17]).strip()))
+    )
+    location_index = (
+        wipo_description_index - 5
+        if wipo_description_index is not None
+        else 15
+        if shifted_layout
+        else 17
+    )
     location = unescape(values[location_index]).strip() or None
-    employment_type = None if wipo_layout else unescape(values[23]).strip() or None
+    employment_type = None
+    if not wipo_layout:
+        for index in (20, 23) if shifted_layout else (23,):
+            candidate = unescape(values[index]).strip()
+            if _EMPLOYMENT_RE.fullmatch(candidate):
+                employment_type = candidate
+                break
     date_posted = None
     if wipo_description_index is not None:
         date_posted = unescape(values[wipo_description_index - 4]).strip() or None
+    elif shifted_layout and _DATE_RE.search(values[23]):
+        date_posted = unescape(values[23]).strip() or None
     valid_through_index = wipo_description_index - 2 if wipo_description_index is not None else 27
-    valid_through = unescape(values[valid_through_index]).strip() or None
+    expiry_candidate = unescape(values[valid_through_index]).strip()
+    valid_through = expiry_candidate if _DATE_RE.search(expiry_candidate) else None
 
     job_location_type = None
     if description and (workplace := _WORKPLACE_RE.search(description)):
@@ -219,8 +254,13 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         if contract_duration:
             metadata["contract_duration"] = contract_duration
     else:
-        business_area = unescape(values[15]).strip()
-        organisation = unescape(values[21]).strip()
+        if shifted_layout:
+            business_area = unescape(values[17]).strip() if values[19] else ""
+            organisation_index = 19 if values[19] else 17
+        else:
+            business_area = unescape(values[15]).strip()
+            organisation_index = 21
+        organisation = unescape(values[organisation_index]).strip()
         if business_area:
             metadata["business_area"] = business_area
         if organisation:

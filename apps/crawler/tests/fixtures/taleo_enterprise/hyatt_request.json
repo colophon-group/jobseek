@@ -1,0 +1,71 @@
+{
+  "multilineEnabled": false,
+  "sortingSelection": {
+    "sortBySelectionParam": "3",
+    "ascendingSortingOrder": "false"
+  },
+  "fieldData": {
+    "fields": {
+      "LOCATION": "",
+      "KEYWORD": ""
+    },
+    "valid": true
+  },
+  "filterSelectionParam": {
+    "searchFilterSelections": [
+      {
+        "id": "ORGANIZATION",
+        "selectedValues": []
+      },
+      {
+        "id": "POSTING_DATE",
+        "selectedValues": []
+      },
+      {
+        "id": "LOCATION",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_FIELD",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_SCHEDULE",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_LEVEL",
+        "selectedValues": []
+      }
+    ]
+  },
+  "advancedSearchFiltersSelectionParam": {
+    "searchFilterSelections": [
+      {
+        "id": "ORGANIZATION",
+        "selectedValues": []
+      },
+      {
+        "id": "LOCATION",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_FIELD",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_SCHEDULE",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_LEVEL",
+        "selectedValues": []
+      },
+      {
+        "id": "JOB_NUMBER",
+        "selectedValues": []
+      }
+    ]
+  },
+  "pageNo": 1
+}

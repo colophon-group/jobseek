@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import quote
 
 import httpx
@@ -117,6 +118,32 @@ def test_parse_taleo_enterprise_fill_list() -> None:
         "business_area": "Operations",
         "organisation": "Flight Operations",
     }
+
+
+@pytest.mark.parametrize(
+    ("tenant", "location", "employment", "date_posted", "description_term"),
+    [
+        ("hyatt", "US-TX-San Antonio", "Full-time", None, "Guest Request Runner"),
+        ("jumeirah", "Oman-Muscat", None, "Oct 11, 2026, 5:31:35 AM", "Jumeirah"),
+        ("jumeirah_bahrain", "Bahrain", None, "Oct 7, 2026, 1:58:18 PM", "Jumeirah"),
+    ],
+)
+def test_live_shifted_enterprise_detail_fields(
+    tenant: str,
+    location: str,
+    employment: str | None,
+    date_posted: str | None,
+    description_term: str,
+) -> None:
+    html = (
+        Path(__file__).parent / "fixtures" / "taleo_enterprise" / f"{tenant}_detail.html"
+    ).read_text()
+    content = parse_html(html)
+    assert content.locations == [location]
+    assert content.employment_type == employment
+    assert content.date_posted == date_posted
+    assert "valid_through" not in (content.extras or {})
+    assert description_term in (content.description or "")
 
 
 def test_parse_wipo_taleo_enterprise_fill_list() -> None:
