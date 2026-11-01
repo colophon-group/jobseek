@@ -6,6 +6,25 @@ import (
 	"testing"
 )
 
+func TestLeverExactBlankPostingExclusionAdmission(t *testing.T) {
+	const id = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "lever", "https://jobs.lever.co/rivieradininggroup"
+	c["metadata"] = `{"token":"rivieradininggroup","scraper_type":"skip","exclude_blank_posting_ids":["` + id + `"]}`
+	p, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || p.LeverExcludeBlankPostingIDs != id || p.Profile != "lever.token-skip/v1" {
+		t.Fatalf("exact Lever exclusion not bound to native profile: %+v err=%v", p, err)
+	}
+	for _, bad := range []string{
+		`null`, `"bad"`, `["bad"]`, `[1]`, `["` + id + `","` + id + `"]`,
+	} {
+		c["metadata"] = `{"token":"rivieradininggroup","scraper_type":"skip","exclude_blank_posting_ids":` + bad + `}`
+		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+			t.Fatalf("invalid exclusion admitted: %s", bad)
+		}
+	}
+}
+
 func TestRichProviderProfilesRetainActualTokenAndRegionSelection(t *testing.T) {
 	for _, tc := range []struct{ kind, url, metadata, token, endpoint string }{
 		{"ashby", "https://jobs.ashbyhq.com/inferred", `{"scraper_type":"skip"}`, "inferred", "https://api.ashbyhq.com/posting-api/job-board/inferred?includeCompensation=true"},

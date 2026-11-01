@@ -50,6 +50,23 @@ _PAGE_PATTERNS = [
 _EU_DOMAIN = re.compile(r"(?:api|jobs)\.eu\.lever\.co/")
 
 _IGNORE_TOKENS = frozenset({"v0", "api", "js", "css", "assets"})
+_POSTING_ID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z")
+
+
+def _exclude_blank_posting_ids(metadata: dict) -> frozenset[str]:
+    raw = metadata.get("exclude_blank_posting_ids")
+    if raw is None:
+        if "exclude_blank_posting_ids" in metadata:
+            raise ValueError("Lever exclude_blank_posting_ids must be an array")
+        return frozenset()
+    if not isinstance(raw, list) or len(raw) > 100:
+        raise ValueError("Lever exclude_blank_posting_ids must be an array of at most 100 IDs")
+    if any(not isinstance(value, str) or not _POSTING_ID.fullmatch(value) for value in raw):
+        raise ValueError("Lever exclude_blank_posting_ids contains an invalid ID")
+    if len(raw) != len(set(raw)):
+        raise ValueError("Lever exclude_blank_posting_ids contains duplicate IDs")
+    return frozenset(raw)
+
 
 # Lever's API honors the Accept header: with ``Accept: text/html`` it
 # returns a minimal HTML widget ("Derby App") instead of JSON. The
@@ -341,6 +358,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     #2737, #2748).
     """
     metadata = board.get("metadata") or {}
+    excluded_blank_ids = _exclude_blank_posting_ids(metadata)
     token = metadata.get("token") or _token_from_url(board["board_url"])
 
     if not token:
@@ -379,6 +397,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         for raw in batch:
             parsed = _parse_job(raw)
             if parsed:
+                if raw.get("id") in excluded_blank_ids and not parsed.description:
+                    continue
                 jobs.append(parsed)
 
         if len(batch) < BATCH_SIZE:

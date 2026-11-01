@@ -5,6 +5,29 @@ import (
 	"testing"
 )
 
+func TestParsePageExcludesOnlyConfiguredBlankPosting(t *testing.T) {
+	const blankID = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
+	const otherID = "ff34692c-d3a5-4d41-a0be-49b06d695ea8"
+	for _, filled := range []bool{false, true} {
+		description := ""
+		if filled {
+			description = "<p>New duties</p>"
+		}
+		body, _ := json.Marshal([]map[string]any{
+			{"id": blankID, "hostedUrl": "https://jobs.lever.co/rivieradininggroup/" + blankID, "text": "Prep Cook", "description": description, "categories": map[string]any{"location": "Winter Park, Florida"}},
+			{"id": otherID, "hostedUrl": "https://jobs.lever.co/rivieradininggroup/" + otherID, "text": "Other Prep Cook", "description": "<p>Real duties</p>", "categories": map[string]any{"location": "Miami, Florida"}},
+		})
+		jobs, count, err := ParsePageWithBlankExclusions(body, map[string]bool{blankID: true})
+		want := 1
+		if filled {
+			want = 2
+		}
+		if err != nil || count != 2 || len(jobs) != want || jobs[len(jobs)-1].Metadata["id"] != otherID {
+			t.Fatalf("filled=%v count=%d jobs=%+v err=%v", filled, count, jobs, err)
+		}
+	}
+}
+
 func TestParseRichPage(t *testing.T) {
 	body := []byte(`[
     {"hostedUrl":"https://jobs.lever.co/acme/1","text":"Engineer","description":"<p>Build</p>","lists":[{"text":"Benefits","content":"<li>Travel</li>"}],"additional":"<p>More</p>","categories":{"allLocations":["Zurich","London"],"commitment":"Full-time","department":"Engineering","team":"Platform"},"workplaceType":"hybrid","salaryRange":{"currency":"CHF","min":80000,"max":120000,"interval":"per-year-salary"},"id":"one"},

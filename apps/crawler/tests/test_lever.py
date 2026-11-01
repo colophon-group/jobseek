@@ -247,6 +247,61 @@ class TestApiUrl:
 
 
 class TestDiscover:
+    @pytest.mark.parametrize("filled", [False, True])
+    async def test_exact_blank_posting_exclusion_preserves_other_jobs(self, filled: bool):
+        blank_id = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
+        other_id = "ff34692c-d3a5-4d41-a0be-49b06d695ea8"
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "id": blank_id,
+                        "hostedUrl": f"https://jobs.lever.co/testco/{blank_id}",
+                        "text": "Prep Cook",
+                        "description": "<p>New duties</p>" if filled else "",
+                        "categories": {"location": "Winter Park, Florida"},
+                    },
+                    {
+                        "id": other_id,
+                        "hostedUrl": f"https://jobs.lever.co/testco/{other_id}",
+                        "text": "Other Prep Cook",
+                        "description": "<p>Real duties</p>",
+                        "categories": {"location": "Miami, Florida"},
+                    },
+                ],
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://jobs.lever.co/testco",
+                    "metadata": {"token": "testco", "exclude_blank_posting_ids": [blank_id]},
+                },
+                client,
+            )
+        assert [job.metadata["id"] for job in jobs] == (
+            [blank_id, other_id] if filled else [other_id]
+        )
+        assert all(job.description and job.locations for job in jobs)
+
+    @pytest.mark.parametrize(
+        "ids", [None, "bad", ["bad"], [1], ["e0b53a9a-da36-4b09-a336-afb73d9ccffb"] * 2]
+    )
+    async def test_rejects_invalid_exact_blank_posting_exclusions(self, ids):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json=[]))
+        ) as client:
+            with pytest.raises(ValueError, match="exclude_blank_posting_ids"):
+                await discover(
+                    {
+                        "board_url": "https://jobs.lever.co/testco",
+                        "metadata": {"token": "testco", "exclude_blank_posting_ids": ids},
+                    },
+                    client,
+                )
+
     async def test_single_page(self):
         def handler(request):
             return httpx.Response(
