@@ -2,7 +2,7 @@
 
 This module provides the Go renderer used by production crawler workers and
 retains isolated lifecycle and density fixtures for driving Lightpanda
-1.1.0-nightly.11326+948d77378 through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
+1.1.0-nightly.11471+cebb8d51e through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
 HTTP(S) URL and one synchronous JavaScript expression. It returns bounded JSON
 containing the top-level document's final response status, final URL,
 `<html>` outerHTML, and the expression value.
@@ -168,7 +168,7 @@ builds retain the separate-process-group behavior.
 ## Build and run
 
 The image supports Linux amd64 and arm64. It copies the official Lightpanda
-1.1.0-nightly.11326+948d77378 nightly binary, verified 2026-10-30, from an immutable
+1.1.0-nightly.11471+cebb8d51e nightly binary, verified 2026-11-01, from an immutable
 `lightpanda/browser` OCI index, then checks each executable's SHA-256. The
 [release snapshot](lightpanda-release.json) records the platform manifests,
 binary layers, source revision and matching official release asset metadata.

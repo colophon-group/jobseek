@@ -2,47 +2,47 @@
   "schema_version": 2,
   "repository": "https://github.com/lightpanda-io/browser",
   "tag": "nightly",
-  "verified_at": "2026-10-31",
+  "verified_at": "2026-11-01",
   "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
   "published_at": "2024-07-16T10:45:32Z",
-  "note": "Official nightly snapshot 1.1.0-nightly.11423+56980afde verified against all three official executable assets and the immutable OCI index/platform manifests/layers. The executable source is independent of the moving nightly Git tag. Builds resolve no mutable tag or GitHub asset URL. Existing serve flags and resource limits are retained; both Linux physical suites and source qualification are required before promotion. Retain the promoted Jobseek image digest for supported reversal.",
+  "note": "Official nightly snapshot 1.1.0-nightly.11471+cebb8d51e verified against all three official executable assets and immutable OCI index/platform manifests/layers. Executable source is independent of the moving nightly tag. Builds use immutable OCI bytes; serve flags, endpoints, PKI and resource limits remain unchanged. Both Linux physical suites and source qualification remain required before promotion. Retain the promoted Jobseek image digest for supported reversal.",
   "image": {
     "repository": "lightpanda/browser",
-    "index_digest": "sha256:e85a70f0a327183af523a6a4b91ea90ba1e50a4066b896e6f88a52529fee767f",
+    "index_digest": "sha256:9a5f29a6d0d36e6d166a736e2f83e96f923fbc68e7569a9cc80270785039ef50",
     "binary_path": "/usr/bin/lightpanda"
   },
   "assets": {
     "amd64": {
-      "id": 694146173,
+      "id": 697122590,
       "name": "lightpanda-x86_64-linux",
-      "updated_at": "2026-10-31T02:40:49Z",
-      "size": 77129032,
-      "sha256": "19f3fee25fb14bb75a1e0c1e0f8ab9cce842950544e4a144fbad3884c94b98a3",
-      "image_manifest_digest": "sha256:0bb6ef1f400dafaef8a1a0fff094a5018de9a9b52e722b09da92b7c9046d14a2",
-      "image_created_at": "2026-10-31T02:41:48.660163431Z",
-      "image_binary_layer_digest": "sha256:2fe7285e9be999a6f832db65385c4934d75abed66655904ec9eb53089b41646b"
+      "updated_at": "2026-11-01T02:39:22Z",
+      "size": 77165896,
+      "sha256": "49c84433d35ae81a94daebf696d48c2c3095f9d78d6f953c383e390eb6e5c76f",
+      "image_manifest_digest": "sha256:99dde7ec8c3f32b3b6aaf2ee701c1d348c5216739e54e5f8114b7b9c763646e1",
+      "image_created_at": "2026-11-01T02:43:05.852906301Z",
+      "image_binary_layer_digest": "sha256:b28e18a741486d3d20d131a23d3d01fa106b2a0665a9348202317dc93dcd4ccc"
     },
     "arm64": {
-      "id": 694142141,
+      "id": 697127424,
       "name": "lightpanda-aarch64-linux",
-      "updated_at": "2026-10-31T02:38:41Z",
-      "size": 74354744,
-      "sha256": "97710997faea70bb0f22f9b07ba3a9701b47dbb6a71f679150b040e70c565cf3",
-      "image_manifest_digest": "sha256:ae73bd67afb82f72860e5cb10dda3b978e5adb0e2158ed812a48fe9a3f988d34",
-      "image_created_at": "2026-10-31T02:41:49.445196814Z",
-      "image_binary_layer_digest": "sha256:c89ad3d3de860dcfdf2a9caa5486dc9b1f63bb5223d7202256fea3df02349fd8"
+      "updated_at": "2026-11-01T02:42:08Z",
+      "size": 74354760,
+      "sha256": "dfbb4a2d32867db31e6ab3ee74545e7cd5daeb847b94e0ae29a70b4732e960d4",
+      "image_manifest_digest": "sha256:df9a80a9e13d0ea7541c3dea78d4c191d3fe1b077b8749ced26b4a7dee2aecaa",
+      "image_created_at": "2026-11-01T02:43:07.419378752Z",
+      "image_binary_layer_digest": "sha256:4be53cf3915d68a1951e1b8a049fc97b83fb886db4b3eae1349679f02122285c"
     }
   },
   "verification_assets": {
     "darwin/arm64": {
-      "id": 694148451,
+      "id": 697110957,
       "name": "lightpanda-aarch64-macos",
-      "updated_at": "2026-10-31T02:41:58Z",
-      "size": 93911048,
-      "sha256": "273a4659510f8c48e6c5f26a2eee6aa20051632210cbf0f59975ac705056c44f"
+      "updated_at": "2026-11-01T02:33:53Z",
+      "size": 91147432,
+      "sha256": "6cb362374a27a83ba44112b4bab25bc9e72e142d8c34dff188b39ad19edff32f"
     }
   },
-  "build_version": "1.1.0-nightly.11423+56980afde",
-  "source_revision": "56980afdec3ad177072e7a180cb05da838bc1744",
-  "snapshot_updated_at": "2026-10-31T02:41:58Z"
+  "build_version": "1.1.0-nightly.11471+cebb8d51e",
+  "source_revision": "cebb8d51e60a68815591a5c7874823b988530aa8",
+  "snapshot_updated_at": "2026-11-01T02:42:08Z"
 }
