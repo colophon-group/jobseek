@@ -1,0 +1,733 @@
+{
+  "schema": "jobseek.current-adf-native-compatibility/v2",
+  "observed_at_utc": "2026-11-01T20:53:30.155737+00:00",
+  "production_last_independent_readback": {
+    "enabled": true,
+    "status": "quarantined",
+    "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+    "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+    "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+    "consecutive_failures": 12,
+    "tdm_reserved": false
+  },
+  "runtime_functional_comparison": {
+    "qualified_local_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "installed_source": "6b19a2ce3508e78f996624c4243f574eda3d7cae",
+    "verified_direct_transport_identical": true,
+    "last_http_transport_identical": true,
+    "oracle_discovery_diff": "Bounded diagnostic/error wrapping only; no request/form/pagination logic changed."
+  },
+  "unchanged_provider_configuration": {
+    "qualified_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "current_source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+    "field_equality": {
+      "board_url": true,
+      "monitor_type": true,
+      "monitor_config": true,
+      "scraper_type": true,
+      "scraper_config": true
+    },
+    "scope": "Unique ADF row only; raw identifiers, endpoint and config stay in local process RAM."
+  },
+  "official_entry_reconciliation": {
+    "observed_at_utc": "2026-11-01T20:47:14.160764+00:00",
+    "publisher_careers_entry": "Official Sogeti global careers -> Join us -> US vacancies",
+    "same_registry_scheme_host_path_query": true,
+    "scope": "Source link matches exactly; no alternate entry-point candidate. URLs remain private, not stored here."
+  },
+  "cache_session_control": {
+    "fresh_sessions_share_session_cookie_values": false,
+    "responses": [
+      {
+        "cache_age_seconds": 0,
+        "cache_control_no_cache": true,
+        "cache_control_no_store": true,
+        "cache_control_private": false,
+        "cache_control_public": false,
+        "http_version": "HTTP/1.1",
+        "initial_rows": 25,
+        "request_cache_revalidation": false,
+        "response_date_older_than_two_minutes": false,
+        "session_cookie_count": 0,
+        "set_cookie_count": 2,
+        "status": 200,
+        "vary_cookie": false
+      },
+      {
+        "cache_age_seconds": 0,
+        "cache_control_no_cache": true,
+        "cache_control_no_store": true,
+        "cache_control_private": false,
+        "cache_control_public": false,
+        "http_version": "HTTP/1.1",
+        "initial_rows": 25,
+        "request_cache_revalidation": true,
+        "response_date_older_than_two_minutes": false,
+        "session_cookie_count": 0,
+        "set_cookie_count": 2,
+        "status": 200,
+        "vary_cookie": false
+      }
+    ],
+    "same_adf_window": true,
+    "same_document_bytes": false,
+    "same_view_state": false,
+    "scope": "Two fresh-session local verified-TLS GETs; second asks caches to revalidate. No POST, details or production state."
+  },
+  "stabilized_browser_protocol": {
+    "after": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "after_second_more": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "before": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "http_status_by_resource_type": {
+      "Document:200": 3,
+      "Fetch:200": 7,
+      "Fetch:403": 2,
+      "Script:200": 66,
+      "XHR:200": 3
+    },
+    "http_status_counts": {
+      "200": 79,
+      "403": 2
+    },
+    "instrumented": true,
+    "javascript_error_categories": {},
+    "more_action_succeeded": true,
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "redirect_summaries": [
+      {
+        "adf_page_query_preserved": false,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": true,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": true,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": true,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": false,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": false,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": false,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": true,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": true,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": true,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": true,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": false,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": false,
+        "to_original_path": false
+      }
+    ],
+    "requests_before_more": 27,
+    "requests_observed": 90,
+    "same_origin_403_count": 0,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page and two More actions; no production state",
+    "second_more_action_succeeded": true,
+    "stage": "complete",
+    "wire_summaries": [
+      {
+        "adf_page_header_matches_dom": false,
+        "ads_matches_live_page": true,
+        "ads_matches_static_page": true,
+        "ads_page_category": "1",
+        "body_is_string": true,
+        "body_length": 623,
+        "body_page_zero": true,
+        "client_key_is_last_row": true,
+        "event_fetch": true,
+        "event_id_zero": true,
+        "event_is_list": true,
+        "event_subtype_zero": true,
+        "form_field_count": 11,
+        "form_session_rewritten": false,
+        "form_type_header": true,
+        "index_is_last_row": true,
+        "known_field_mask": 127,
+        "page_body_category": "0",
+        "page_field_matches_dom": true,
+        "page_query_category": "0",
+        "page_query_present": true,
+        "path_matches_document": false,
+        "path_matches_form": true,
+        "phase": "send",
+        "process_is_list": true,
+        "query_page_matches_body": true,
+        "query_page_zero": true,
+        "query_window_matches_body": false,
+        "rich_header": true,
+        "viewstate_matches_attribute": true,
+        "viewstate_matches_dom": true,
+        "window_body_category": "other",
+        "window_field_matches_attribute": true,
+        "window_field_matches_dom": true,
+        "window_query_category": "empty",
+        "window_query_present": true
+      },
+      {
+        "adf_page_header_matches_dom": false,
+        "ads_matches_live_page": true,
+        "ads_matches_static_page": true,
+        "ads_page_category": "2",
+        "body_is_string": true,
+        "body_length": 623,
+        "body_page_zero": false,
+        "client_key_is_last_row": true,
+        "event_fetch": true,
+        "event_id_zero": true,
+        "event_is_list": true,
+        "event_subtype_zero": true,
+        "form_field_count": 11,
+        "form_session_rewritten": false,
+        "form_type_header": true,
+        "index_is_last_row": true,
+        "known_field_mask": 127,
+        "page_body_category": "1",
+        "page_field_matches_dom": true,
+        "page_query_category": "1",
+        "page_query_present": true,
+        "path_matches_document": true,
+        "path_matches_form": true,
+        "phase": "send",
+        "process_is_list": true,
+        "query_page_matches_body": true,
+        "query_page_zero": false,
+        "query_window_matches_body": false,
+        "rich_header": true,
+        "viewstate_matches_attribute": true,
+        "viewstate_matches_dom": true,
+        "window_body_category": "other",
+        "window_field_matches_attribute": true,
+        "window_field_matches_dom": true,
+        "window_query_category": "empty",
+        "window_query_present": true
+      }
+    ]
+  },
+  "observed_protocol_go_control": {
+    "advertised_page_query_is_zero": false,
+    "advertised_window_query_empty": true,
+    "advertised_window_query_present": false,
+    "base_href_count": 0,
+    "body_page_is_zero_ads_page_distinct": true,
+    "bootstrap_headers": {
+      "body_content_type_html": true,
+      "cookie_classes": {
+        "other": 2
+      },
+      "http_version": "HTTP/1.1",
+      "server_class": "other_or_absent"
+    },
+    "bootstrap_status": 200,
+    "form_action_has_session_rewrite": false,
+    "form_action_same_origin": true,
+    "form_action_same_path": false,
+    "hidden_field_count": 3,
+    "initial_row_count": 25,
+    "pagination_body_bytes": 0,
+    "pagination_headers": {
+      "body_content_type_html": false,
+      "cookie_classes": {},
+      "http_version": "HTTP/1.0",
+      "server_class": "other_or_absent"
+    },
+    "pagination_status": 302,
+    "partial_response_framing": false,
+    "query_window_empty_matches_observed_browser": true,
+    "redirect_class": "same_origin_other_path",
+    "redirect_has_adf_loop": false,
+    "redirect_has_window_id": false,
+    "redirect_path_categories": {
+      "adf_authentication": false,
+      "akamai_security": false,
+      "authentication": false,
+      "bot_verification": false,
+      "captcha": false,
+      "cloudflare_challenge": false,
+      "error": false,
+      "f5_access_policy": false,
+      "faces": false,
+      "imperva_resource": false,
+      "session_rewritten": false
+    },
+    "scope": "local fresh-session protocol diagnostic; maximum two origin requests; no production state or detail scan",
+    "session_cookie_count": 2,
+    "successful_extra_control_values": 4,
+    "viewstate_has_numeric_page_suffix": false,
+    "viewstate_page_suffix_is_zero": false
+  },
+  "redirect_chain_control": {
+    "advertised_page_query_is_zero": false,
+    "advertised_window_query_empty": true,
+    "advertised_window_query_present": false,
+    "base_href_count": 0,
+    "body_page_is_zero_ads_page_distinct": true,
+    "bootstrap_headers": {
+      "body_content_type_html": true,
+      "cookie_classes": {
+        "other": 2
+      },
+      "http_version": "HTTP/1.1",
+      "server_class": "other_or_absent"
+    },
+    "bootstrap_status": 200,
+    "form_action_has_session_rewrite": false,
+    "form_action_same_origin": true,
+    "form_action_same_path": false,
+    "hidden_field_count": 3,
+    "initial_row_count": 25,
+    "pagination_body_bytes": 0,
+    "pagination_headers": {
+      "body_content_type_html": false,
+      "cookie_classes": {},
+      "http_version": "HTTP/1.0",
+      "server_class": "other_or_absent"
+    },
+    "pagination_status": 302,
+    "partial_response_framing": false,
+    "query_window_empty_matches_observed_browser": true,
+    "redirect_class": "same_origin_other_path",
+    "redirect_has_adf_loop": false,
+    "redirect_has_window_id": false,
+    "redirect_path_categories": {
+      "adf_authentication": false,
+      "akamai_security": false,
+      "authentication": false,
+      "bot_verification": false,
+      "captcha": false,
+      "cloudflare_challenge": false,
+      "error": false,
+      "f5_access_policy": false,
+      "faces": false,
+      "imperva_resource": false,
+      "session_rewritten": false
+    },
+    "redirect_path_is_root": true,
+    "redirect_path_semantics": {
+      "blocked": false,
+      "consent": false,
+      "cookie": false,
+      "deny": false,
+      "forbidden": false,
+      "maintenance": false,
+      "notfound": false,
+      "privacy": false,
+      "robots": false,
+      "unavailable": false
+    },
+    "same_origin_redirect_get_body_bytes": 225,
+    "same_origin_redirect_get_status": 302,
+    "scope": "local fresh-session protocol diagnostic; maximum three origin requests; no production state or detail scan",
+    "second_redirect_path_is_root": false,
+    "second_redirect_query_field_count": 0,
+    "second_redirect_same_origin": false,
+    "session_cookie_count": 2,
+    "successful_extra_control_values": 4,
+    "viewstate_has_numeric_page_suffix": false,
+    "viewstate_page_suffix_is_zero": false
+  },
+  "exact_publisher_wire_go_control": {
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 622,
+    "captured_form_field_count": 11,
+    "go_post_body_bytes": 0,
+    "go_post_http_version": "HTTP/1.0",
+    "go_post_partial_response": false,
+    "go_post_status": 302,
+    "http_status_by_resource_type": {
+      "Document:200": 1,
+      "Fetch:200": 3,
+      "Script:200": 22,
+      "XHR:200": 1
+    },
+    "http_status_counts": {
+      "200": 27
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": false,
+    "redirect_path_is_root": true,
+    "redirect_same_origin": true,
+    "requests_observed": 28,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; withhold browser More POST, submit one exact publisher-generated request with its cookie scope via verified Go HTTP; no details; no production state",
+    "stage": "complete"
+  },
+  "framework_window_go_control": {
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_classes": {
+      "other": 6
+    },
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 623,
+    "captured_form_field_count": 11,
+    "framework_window_setter": {
+      "initial_window_empty": true,
+      "setter_available": true,
+      "top_name_matches_window": true,
+      "window_matches_hidden": true,
+      "window_name_matches_hidden": false
+    },
+    "go_post_body_bytes": 0,
+    "go_post_http_version": "HTTP/1.0",
+    "go_post_partial_response": false,
+    "go_post_status": 302,
+    "http_status_by_resource_type": {
+      "Document:200": 1,
+      "Fetch:200": 3,
+      "Script:200": 22,
+      "XHR:200": 1
+    },
+    "http_status_counts": {
+      "200": 27
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": true,
+    "redirect_path_is_root": true,
+    "redirect_same_origin": true,
+    "requests_observed": 27,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; withhold browser More POST, submit one exact publisher-generated request with its cookie scope via verified Go HTTP; no details; no production state",
+    "stage": "complete"
+  },
+  "framework_window_native_lightpanda_control": {
+    "after_native_more": {
+      "fetch_index": 24,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_classes": {
+      "other": 6
+    },
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 622,
+    "captured_form_field_count": 11,
+    "framework_window_setter": {
+      "initial_window_empty": true,
+      "setter_available": true,
+      "top_name_matches_window": true,
+      "window_matches_hidden": true,
+      "window_name_matches_hidden": false
+    },
+    "http_status_by_resource_type": {
+      "Document:200": 2,
+      "Fetch:200": 7,
+      "Fetch:403": 1,
+      "Script:200": 44,
+      "XHR:200": 2
+    },
+    "http_status_counts": {
+      "200": 55,
+      "403": 1
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": true,
+    "requests_observed": 59,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; use publisher framework window setter, then allow one native Lightpanda More POST; no details; no production state",
+    "stage": "complete"
+  },
+  "conclusion": "Current complete ADF discovery remains unqualified. Go and latest Lightpanda pagination redirect to site root and then away from the application. Fresh document/viewstate, exact publisher-generated form bytes plus all browser cookie scope, and framework window-ID alignment do not resolve it. Official entry URL exactly matches registry; no alternate entry candidate. Source cause remains unproved; no universal upstream-failure or recovery claim and no speculative runtime patch.",
+  "next_discriminating_input": "Actual historical per-attempt egress/environment evidence, a working publisher-supported complete source/session or a relevant upstream correction. The 1102-to-1109 caller/request source audit found no ADF-specific change and qualifies no new origin probe. Preserve normal retry and no-forced-work constraints; do not repeat rejected variations without new evidence.",
+  "constraints": "All active investigation local. Maximum500jobs/5000detail checks retained; this follow-up used no detail scan. No production queue/counter/schedule/backoff writes, no partial inventory accepted, no Chromium. Raw URLs, cookies, view states, headers and bodies stay only in RAM and are not preserved.",
+  "production_last_independent_readback_utc": "2026-11-01T20:11:42.733811+00:00",
+  "installed1149_adf_and_transport_files_unchanged_from_compared1148": {
+    "apps/crawler/go/ordinary-worker/oracle_adf_discovery.go": true,
+    "apps/crawler/go/ordinary-worker/direct_http.go": true,
+    "apps/crawler/go/ordinary-worker/last_http_transport.go": true
+  },
+  "local_transport_limits": "Exact-wire and final form/session controls use standard Go net/http with explicit verified public CA roots from the local /etc/ssl/cert.pem, no insecure TLS or automatic redirects; they do not by themselves attest production transport/egress/ownership. The actual native production normal attempt is separately observed at pagination302, and installed1149 retains identical ADF/direct-transport files. Latest local macOS Lightpanda was matched to official nightly binary digest; production Linux executable qualification is separate in the capacity checkpoint.",
+  "local_latest_lightpanda": {
+    "version": "1.1.0-nightly.11471+cebb8d51e",
+    "macos_arm64_sha256": "6cb362374a27a83ba44112b4bab25bc9e72e142d8c34dff188b39ad19edff32f"
+  },
+  "historical_production_witness_reconciliation": {
+    "schema": "jobseek.adf-native-production-witness-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T21:23:09.800314+00:00",
+    "original_candidate_PR": 10935,
+    "candidate_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "initial_1101_rollout": {
+      "run": 40480716439,
+      "native_activation_rejected": true,
+      "native_owner_inactive_at_1148z": true,
+      "scope": "Successful full workflow restored legacy/B0; not a nativeADFserving witness."
+    },
+    "production_witness": {
+      "runtime_version": "0.13.1102",
+      "source": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "PR": 10937,
+      "supported_full_rollout_run": 40510059509,
+      "rollout_conclusion": "success",
+      "rollout_completed_utc": "2026-10-27T13:33:21Z",
+      "postactivation_observed_utc": "2026-10-27T15:26:05.282477+00:00",
+      "active_ordinary_monitors": 8106,
+      "active_ordinary_details": 8125,
+      "epoch": 382,
+      "natural_ADF_observed_utc": "2026-10-27T15:27:39Z",
+      "native_ADF_jobs": 52,
+      "native_ADF_failures": 0,
+      "durable_evidence": "docs/evidence/go-native1102-serving-conservation-2026-10-27.json",
+      "witness_recording_commit": "16904e793eb29532cd20ca7e2565b691ab86e91f",
+      "witness_recorded_utc": "2026-10-27T15:42:39Z",
+      "oracleADF_and_direct_transport_blobs_match_qualified_source": true
+    },
+    "unique_original_registry_assignment_matches_current": {
+      "company_slug": true,
+      "board_slug": true,
+      "board_url": true,
+      "monitor_type": true,
+      "monitor_config": true,
+      "scraper_type": true,
+      "scraper_config": true
+    },
+    "correction": "The existing audit referenced only the local52-job candidate and missed a separate dated native production completion. Preserve that positive witness; do not infer later ownership solely from last_success timestamps.",
+    "completion_limit": "Historical native implementation/serving coverage is proved. Current original ADF pagination failure and freshness gap remain unclassified under the original final acceptance condition; this witness is not current inventory recovery or proof of no migration-related freshness regression. Goal remains active."
+  },
+  "caller_and_egress_limit": "Source audit completed for native1102, quarantine release1109 and installed1149. ADF remains on verified direct HTTP1; source identity does not prove historical actual environment/egress/session state or the current response cause.",
+  "caller_source_reconciliation": {
+    "schema": "jobseek.adf-caller-source-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T21:30:18.672345+00:00",
+    "sources": {
+      "successful1102": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "1109_at_quarantine": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+      "installed1149": "a515fb91381a0f836ac5f8ea690fc100cabb9839"
+    },
+    "files": [
+      {
+        "file": "oracle_adf_discovery.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "277a0bc4c5db523935ecd2afba25a1c415f46e2e",
+          "1109_at_quarantine": "277a0bc4c5db523935ecd2afba25a1c415f46e2e",
+          "installed1149": "0b97cce042ec17895ac7f386c82e2a85b05353c5"
+        }
+      },
+      {
+        "file": "direct_http.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87",
+          "1109_at_quarantine": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87",
+          "installed1149": "b6bfeb6bd1841774d2c5eb23c1ad9c0815d9ad87"
+        }
+      },
+      {
+        "file": "last_http_transport.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "2a20acebafa92434253f79217eef9b3c066ba011",
+          "1109_at_quarantine": "2a20acebafa92434253f79217eef9b3c066ba011",
+          "installed1149": "2a20acebafa92434253f79217eef9b3c066ba011"
+        }
+      },
+      {
+        "file": "rendered_monitor.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "02234af00d20926cb865fe3f401a52015af78d2f",
+          "1109_at_quarantine": "02234af00d20926cb865fe3f401a52015af78d2f",
+          "installed1149": "02234af00d20926cb865fe3f401a52015af78d2f"
+        }
+      },
+      {
+        "file": "claim_run.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "500b83fa294e9d2a475a573dbcc0e1ef51ad462d",
+          "1109_at_quarantine": "500b83fa294e9d2a475a573dbcc0e1ef51ad462d",
+          "installed1149": "b695ef229ab8d9a96b7b702bbb7b0c1a7493557d"
+        }
+      },
+      {
+        "file": "runtime.go",
+        "positive_to1109_identical": false,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "447535782caafea955ef0e31afbe99bae213cdc4",
+          "1109_at_quarantine": "3f85c73b0c9944586e670e9a5c06d534ba4bb912",
+          "installed1149": "cb7b13590f794acb9836c2f01aec2caec332e1b3"
+        }
+      },
+      {
+        "file": "proxy_http.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": false,
+        "blobs": {
+          "successful1102": "e6a9cba43f0cf772339fdd804a8867562d05c46c",
+          "1109_at_quarantine": "e6a9cba43f0cf772339fdd804a8867562d05c46c",
+          "installed1149": "b1a888a48c0a11b09cab953cc3fe16bf34022351"
+        }
+      },
+      {
+        "file": "discovery.go",
+        "positive_to1109_identical": true,
+        "positive_to1149_identical": true,
+        "blobs": {
+          "successful1102": "79c80e803c3286cfbb7b6d1d8e970317b72f4444",
+          "1109_at_quarantine": "79c80e803c3286cfbb7b6d1d8e970317b72f4444",
+          "installed1149": "79c80e803c3286cfbb7b6d1d8e970317b72f4444"
+        }
+      }
+    ],
+    "current_call_path": "runtimeClaimTransport -> directMonitorHTTP(dom) -> RunGreenhouseClaim -> NativeRenderedDetails.FetchMonitor -> discoverOracleADF; ADF keeps a fresh cookie jar and rejects redirects/partial inventories.",
+    "reviewed_current_changes": "Claim runner progress/cancellation/fencing changes, one-observation proxy/TLS selection and default ownership changes do not alter the observed ADF direct request shape; renderedMonitor dispatcher and ordinary Accept constant unchanged.",
+    "limits": "Source comparison is not proof of historical per-attempt egress/environment or universal source outage. Current original ADF freshness gap remains open; no speculative patch or new origin request.",
+    "1102_to1109_runtime_diff_review": "Only renderer argument propagation and directMonitorHTTP extraction/API-sniffer HTTP2 selection. DOM ADF remains on verified HTTP1 direct client in both sources; ADF dispatcher, claim runner, proxy-selection implementation, direct transport and Accept implementation are byte-identical. No ADF-specific caller change found in these files.",
+    "same_unique_config_through_quarantine_release": true,
+    "remaining": "Historical actual egress/environment and the current publisher/session response cause are not established by source-code identity. No current freshness recovery or safe code correction qualified."
+  },
+  "build_dependency_reconciliation": {
+    "schema": "jobseek.adf-build-dependency-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T22:11:02.640431+00:00",
+    "sources": {
+      "native1102": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "quarantine1109": "0766fc017af4b5981c4ffbd1f9dc6eef12745299",
+      "installed1150": "9a62ca5a9680cc9632dbba5bf91044059f04de45"
+    },
+    "files": [
+      {
+        "path": "apps/crawler/Dockerfile",
+        "blobs": {
+          "native1102": "d511e2cee6181d7a54f5dc58b05504711cda82a6",
+          "quarantine1109": "d511e2cee6181d7a54f5dc58b05504711cda82a6",
+          "installed1150": "a008961e0ef3073eaed0dd5d9f3bcf54dbf9474f"
+        },
+        "1102_to1109_identical": true,
+        "literal_golang_versions": {
+          "native1102": [
+            "1.26.4"
+          ],
+          "quarantine1109": [
+            "1.26.4"
+          ],
+          "installed1150": [
+            "1.26.4"
+          ]
+        },
+        "1102_to1109_FROM_lines_identical": true
+      },
+      {
+        "path": "apps/crawler/go/ordinary-worker/go.mod",
+        "blobs": {
+          "native1102": "5e3ba69fb22eb39f0db0ff873b605814079391be",
+          "quarantine1109": "5e3ba69fb22eb39f0db0ff873b605814079391be",
+          "installed1150": "5e3ba69fb22eb39f0db0ff873b605814079391be"
+        },
+        "1102_to1109_identical": true
+      },
+      {
+        "path": "apps/crawler/go/ordinary-worker/go.sum",
+        "blobs": {
+          "native1102": "8a679033833a9e18216a9f5bf6d3769c0411239b",
+          "quarantine1109": "8a679033833a9e18216a9f5bf6d3769c0411239b",
+          "installed1150": "8a679033833a9e18216a9f5bf6d3769c0411239b"
+        },
+        "1102_to1109_identical": true
+      },
+      {
+        "path": ".github/workflows/deploy-crawler-browser.yml",
+        "blobs": {
+          "native1102": "a73e2eb0eb85feffc80221bbe9809ee79e7d9a41",
+          "quarantine1109": "a73e2eb0eb85feffc80221bbe9809ee79e7d9a41",
+          "installed1150": "9b44802718ca352b25e5f68b3948930e6ca92bfa"
+        },
+        "1102_to1109_identical": true
+      }
+    ],
+    "scope": "Public source/build metadata only; no forbidden profile source content, provider request or production state write. File identity does not prove historical per-attempt environment/egress or actual image/toolchain identity.",
+    "conclusion": "Dockerfile, deployment workflow and ordinary-worker go.mod/go.sum are byte-identical between native1102success and quarantine1109. Declared Go1.26.4 is unchanged. This finds no build-definition/dependency change for a new discriminating origin test; actual historical image/environment/egress/session state remains separately unproved."
+  }
+}

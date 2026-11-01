@@ -1,0 +1,331 @@
+{
+  "schema": "jobseek.native1151-installed-qualification/v1",
+  "supported_rollout": {
+    "PR": 11466,
+    "run": 41357709383,
+    "workflow_updated_at_utc": "2026-11-01T22:47:16Z",
+    "success_observed_at_utc": "2026-11-01T22:47:25Z",
+    "conclusion": "success",
+    "all_jobs": [
+      "preflight",
+      "build",
+      "company-og",
+      "deploy",
+      "promote"
+    ],
+    "source": "a4dd04400176d38fdab2609bc8f4cc4e2f37c239",
+    "build_job": 125001479119
+  },
+  "installed": {
+    "observed_at_utc": "2026-11-01T22:47:50.047545+00:00",
+    "candidate_pr": 11466,
+    "original_adf_schedule_preserved": {
+      "enabled": true,
+      "status": "quarantined",
+      "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+      "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+      "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+      "consecutive_failures": 12,
+      "tdm_reserved": false
+    },
+    "active_marker": {
+      "active_pointer_present": true,
+      "generation_name_sha256": "8fec31b2b3f0d49cae920ffd25cdf940185d5ddb515be6f15df602c9fbe4d794",
+      "manifest_format_fields": {
+        "RELEASE_FORMAT_VERSION": "3"
+      },
+      "source_env_success_match": true,
+      "complete_environment_match_excluding_compose_file": true,
+      "complete_csv_tree_hashes_match": true,
+      "data_csv_files": 8
+    },
+    "runtime_source": "a4dd04400176d38fdab2609bc8f4cc4e2f37c239",
+    "runtime_contract": "804f8ccfb0ee2b64c7462dbe83e70d939e961e0dc5ae16179fa38329c07f166d",
+    "image_digest": "sha256:8e0f43121d684d1ce4c5b697c877d55be8cc8f559c2e0b698ba85bc63760e2f1",
+    "image_version": "0.13.1151",
+    "data_revision": "a4dd04400176d38fdab2609bc8f4cc4e2f37c239",
+    "data_contract": "388889b6039f9b5aacf661a690b75f3c738bc5bc26819091d61523c5717ef6ad",
+    "native_actors": {
+      "ordinary-go": {
+        "started_at_utc": "2026-11-01T22:46:04.453379683Z",
+        "restarts": 0,
+        "running": true,
+        "oom": false,
+        "image_matches": true,
+        "native_command": true,
+        "authorized_scaled_budgets_match": true
+      },
+      "lease-reaper": {
+        "started_at_utc": "2026-11-01T22:46:04.458570345Z",
+        "restarts": 0,
+        "running": true,
+        "oom": false,
+        "image_matches": true,
+        "native_command": true
+      },
+      "exporter": {
+        "started_at_utc": "2026-11-01T22:46:04.454578919Z",
+        "restarts": 0,
+        "running": true,
+        "oom": false,
+        "image_matches": true,
+        "native_command": true
+      },
+      "drain": {
+        "started_at_utc": "2026-11-01T22:46:04.452173444Z",
+        "restarts": 0,
+        "running": true,
+        "oom": false,
+        "image_matches": true,
+        "native_command": true
+      }
+    },
+    "core_services": {
+      "ordinary-go": {
+        "running": true,
+        "oom": false,
+        "docker_health": "healthy",
+        "started_at_utc": "2026-11-01T22:46:04.453379683Z"
+      },
+      "lease-reaper": {
+        "running": true,
+        "oom": false,
+        "docker_health": "not_configured",
+        "started_at_utc": "2026-11-01T22:46:04.458570345Z"
+      },
+      "exporter": {
+        "running": true,
+        "oom": false,
+        "docker_health": "not_configured",
+        "started_at_utc": "2026-11-01T22:46:04.454578919Z"
+      },
+      "drain": {
+        "running": true,
+        "oom": false,
+        "docker_health": "healthy",
+        "started_at_utc": "2026-11-01T22:46:04.452173444Z"
+      },
+      "redis": {
+        "running": true,
+        "oom": false,
+        "docker_health": "healthy",
+        "started_at_utc": "2026-09-14T14:32:28.413753887Z"
+      },
+      "alloy": {
+        "running": true,
+        "oom": false,
+        "docker_health": "not_configured",
+        "started_at_utc": "2026-11-01T22:46:06.874427606Z"
+      }
+    },
+    "legacy_running": 0,
+    "ordinary_health_http_status": 204,
+    "ordinary_health_source_matches": true,
+    "retired_runtime_commands_absent": true,
+    "canonical": {
+      "companies": 6288,
+      "enabled_boards": 8273,
+      "epoch": 404,
+      "schema": "0042",
+      "active_migration_plans": 0
+    },
+    "scope": "Protected read-only ADR006 post-capacity-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+  },
+  "monitor_qualification": {
+    "observed_at_utc": "2026-11-01T22:47:49.270056+00:00",
+    "source_revision": "a4dd04400176d38fdab2609bc8f4cc4e2f37c239",
+    "monitor_conservation": {
+      "multiple_representations": 0,
+      "other_lane_representations": 0,
+      "missing": 0,
+      "inflight_token_missing": 0,
+      "inflight_token_present": 28,
+      "represented": 8273,
+      "expired_inflight_only": 0,
+      "missing_cache": 0,
+      "valid_inflight": 28,
+      "canonical_eligible": 8273,
+      "canonical_enabled": 8273,
+      "deadletter_only": 0,
+      "cache_lane_mismatch": 0,
+      "queued": 8245,
+      "cache_domain_mismatch": 0
+    },
+    "canonical_board_keys_sha256": "c5c36de08f2c8c11dbc6f15c86b7ae78649bf82ff211a34b177f9357f8f675f8",
+    "canonical_monitor_ids_sha256": "f5940503338e226e58dd54a28e233f9f1ee6e94bda4dc9c31b91c8191bd700ed",
+    "unexplained_missing": 0,
+    "worker_limits": {
+      "cpu_cores": 4.0,
+      "memory_bytes": 2147483648,
+      "restarts": 0,
+      "settings": {
+        "DISCOVERY_CONCURRENCY": "120",
+        "MONITOR_CONCURRENCY": "30",
+        "GOMEMLIMIT": "1GiB"
+      },
+      "cgroup_cpu_stat": {
+        "usage_usec": 228435175,
+        "user_usec": 205047345,
+        "system_usec": 23387829,
+        "nr_periods": 1047,
+        "nr_throttled": 14,
+        "throttled_usec": 73163
+      },
+      "cpu_pressure": [
+        "some avg10=1.20 avg60=0.53 avg300=0.19 total=1221743",
+        "full avg10=0.41 avg60=0.20 avg300=0.08 total=905830"
+      ],
+      "memory_current_bytes": 155553792,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      }
+    },
+    "worker_metrics": {
+      "jobseek_ordinary_go_ready": 1.0,
+      "jobseek_ordinary_go_active_claims": 64.0
+    },
+    "original_adf_queue": {
+      "queued_scores": [
+        {
+          "fasttrack": false,
+          "score": 1793641037.8898,
+          "lane": "browser"
+        }
+      ],
+      "redis_now_epoch": 1793573268.9962
+    }
+  },
+  "unchanged_current_pre1150_board_identity": {
+    "pre1150_observed_at_utc": "2026-11-01T21:05:56.349064+00:00",
+    "all_current_board_keys_match": true,
+    "all_current_monitor_UUIDs_match": true,
+    "original8270_floor_evidence": "go-native1149-steady-2026-11-01.json"
+  },
+  "normal_work_since_current_worker_start": {
+    "observed_at_utc": "2026-11-01T22:47:48.060789+00:00",
+    "actor_started_at_utc": "2026-11-01T22:46:04.453379683Z",
+    "counters": {
+      "jobseek_ordinary_go_ready": 1,
+      "jobseek_ordinary_go_active_claims": 72,
+      "jobseek_ordinary_go_claim_errors_total": 0,
+      "monitor.succeeded": 179,
+      "scrape.failed": 14,
+      "scrape.host_circuit_half_open": 1,
+      "scrape.host_circuit_open": 118,
+      "scrape.skipped": 151,
+      "scrape.succeeded": 243,
+      "jobseek_ordinary_go_posting_touches_total": 33734
+    },
+    "host_available_memory_bytes": 12577542144,
+    "host_root_available_bytes": 34388680704
+  },
+  "renderer_and_demo_readback": {
+    "observed_at_utc": "2026-11-01T22:47:51.420916+00:00",
+    "host_cpu_count": 2,
+    "host_available_memory_bytes": 3480055808,
+    "host_root_available_bytes": 10511814656,
+    "demo_reservation_preserved": {
+      "cpu_cores": 0.5,
+      "memory_bytes": 1073741824,
+      "root_free_floor_bytes": 8589934592,
+      "root_floor_met": true
+    },
+    "containers": [
+      {
+        "service_class": "renderer-image-family",
+        "generation_sha256": "5d45599312ea4ddd4b78103ed29749b63751ca7d0987c5d216474c35bd2f3882",
+        "started_at_utc": "2026-11-01T15:49:39.782878988Z",
+        "restarts": 0,
+        "oom_killed": false,
+        "health": "not_configured",
+        "cpu_usage_usec": 7854240594,
+        "memory_current_bytes": 39620608,
+        "working_memory_bytes": 39620608,
+        "anonymous_memory_bytes": 37806080,
+        "memory_peak_bytes": 554577920,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0
+        },
+        "pids": 21,
+        "cpu_limit_cores": 1.0,
+        "memory_limit_bytes": 1073741824,
+        "expected_renderer_image_matches": true
+      }
+    ]
+  },
+  "qualified_source_continuity": {
+    "schema": "jobseek.native1151-qualified-source-continuity/v1",
+    "reviewed_at_utc": "2026-11-01T22:42:52.791117+00:00",
+    "sources": {
+      "qualified1149": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+      "installed1150": "9a62ca5a9680cc9632dbba5bf91044059f04de45",
+      "candidate1151": "a4dd04400176d38fdab2609bc8f4cc4e2f37c239"
+    },
+    "files_or_trees": [
+      {
+        "path": "apps/crawler/go",
+        "blobs_or_tree": {
+          "qualified1149": "13db26575f55fb79b8dd90101725a9021120f637",
+          "installed1150": "13db26575f55fb79b8dd90101725a9021120f637",
+          "candidate1151": "13db26575f55fb79b8dd90101725a9021120f637"
+        },
+        "identical": true
+      },
+      {
+        "path": "apps/crawler/docker-compose.yml",
+        "blobs_or_tree": {
+          "qualified1149": "1650310b70b211261efb562d8d8861432654b7dc",
+          "installed1150": "1650310b70b211261efb562d8d8861432654b7dc",
+          "candidate1151": "1650310b70b211261efb562d8d8861432654b7dc"
+        },
+        "identical": true
+      },
+      {
+        "path": "apps/crawler/deploy.sh",
+        "blobs_or_tree": {
+          "qualified1149": "054b2569e937a6c4f3153a318005ab2b23792063",
+          "installed1150": "054b2569e937a6c4f3153a318005ab2b23792063",
+          "candidate1151": "054b2569e937a6c4f3153a318005ab2b23792063"
+        },
+        "identical": true
+      }
+    ],
+    "scope": "Go source, Compose and deploy.sh identity links dated 1149 comparisons and 1150 qualification to 1151. Installed 1151 identity is independently established by the protected readback in this report; no new equivalent-work comparison or fresh cold-reversal exercise is claimed."
+  },
+  "limits": [
+    "Only the completed supported rollout and protected read-only installed/queue/resource evidence qualify 1151. Provider renaming is separately owned and was not performed by these observers.",
+    "Current normal counters include failures, circuit deferrals, skips and claim errors. Skips are not successes and posting touches are not unique completed jobs. The existing backlog is not cleared.",
+    "The same Go tree, Compose and deploy.sh retain 1149 controlled benchmark and supported reversal coverage; these are not new 1151 equivalent-work comparisons or a fresh cold-reversal exercise.",
+    "Current ADF remains enabled/quarantined with unchanged schedule; no recovery, source-cause classification or universal freshness claim.",
+    "Renderer reservation is 0.5 CPU / 1 GiB plus already allocated 2 GiB filesystem and 8 GiB root floor. Do not subtract the preallocated filesystem twice."
+  ],
+  "latest_official_renderer_assets": {
+    "checked_at_utc": "2026-11-01T22:50:17Z",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+    "last_asset_update_at_utc": "2026-11-01T02:44:46Z",
+    "ARM64_digest_matches_installed_binary_qualification": true,
+    "AMD64_digest_matches_qualified_source": true,
+    "macOS_ARM64_digest_matches_local_protocol_controls": true,
+    "newer_nightly_asset_observed": false
+  },
+  "provider_name_change": {
+    "owner_reported_complete": true,
+    "count": 4,
+    "owner_inventory_receipt_sha256": "76660a26e7d88975b996b39e474c3eb8047fd4d7045145aae7c62e6e07304468",
+    "owner_reports_identical_ids_addresses_roles_volumes_protections_firewalls": true,
+    "root_verified_receipt_file_sha256": true,
+    "post_rename_installed_service_monitor_and_renderer_readback_passed": true,
+    "active_observers_use_role_endpoints_without_provider_name_lookup": true,
+    "window_clear": "The 1150 provider-name window was explicitly cleared. The later 1151 deployment-outcome condition was satisfied by supported success and protected 22:47 readback; intake explicitly holds later branches through final docs CI/merge."
+  },
+  "offline_tooling_boundary": "1151 adds the separately owned low-frequency Python feed producer under the operator-approved retained tooling boundary. No feed export, transfer, host role/HBA change, origin request, demo activation or new allocation was executed by these qualification observers."
+}
