@@ -59,6 +59,7 @@ test("native registry CI validation changes do not require a runtime release", (
     git(repo, "config", "user.email", "test@example.com");
     git(repo, "config", "user.name", "Test");
     mkdirSync(join(repo, "apps/crawler/go/typesense-exporter"), { recursive: true });
+    mkdirSync(join(repo, "apps/crawler/go/ordinary-queue"), { recursive: true });
     mkdirSync(join(repo, "apps/crawler/tests/lightpanda"), { recursive: true });
     mkdirSync(join(repo, ".github/workflows"), { recursive: true });
     mkdirSync(join(repo, "scripts"), { recursive: true });
@@ -70,6 +71,7 @@ test("native registry CI validation changes do not require a runtime release", (
     for (const path of [
       ".github/workflows/ci.yml",
       "apps/crawler/go/typesense-exporter/registry_native_ci_test.go",
+      "apps/crawler/go/ordinary-queue/profile_shared_dom_api_registry_test.go",
       "apps/crawler/tests/lightpanda/test_routing.py",
       "scripts/check-crawler-version.mjs",
       "scripts/crawler-version.test.mjs",
