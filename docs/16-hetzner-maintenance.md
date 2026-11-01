@@ -7,11 +7,12 @@ Operational runbook for the Jobseek Hetzner machines.
 Credentials and current IPs live in `apps/crawler/.env.local`; do not hardcode
 secrets into commands or documentation.
 
-| Role | Host variable | Main workload |
-|------|---------------|---------------|
-| Crawler | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
-| Postgres | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
-| Typesense | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
+| Role | Hetzner name | Host variable | Main workload |
+|------|--------------|---------------|---------------|
+| Crawler | `nbg1-node-01` | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
+| Postgres | `nbg1-node-02` | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
+| Typesense | `nbg1-node-03` | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
+| Renderer | `nbg1-node-04` | `RENDERER` | Lightpanda renderer and shared preview allocation |
 
 Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented separately in
 [`19-data-backup-recovery.md`](19-data-backup-recovery.md). That runbook is
