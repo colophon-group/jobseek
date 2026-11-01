@@ -51,7 +51,8 @@ labels. All four servers require both delete and rebuild protection. All three
 Volumes and the private network require delete protection. Volume roles follow
 the owning service: `postgresql`, `typesense`, and `murmur` respectively.
 
-Run the default read-only check with Doppler's inventory token first:
+Authenticate the Doppler CLI for this checkout (`doppler login --scope .`),
+then run the default read-only check with its inventory token first:
 
 ```bash
 doppler run --project hetzner-infrastructure --config prd_inventory --no-fallback -- \
