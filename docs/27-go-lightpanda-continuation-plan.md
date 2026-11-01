@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-01 20:11 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 20:54 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -189,15 +189,36 @@ future runtime work requires fresh coordination. The naming implementer reserved
    reset backoff or add Chromium. The operator authorized bounded local
    investigation. Fresh Go HTTP controls still return pagination 302 when using
    the advertised form action or standard AJAX headers; neither is a proven fix.
-   Fresh GET of the canonical form endpoint followed by its complete successful
-   controls and current session also returns 302. The latest local Lightpanda
-   build loads 25 initial rows; its first More action navigates back to those
-   rows. A second More action retains the exact same bounded row-identity hash
-   and fetch index 24, with More still present; this is not a completed 25-job
-   inventory. The unchanged Go direct transports and pagination logic match the
-   previously successful local candidate except diagnostic wrapping. This is
-   bounded evidence against a recent request-logic regression, not a diagnosis
-   of upstream failure. No partial inventory or recovery is claimed.
+   Fresh document/view-state and no-cache controls do not support a stale-bootstrap
+   explanation in the observed samples. The official publisher careers link
+   exactly matches the registry entry point. Stabilized browser instrumentation
+   shows the form page ID differs from the ADS header, and its URL window ID is
+   initially empty. Reproducing that shape with full successful controls still
+   returns 302. An exact publisher-generated request submitted once through Go
+   with all six browser cookies also returns a zero-body 302 to the site root;
+   the next same-origin GET redirects away from the application. No cross-origin
+   redirect was followed by that Go diagnostic.
+
+   Setting the window ID through the publisher framework aligns URL and form
+   values, but still does not resolve Go submission or a native Lightpanda More
+   action. The latter retains 25 rows, fetch index 24 and More; it is not a
+   completed inventory. Earlier unmodified More controls also preserve the exact
+   bounded row-identity hash. These checks use no detail scan and make no
+   production queue, counter, backoff or schedule changes. No speculative runtime
+   patch is qualified. Local Go diagnostic TLS/egress and the local macOS browser
+   are separately scoped from installed Linux runtime qualification.
+
+   The original endpoint/configuration and functional Go request logic match the
+   earlier successful local candidate; installed 1149 retains the compared ADF
+   and direct-transport files unchanged. This is bounded evidence against a new
+   request-logic regression, not proof of a universal upstream outage or its cause.
+   The [current protocol evidence](evidence/go-native1149-adf-protocol-2026-11-01.json)
+   and [open follow-up](https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945)
+   record the remaining boundary. Next obtain a new, independently working
+   publisher-supported complete search/API/session path or a relevant upstream
+   compatibility correction. Do not repeat rejected header/form/window variants
+   without new evidence, accept partial inventory or reset the normal retry.
+
 2. **Close the original acceptance audit after that outcome.** Native 1149 and
    the latest renderer are installed and independently verified. All four final
    comparison scenarios and the separate automatic B0 performance job passed. Preserve original boards, downstream/canonical/

@@ -1,0 +1,532 @@
+{
+  "schema": "jobseek.current-adf-native-compatibility/v2",
+  "observed_at_utc": "2026-11-01T20:53:30.155737+00:00",
+  "production_last_independent_readback": {
+    "enabled": true,
+    "status": "quarantined",
+    "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+    "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+    "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+    "consecutive_failures": 12,
+    "tdm_reserved": false
+  },
+  "runtime_functional_comparison": {
+    "qualified_local_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "installed_source": "6b19a2ce3508e78f996624c4243f574eda3d7cae",
+    "verified_direct_transport_identical": true,
+    "last_http_transport_identical": true,
+    "oracle_discovery_diff": "Bounded diagnostic/error wrapping only; no request/form/pagination logic changed."
+  },
+  "unchanged_provider_configuration": {
+    "qualified_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "current_source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+    "field_equality": {
+      "board_url": true,
+      "monitor_type": true,
+      "monitor_config": true,
+      "scraper_type": true,
+      "scraper_config": true
+    },
+    "scope": "Unique ADF row only; raw identifiers, endpoint and config stay in local process RAM."
+  },
+  "official_entry_reconciliation": {
+    "observed_at_utc": "2026-11-01T20:47:14.160764+00:00",
+    "publisher_careers_entry": "Official Sogeti global careers -> Join us -> US vacancies",
+    "same_registry_scheme_host_path_query": true,
+    "scope": "Source link matches exactly; no alternate entry-point candidate. URLs remain private, not stored here."
+  },
+  "cache_session_control": {
+    "fresh_sessions_share_session_cookie_values": false,
+    "responses": [
+      {
+        "cache_age_seconds": 0,
+        "cache_control_no_cache": true,
+        "cache_control_no_store": true,
+        "cache_control_private": false,
+        "cache_control_public": false,
+        "http_version": "HTTP/1.1",
+        "initial_rows": 25,
+        "request_cache_revalidation": false,
+        "response_date_older_than_two_minutes": false,
+        "session_cookie_count": 0,
+        "set_cookie_count": 2,
+        "status": 200,
+        "vary_cookie": false
+      },
+      {
+        "cache_age_seconds": 0,
+        "cache_control_no_cache": true,
+        "cache_control_no_store": true,
+        "cache_control_private": false,
+        "cache_control_public": false,
+        "http_version": "HTTP/1.1",
+        "initial_rows": 25,
+        "request_cache_revalidation": true,
+        "response_date_older_than_two_minutes": false,
+        "session_cookie_count": 0,
+        "set_cookie_count": 2,
+        "status": 200,
+        "vary_cookie": false
+      }
+    ],
+    "same_adf_window": true,
+    "same_document_bytes": false,
+    "same_view_state": false,
+    "scope": "Two fresh-session local verified-TLS GETs; second asks caches to revalidate. No POST, details or production state."
+  },
+  "stabilized_browser_protocol": {
+    "after": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "after_second_more": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "before": {
+      "adf": true,
+      "component": true,
+      "fetch_index": 24,
+      "marker_present": false,
+      "more": true,
+      "ready": "complete",
+      "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+      "rows": 25
+    },
+    "http_status_by_resource_type": {
+      "Document:200": 3,
+      "Fetch:200": 7,
+      "Fetch:403": 2,
+      "Script:200": 66,
+      "XHR:200": 3
+    },
+    "http_status_counts": {
+      "200": 79,
+      "403": 2
+    },
+    "instrumented": true,
+    "javascript_error_categories": {},
+    "more_action_succeeded": true,
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "redirect_summaries": [
+      {
+        "adf_page_query_preserved": false,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": true,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": true,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": true,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": false,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": false,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": false,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": true,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": true,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": true,
+        "to_original_path": false
+      },
+      {
+        "adf_page_query_preserved": true,
+        "adf_window_query_preserved": true,
+        "from_expected_origin": true,
+        "from_original_path": false,
+        "method": "GET",
+        "resource_type": "XHR",
+        "same_origin": false,
+        "same_path": false,
+        "status": 302,
+        "to_expected_origin": false,
+        "to_original_path": false
+      }
+    ],
+    "requests_before_more": 27,
+    "requests_observed": 90,
+    "same_origin_403_count": 0,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page and two More actions; no production state",
+    "second_more_action_succeeded": true,
+    "stage": "complete",
+    "wire_summaries": [
+      {
+        "adf_page_header_matches_dom": false,
+        "ads_matches_live_page": true,
+        "ads_matches_static_page": true,
+        "ads_page_category": "1",
+        "body_is_string": true,
+        "body_length": 623,
+        "body_page_zero": true,
+        "client_key_is_last_row": true,
+        "event_fetch": true,
+        "event_id_zero": true,
+        "event_is_list": true,
+        "event_subtype_zero": true,
+        "form_field_count": 11,
+        "form_session_rewritten": false,
+        "form_type_header": true,
+        "index_is_last_row": true,
+        "known_field_mask": 127,
+        "page_body_category": "0",
+        "page_field_matches_dom": true,
+        "page_query_category": "0",
+        "page_query_present": true,
+        "path_matches_document": false,
+        "path_matches_form": true,
+        "phase": "send",
+        "process_is_list": true,
+        "query_page_matches_body": true,
+        "query_page_zero": true,
+        "query_window_matches_body": false,
+        "rich_header": true,
+        "viewstate_matches_attribute": true,
+        "viewstate_matches_dom": true,
+        "window_body_category": "other",
+        "window_field_matches_attribute": true,
+        "window_field_matches_dom": true,
+        "window_query_category": "empty",
+        "window_query_present": true
+      },
+      {
+        "adf_page_header_matches_dom": false,
+        "ads_matches_live_page": true,
+        "ads_matches_static_page": true,
+        "ads_page_category": "2",
+        "body_is_string": true,
+        "body_length": 623,
+        "body_page_zero": false,
+        "client_key_is_last_row": true,
+        "event_fetch": true,
+        "event_id_zero": true,
+        "event_is_list": true,
+        "event_subtype_zero": true,
+        "form_field_count": 11,
+        "form_session_rewritten": false,
+        "form_type_header": true,
+        "index_is_last_row": true,
+        "known_field_mask": 127,
+        "page_body_category": "1",
+        "page_field_matches_dom": true,
+        "page_query_category": "1",
+        "page_query_present": true,
+        "path_matches_document": true,
+        "path_matches_form": true,
+        "phase": "send",
+        "process_is_list": true,
+        "query_page_matches_body": true,
+        "query_page_zero": false,
+        "query_window_matches_body": false,
+        "rich_header": true,
+        "viewstate_matches_attribute": true,
+        "viewstate_matches_dom": true,
+        "window_body_category": "other",
+        "window_field_matches_attribute": true,
+        "window_field_matches_dom": true,
+        "window_query_category": "empty",
+        "window_query_present": true
+      }
+    ]
+  },
+  "observed_protocol_go_control": {
+    "advertised_page_query_is_zero": false,
+    "advertised_window_query_empty": true,
+    "advertised_window_query_present": false,
+    "base_href_count": 0,
+    "body_page_is_zero_ads_page_distinct": true,
+    "bootstrap_headers": {
+      "body_content_type_html": true,
+      "cookie_classes": {
+        "other": 2
+      },
+      "http_version": "HTTP/1.1",
+      "server_class": "other_or_absent"
+    },
+    "bootstrap_status": 200,
+    "form_action_has_session_rewrite": false,
+    "form_action_same_origin": true,
+    "form_action_same_path": false,
+    "hidden_field_count": 3,
+    "initial_row_count": 25,
+    "pagination_body_bytes": 0,
+    "pagination_headers": {
+      "body_content_type_html": false,
+      "cookie_classes": {},
+      "http_version": "HTTP/1.0",
+      "server_class": "other_or_absent"
+    },
+    "pagination_status": 302,
+    "partial_response_framing": false,
+    "query_window_empty_matches_observed_browser": true,
+    "redirect_class": "same_origin_other_path",
+    "redirect_has_adf_loop": false,
+    "redirect_has_window_id": false,
+    "redirect_path_categories": {
+      "adf_authentication": false,
+      "akamai_security": false,
+      "authentication": false,
+      "bot_verification": false,
+      "captcha": false,
+      "cloudflare_challenge": false,
+      "error": false,
+      "f5_access_policy": false,
+      "faces": false,
+      "imperva_resource": false,
+      "session_rewritten": false
+    },
+    "scope": "local fresh-session protocol diagnostic; maximum two origin requests; no production state or detail scan",
+    "session_cookie_count": 2,
+    "successful_extra_control_values": 4,
+    "viewstate_has_numeric_page_suffix": false,
+    "viewstate_page_suffix_is_zero": false
+  },
+  "redirect_chain_control": {
+    "advertised_page_query_is_zero": false,
+    "advertised_window_query_empty": true,
+    "advertised_window_query_present": false,
+    "base_href_count": 0,
+    "body_page_is_zero_ads_page_distinct": true,
+    "bootstrap_headers": {
+      "body_content_type_html": true,
+      "cookie_classes": {
+        "other": 2
+      },
+      "http_version": "HTTP/1.1",
+      "server_class": "other_or_absent"
+    },
+    "bootstrap_status": 200,
+    "form_action_has_session_rewrite": false,
+    "form_action_same_origin": true,
+    "form_action_same_path": false,
+    "hidden_field_count": 3,
+    "initial_row_count": 25,
+    "pagination_body_bytes": 0,
+    "pagination_headers": {
+      "body_content_type_html": false,
+      "cookie_classes": {},
+      "http_version": "HTTP/1.0",
+      "server_class": "other_or_absent"
+    },
+    "pagination_status": 302,
+    "partial_response_framing": false,
+    "query_window_empty_matches_observed_browser": true,
+    "redirect_class": "same_origin_other_path",
+    "redirect_has_adf_loop": false,
+    "redirect_has_window_id": false,
+    "redirect_path_categories": {
+      "adf_authentication": false,
+      "akamai_security": false,
+      "authentication": false,
+      "bot_verification": false,
+      "captcha": false,
+      "cloudflare_challenge": false,
+      "error": false,
+      "f5_access_policy": false,
+      "faces": false,
+      "imperva_resource": false,
+      "session_rewritten": false
+    },
+    "redirect_path_is_root": true,
+    "redirect_path_semantics": {
+      "blocked": false,
+      "consent": false,
+      "cookie": false,
+      "deny": false,
+      "forbidden": false,
+      "maintenance": false,
+      "notfound": false,
+      "privacy": false,
+      "robots": false,
+      "unavailable": false
+    },
+    "same_origin_redirect_get_body_bytes": 225,
+    "same_origin_redirect_get_status": 302,
+    "scope": "local fresh-session protocol diagnostic; maximum three origin requests; no production state or detail scan",
+    "second_redirect_path_is_root": false,
+    "second_redirect_query_field_count": 0,
+    "second_redirect_same_origin": false,
+    "session_cookie_count": 2,
+    "successful_extra_control_values": 4,
+    "viewstate_has_numeric_page_suffix": false,
+    "viewstate_page_suffix_is_zero": false
+  },
+  "exact_publisher_wire_go_control": {
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 622,
+    "captured_form_field_count": 11,
+    "go_post_body_bytes": 0,
+    "go_post_http_version": "HTTP/1.0",
+    "go_post_partial_response": false,
+    "go_post_status": 302,
+    "http_status_by_resource_type": {
+      "Document:200": 1,
+      "Fetch:200": 3,
+      "Script:200": 22,
+      "XHR:200": 1
+    },
+    "http_status_counts": {
+      "200": 27
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": false,
+    "redirect_path_is_root": true,
+    "redirect_same_origin": true,
+    "requests_observed": 28,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; withhold browser More POST, submit one exact publisher-generated request with its cookie scope via verified Go HTTP; no details; no production state",
+    "stage": "complete"
+  },
+  "framework_window_go_control": {
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_classes": {
+      "other": 6
+    },
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 623,
+    "captured_form_field_count": 11,
+    "framework_window_setter": {
+      "initial_window_empty": true,
+      "setter_available": true,
+      "top_name_matches_window": true,
+      "window_matches_hidden": true,
+      "window_name_matches_hidden": false
+    },
+    "go_post_body_bytes": 0,
+    "go_post_http_version": "HTTP/1.0",
+    "go_post_partial_response": false,
+    "go_post_status": 302,
+    "http_status_by_resource_type": {
+      "Document:200": 1,
+      "Fetch:200": 3,
+      "Script:200": 22,
+      "XHR:200": 1
+    },
+    "http_status_counts": {
+      "200": 27
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": true,
+    "redirect_path_is_root": true,
+    "redirect_same_origin": true,
+    "requests_observed": 27,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; withhold browser More POST, submit one exact publisher-generated request with its cookie scope via verified Go HTTP; no details; no production state",
+    "stage": "complete"
+  },
+  "framework_window_native_lightpanda_control": {
+    "after_native_more": {
+      "fetch_index": 24,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "before": {
+      "adf": true,
+      "component": true,
+      "more": true,
+      "ready": "complete",
+      "rows": 25
+    },
+    "browser_cookie_api_supported": true,
+    "browser_cookie_classes": {
+      "other": 6
+    },
+    "browser_cookie_count": 6,
+    "browser_http_only_cookie_count": 0,
+    "browser_session_named_cookie_count": 0,
+    "captured_bytes": 622,
+    "captured_form_field_count": 11,
+    "framework_window_setter": {
+      "initial_window_empty": true,
+      "setter_available": true,
+      "top_name_matches_window": true,
+      "window_matches_hidden": true,
+      "window_name_matches_hidden": false
+    },
+    "http_status_by_resource_type": {
+      "Document:200": 2,
+      "Fetch:200": 7,
+      "Fetch:403": 1,
+      "Script:200": 44,
+      "XHR:200": 2
+    },
+    "http_status_counts": {
+      "200": 55,
+      "403": 1
+    },
+    "javascript_error_categories": {},
+    "navigation_succeeded": true,
+    "publisher_reservation": false,
+    "query_window_matches_body": true,
+    "requests_observed": 59,
+    "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page; use publisher framework window setter, then allow one native Lightpanda More POST; no details; no production state",
+    "stage": "complete"
+  },
+  "conclusion": "Current complete ADF discovery remains unqualified. Go and latest Lightpanda pagination redirect to site root and then away from the application. Fresh document/viewstate, exact publisher-generated form bytes plus all browser cookie scope, and framework window-ID alignment do not resolve it. Official entry URL exactly matches registry; no alternate entry candidate. Source cause remains unproved; no universal upstream-failure or recovery claim and no speculative runtime patch.",
+  "next_discriminating_input": "An independently working publisher-supported complete search/API/session path or a relevant upstream compatibility correction; keep next normal retry and no-forced-work constraint. Do not repeat already rejected header/form/window variants without new evidence.",
+  "constraints": "All active investigation local. Maximum500jobs/5000detail checks retained; this follow-up used no detail scan. No production queue/counter/schedule/backoff writes, no partial inventory accepted, no Chromium. Raw URLs, cookies, view states, headers and bodies stay only in RAM and are not preserved.",
+  "production_last_independent_readback_utc": "2026-11-01T20:11:42.733811+00:00",
+  "installed1149_adf_and_transport_files_unchanged_from_compared1148": {
+    "apps/crawler/go/ordinary-worker/oracle_adf_discovery.go": true,
+    "apps/crawler/go/ordinary-worker/direct_http.go": true,
+    "apps/crawler/go/ordinary-worker/last_http_transport.go": true
+  },
+  "local_transport_limits": "Exact-wire and final form/session controls use standard Go net/http with explicit verified public CA roots from the local /etc/ssl/cert.pem, no insecure TLS or automatic redirects; they do not by themselves attest production transport/egress/ownership. The actual native production normal attempt is separately observed at pagination302, and installed1149 retains identical ADF/direct-transport files. Latest local macOS Lightpanda was matched to official nightly binary digest; production Linux executable qualification is separate in the capacity checkpoint.",
+  "local_latest_lightpanda": {
+    "version": "1.1.0-nightly.11471+cebb8d51e",
+    "macos_arm64_sha256": "6cb362374a27a83ba44112b4bab25bc9e72e142d8c34dff188b39ad19edff32f"
+  }
+}
