@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-01 21:25 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 21:58 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -21,23 +21,35 @@ policy, schedule conservation and supported rollback. Production transport stays
 
 ## Deployed release and retirement
 
-**0.13.1149** completed the [supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41342411111)
+**0.13.1150 is installed**, following the
+[supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41352739897)
+of [PR #11463](https://github.com/colophon-group/jobseek/pull/11463) at
+**21:51:03 UTC**. Independent protected readback at **21:58:04 UTC** binds the
+current immutable runtime and data identities below. The complete Go source tree,
+Compose allocation and `deploy.sh` are identical to qualified 1149; 1150 updates
+provider-neutral maintenance guards and the version. The
+[installed qualification](evidence/go-native1150-installed-2026-11-01.json)
+records exact identities, queue conservation, natural outcomes and current demo
+headroom. No new equivalent-work comparison or cold-reversal exercise is claimed.
+
+**0.13.1149** delivered the capacity increase through its
+[supported full rollout and promotion](https://github.com/colophon-group/jobseek/actions/runs/41342411111)
 after [PR #11468](https://github.com/colophon-group/jobseek/pull/11468).
 Required CI, Crawler Deploy Gate, both physical architectures, all four controlled
 comparisons and the advisory B0 job passed on the exact tested head. The full
 quiesced rollout completed at **19:55:41 UTC**; no duplicate/manual deployment,
 environment repair or partial writer restart was used.
 
-| Identity | Value |
+| Current installed identity | Value |
 | --- | --- |
-| Tested 1149 PR head | `9af885fcac5c859e5f6589462d47da8e5338a277` |
-| Runtime source | `a515fb91381a0f836ac5f8ea690fc100cabb9839` |
-| Runtime contract | `69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea` |
-| Image | `sha256:bacc6e3714270501899cbd3e2658426bf4c2578b59f390e2b8d28bdeea2a9189` |
-| Data revision | `a515fb91381a0f836ac5f8ea690fc100cabb9839` |
-| Data contract | `c3e9d4473edae6e82589cf78c4a8c8982d513e92c98429d7637832e4d437e1fa` |
+| Installed version | `0.13.1150` |
+| Runtime source | `9a62ca5a9680cc9632dbba5bf91044059f04de45` |
+| Runtime contract | `9f88e4cf585267126af0768ba5ed6bc1571fdf81a2148ee2d273eaae9d371a59` |
+| Image | `sha256:1724cb404c30a711fab65dc503485a0a0bc308d49b963b5a3eed97c090533ec4` |
+| Data revision | `9a62ca5a9680cc9632dbba5bf91044059f04de45` |
+| Data contract | `388889b6039f9b5aacf661a690b75f3c738bc5bc26819091d61523c5717ef6ad` |
 
-Independent **20:11:42 UTC** readback verifies all four native actors, exact
+Independent **21:58:04 UTC** readback verifies all four native actors, exact
 source/image/VERSION, zero restarts/OOM and the installed ordinary worker limits:
 **4 CPU / 2 GiB**, **1 GiB Go memory target**, **120 discovery / 30 monitor slots**.
 Reaper remains 128 MiB and exporter/drain 256 MiB. All six core services are
@@ -48,7 +60,7 @@ image exposes no Python, uv, Playwright or Chromium command. Native processing,
 enrichment, PDF extraction, scheduling, persistence, failure handling, sync,
 migrations, maintenance, currency refresh, export and description drain are implemented.
 
-The release integrates the exact PDF test correction from draft
+The 1149 capacity release integrated the exact PDF test correction from draft
 [PR #11462](https://github.com/colophon-group/jobseek/pull/11462), attributed to
 source `004a34a850fe2f8591076620850da48f0ee5cd16`, and removes stale aggregate
 registry-count assertions while preserving row, provider, transport, enrichment
@@ -56,16 +68,19 @@ and negative checks. Neither change relaxes production route admission.
 
 ## Current fleet and downstream effects
 
-The same readback has **8,270 enabled boards**, routing epoch **404**, schema
-**0042** and zero active migration plans. Company intake may advance independently;
-refresh installed identities before reusing these counts after publication.
+The current 1150 readback has **8,273 enabled boards**, routing epoch **404**,
+schema **0042** and zero active migration plans. Company intake may advance
+independently; refresh installed identities before reusing these counts after
+publication.
 
 All **8,270** pre-capacity board UUIDs and keys survive the cutover unchanged:
 sorted UUID SHA-256 `0d5cd7219ce3a5d7ddff2b7b7948a06a8a028a068cb0730aedd5e396acf927e1`;
 key SHA-256 `651cbd58dd32ca986b477e1da315c57773ec8d1174833ef602c4e39db066a287`.
-Atomic Redis readback represents **8,245 queued + 25 valid leases = 8,270**,
+Current atomic Redis readback represents **8,245 queued + 28 valid leases = 8,273**,
 with zero missing, duplicate, wrong-lane, expired-only, cache/domain, token-presence
-or deadletter gaps. Token values are never read. Earlier original-set proof
+or deadletter gaps. All current key/UUID hashes match the pre-1150 proof, which
+independently preserves all 8,270 original identities plus three additions.
+Token values are never read. Earlier original-set proof
 preserves all 8,163 original UUIDs (SHA-256
 `73b4d3b1b4be51da0a610f158a64c7e6b71bddffc5dc1a0d9d8716bb5edc9e29`).
 
@@ -172,8 +187,12 @@ and an **eight-GiB root free-space floor**. Post-window root free minimum is
 one CPU / one GiB with unchanged image and generation. No Justup/renderer rename,
 restart or relocation was part of this release. The temporary main/data and
 provider-renaming holds were explicitly released after the post-window checks;
-future runtime work requires fresh coordination. The naming implementer reserved
-0.13.1150; this checkpoint changes documentation only.
+future runtime work requires fresh coordination. The 1150 maintenance rollout is
+now installed. The separately owned provider-name-only change is complete;
+post-rename readback at 21:58 preserves exact source/image/data, native service
+health, all monitor identities and the renderer allocation. The observer uses
+stable role endpoints and has no provider-display-name lookup. This checkpoint
+changes documentation only.
 
 
 A later **20:11–21:03 UTC** four-node window covers about 52 minutes with the same
@@ -192,6 +211,18 @@ the failure, circuit, claim-error and skip counts and limits in the
 [steady-traffic report](evidence/go-native1149-steady-2026-11-01.json).
 This mixed workload does not establish a causal speedup or cleared freshness
 backlog, and does not qualify a further CPU allocation increase.
+
+After the 1150 rollout, **21:54 UTC** process counters record 582 monitor and
+1,288 detail successes, three monitor / 107 detail failures, six monitor / 75
+detail circuit deferrals and 30 claim errors. Exclude 1,179 skips and do not treat
+72,938 posting touches as unique completions. These are current-generation totals,
+not a controlled speedup measurement. The renderer retains its exact image,
+one-CPU/one-GiB allocation and zero restart/OOM; sampled host available memory is
+3.17 GiB and root free space 9.790 GiB. The agreed demo reservation and eight-GiB
+root floor remain intact; no Justup activation or allocation change was performed
+by these read-only checks. A post-rename check at **21:58 UTC** retains the same
+renderer generation/image and zero restart/OOM, 3.22 GiB available host memory,
+9.790 GiB root free space and the complete agreed demo reservation.
 
 1. **Resolve Oracle ADF's observed failure.** Its normal retry ran November 1 at
    17:37:14 UTC, without forced work or a backoff reset. The installed Go route
@@ -250,9 +281,10 @@ backlog, and does not qualify a further CPU allocation increase.
    Do not repeat rejected header/form/window variants without new evidence,
    accept partial inventory or reset the normal retry.
 
-2. **Close the original acceptance audit after that outcome.** Native 1149 and
-   the latest renderer are installed and independently verified. All four final
-   comparison scenarios and the separate automatic B0 performance job passed. Preserve original boards, downstream/canonical/
+2. **Close the original acceptance audit after that outcome.** Native 1150 and
+   the latest renderer are installed and independently verified. The identical
+   Go tree and Compose preserve 1149's four controlled comparison scenarios and
+   separate automatic B0 performance qualification. Preserve original boards, downstream/canonical/
    publisher-policy contracts and supported reversal. Keep dated observations,
    existing backlog and sampling limits explicit. Approved control/offline Python,
    new-company variants and renderer relocation do not block this migration.
@@ -375,7 +407,7 @@ Preserve its authenticated v3 rollback generation; do not combine newer CSVs wit
 an older runtime spec. The earlier cold exercise is dated proof, not a fresh
 1149-to-1148 reversal. Use the full supported workflow if reversal is necessary.
 
-Latest official assets were rechecked **November 1 at 20:13 UTC**:
+Latest official assets were rechecked **November 1 at 21:56 UTC**:
 **1.1.0-nightly.11471+cebb8d51e**, upstream source
 `cebb8d51e60a68815591a5c7874823b988530aa8`,
 [official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly).
