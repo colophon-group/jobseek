@@ -101,6 +101,9 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	case "smartrecruiters.api-detail/v1":
 		fetched, failure := smartrecruiters.FetchDetailWithClient(ctx, profile.SourceURL, &client)
 		content, err = fetched.Content, failure
+		if err == nil && profile.HTTPAPIConfig["omit_employment_type"] == true {
+			fetched.Content["employment_type"] = nil
+		}
 		var reserved *smartrecruiters.Failure
 		if errors.As(err, &reserved) && reserved.Kind == "tdm" {
 			reservation = &publisherpolicy.Reservation{URL: reserved.URL, Source: reserved.Source}

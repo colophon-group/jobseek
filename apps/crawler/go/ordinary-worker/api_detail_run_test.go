@@ -28,6 +28,33 @@ func apiDetailPayload(provider string) string {
 	return `{"name":"Senior Software Engineer","location":{"fullLocation":"Zurich, Switzerland"},"typeOfEmployment":{"label":"Full-time"},"jobAd":{"sections":{"jobDescription":{"text":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"}}}}`
 }
 
+func TestSmartRecruitersExactEmploymentTypeOmissionBeforePersistence(t *testing.T) {
+	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != "api.smartrecruiters.com" || !strings.HasPrefix(r.URL.Path, "/v1/companies/LeCollectionist/postings/") {
+			t.Error("unexpected API destination", r.Host, r.URL.Path)
+		}
+		fmt.Fprint(w, `{"name":"Test","typeOfEmployment":{"label":"Full-time"},"location":{"fullLocation":"St Anton, Austria"},"jobAd":{"sections":{"jobDescription":{"text":"<p>Substantive role description.</p>"}}}}`)
+	})
+	for _, tc := range []struct {
+		id   string
+		omit bool
+	}{
+		{"744000146943905", true},
+		{"744000156827705", true},
+		{"744000155975486", false},
+		{"744000156733674", false},
+	} {
+		profile := queue.WorkdayDetailProfile{Profile: "smartrecruiters.api-detail/v1", SourceURL: "https://jobs.smartrecruiters.com/LeCollectionist/" + tc.id, HTTPAPIConfig: map[string]any{"omit_employment_type": tc.omit}}
+		content, _, err := fetchAPIDetail(context.Background(), client, profile)
+		if err != nil {
+			t.Fatal(tc.id, err)
+		}
+		if tc.omit && content["employment_type"] != nil || !tc.omit && content["employment_type"] != "Full-time" || content["description"] == nil {
+			t.Fatal("employment type omission changed unrelated detail", tc.id, content)
+		}
+	}
+}
+
 func TestRealAPIDetailUsesVerifiedHTTPSharedPersistenceAndOneShotFallback(t *testing.T) {
 	for _, mode := range []string{"smartrecruiters", "workable", "workable-markdown", "workable-proxy", "workable-proxy-markdown"} {
 		t.Run(mode, func(t *testing.T) {
