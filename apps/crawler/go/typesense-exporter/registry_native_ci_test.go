@@ -141,6 +141,9 @@ func TestRegistryNativeChangedRepositoryBoards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// This transaction stages only changed boards. Public links for the full
+	// catalogue are exercised by TestRegistryPostgresActualRepository.
+	tables["source_coverage_links"] = registryTable{Columns: tables["source_coverage_links"].Columns}
 	ctx, conn, _ := registryTestDatabase(t)
 	effects, err := commitRegistryWithNativeEligibility(ctx, conn, tables, append(plan, companies...), boards, true)
 	if err != nil {
