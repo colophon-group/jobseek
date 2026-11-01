@@ -1024,6 +1024,14 @@ def allow_test_typesense_headroom(
             "memory_limit_enforced": True,
         },
     )
+    # The post-copy check must use the same synthetic filesystem as the
+    # preflight fixture. GitHub runners can have less than 12 GiB free while
+    # unrelated image jobs run; only the dedicated breach test supplies 4 GiB.
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=24 * 1024**3, used=4 * 1024**3, free=20 * 1024**3),
+    )
 
 
 def test_typesense_snapshot_staging_requires_isolation_and_bounded_memory_policy(
