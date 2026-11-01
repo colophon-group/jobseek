@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
@@ -58,16 +59,35 @@ const (
 func probeRuntimeV1ServiceWithoutClient(address, caPath, serverName string) error {
 	caPEM, err := os.ReadFile(caPath)
 	if err != nil {
-		return err
+		return errors.New("runtime-v1 probe CA is unreadable")
 	}
 	roots := x509.NewCertPool()
 	if !roots.AppendCertsFromPEM(caPEM) {
 		return errors.New("runtime-v1 probe CA is invalid")
 	}
+	// Compose reports a running process before its child-isolation attestation
+	// and TLS listener are ready. Retry only connection refusal, never a TLS
+	// result: success still requires the exact certificate_required alert.
+	startup, stopStartup := context.WithTimeout(context.Background(), 3*time.Second)
+	defer stopStartup()
 	dialer := net.Dialer{Timeout: 3 * time.Second}
-	raw, err := dialer.Dial("tcp", address)
-	if err != nil {
-		return err
+	var raw net.Conn
+	for {
+		raw, err = dialer.DialContext(startup, "tcp", address)
+		if err == nil {
+			break
+		}
+		if startup.Err() != nil {
+			return errors.New("runtime-v1 probe listener startup timed out")
+		}
+		if !errors.Is(err, syscall.ECONNREFUSED) {
+			return errors.New("runtime-v1 probe connection failed")
+		}
+		select {
+		case <-startup.Done():
+			return errors.New("runtime-v1 probe listener startup timed out")
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 	defer raw.Close()
 	connection := tls.Client(raw, &tls.Config{
@@ -89,6 +109,18 @@ func probeRuntimeV1ServiceWithoutClient(address, caPath, serverName string) erro
 		return errors.New("runtime-v1 service accepted a client without a certificate")
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), "certificate required") {
+		var verification *tls.CertificateVerificationError
+		if errors.As(err, &verification) {
+			return errors.New("runtime-v1 probe server certificate verification failed")
+		}
+		var networkError net.Error
+		if errors.As(err, &networkError) && networkError.Timeout() {
+			return errors.New("runtime-v1 probe TLS response timed out")
+		}
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+			errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
+			return errors.New("runtime-v1 probe connection closed before certificate_required")
+		}
 		return errors.New("runtime-v1 service did not return certificate_required")
 	}
 	return nil

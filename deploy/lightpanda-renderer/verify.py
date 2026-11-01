@@ -139,6 +139,28 @@ def run_text(arguments: list[str]) -> str:
     return result.stdout
 
 
+def verify_no_client_probe(arguments: list[str]) -> None:
+    try:
+        run_text(arguments)
+    except subprocess.CalledProcessError as error:
+        # Never expose Docker arguments, addresses, paths or arbitrary stderr.
+        reason = (error.stderr or "").strip()
+        if reason not in {
+            "runtime-v1 probe arguments are invalid",
+            "runtime-v1 probe CA is unreadable",
+            "runtime-v1 probe CA is invalid",
+            "runtime-v1 probe connection failed",
+            "runtime-v1 probe listener startup timed out",
+            "runtime-v1 probe server certificate verification failed",
+            "runtime-v1 probe TLS response timed out",
+            "runtime-v1 probe connection closed before certificate_required",
+            "runtime-v1 service accepted a client without a certificate",
+            "runtime-v1 service did not return certificate_required",
+        }:
+            reason = "unclassified failure"
+        fail(f"renderer no-client TLS probe failed: {reason}")
+
+
 def compose_plugin_path(
     search_directories: tuple[Path, ...] = SYSTEM_COMPOSE_PLUGIN_DIRECTORIES,
     *,
@@ -1778,7 +1800,7 @@ def verify_running_with_image(
         for line in ipv6_routes
     ):
         fail("internal renderer network unexpectedly has an IPv6 default route")
-    run_text(
+    verify_no_client_probe(
         [
             *docker_exec,
             "/usr/local/bin/go-lightpanda",

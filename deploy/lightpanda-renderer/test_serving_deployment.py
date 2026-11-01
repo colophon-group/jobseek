@@ -31,6 +31,32 @@ BASELINE = re.search(
 )[1]
 
 
+@pytest.mark.parametrize(
+    ("stderr", "expected"),
+    [
+        (
+            "runtime-v1 probe listener startup timed out\n",
+            "runtime-v1 probe listener startup timed out",
+        ),
+        (
+            "runtime-v1 service accepted a client without a certificate\n",
+            "runtime-v1 service accepted a client without a certificate",
+        ),
+        ("private-address credential-data\nsecond line", "unclassified failure"),
+    ],
+)
+def test_no_client_probe_failure_is_closed_and_sanitized(
+    monkeypatch: pytest.MonkeyPatch, stderr: str, expected: str
+) -> None:
+    def failed(_arguments: list[str]) -> str:
+        raise subprocess.CalledProcessError(1, ["private-command"], stderr=stderr)
+
+    monkeypatch.setattr(verify, "run_text", failed)
+    with pytest.raises(verify.VerificationError) as raised:
+        verify.verify_no_client_probe(["private-command"])
+    assert str(raised.value) == f"renderer no-client TLS probe failed: {expected}"
+
+
 def child_arguments(*, proxy: bool = False) -> list[str]:
     args = [
         "/usr/local/bin/lightpanda",

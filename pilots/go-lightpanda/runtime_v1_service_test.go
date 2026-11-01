@@ -71,6 +71,53 @@ func TestRuntimeV1ServiceNoClientProbeRequiresCertificateRequired(t *testing.T) 
 	}
 }
 
+func TestRuntimeV1ServiceNoClientProbeWaitsForListenerStartup(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	configuration, err := runtimeV1ServiceTLSConfig(fixture.server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := reservation.Addr().String()
+	if err := reservation.Close(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		// Model Compose returning before controller startup reaches net.Listen.
+		time.Sleep(200 * time.Millisecond)
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			done <- err
+			return
+		}
+		defer listener.Close()
+		_ = listener.(*net.TCPListener).SetDeadline(time.Now().Add(5 * time.Second))
+		raw, err := listener.Accept()
+		if err != nil {
+			done <- err
+			return
+		}
+		defer raw.Close()
+		_ = raw.SetDeadline(time.Now().Add(3 * time.Second))
+		err = tls.Server(raw, configuration).Handshake()
+		if err == nil {
+			err = errors.New("server accepted a probe without a client certificate")
+		} else if strings.Contains(err.Error(), "client didn't provide a certificate") {
+			err = nil
+		}
+		done <- err
+	}()
+	err = probeRuntimeV1ServiceWithoutClient(address, fixture.server.CAPath, serviceTestIP)
+	serverErr := <-done
+	if err != nil || serverErr != nil {
+		t.Fatalf("delayed listener probe = %v; server = %v", err, serverErr)
+	}
+}
+
 func TestRuntimeV1ServiceNoClientProbeRejectsPermissiveServer(t *testing.T) {
 	fixture := newServiceTLSFixture(t)
 	pair, err := tls.LoadX509KeyPair(
@@ -114,6 +161,47 @@ func TestRuntimeV1ServiceNoClientProbeRejectsPermissiveServer(t *testing.T) {
 	}
 	if serverErr := <-done; serverErr != nil {
 		t.Fatal(serverErr)
+	}
+}
+
+func TestRuntimeV1ServiceNoClientProbeRejectsCloseWithoutTLSAlert(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	done := make(chan error, 1)
+	go func() {
+		raw, err := listener.Accept()
+		if err == nil {
+			err = raw.Close()
+		}
+		done <- err
+	}()
+	err = probeRuntimeV1ServiceWithoutClient(listener.Addr().String(), fixture.server.CAPath, serviceTestIP)
+	if err == nil || !strings.Contains(err.Error(), "connection closed before certificate_required") {
+		t.Fatalf("close without TLS alert probe = %v", err)
+	}
+	if serverErr := <-done; serverErr != nil {
+		t.Fatal(serverErr)
+	}
+}
+
+func TestRuntimeV1ServiceNoClientProbeBoundsRefusedListenerWait(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	err = probeRuntimeV1ServiceWithoutClient(address, fixture.server.CAPath, serviceTestIP)
+	if err == nil || err.Error() != "runtime-v1 probe listener startup timed out" || time.Since(started) > 6*time.Second {
+		t.Fatalf("refused listener probe = %v after %v", err, time.Since(started))
 	}
 }
 
