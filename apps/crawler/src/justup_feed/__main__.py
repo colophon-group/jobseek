@@ -52,16 +52,13 @@ MAX_COMPANIES = 100
 
 # Keep this query an explicit public-data allowlist. The body is read from the
 # authoritative per-locale description row, not a mutable public asset URL.
-BASE_SELECT = """
-SELECT jp.id::text AS id, jp.company_id::text AS company_id,
-       c.name AS company_name, c.slug AS company_slug,
-       c.website AS company_website, jp.titles,
-       jp.source_url, jp.is_active, jp.tdm_reserved, jp.first_seen_at,
-       jp.last_seen_at, jp.updated_at, jp.locales, jp.location_ids,
-       jp.description_r2_hash,
-       jp.location_types, jp.employment_type, jp.salary_min, jp.salary_max,
-       jp.salary_currency, jp.salary_period, jp.experience_min,
-       jp.experience_max, jp.occupation_id, jp.seniority_id,
+# Taxonomy display tables are optional in the crawler-owned database. Stable
+# IDs remain available without them.
+TAXONOMY_TABLE_COUNT_SQL = """SELECT num_nonnulls(
+    to_regclass('location_name'), to_regclass('location'),
+    to_regclass('occupation_name'), to_regclass('seniority_name'))"""
+
+TAXONOMY_COLUMNS = """
        ARRAY(SELECT n.name FROM unnest(jp.location_ids) WITH ORDINALITY AS x(id, ord)
              LEFT JOIN LATERAL (
                  SELECT name FROM location_name
@@ -74,6 +71,28 @@ SELECT jp.id::text AS id, jp.company_id::text AS company_id,
          AND locale = 'en' AND is_display = true ORDER BY name LIMIT 1) AS occupation_name,
        (SELECT name FROM seniority_name WHERE seniority_id = jp.seniority_id
          AND locale = 'en' AND is_display = true ORDER BY name LIMIT 1) AS seniority_name,
+"""
+
+NO_TAXONOMY_COLUMNS = """
+       ARRAY(SELECT NULL::text FROM unnest(jp.location_ids) WITH ORDINALITY AS x(id, ord)
+             ORDER BY x.ord) AS location_names,
+       ARRAY(SELECT NULL::text FROM unnest(jp.location_ids) WITH ORDINALITY AS x(id, ord)
+             ORDER BY x.ord) AS location_geo_types,
+       NULL::text AS occupation_name,
+       NULL::text AS seniority_name,
+"""
+
+BASE_SELECT_TEMPLATE = """
+SELECT jp.id::text AS id, jp.company_id::text AS company_id,
+       c.name AS company_name, c.slug AS company_slug,
+       c.website AS company_website, jp.titles,
+       jp.source_url, jp.is_active, jp.tdm_reserved, jp.first_seen_at,
+       jp.last_seen_at, jp.updated_at, jp.locales, jp.location_ids,
+       jp.description_r2_hash,
+       jp.location_types, jp.employment_type, jp.salary_min, jp.salary_max,
+       jp.salary_currency, jp.salary_period, jp.experience_min,
+       jp.experience_max, jp.occupation_id, jp.seniority_id,
+{taxonomy_columns}
        d.locale AS body_locale, d.hash AS body_hash,
        d.body_bytes, d.html AS body_html
 FROM job_posting AS jp
@@ -88,26 +107,27 @@ LEFT JOIN LATERAL (
 ) AS d ON true
 """
 
-SNAPSHOT_SQL = (
-    BASE_SELECT
-    + """
+BASE_SELECT = BASE_SELECT_TEMPLATE.format(taxonomy_columns=TAXONOMY_COLUMNS)
+BASE_SELECT_NO_TAXONOMY = BASE_SELECT_TEMPLATE.format(taxonomy_columns=NO_TAXONOMY_COLUMNS)
+
+SNAPSHOT_FILTER = """
 WHERE jp.is_active IS TRUE AND jp.first_seen_at >= $1::timestamptz
   AND jp.updated_at < $2::timestamptz
   AND (jp.updated_at, jp.id) > ($3::timestamptz, $5::uuid)
   AND ($7::uuid[] IS NULL OR jp.company_id = ANY($7::uuid[]))
 ORDER BY jp.updated_at, jp.id LIMIT $6::int
 """
-)
+SNAPSHOT_SQL = BASE_SELECT + SNAPSHOT_FILTER
+SNAPSHOT_SQL_NO_TAXONOMY = BASE_SELECT_NO_TAXONOMY + SNAPSHOT_FILTER
 
-CHANGES_SQL = (
-    BASE_SELECT
-    + """
+CHANGES_FILTER = """
 WHERE (jp.updated_at, jp.id) > ($1::timestamptz, $2::uuid)
   AND jp.updated_at < $3::timestamptz
   AND ($6::uuid[] IS NULL OR jp.company_id = ANY($6::uuid[]))
 ORDER BY jp.updated_at, jp.id LIMIT $5::int
 """
-)
+CHANGES_SQL = BASE_SELECT + CHANGES_FILTER
+CHANGES_SQL_NO_TAXONOMY = BASE_SELECT_NO_TAXONOMY + CHANGES_FILTER
 
 SOURCE_COUNT_SQL = """SELECT count(*) FROM job_posting AS jp
 WHERE jp.is_active IS TRUE AND jp.first_seen_at >= $1::timestamptz
@@ -170,6 +190,12 @@ def public_row(row: asyncpg.Record) -> dict[str, Any]:
     body, status = body_evidence(row)
     titles = row["titles"] or []
     title = next((item.strip() for item in titles if isinstance(item, str) and item.strip()), None)
+    location_ids = row["location_ids"] or []
+    location_types = row["location_types"]
+    if location_types is None:
+        location_types = [None] * len(location_ids)
+    elif len(location_types) != len(location_ids):
+        raise FeedError("A posting has misaligned location types.")
     return {
         "id": row["id"],
         "companyId": row["company_id"],
@@ -185,9 +211,9 @@ def public_row(row: asyncpg.Record) -> dict[str, Any]:
         "lastSeenAt": stamp(row["last_seen_at"]) if row["last_seen_at"] else None,
         "updatedAt": stamp(row["updated_at"]),
         "locales": row["locales"] or [],
-        "locationDirectIds": row["location_ids"] or [],
+        "locationDirectIds": location_ids,
         "locationNames": row["location_names"] or [],
-        "locationTypes": row["location_types"] or [],
+        "locationTypes": location_types,
         "locationGeoTypes": row["location_geo_types"] or [],
         "employmentType": row["employment_type"],
         "salaryMin": row["salary_min"],
@@ -641,6 +667,11 @@ async def build_batch(
     count = 0
     complete = True
     async with pool.acquire() as conn, conn.transaction(isolation="repeatable_read", readonly=True):
+        taxonomy_table_count = await conn.fetchval(TAXONOMY_TABLE_COUNT_SQL)
+        if type(taxonomy_table_count) is not int or taxonomy_table_count not in (0, 4):
+            raise FeedError("Taxonomy display schema is partially present or unknown.")
+        snapshot_sql = SNAPSHOT_SQL if taxonomy_table_count == 4 else SNAPSHOT_SQL_NO_TAXONOMY
+        changes_sql = CHANGES_SQL if taxonomy_table_count == 4 else CHANGES_SQL_NO_TAXONOMY
         source_row_count = await conn.fetchval(
             SOURCE_COUNT_SQL, cutoff - timedelta(days=14), cutoff, companies
         )
@@ -653,7 +684,7 @@ async def build_batch(
             after_id = ZERO_UUID
             while True:
                 rows = await conn.fetch(
-                    SNAPSHOT_SQL,
+                    snapshot_sql,
                     cutoff - timedelta(days=14),
                     cutoff,
                     after_time,
@@ -675,7 +706,7 @@ async def build_batch(
             validated = validate_cursor(previous)
             after_time = parse_stamp(validated["updatedAt"])
             rows = await conn.fetch(
-                CHANGES_SQL,
+                changes_sql,
                 after_time,
                 UUID(validated["id"]),
                 cutoff,

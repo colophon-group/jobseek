@@ -87,9 +87,10 @@ class FakeAcquire:
 
 
 class FakeConnection:
-    def __init__(self, row=None, *, committed=False):
+    def __init__(self, row=None, *, committed=False, taxonomy_table_count=4):
         self.row = row
         self.writer_committed = committed
+        self.taxonomy_table_count = taxonomy_table_count
         self.visible = False
         self.events = []
 
@@ -98,6 +99,8 @@ class FakeConnection:
         return FakeTransaction(self)
 
     async def fetchval(self, sql, *args):
+        if sql == feed.TAXONOMY_TABLE_COUNT_SQL:
+            return self.taxonomy_table_count
         assert sql == feed.SOURCE_COUNT_SQL
         return int(
             self.visible
@@ -109,12 +112,21 @@ class FakeConnection:
     async def fetch(self, sql, *args):
         if self.row is None or not self.visible:
             return []
-        if sql == feed.SNAPSHOT_SQL:
-            return [self.row] if self.row["is_active"] and self.row["updated_at"] < args[1] else []
-        if sql == feed.CHANGES_SQL:
+        row = self.row
+        if sql in (feed.SNAPSHOT_SQL_NO_TAXONOMY, feed.CHANGES_SQL_NO_TAXONOMY):
+            row = dict(row)
+            row.update(
+                location_names=[None] * len(row["location_ids"] or []),
+                location_geo_types=[None] * len(row["location_ids"] or []),
+                occupation_name=None,
+                seniority_name=None,
+            )
+        if sql in (feed.SNAPSHOT_SQL, feed.SNAPSHOT_SQL_NO_TAXONOMY):
+            return [row] if row["is_active"] and row["updated_at"] < args[1] else []
+        if sql in (feed.CHANGES_SQL, feed.CHANGES_SQL_NO_TAXONOMY):
             after = (args[0], str(args[1]))
-            key = (self.row["updated_at"], self.row["id"])
-            return [self.row] if after < key and key[0] < args[2] else []
+            key = (row["updated_at"], row["id"])
+            return [row] if after < key and key[0] < args[2] else []
         raise AssertionError("Unexpected query")
 
 
@@ -132,6 +144,8 @@ class FakeManyConnection(FakeConnection):
         self.rows = rows
 
     async def fetchval(self, sql, *args):
+        if sql == feed.TAXONOMY_TABLE_COUNT_SQL:
+            return self.taxonomy_table_count
         assert sql == feed.SOURCE_COUNT_SQL
         return len(self.rows)
 
@@ -175,6 +189,9 @@ def test_public_allowlist_verifies_per_locale_hash_and_full_transport_digest():
     too_large = feed.public_row(source_row(body_bytes=feed.BODY_LIMIT + 1, body_html=None))
     assert too_large["body"] is None
     assert too_large["bodyStatus"] == "too_large"
+    assert feed.public_row(source_row(location_types=None))["locationTypes"] == [None]
+    with pytest.raises(feed.FeedError, match="misaligned location types"):
+        feed.public_row(source_row(location_types=["onsite", "remote"]))
 
 
 def test_scope_selector_is_exact_bounded_and_searchable_without_ids_in_manifest(tmp_path):
@@ -213,6 +230,53 @@ def test_cutoff_precedes_snapshot_so_a_writer_committing_during_capture_is_visib
     assert manifest["sourceScopeRowCount"] == 1
     assert len(rows) == 1
     assert manifest["toCursor"] == feed.cursor(cutoff)
+
+
+def test_missing_optional_taxonomy_tables_preserve_ids_with_unavailable_labels(tmp_path):
+    row = source_row(
+        occupation_id=42, occupation_name="Engineer", seniority_id=7, seniority_name="Senior"
+    )
+    connection = FakeConnection(row, committed=True, taxonomy_table_count=0)
+    cutoff = START + timedelta(seconds=2)
+
+    async def capture(_):
+        return cutoff
+
+    state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
+    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+        pending = asyncio.run(
+            feed.build_batch(
+                FakePool(connection), tmp_path, state, False, None, {"kind": "all_eligible"}
+            )
+        )
+    _, rows = read_rows(tmp_path, pending)
+    assert rows[0]["locationDirectIds"] == [2657896]
+    assert rows[0]["locationTypes"] == ["onsite"]
+    assert rows[0]["locationNames"] == [None]
+    assert rows[0]["locationGeoTypes"] == [None]
+    assert rows[0]["occupationId"] == 42
+    assert rows[0]["seniorityId"] == 7
+    assert rows[0]["occupationName"] is None
+    assert rows[0]["seniorityName"] is None
+
+
+def test_partially_present_taxonomy_schema_fails_closed(tmp_path):
+    connection = FakeConnection(source_row(), committed=True, taxonomy_table_count=1)
+
+    async def capture(_):
+        return START + timedelta(seconds=2)
+
+    state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
+    with (
+        patch.object(feed, "capture_cdc_snapshot_cutoff", capture),
+        pytest.raises(feed.FeedError, match="partially present"),
+    ):
+        asyncio.run(
+            feed.build_batch(
+                FakePool(connection), tmp_path, state, False, None, {"kind": "all_eligible"}
+            )
+        )
+    assert state["pending"] is None
 
 
 def test_pre_cutoff_active_writer_is_recovered_by_next_changes_batch(tmp_path):

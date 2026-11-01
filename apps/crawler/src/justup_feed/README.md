@@ -129,6 +129,11 @@ facts, plus `body` and `bodyStatus`. Unknown facts are null. No board IDs,
 monitor or scraper configuration, credentials, internal evidence, or user data
 are selected. `body` is null or `{locale,html,sha256}`. Its HTML is private
 server-side evidence; Justup normalizes it and never sends it as a user answer.
+The crawler-owned database can run without optional taxonomy display tables.
+In that case, location, occupation and seniority IDs and workplace
+types remain, while aligned location names/geographic types and occupation
+and seniority names are null. If only some display tables exist, export stops
+instead of mixing incomplete labels with stable IDs.
 
 The producer selects an uploaded per-locale description row from `descriptions`,
 recomputes the signed 64-bit hash from the first eight SHA-256 bytes over its
