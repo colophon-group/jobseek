@@ -126,6 +126,44 @@ func TestRealOwnedRichProvidersPersistPrepareAndSettle(t *testing.T) {
 	}
 }
 
+func TestRecruiteeExcludesEvergreenApplicationBeforePublication(t *testing.T) {
+	metadata := `{"api_base":"https://example.com","scraper_type":"skip","url_filter":{"exclude":"/o/open-application(?:$|[?/#])"}}`
+	f := privateRichPipelineFixture(t, "recruitee", metadata)
+	ctx := context.Background()
+	claim, err := f.a.Claim(ctx, queue.Simple)
+	if err != nil || claim == nil {
+		t.Fatal("native Recruitee claim unavailable", err)
+	}
+	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	roleURL := "https://example.com/o/general-manager"
+	evergreenURL := "https://example.com/o/open-application"
+	payload, err := json.Marshal(map[string]any{"offers": []any{
+		map[string]any{"status": "published", "careers_url": roleURL, "title": "General Manager", "description": "<p>Lead our hotel.</p>", "location": "Amsterdam"},
+		map[string]any{"status": "published", "careers_url": evergreenURL, "title": "Open Application", "description": "<p>Apply anytime.</p>", "location": "Amsterdam"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(payload)
+	})
+	result, err := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
+	if err != nil || result == nil || !result.Settled || result.Batches.Inserted != 1 {
+		t.Fatalf("filtered Recruitee cycle failed: %+v error=%v", result, err)
+	}
+	var count int
+	if err := f.pg.QueryRow(ctx, `SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND source_url IN ($2,$3)`, f.board, roleURL, evergreenURL).Scan(&count); err != nil || count != 1 {
+		t.Fatal("Recruitee published the evergreen application or lost the real role", err, count)
+	}
+	if err := f.pg.QueryRow(ctx, `SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND source_url=$2`, f.board, evergreenURL).Scan(&count); err != nil || count != 0 {
+		t.Fatal("evergreen application reached job_posting", err, count)
+	}
+	assertRichDeadlineAndLease(t, f, "recruitee")
+}
+
 func assertRichDeadlineAndLease(t *testing.T, f nativePipelineFixture, provider string, workers ...queue.WorkerType) {
 	t.Helper()
 	worker := queue.Simple

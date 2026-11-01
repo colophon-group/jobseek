@@ -59,3 +59,44 @@ func TestTenantProfilesRejectUnwiredDetailTransportAndConfiguration(t *testing.T
 		}
 	}
 }
+
+func TestRecruiteeURLExclusionIsAdmittedAndBound(t *testing.T) {
+	config := profileConfig()
+	config["crawler_type"] = "recruitee"
+	config["domain"], config["throttle_key"] = "recruitee", "recruitee"
+	config["board_url"] = "https://livezoku.recruitee.com/"
+	config["metadata"] = `{"slug":"livezoku","scraper_type":"skip","url_filter":{"exclude":"/o/open-application(?:$|[?/#])"}}`
+	if err := ValidateNativeBoard(profileBoardID, config); err != nil {
+		t.Fatalf("Zoku registry row rejected: %v", err)
+	}
+	profile, err := InspectRichMonitor(profileBoardID, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules, err := FeedMonitorURLRules(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		url  string
+		keep bool
+	}{
+		{"https://livezoku.recruitee.com/o/open-application", false},
+		{"https://livezoku.recruitee.com/o/open-application?source=board", false},
+		{"https://livezoku.recruitee.com/o/general-manager", true},
+	} {
+		keep, err := rules.FilterURL(tc.url)
+		if err != nil || keep != tc.keep {
+			t.Fatalf("Zoku URL filter %s: keep=%t error=%v", tc.url, keep, err)
+		}
+	}
+	config["metadata"] = `{"slug":"livezoku","scraper_type":"skip","url_filter":{"exclude":"/o/another-role$"}}`
+	changed, err := InspectRichMonitor(profileBoardID, config)
+	if err != nil || changed.EffectiveConfigSHA256 == profile.EffectiveConfigSHA256 {
+		t.Fatal("Recruitee filter changed without revoking the profile binding", err)
+	}
+	config["metadata"] = `{"slug":"livezoku","scraper_type":"skip","url_filter":{"exclude":"["}}`
+	if err := ValidateNativeBoard(profileBoardID, config); err == nil {
+		t.Fatal("invalid Recruitee filter passed native registry admission")
+	}
+}
