@@ -5,6 +5,9 @@ import pytest
 
 from src.core.monitors.peoplesoft import (
     PeopleSoftBoard,
+    _business_unit_facets,
+    _facet_form,
+    _parse_listing_page,
     can_handle,
     discover,
     parse_listing,
@@ -154,3 +157,131 @@ async def test_monitor_and_scraper_bootstrap_anonymous_session():
     assert continuation_posts == 2
     assert detail_url is not None and "JobOpeningId=699007" in detail_url
     assert content.description and "Design flight systems" in content.description
+
+
+NYC_URL = (
+    "https://careers.nychhc.org/psc/hrtam/EMPLOYEE/HRMS/c/"
+    "HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL"
+)
+
+
+def _partition_page(
+    ids: list[int], *, total: int = 4, unit: str | None = None, bad_duplicate: bool = False
+) -> str:
+    rows = "".join(
+        f"""<li id="HRS_AGNT_RSLT_I$0_row_{index}">
+        <span id="SCH_JOB_TITLE${index}">{"Changed" if bad_duplicate and index else "Nurse"}</span>
+        <span id="HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID${index}">{job_id}</span>
+        <span id="LOCATION${index}">Queens</span>
+        <span id="HRS_BU_DESCR${index}">{unit or "ELMHURST"}</span>
+        <span id="HRS_CLS_DT_DESCR${index}">12/31/2026</span>
+        </li>"""
+        for index, job_id in enumerate(ids)
+    )
+    facets = """<div class="facet_group_box"><h2>Business Unit</h2>
+      <input type="checkbox" id="PTS_SELECT$5" name="PTS_SELECT$5"
+        aria-label="Apply ELMHURST (2) filter" />
+      <input type="checkbox" id="PTS_SELECT$6" name="PTS_SELECT$6"
+        aria-label="Apply WOODHULL (2) filter" /></div>"""
+    return f"""<html><body><h2>Search Results List</h2><b>{total}</b> jobs found
+    <form><input name="ICStateNum" value="1" />{facets}
+    <div id="HRS_AGNT_RSLT_I">{rows}</div></form></body></html>"""
+
+
+def test_business_unit_facet_validates_source_counts_and_identical_duplicates():
+    board = peoplesoft_listing_from_url(NYC_URL)
+    assert board is not None
+    page = _partition_page([1001])
+    assert _business_unit_facets(page, 4) == {
+        "ELMHURST": ("PTS_SELECT$5", 2),
+        "WOODHULL": ("PTS_SELECT$6", 2),
+    }
+    assert ("PTS_SELECT$5", "Y") in _facet_form(page, "PTS_SELECT$5")
+    with pytest.raises(ValueError, match="counts do not reconcile"):
+        _business_unit_facets(page, 5)
+    with pytest.raises(ValueError, match="ceiling"):
+        _business_unit_facets(page.replace("WOODHULL (2)", "WOODHULL (500)"), 502)
+    duplicate = _partition_page([2001, 2001], total=2, unit="WOODHULL")
+    with pytest.raises(ValueError, match="repeated"):
+        _parse_listing_page(duplicate, board)
+    assert len(_parse_listing_page(duplicate, board, allow_identical_duplicates=True)[0]) == 2
+    with pytest.raises(ValueError, match="conflicting"):
+        _parse_listing_page(
+            _partition_page([2001, 2001], total=2, unit="WOODHULL", bad_duplicate=True),
+            board,
+            allow_identical_duplicates=True,
+        )
+
+
+async def test_business_unit_discovery_reconciles_raw_rows_and_unique_ids():
+    bootstraps = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal bootstraps
+        if request.url.path.startswith("/psp/"):
+            bootstraps += 1
+            return httpx.Response(200, text="new anonymous session")
+        if request.method == "GET":
+            return httpx.Response(200, text=_partition_page([1001]))
+        body = request.content.decode()
+        if "ICAction=PTS_SELECT%245" in body:
+            return httpx.Response(200, text=_partition_page([1001, 1002], total=2))
+        if "ICAction=PTS_SELECT%246" in body:
+            return httpx.Response(200, text=_partition_page([2001, 2001], total=2, unit="WOODHULL"))
+        raise AssertionError(f"unexpected form action: {body}")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(
+            {
+                "board_url": NYC_URL,
+                "metadata": {
+                    "partition_by_business_unit": True,
+                    "allow_identical_duplicate_ids": ["2001"],
+                },
+            },
+            client,
+        )
+    assert bootstraps == 3  # Each public facet starts from a fresh unfiltered session.
+    assert [job.metadata["job_id"] for job in jobs] == ["1001", "1002", "2001"]
+    assert [job.metadata["business_unit"] for job in jobs] == [
+        "ELMHURST",
+        "ELMHURST",
+        "WOODHULL",
+    ]
+
+
+@pytest.mark.parametrize(
+    "failure", ["cross_unit", "snapshot_drift", "missing_facet", "missing_tail"]
+)
+async def test_business_unit_discovery_fails_closed(failure: str):
+    listings = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal listings
+        if request.url.path.startswith("/psp/"):
+            return httpx.Response(200, text="new anonymous session")
+        if request.method == "GET":
+            listings += 1
+            page = _partition_page(
+                [1001], total=5 if failure == "snapshot_drift" and listings == 2 else 4
+            )
+            if failure == "missing_facet" and listings == 2:
+                page = page.replace("<h2>Business Unit</h2>", "<h2>Other facet</h2>")
+            return httpx.Response(200, text=page)
+        body = request.content.decode()
+        if "ICAction=PTS_SELECT%245" in body:
+            ids = [1001] if failure == "missing_tail" else [1001, 1002]
+            return httpx.Response(200, text=_partition_page(ids, total=2))
+        if "ICAction=PTS_SELECT%246" in body:
+            ids = [1001, 2001] if failure == "cross_unit" else [2001, 2001]
+            return httpx.Response(200, text=_partition_page(ids, total=2, unit="WOODHULL"))
+        raise AssertionError(body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(
+            ValueError, match="snapshot changed|missing|crosses|count mismatch|reconcile"
+        ):
+            await discover(
+                {"board_url": NYC_URL, "metadata": {"partition_by_business_unit": True}},
+                client,
+            )
