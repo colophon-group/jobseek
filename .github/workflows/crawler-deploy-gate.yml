@@ -2,11 +2,6 @@ name: Crawler Deploy Gate
 
 on:
   workflow_dispatch:
-    inputs:
-      pr:
-        description: Pull request to reconcile after a bot-authored head update (omit for a full sweep)
-        required: false
-        type: string
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   issues:
@@ -39,10 +34,9 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
 
-      - name: Re-evaluate the requested PR or every open PR at its exact head
+      - name: Re-evaluate every open PR at its exact head
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR: ${{ inputs.pr || '' }}
           TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: .github/scripts/reconcile-crawler-deploy-gate.sh

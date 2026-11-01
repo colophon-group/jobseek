@@ -6,30 +6,25 @@ set -euo pipefail
 : "${REPO:?REPO is required}"
 : "${TARGET_URL:?TARGET_URL is required}"
 
-if [[ -n "${PR:-}" ]]; then
-  [[ "$PR" =~ ^[1-9][0-9]*$ ]] || {
-    echo "ERROR: invalid pull-request number in workflow dispatch" >&2
-    exit 1
-  }
-  prs="$PR"
-else
-  prs_json="$(
-    gh pr list --repo "$REPO" --state open --limit 1000 \
-      --json number
-  )" || {
-    echo "ERROR: could not list open pull requests" >&2
-    exit 1
-  }
-  jq -e '
-    type == "array" and
-    all(.[];
-      (.number | type == "number"))
-  ' <<<"$prs_json" >/dev/null || {
-    echo "ERROR: open pull-request query returned malformed JSON" >&2
-    exit 1
-  }
-  prs="$(jq -r '.[].number' <<<"$prs_json")"
-fi
+prs_json="$(
+  gh pr list --repo "$REPO" --state open --limit 1000 \
+    --json number,isDraft,headRefOid,statusCheckRollup
+)" || {
+  echo "ERROR: could not list open pull requests" >&2
+  exit 1
+}
+jq -e '
+  type == "array" and
+  all(.[];
+    (.number | type == "number") and
+    (.isDraft | type == "boolean") and
+    (.headRefOid | type == "string") and
+    (.statusCheckRollup | type == "array"))
+' <<<"$prs_json" >/dev/null || {
+  echo "ERROR: open pull-request query returned malformed JSON" >&2
+  exit 1
+}
+prs="$(jq -r '.[].number' <<<"$prs_json")"
 [[ -n "$prs" ]] || {
   echo "No open pull requests require crawler deployment reconciliation"
   exit 0
@@ -52,14 +47,30 @@ holds_json="$(read_holds)" || {
 }
 hold_count="$(jq length <<<"$holds_json")"
 
-# Hold and PR events reconcile every open PR; a bot-authored head update may
-# dispatch one PR. The single non-cancelling job concurrency group and live
-# hold re-read keep all status writes consistent with current repository state.
+# Every event reconciles every open PR. A pending run may be replaced by a
+# newer event in GitHub's non-cancelling concurrency group, so even a
+# bot-authored dispatch must sweep the queue to preserve hold convergence.
+# The single status writer and live hold re-read keep writes current.
 while IFS= read -r pr; do
   [[ "$pr" =~ ^[1-9][0-9]*$ ]] || {
     echo "ERROR: invalid pull-request number in reconciliation input" >&2
     exit 1
   }
+
+  # The bulk listing is sufficient to avoid a per-PR refresh when no write is
+  # needed: without a hold, an already-successful Gate on the listed current
+  # head is the desired state for a ready PR. Any missing, unknown or held
+  # context still takes the exact-head refresh and status-write path below.
+  if [[ "$hold_count" == 0 ]] && jq -e --argjson pr "$pr" '
+    .[] | select(.number == $pr) |
+    .isDraft == false and
+    ([.statusCheckRollup[]
+      | select(.__typename == "StatusContext" and .context == "Crawler Deploy Gate")
+      | .state] | last // "" | ascii_downcase) == "success"
+  ' <<<"$prs_json" >/dev/null; then
+    echo "PR #$pr crawler deployment gate unchanged"
+    continue
+  fi
 
   # Re-read state and identity immediately before evaluation. The queue listing
   # can be stale by the time a serialized run reaches a later PR.
