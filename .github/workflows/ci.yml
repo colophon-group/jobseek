@@ -1235,6 +1235,14 @@ jobs:
                       "monitor_type": "greenhouse", "monitor_config": "{}",
                   },
               ),
+              "source_coverage_links.csv": (
+                  ["company_slug", "board_slug", "public_url", "provenance"],
+                  {
+                      "company_slug": "ci-staged", "board_slug": "ci-staged",
+                      "public_url": "https://careers.example.com/team/jobs",
+                      "provenance": "employer-careers",
+                  },
+              ),
               "occupation_domains.csv": (
                   ["slug", "en", "de", "fr", "it"],
                   {"slug": "sentinel-domain", "en": "Sentinel Domain"},
@@ -1309,6 +1317,9 @@ jobs:
           sync._require_installed_sync_data_mount()
           assert sync._load_companies()["slug"].to_list() == ["ci-staged"]
           assert sync._load_boards()["board_slug"].to_list() == ["ci-staged"]
+          assert sync._load_source_coverage_links()["public_url"].to_list() == [
+              "https://careers.example.com/team/jobs"
+          ]
           assert sync._load_occupation_domains()["slug"].to_list() == ["sentinel-domain"]
           assert sync._load_occupations()["slug"].to_list() == ["sentinel-occupation"]
           assert sync._load_seniority()["slug"].to_list() == ["sentinel-seniority"]

@@ -141,6 +141,9 @@ func TestRegistryNativeChangedRepositoryBoards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// This transaction stages only changed boards. Public links for the full
+	// catalogue are exercised by TestRegistryPostgresActualRepository.
+	tables["source_coverage_links"] = registryTable{Columns: tables["source_coverage_links"].Columns}
 	ctx, conn, _ := registryTestDatabase(t)
 	effects, err := commitRegistryWithNativeEligibility(ctx, conn, tables, append(plan, companies...), boards, true)
 	if err != nil {
@@ -184,9 +187,10 @@ func TestRegistryNativePreparedBeisenAndDetailEligibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tables := emptyReviewedSourceLinks(t)
 	const beisen = `{"tenant":"huazhu1","variant":"modern","portal_id":"391d099e-32e1-4794-9556-982831a00afe","tenant_id":104091}`
 	badOrigin := nativeFixtureBoards(t, "h-world-group,h-world-group-china-campus,https://campus.hworld.com/jobs,beisen,"+nativeCSVCell(beisen)+",skip,\n")
-	if _, err = commitRegistryWithNativeEligibility(ctx, conn, nil, plan, badOrigin, true); err == nil {
+	if _, err = commitRegistryWithNativeEligibility(ctx, conn, tables, plan, badOrigin, true); err == nil {
 		t.Fatal("custom-origin Beisen board passed the canonical native transaction")
 	} else if got := nativeRepositoryFailure(err, badOrigin).Error(); got != "native registry eligibility rejected CSV row 1 board h-world-group-china-campus: monitor unsupported" {
 		t.Fatal(got)
@@ -198,7 +202,7 @@ func TestRegistryNativePreparedBeisenAndDetailEligibility(t *testing.T) {
 
 	valid := nativeFixtureBoards(t, "h-world-group,h-world-group-china-social,https://huazhu1.zhiye.com/jobs,beisen,"+nativeCSVCell(beisen)+",skip,\n"+
 		"h-world-group,h-world-group-control,https://job-boards.greenhouse.io/hworldcontrol,greenhouse,"+nativeCSVCell(`{"token":"hworldcontrol"}`)+",skip,\n")
-	effects, err := commitRegistryWithNativeEligibility(ctx, conn, nil, plan, valid, true)
+	effects, err := commitRegistryWithNativeEligibility(ctx, conn, tables, plan, valid, true)
 	if err != nil || len(effects.Schedules) != 2 {
 		t.Fatalf("valid Beisen and skip-detail control rejected: %v", err)
 	}
@@ -207,7 +211,7 @@ func TestRegistryNativePreparedBeisenAndDetailEligibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	effects, err = commitRegistryWithNativeEligibility(ctx, conn, nil, plan, valid[:1], true)
+	effects, err = commitRegistryWithNativeEligibility(ctx, conn, tables, plan, valid[:1], true)
 	if err != nil || len(effects.Schedules) != 1 || effects.Schedules[0].BoardID != beisenID {
 		if err != nil {
 			t.Fatalf("native resync lost canonical board identity: %v", nativeRepositoryFailure(err, valid[:1]))
@@ -223,7 +227,7 @@ func TestRegistryNativePreparedBeisenAndDetailEligibility(t *testing.T) {
 	}
 
 	badDetail := nativeFixtureBoards(t, "h-world-group,h-world-group-bad-detail,https://job-boards.greenhouse.io/hworldcontrol,greenhouse,"+nativeCSVCell(`{"token":"hworldcontrol"}`)+",unsupported-fixture,\n")
-	if _, err = commitRegistryWithNativeEligibility(ctx, conn, nil, plan, badDetail, true); err == nil {
+	if _, err = commitRegistryWithNativeEligibility(ctx, conn, tables, plan, badDetail, true); err == nil {
 		t.Fatal("unsupported detail passed canonical native transaction")
 	} else if got := nativeRepositoryFailure(err, badDetail).Error(); got != "native registry eligibility rejected CSV row 1 board h-world-group-bad-detail: detail unsupported" {
 		t.Fatal(got)

@@ -62,7 +62,7 @@ func TestCoverageArtifactIsByteHashedAndImmutable(t *testing.T) {
 	}
 	end := time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)
 	path := filepath.Join(dir, "2026-11-02.json")
-	snapshot := coverageSnapshot{SchemaVersion: 1, SourceVersion: sourceCoverageVersion, SnapshotID: "coverage-test", AsOf: coverageTime(end), GeneratedAt: coverageTime(end.Add(time.Hour)), Companies: []coverageCompany{{ID: "id", Name: "A & Ü", URL: "https://example.com"}}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
+	snapshot := coverageSnapshot{SchemaVersion: 2, SourceVersion: sourceCoverageVersion, SnapshotID: "coverage-test", AsOf: coverageTime(end), GeneratedAt: coverageTime(end.Add(time.Hour)), Companies: []coverageCompany{{ID: "id", Name: "A & Ü", URL: "https://example.com"}}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
 	raw, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -157,5 +157,42 @@ func TestCoverageAllowlistAndHomepage(t *testing.T) {
 	}
 	if !validCoverageCompanyName("A & Ü") || validCoverageCompanyName("Hidden<name>") || validCoverageCompanyName("Line\nbreak") {
 		t.Fatal("company name safety contract changed")
+	}
+}
+
+func TestReviewedCareerLinkRegistryRejectsUnsafeOrAmbiguousSources(t *testing.T) {
+	parse := func(body string) ([]sourceCoverageLinkInput, error) {
+		t.Helper()
+		table, err := parseRegistryCSV([]byte("company_slug,board_slug,public_url,provenance\n" + body))
+		if err != nil {
+			return nil, err
+		}
+		return prepareSourceCoverageLinks(table)
+	}
+	links, err := parse("acme,acme-careers,https://Careers.Example.com:443/team/jobs,employer-careers\n")
+	if err != nil || len(links) != 1 || links[0].URL != "https://careers.example.com/team/jobs" {
+		t.Fatalf("non-root reviewed link was not canonical: %+v %v", links, err)
+	}
+	for _, raw := range []string{
+		"http://example.com/jobs", "https://user:pass@example.com/jobs",
+		"https://127.0.0.1/jobs", "https://service.internal/jobs",
+		"https://example.test/jobs", "https://careers.example/jobs", "https://example.com:8080/jobs",
+		"https://example.com/jobs?token=x", "https://example.com/jobs#fragment",
+		"https://example.com/jobs%2Fprivate", "https://example.com/a/../jobs",
+		"https://example.com/jobs here",
+		"https://example.com/jobs\\private", "https://example.com/jobs\x00secret",
+	} {
+		if _, err := parse("acme,acme-careers," + raw + ",employer-careers\n"); err == nil {
+			t.Fatalf("unsafe public career-page URL accepted: %q", raw)
+		}
+	}
+	for _, body := range []string{
+		"acme,acme-careers,https://example.com/jobs,employer-careers\nacme,acme-careers,https://example.com/careers,ats-careers\n",
+		"acme,acme-careers,https://example.com/jobs,unreviewed\n",
+		"acme,,https://example.com/jobs,employer-careers\n",
+	} {
+		if _, err := parse(body); err == nil {
+			t.Fatalf("invalid public link registry accepted: %q", body)
+		}
 	}
 }

@@ -25,6 +25,15 @@ func (tx registryLostCommitAck) Commit(ctx context.Context) error {
 
 type registryLostAckConnection struct{ Conn *pgx.Conn }
 
+func emptyReviewedSourceLinks(t *testing.T) map[string]registryTable {
+	t.Helper()
+	table, err := parseRegistryCSV([]byte("company_slug,board_slug,public_url,provenance\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return map[string]registryTable{"source_coverage_links": table}
+}
+
 func (c registryLostAckConnection) Begin(ctx context.Context) (pgx.Tx, error) {
 	tx, err := c.Conn.Begin(ctx)
 	if err != nil {
@@ -43,7 +52,7 @@ func TestRegistryPostgresAmbiguousCommitCannotPublish(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	effects, err := commitRegistry(ctx, registryLostAckConnection{conn}, map[string]registryTable{}, plan, nil)
+	effects, err := commitRegistry(ctx, registryLostAckConnection{conn}, emptyReviewedSourceLinks(t), plan, nil)
 	if err == nil || len(effects.Schedules) != 0 || len(effects.Orphans) != 0 {
 		t.Fatalf("ambiguous commit authorized publication: %+v %v", effects, err)
 	}
@@ -141,6 +150,7 @@ func TestRegistryPostgresRedisEndToEndAndFailureBoundary(t *testing.T) {
 	}
 	write("companies", "slug,name\nfixture,Fixture\n")
 	write("boards", "company_slug,board_slug,board_url,monitor_type\nfixture,fixture,https://fixture.invalid/jobs,rss\n")
+	write("source_coverage_links", "company_slug,board_slug,public_url,provenance\n")
 	var schema string
 	if err := conn.QueryRow(ctx, "SHOW search_path").Scan(&schema); err != nil {
 		t.Fatal(err)

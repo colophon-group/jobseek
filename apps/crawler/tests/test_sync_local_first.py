@@ -90,6 +90,7 @@ def _patch_inputs(monkeypatch) -> tuple[pl.DataFrame, pl.DataFrame]:
     monkeypatch.setattr(sync, "_load_company_descriptions", lambda: pl.DataFrame())
     monkeypatch.setattr(sync, "_load_companies", lambda: companies)
     monkeypatch.setattr(sync, "_load_boards", lambda: boards)
+    monkeypatch.setattr(sync, "_load_source_coverage_links", lambda: pl.DataFrame())
     monkeypatch.setattr(sync, "setup_logging", lambda *_args: None)
     monkeypatch.setattr(sync, "close_all_pools", AsyncMock())
     monkeypatch.setattr(sync, "close_redis", AsyncMock())
