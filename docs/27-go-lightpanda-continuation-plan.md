@@ -128,6 +128,30 @@ company-intake work, rather than new migration completion requirements.
 
 ## Remaining delivery work
 
+### Requested capacity increase — candidate 0.13.1149
+
+The operator authorized increasing the Go crawler where measured headroom can
+serve outstanding demand, while preserving Justup's demo reservation. The
+17:25 UTC readback has 1,667,322 eligible details due, including 1,584,678 overdue
+a day. The preceding nine-minute normal-traffic window covered all four hosts:
+the crawler host has eight CPUs, averaged 2.88 busy cores, and retained about
+11.3 GiB available memory. The Go worker averaged 1.51 cores and peaked at
+432 MiB working memory under its existing two-CPU/one-GiB limit.
+
+Candidate 1149 gives the ordinary Go worker four CPUs, two GiB memory, a one-GiB
+Go memory target, 120 discovery slots and 30 monitor slots. Per-host throttles,
+connection budgets and the four browser execution slots remain unchanged.
+This is a bounded initial increase; installation, throughput, queue age and
+downstream pressure must be checked after the supported rollout before claiming
+that demand is met.
+
+Justup's backend coordinator confirmed that its preview allocation is on the
+separate ARM renderer host: reserve 0.5 CPU, one GiB memory, zero swap, its two-GiB
+app filesystem and an eight-GiB root free-space floor. The renderer stays at one
+CPU/one GiB. This candidate changes only the crawler host allocation; it does
+not rename, relocate or restart Justup or renderer units. Cross-project hosting
+coordination and fresh required gates remain prerequisites for rollout.
+
 1. **Resolve or classify Oracle ADF's observed failure.** At 15:57 it remains
    enabled and quarantined with 11 failures; last check October 31 at 17:10:15,
    next normal retry **November 1 at 17:10:18.641208 UTC**. The proven Go HTTP

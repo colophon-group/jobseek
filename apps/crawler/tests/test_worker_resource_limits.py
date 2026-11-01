@@ -19,7 +19,7 @@ def test_retained_legacy_worker_concurrency_is_bounded_for_one_gibibyte_limit():
         assert worker["environment"]["MONITOR_CONCURRENCY"] == "5"
 
 
-def test_native_owner_preserves_aggregate_http_worker_capacity():
+def test_native_owner_scales_http_capacity_within_dedicated_host_budget():
     compose_path = Path(__file__).parents[1] / "docker-compose.yml"
     services = yaml.safe_load(compose_path.read_text())["services"]
     retained_legacy = yaml.safe_load(
@@ -31,7 +31,7 @@ def test_native_owner_preserves_aggregate_http_worker_capacity():
             int(retained_legacy[name]["environment"][setting])
             for name in ("worker-1", "worker-2", "worker-3")
         )
-        assert int(native["environment"][setting]) == previous_capacity
-    assert native["cpus"] == 2.0
-    assert native["mem_limit"] == "1g"
-    assert native["environment"]["GOMEMLIMIT"] == "512MiB"
+        assert int(native["environment"][setting]) == 2 * previous_capacity
+    assert native["cpus"] == 4.0
+    assert native["mem_limit"] == "2g"
+    assert native["environment"]["GOMEMLIMIT"] == "1GiB"

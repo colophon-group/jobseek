@@ -157,13 +157,13 @@ services:
       ORDINARY_GO_WORKER_MODE: ${ORDINARY_GO_WORKER_MODE:-enabled}
       ORDINARY_GO_RENDERED_DETAILS: ${ORDINARY_GO_RENDERED_DETAILS:-}
       METRICS_PORT: "9104"
-      # Replace the aggregate capacity of all three HTTP workers, rather than
-      # one worker's capacity. Per-host throttle and monitor slots still apply.
-      DISCOVERY_CONCURRENCY: "60"
-      MONITOR_CONCURRENCY: "15"
-      # Collect before the 1 GiB container limit; leave room for response
+      # Use measured headroom on the dedicated 8-vCPU crawler host. Existing
+      # per-host throttles and the separate renderer's four slots still apply.
+      DISCOVERY_CONCURRENCY: "120"
+      MONITOR_CONCURRENCY: "30"
+      # Collect before the 2 GiB container limit; leave room for response
       # buffers, native/SQLite memory and transient concurrent inventories.
-      GOMEMLIMIT: 512MiB
+      GOMEMLIMIT: 1GiB
     volumes:
       - type: bind
         source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/jobseek-lightpanda-disabled-credentials}/ca.pem
@@ -204,9 +204,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    mem_limit: 1g
-    # Keep parsing bounded to two cores and the existing memory envelope.
-    cpus: 2.0
+    mem_limit: 2g
+    # Leave four host CPUs for Redis, control work and operating-system headroom.
+    # Justup's demo reservation is on the separate renderer host.
+    cpus: 4.0
 
   # The former Python parents supervised this same native reaper. Keep one
   # independent owner when the ordinary worker replaces those parents.
