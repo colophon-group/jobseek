@@ -305,6 +305,9 @@ function runCrawlerDeployReconciler({
   holds = [],
   prs = null,
   statuses = [],
+  targetPr = "",
+  finalPrOverride = null,
+  lateHolds = null,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-reconcile-"));
   const log = join(dir, "gh.log");
@@ -319,6 +322,16 @@ if [[ "$1 $2" == "pr list" ]]; then
   exit 0
 fi
 if [[ "$1 $2" == "pr view" ]]; then
+  views=0
+  if [[ -f "$MOCK_PR_VIEW_COUNT" ]]; then
+    views=$(cat "$MOCK_PR_VIEW_COUNT")
+  fi
+  views=$((views + 1))
+  printf '%s' "$views" > "$MOCK_PR_VIEW_COUNT"
+  if (( views > 1 )) && [[ -n "$MOCK_FINAL_PR_JSON" ]]; then
+    printf '%s' "$MOCK_FINAL_PR_JSON"
+    exit 0
+  fi
   jq -c --argjson number "$3" --argjson statuses "$MOCK_STATUSES" '
     .[] | select(.number == $number) |
     {state: (.state // "OPEN"), isDraft, headRefOid,
@@ -339,6 +352,16 @@ if [[ "$1" == "api" ]]; then
   exit 0
 fi
 if [[ "$1 $2" == "issue list" ]]; then
+  reads=0
+  if [[ -f "$MOCK_HOLD_READ_COUNT" ]]; then
+    reads=$(cat "$MOCK_HOLD_READ_COUNT")
+  fi
+  reads=$((reads + 1))
+  printf '%s' "$reads" > "$MOCK_HOLD_READ_COUNT"
+  if (( reads > 2 )) && [[ -n "$MOCK_LATE_HOLDS" ]]; then
+    printf '%s' "$MOCK_LATE_HOLDS"
+    exit 0
+  fi
   printf '%s' "$MOCK_HOLDS"
   exit 0
 fi
@@ -363,8 +386,13 @@ exit 1
         PATH: `${dir}:${process.env.PATH}`,
         GH_TOKEN: "test-token",
         REPO: "colophon-group/jobseek",
+        PR: targetPr,
         TARGET_URL: "https://example.test/run/1",
         MOCK_GH_LOG: log,
+        MOCK_PR_VIEW_COUNT: join(dir, "pr-views"),
+        MOCK_FINAL_PR_JSON: finalPrOverride ? JSON.stringify(finalPrOverride) : "",
+        MOCK_HOLD_READ_COUNT: join(dir, "hold-reads"),
+        MOCK_LATE_HOLDS: lateHolds ? JSON.stringify(lateHolds) : "",
         MOCK_PRS: JSON.stringify(mockPrs),
         MOCK_FILES: files.join("\n"),
         MOCK_HOLDS: JSON.stringify(holds),
@@ -2729,8 +2757,9 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
   assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });
 
-test("bot-authored company branch updates dispatch path-aware CI", () => {
+test("bot-authored company branch updates dispatch both required gates", () => {
   assert.match(dispatchPrChecksScript, /gh workflow run ci\.yml --repo "\$REPO" --ref "\$branch" -f "pr=\$PR"/);
+  assert.match(dispatchPrChecksScript, /gh workflow run crawler-deploy-gate\.yml --repo "\$REPO" --ref main -f "pr=\$PR"/);
   assert.doesNotMatch(dispatchPrChecksScript, /codeql\.yml/);
   assert.doesNotMatch(dispatchPrChecksScript, /add-company\/\*/);
   assert.match(dispatchPrChecksScript, /"\$BRANCH" != "\$pr_branch"/);
@@ -2776,6 +2805,7 @@ test("trusted image cleanup dispatches add-company and coding-mode PRs", () => {
     const result = runDispatchPrChecks({ branch });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.calls, /workflow run ci\.yml/);
+    assert.match(result.calls, /workflow run crawler-deploy-gate\.yml --repo colophon-group\/jobseek --ref main -f pr=123/);
     assert.match(result.calls, new RegExp(`--ref ${branch.replace("/", "\\/")}`));
     assert.match(result.calls, /-f pr=123/);
   }
@@ -3260,6 +3290,8 @@ test("main branch ruleset requires CI and the crawler deployment gate", () => {
 });
 
 test("crawler deploy gate runs trusted and path-aware on PR state changes", () => {
+  assert.match(crawlerDeployGateWorkflow, /workflow_dispatch:\n    inputs:\n      pr:/);
+  assert.match(crawlerDeployGateWorkflow, /PR: \$\{\{ inputs\.pr \|\| '' \}\}/);
   assert.match(crawlerDeployGateWorkflow, /pull_request_target:/);
   assert.match(crawlerDeployGateWorkflow, /issues:/);
   assert.match(crawlerDeployGateWorkflow, /ready_for_review/);
@@ -3274,7 +3306,7 @@ test("crawler deploy gate runs trusted and path-aware on PR state changes", () =
   assert.match(crawlerDeployGateWorkflow, /statuses: write/);
   assert.match(crawlerDeployGateWorkflow, /group: crawler-deploy-gate-status-writer/);
   assert.match(crawlerDeployGateWorkflow, /cancel-in-progress: false/);
-  assert.match(crawlerDeployGateWorkflow, /Re-evaluate every open PR at its exact head/);
+  assert.match(crawlerDeployGateWorkflow, /Re-evaluate the requested PR or every open PR at its exact head/);
   assert.match(crawlerDeployGateWorkflow, /reconcile-crawler-deploy-gate\.sh/);
   assert.match(reconcileCrawlerDeployGateScript, /statuses\/\$head_sha/);
   assert.match(reconcileCrawlerDeployGateScript, /context="Crawler Deploy Gate"/);
@@ -3524,6 +3556,52 @@ test("crawler gate skips file classification for a new ready PR when no hold exi
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.calls, /statuses\/a{40}.*-f state=success/);
   assert.doesNotMatch(result.calls, /\/pulls\//);
+});
+
+test("targeted crawler gate dispatch reconciles only the requested PR", () => {
+  const result = runCrawlerDeployReconciler({
+    targetPr: "456",
+    prs: [
+      { number: 123, isDraft: false, headRefOid: "a".repeat(40) },
+      { number: 456, isDraft: false, headRefOid: "b".repeat(40) },
+    ],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.calls, /pr list|pr view 123|statuses\/a{40}/);
+  assert.match(result.calls, /pr view 456/);
+  assert.match(result.calls, /statuses\/b{40}.*-f state=success/);
+});
+
+test("targeted crawler gate rejects an invalid pull request number", () => {
+  const result = runCrawlerDeployReconciler({ targetPr: "123oops" });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /invalid pull-request number/);
+  assert.equal(result.calls, "");
+});
+
+test("crawler gate does not write status after a head or draft transition", () => {
+  for (const finalPrOverride of [
+    { state: "OPEN", isDraft: false, headRefOid: "b".repeat(40) },
+    { state: "OPEN", isDraft: true, headRefOid: "a".repeat(40) },
+  ]) {
+    const result = runCrawlerDeployReconciler({ finalPrOverride });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /changed before gate status write/);
+    assert.doesNotMatch(result.calls, /\/statuses\//);
+  }
+});
+
+test("crawler gate fails closed when a deployment hold opens before status write", () => {
+  const result = runCrawlerDeployReconciler({
+    lateHolds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.calls, /statuses\/a{40}.*-f state=failure/);
+  assert.doesNotMatch(result.calls, /statuses\/a{40}.*-f state=success/);
 });
 
 test("a stale queued evaluator converges every PR to the current hold state", () => {

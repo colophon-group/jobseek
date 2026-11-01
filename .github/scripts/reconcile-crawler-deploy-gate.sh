@@ -6,23 +6,30 @@ set -euo pipefail
 : "${REPO:?REPO is required}"
 : "${TARGET_URL:?TARGET_URL is required}"
 
-prs_json="$(
-  gh pr list --repo "$REPO" --state open --limit 1000 \
-    --json number
-)" || {
-  echo "ERROR: could not list open pull requests" >&2
-  exit 1
-}
-jq -e '
-  type == "array" and
-  all(.[];
-    (.number | type == "number"))
-' <<<"$prs_json" >/dev/null || {
-  echo "ERROR: open pull-request query returned malformed JSON" >&2
-  exit 1
-}
-
-prs="$(jq -r '.[].number' <<<"$prs_json")"
+if [[ -n "${PR:-}" ]]; then
+  [[ "$PR" =~ ^[1-9][0-9]*$ ]] || {
+    echo "ERROR: invalid pull-request number in workflow dispatch" >&2
+    exit 1
+  }
+  prs="$PR"
+else
+  prs_json="$(
+    gh pr list --repo "$REPO" --state open --limit 1000 \
+      --json number
+  )" || {
+    echo "ERROR: could not list open pull requests" >&2
+    exit 1
+  }
+  jq -e '
+    type == "array" and
+    all(.[];
+      (.number | type == "number"))
+  ' <<<"$prs_json" >/dev/null || {
+    echo "ERROR: open pull-request query returned malformed JSON" >&2
+    exit 1
+  }
+  prs="$(jq -r '.[].number' <<<"$prs_json")"
+fi
 [[ -n "$prs" ]] || {
   echo "No open pull requests require crawler deployment reconciliation"
   exit 0
@@ -45,10 +52,9 @@ holds_json="$(read_holds)" || {
 }
 hold_count="$(jq length <<<"$holds_json")"
 
-# Every event reconciles every open PR from current repository state. Combined
-# with the workflow's single non-cancelling job concurrency group, this keeps an
-# older evaluator from overwriting a newer hold decision and makes a replacement
-# pending run converge the entire queue rather than only its triggering PR.
+# Hold and PR events reconcile every open PR; a bot-authored head update may
+# dispatch one PR. The single non-cancelling job concurrency group and live
+# hold re-read keep all status writes consistent with current repository state.
 while IFS= read -r pr; do
   [[ "$pr" =~ ^[1-9][0-9]*$ ]] || {
     echo "ERROR: invalid pull-request number in reconciliation input" >&2
@@ -146,6 +152,33 @@ while IFS= read -r pr; do
   ' <<<"$status_json" >/dev/null; then
     echo "PR #$pr crawler deployment gate unchanged"
     continue
+  fi
+
+  # A queued evaluator must not publish to a head that was replaced while it
+  # inspected holds and statuses. A later PR or trusted dispatch run will
+  # evaluate the new snapshot. Recheck holds again immediately before a new
+  # success; a hold may have opened while the status API was being read.
+  final_pr_json="$(gh pr view "$pr" --repo "$REPO" \
+    --json state,isDraft,headRefOid)" || {
+    echo "ERROR: could not refresh PR #$pr before status write" >&2
+    exit 1
+  }
+  if ! jq -e --arg sha "$head_sha" --argjson draft "$draft" '
+    .state == "OPEN" and .isDraft == $draft and .headRefOid == $sha
+  ' <<<"$final_pr_json" >/dev/null; then
+    echo "PR #$pr changed before gate status write; retry on the next event"
+    continue
+  fi
+  if [[ "$state" == success ]]; then
+    final_holds="$(read_holds)" || {
+      echo "ERROR: could not refresh crawler deployment holds before status write" >&2
+      exit 1
+    }
+    if [[ "$(jq length <<<"$final_holds")" != 0 ]] && \
+       ! PR="$pr" DRAFT=false .github/scripts/check-crawler-deploy-gate.sh; then
+      state=failure
+      description="Crawler deployment is held"
+    fi
   fi
 
   gh api --method POST "repos/$REPO/statuses/$head_sha" \

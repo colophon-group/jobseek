@@ -58,6 +58,11 @@ The `maybe-auto-merge.yml` workflow:
 6. Exits cleanly when checks are still pending; the next workflow wake retries
    without operator action. One conflicting PR does not stop the rest of the queue
 
+After a bot-authored rebase or image commit, the trusted dispatcher starts both
+path-aware CI on the new branch head and a targeted Crawler Deploy Gate run from
+`main`. GitHub does not emit the ordinary PR event for its own token's push, so
+both required contexts must be reported for the new head before merge.
+
 ```yaml
 on:
   pull_request_target:
