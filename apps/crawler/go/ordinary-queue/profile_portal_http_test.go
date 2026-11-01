@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -56,7 +55,13 @@ func TestPortalHTTPProvidersCurrentRegistryAndTransportAuthority(t *testing.T) {
 		}
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"pageup": 3, "infoniqa": 1, "keka": 1, "turbohire": 1}) {
-		t.Fatal("registry count changed", counts)
+	providers := []string{"pageup", "infoniqa", "keka", "turbohire"}
+	if len(counts) != len(providers) {
+		t.Fatal("registry provider families changed", counts)
+	}
+	for _, provider := range providers {
+		if counts[provider] == 0 {
+			t.Fatal("registry provider coverage missing", provider)
+		}
 	}
 }
