@@ -53,7 +53,8 @@ The command returns the pending manifest path, such as
 directory. The exporter writes a complete batch in a private staging
 directory, atomically renames it, then records the pending batch in
 `state.json`. An unpublished staging or batch directory with no state
-reference is removed on the next locked run. Re-running with an
+reference, or an interrupted private state-write temp file, is removed on the
+next locked run. Re-running with an
 unacknowledged batch returns that same manifest. For a partial `changes`
 batch (`complete:false`), Justup may acknowledge only after it has durably
 staged the exact verified batch and can recover or replay it without Jobseek.

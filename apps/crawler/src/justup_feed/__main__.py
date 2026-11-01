@@ -44,6 +44,9 @@ BATCH_RE = re.compile(r"^batch-[0-9a-f]{32}$")
 STAGE_RE = re.compile(r"^\.batch-[0-9a-f]{32}\.stage$")
 MANIFEST_RE = re.compile(r"^(batch-[0-9a-f]{32})/manifest\.json$")
 PART_RE = re.compile(r"^part-[0-9]{4}\.json$")
+# NamedTemporaryFile uses eight random characters. The shorter form is from
+# earlier producer builds; only state writes ever used it in the spool root.
+STATE_TEMP_RE = re.compile(r"^\.feed-(?:state-)?[a-zA-Z0-9_]{8}$")
 SELECTOR_LIMIT = 16 * 1024
 MAX_COMPANIES = 100
 
@@ -270,7 +273,8 @@ def private_directory(path: Path) -> Path:
 def write_atomic(path: Path, data: bytes) -> None:
     temporary: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".feed-", delete=False) as handle:
+        prefix = ".feed-state-" if path.name == "state.json" else ".feed-"
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=prefix, delete=False) as handle:
             temporary = Path(handle.name)
             os.fchmod(handle.fileno(), 0o600)
             handle.write(data)
@@ -503,11 +507,25 @@ def recover_unreferenced(directory: Path, state: dict[str, Any]) -> None:
         item["manifest"].split("/", 1)[0]
         for item in [*state["accepted"], *([state["pending"]] if state["pending"] else [])]
     }
+    removed_temp = False
     for child in directory.iterdir():
+        if STATE_TEMP_RE.fullmatch(child.name):
+            if (
+                child.is_symlink()
+                or not child.is_file()
+                or child.stat().st_uid != os.getuid()
+                or child.stat().st_mode & 0o077
+            ):
+                raise FeedError("Interrupted state temp file is unsafe.")
+            child.unlink()
+            removed_temp = True
+            continue
         if STAGE_RE.fullmatch(child.name) or (
             BATCH_RE.fullmatch(child.name) and child.name not in referenced
         ):
             remove_private_batch(child)
+    if removed_temp:
+        sync_directory(directory)
 
 
 def spool_bytes(directory: Path) -> int:

@@ -431,9 +431,32 @@ def test_next_export_replays_pending_after_cleaning_crash_orphans(tmp_path):
     for path in (stage, orphan):
         path.mkdir(mode=0o700)
         feed.write_atomic(path / "part-0001.json", b"interrupted bytes")
+    # Simulate a process killed during the root state.json atomic write. The
+    # legacy temp name is covered because older producer builds used it here.
+    state_temps = [target / ".feed-state-abcdefgh", target / ".feed-abcdefgh"]
+    for path in state_temps:
+        path.write_bytes(b'{"incomplete":')
+        path.chmod(0o600)
+    unrelated = target / ".feed-operator-notes"
+    unrelated.write_text("keep")
     assert asyncio.run(feed.export(target, False, None)) == pending
     assert not stage.exists() and not orphan.exists()
+    assert all(not path.exists() for path in state_temps)
+    assert unrelated.read_text() == "keep"
+    assert feed.load_state(target)["pending"] == pending
     assert (target / pending["manifest"]).is_file()
+
+
+def test_recover_rejects_unsafe_root_state_temp(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    outside = tmp_path / "outside"
+    outside.write_text("keep")
+    (target / ".feed-state-abcdefgh").symlink_to(outside)
+    state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None, "accepted": []}
+    with pytest.raises(feed.FeedError, match="state temp file is unsafe"):
+        feed.recover_unreferenced(target, state)
+    assert outside.read_text() == "keep"
 
 
 def test_retention_requires_accepted_backup_receipt_and_seven_days(tmp_path):
