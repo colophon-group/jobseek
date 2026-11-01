@@ -28,6 +28,11 @@ CREATE TABLE public.source_coverage_public_link (
 CREATE FUNCTION public.jobseek_source_coverage_public_link_revision()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
 BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.board_id IS DISTINCT FROM NEW.board_id THEN
+            RAISE EXCEPTION 'approved public link board identity cannot change';
+        END IF;
+    END IF;
     UPDATE public.source_coverage_scope
     SET revision = gen_random_uuid(), tracked_since = clock_timestamp(),
         effective_config_sha256 = NULL

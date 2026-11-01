@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,6 +170,35 @@ VALUES ('00000000-0000-0000-0000-000000000109','00000000-0000-0000-0000-00000000
 	if err != nil || len(linkedView.Scopes) != 2 || linkedView.Scopes[0].PublicLink == nil || linkedView.Scopes[1].PublicLink == nil || linkedView.Scopes[0].PublicLink.URL != links[0].URL || linkedView.Scopes[1].PublicLink.URL != links[1].URL {
 		t.Fatalf("reviewed multi-board links were not projected: %+v %v", linkedView.Scopes, err)
 	}
+	// A direct SQL reassignment must not remove the old board's approval while
+	// leaving its scope revision and prior checks unchanged.
+	applyLinks(links[:1])
+	var oldBeforeMove, newBeforeMove string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&oldBeforeMove); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000109'`).Scan(&newBeforeMove); err != nil {
+		t.Fatal(err)
+	}
+	_, moveErr := conn.Exec(ctx, `UPDATE public.source_coverage_public_link
+SET board_id='00000000-0000-0000-0000-000000000109'
+WHERE board_id='00000000-0000-0000-0000-000000000102'`)
+	if moveErr == nil || !strings.Contains(moveErr.Error(), "approved public link board identity cannot change") {
+		t.Fatalf("board identity move did not fail at approval boundary: %v", moveErr)
+	}
+	var oldAfterMove, newAfterMove string
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&oldAfterMove); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000109'`).Scan(&newAfterMove); err != nil {
+		t.Fatal(err)
+	}
+	var stillBound int
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM public.source_coverage_public_link
+WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&stillBound); err != nil || stillBound != 1 || oldAfterMove != oldBeforeMove || newAfterMove != newBeforeMove {
+		t.Fatalf("rejected link move changed identity or coverage revisions: old %q/%q new %q/%q rows %d error %v", oldBeforeMove, oldAfterMove, newBeforeMove, newAfterMove, stillBound, err)
+	}
+	applyLinks(links)
 	links[0].URL = "https://careers.example.com/new-team/jobs"
 	applyLinks(links)
 	var changedLinkRevision string
