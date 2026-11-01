@@ -26,6 +26,17 @@ func (c *GreenhouseCycle) recordSourceCoverage(ctx context.Context, tx pgx.Tx, o
 	if c == nil || c.claim == nil || c.claim.task.claimToken == "" || c.startedAt.IsZero() || c.scopeRevision == "" {
 		return ErrConfiguration
 	}
+	if outcome == "complete" {
+		canonical, err := readCanonicalBoardConfig(ctx, tx, c.claim.task.ID, true)
+		if err != nil {
+			return err
+		}
+		fresh, freshErr := InspectRichMonitor(c.claim.task.ID, canonical)
+		claimed, claimErr := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
+		if freshErr != nil || claimErr != nil || fresh.EffectiveConfigSHA256 != claimed.EffectiveConfigSHA256 {
+			outcome = "partial"
+		}
+	}
 	attempt := sha256.Sum256([]byte(c.claim.task.claimToken))
 	tag, err := tx.Exec(ctx, `INSERT INTO public.source_coverage_check
     (board_id, revision, attempt_hash, started_at, finished_at, next_due_at, outcome)

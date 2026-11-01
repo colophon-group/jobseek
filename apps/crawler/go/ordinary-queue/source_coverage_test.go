@@ -113,3 +113,28 @@ func TestRealSourceCoverageRejectsStaleConfigAtCycleStart(t *testing.T) {
 		t.Fatalf("stale claim wrote coverage: %d %v", count, err)
 	}
 }
+
+func TestRealSourceCoverageCannotCreditUnfingerprintedConfigChange(t *testing.T) {
+	f, a := lifecycleFixture(t, `{"_monitor_config_fingerprint":"fixture"}`)
+	ctx := context.Background()
+	cycle := beginLifecycle(t, a)
+	if _, err := f.observer.Exec(ctx, `UPDATE public.job_board SET metadata=metadata||'{"token":"changed"}'::jsonb WHERE id=$1::uuid`, f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	var revision string
+	if err := f.observer.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id=$1::uuid`, f.task.ID).Scan(&revision); err != nil || revision != cycle.scopeRevision {
+		t.Fatalf("test did not isolate effective config drift: %s %v", revision, err)
+	}
+	tx, err := f.observer.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if err := cycle.recordSourceCoverage(ctx, tx, "complete"); err != nil {
+		t.Fatal(err)
+	}
+	var outcome string
+	if err := tx.QueryRow(ctx, `SELECT outcome FROM public.source_coverage_check WHERE board_id=$1::uuid`, f.task.ID).Scan(&outcome); err != nil || outcome != "partial" {
+		t.Fatalf("changed monitor config credited complete coverage: %q %v", outcome, err)
+	}
+}
