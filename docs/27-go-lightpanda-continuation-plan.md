@@ -152,17 +152,20 @@ CPU/one GiB. This candidate changes only the crawler host allocation; it does
 not rename, relocate or restart Justup or renderer units. Cross-project hosting
 coordination and fresh required gates remain prerequisites for rollout.
 
-1. **Resolve or classify Oracle ADF's observed failure.** At 15:57 it remains
-   enabled and quarantined with 11 failures; last check October 31 at 17:10:15,
-   next normal retry **November 1 at 17:10:18.641208 UTC**. The proven Go HTTP
-   JSF route previously reproduced 52 live jobs. Installed bounded stage/status
-   diagnostics must establish migration regression versus upstream/source failure.
-   Make the smallest shared fix if needed. Do not force work, reset backoff or
-   add Chromium.
+1. **Resolve Oracle ADF's observed failure.** Its normal retry ran November 1 at
+   17:37:14 UTC, without forced work or a backoff reset. The installed Go route
+   rejected **HTTP 302 during pagination**; failures rose to 12 and its next
+   normal retry is November 2 at 17:37:17 UTC. Readback at 17:58 verifies it remains
+   enabled, unreserved, quarantined and correctly represented in its browser
+   monitor queue, with no active host circuit or rate limit. This identifies the
+   failing stage, but does not prove a universal upstream failure or a safe
+   redirect target. The earlier exact 52-job Go HTTP result was a local candidate
+   qualification, not a production success witness. Retain complete-inventory
+   checks and publisher policy; do not blindly follow the redirect, force work,
+   reset backoff or add Chromium.
 2. **Close the original acceptance audit after that outcome.** Native 1148 and
    the latest renderer are installed and independently verified. All four final
-   comparison scenarios pass; one separate automatic B0 performance job is still
-   running at this checkpoint. Preserve original boards, downstream/canonical/
+   comparison scenarios and the separate automatic B0 performance job passed. Preserve original boards, downstream/canonical/
    publisher-policy contracts and supported reversal. Keep dated observations,
    existing backlog and sampling limits explicit. Approved control/offline Python,
    new-company variants and renderer relocation do not block this migration.

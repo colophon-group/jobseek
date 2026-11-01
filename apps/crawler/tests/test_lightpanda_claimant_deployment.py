@@ -863,8 +863,8 @@ def test_ordinary_rendered_consumer_is_dark_and_credentials_are_scoped() -> None
     overlay = yaml.safe_load(ENABLED_OVERRIDE.read_text(encoding="utf-8"))["services"]
     assert base["ordinary-go"]["profiles"] == ["ordinary-go"]
     # The full owner must collect below its hard container boundary.
-    assert base["ordinary-go"]["mem_limit"] == "1g"
-    assert base["ordinary-go"]["environment"]["GOMEMLIMIT"] == "512MiB"
+    assert base["ordinary-go"]["mem_limit"] == "2g"
+    assert base["ordinary-go"]["environment"]["GOMEMLIMIT"] == "1GiB"
     assert (
         base["ordinary-go"]["environment"]["ORDINARY_GO_RENDERED_DETAILS"]
         == "${ORDINARY_GO_RENDERED_DETAILS:-}"
