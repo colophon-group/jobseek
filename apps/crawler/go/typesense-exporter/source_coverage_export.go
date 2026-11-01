@@ -101,6 +101,25 @@ type coverageBoard struct {
 
 func coverageTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
 
+func sourceCoverageSnapshotTime(ctx context.Context, tx pgx.Tx) (time.Time, error) {
+	// The first query establishes the repeatable-read snapshot. Read the clock
+	// inside that query so a revision committed before the snapshot cannot
+	// have a tracked_since later than the artifact's generatedAt.
+	var at time.Time
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&at); err != nil {
+		return time.Time{}, err
+	}
+	return at.UTC(), nil
+}
+
+func buildSourceCoverageSnapshot(ctx context.Context, tx pgx.Tx, end time.Time, approved []string) (coverageSnapshot, error) {
+	snapshotAt, err := sourceCoverageSnapshotTime(ctx, tx)
+	if err != nil {
+		return coverageSnapshot{}, err
+	}
+	return buildCoverageSnapshot(ctx, tx, end, snapshotAt, approved)
+}
+
 func runSourceCoverageExport(args []string) error {
 	if len(args) != 3 {
 		return errors.New("usage: --export-source-coverage YYYY-MM-DD approved-company-slugs.txt private-output-directory")
@@ -145,7 +164,7 @@ func runSourceCoverageExport(args []string) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	snapshot, err := buildCoverageSnapshot(ctx, tx, end, now, approved)
+	snapshot, err := buildSourceCoverageSnapshot(ctx, tx, end, approved)
 	if err != nil {
 		return err
 	}

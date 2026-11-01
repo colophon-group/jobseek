@@ -172,7 +172,26 @@ VALUES ('00000000-0000-0000-0000-000000000109','00000000-0000-0000-0000-00000000
 	}
 	// A direct SQL reassignment must not remove the old board's approval while
 	// leaving its scope revision and prior checks unchanged.
+	beforeDeletion := time.Now().UTC()
+	time.Sleep(5 * time.Millisecond)
+	projectionAfterDeletion, err := reader.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		t.Fatal(err)
+	}
 	applyLinks(links[:1])
+	deletionView, err := buildSourceCoverageSnapshot(ctx, projectionAfterDeletion, periodEnd, []string{"coverage-test"})
+	_ = projectionAfterDeletion.Rollback(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deletionView.Scopes) != 2 || deletionView.Scopes[1].PublicLink != nil {
+		t.Fatalf("deleted link was not reflected in first-query snapshot: %+v", deletionView.Scopes)
+	}
+	trackedSince, err := time.Parse(time.RFC3339Nano, deletionView.Scopes[1].TrackedSince)
+	generatedAt, generatedErr := time.Parse(time.RFC3339Nano, deletionView.GeneratedAt)
+	if err != nil || generatedErr != nil || !trackedSince.After(beforeDeletion) || trackedSince.After(generatedAt) {
+		t.Fatalf("snapshot timestamp precedes committed link deletion: tracked %v generated %v errors %v, %v", trackedSince, generatedAt, err, generatedErr)
+	}
 	var oldBeforeMove, newBeforeMove string
 	if err := conn.QueryRow(ctx, `SELECT revision::text FROM public.source_coverage_scope WHERE board_id='00000000-0000-0000-0000-000000000102'`).Scan(&oldBeforeMove); err != nil {
 		t.Fatal(err)
