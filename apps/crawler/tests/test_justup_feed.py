@@ -166,6 +166,7 @@ def test_public_allowlist_verifies_per_locale_hash_and_full_transport_digest():
     assert exported["hasContent"] is True
     assert exported["locationNames"] == ["Zurich"]
     assert "private_trace" not in json.dumps(exported)
+    assert feed.public_row(source_row(description_r2_hash=None))["hasContent"] is True
     bad = feed.public_row(source_row(body_hash=0))
     assert bad["body"] is None
     assert bad["bodyStatus"] == "hash_mismatch"

@@ -169,7 +169,7 @@ def public_row(row: asyncpg.Record) -> dict[str, Any]:
         "sourceUrl": row["source_url"],
         "active": row["is_active"],
         "reserved": row["tdm_reserved"],
-        "hasContent": bool(title and row["description_r2_hash"] is not None),
+        "hasContent": bool(title and (row["description_r2_hash"] is not None or body is not None)),
         "firstSeenAt": stamp(row["first_seen_at"]),
         "lastSeenAt": stamp(row["last_seen_at"]) if row["last_seen_at"] else None,
         "updatedAt": stamp(row["updated_at"]),
