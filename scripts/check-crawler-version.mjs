@@ -15,16 +15,6 @@ const DEPENDENCY_FILES = new Set([
   "apps/crawler/ws-package/pyproject.toml",
   "apps/crawler/ws-package/uv.lock",
 ]);
-// These files only admit and verify crawler configurations in CI. Keep this
-// list explicit so a runtime source change still requires a release bump.
-const NATIVE_REGISTRY_VALIDATION_FILES = new Set([
-  ".github/workflows/ci.yml",
-  "apps/crawler/go/typesense-exporter/registry_native_ci_test.go",
-  "apps/crawler/go/ordinary-queue/profile_shared_dom_api_registry_test.go",
-  "apps/crawler/tests/lightpanda/test_routing.py",
-  "scripts/check-crawler-version.mjs",
-  "scripts/crawler-version.test.mjs",
-]);
 
 function parseVersion(value, label) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
@@ -46,17 +36,6 @@ export function isCrawlerDependencyOnly(files) {
   return (
     uniqueFiles.length > 0 &&
     uniqueFiles.every((file) => DEPENDENCY_FILES.has(file))
-  );
-}
-
-export function isNativeRegistryValidationOnly(files) {
-  const uniqueFiles = [...new Set(files)];
-  return (
-    uniqueFiles.includes(".github/workflows/ci.yml") &&
-    uniqueFiles.includes(
-      "apps/crawler/go/typesense-exporter/registry_native_ci_test.go",
-    ) &&
-    uniqueFiles.every((file) => NATIVE_REGISTRY_VALIDATION_FILES.has(file))
   );
 }
 
@@ -100,15 +79,6 @@ export function evaluateCrawlerVersion({
     throw new Error(
       `apps/crawler/VERSION regressed: ${baseVersion.trim()} → ${prVersion.trim()}`,
     );
-  }
-
-  if (isNativeRegistryValidationOnly(uniqueFiles)) {
-    return {
-      kind: "validation-only",
-      message:
-        `Native registry CI validation keeps ${prVersion.trim()}; ` +
-        "crawler runtime and deployment inputs are unchanged",
-    };
   }
 
   const dependencyOnly = isCrawlerDependencyOnly(uniqueFiles);
