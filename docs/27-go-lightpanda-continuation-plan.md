@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-01 20:54 UTC**. The migration goal remains active.
+Current checkpoint: **2026-11-01 21:25 UTC**. The migration goal remains active.
 Use current installed identities and canonical registry state before saved counts.
 Keep one current checkpoint, active regression inputs and supported rollback assets;
 historical raw evidence need not be preserved. Preserve unrelated work and `dump.rdb`.
@@ -176,6 +176,23 @@ future runtime work requires fresh coordination. The naming implementer reserved
 0.13.1150; this checkpoint changes documentation only.
 
 
+A later **20:11–21:03 UTC** four-node window covers about 52 minutes with the same
+observed native generations and no restart/OOM increment. It records 5,492 monitor
+and 8,648 detail successes; ordinary worker mean CPU is 1.904 of four cores,
+sampled working RAM 205 → 620 MiB within two GiB. The observed-container mean CPU
+sum is 4.02 cores and final working RAM 11.94 GiB. Endpoint membership does not
+exclude transient containers; host accounting includes their potential work.
+At 21:05 all **8,273** monitors are represented (8,249 queued / 24 valid leases),
+with zero observed gaps. At 21:08 every original **8,270** key/UUID is independently
+preserved with unchanged original UUID hash and exactly three additions.
+The two authority-loss outcomes classify as `cache_snapshot` fencing refusals in
+the complete bounded log window; unrelated work continues and no panic marker is
+observed. Search remains healthy and the demo reservation/root floor hold. Retain
+the failure, circuit, claim-error and skip counts and limits in the
+[steady-traffic report](evidence/go-native1149-steady-2026-11-01.json).
+This mixed workload does not establish a causal speedup or cleared freshness
+backlog, and does not qualify a further CPU allocation increase.
+
 1. **Resolve Oracle ADF's observed failure.** Its normal retry ran November 1 at
    17:37:14 UTC, without forced work or a backoff reset. The installed Go route
    rejected **HTTP 302 during pagination**; failures rose to 12 and its next
@@ -184,7 +201,13 @@ future runtime work requires fresh coordination. The naming implementer reserved
    monitor queue, with no active host circuit or rate limit. This identifies the
    failing stage, but does not prove a universal upstream failure or a safe
    redirect target. The earlier exact 52-job Go HTTP result was a local candidate
-   qualification, not a production success witness. Retain complete-inventory
+   qualification. A separate [1102 serving checkpoint](evidence/go-native1102-serving-conservation-2026-10-27.json)
+   explicitly records native ADF completing **52 jobs / zero failures** at October
+   27 15:27 UTC, after supported Go activation. That witness was recorded in
+   `16904e793eb29532cd20ca7e2565b691ab86e91f`; its active source and unique original
+   registry assignment are reconciled with current configuration. The audit had
+   missed this positive production record. It establishes dated native coverage,
+   not recovery of the current failure or its cause. Retain complete-inventory
    checks and publisher policy; do not blindly follow the redirect, force work,
    reset backoff or add Chromium. The operator authorized bounded local
    investigation. Fresh Go HTTP controls still return pagination 302 when using
@@ -214,10 +237,14 @@ future runtime work requires fresh coordination. The naming implementer reserved
    request-logic regression, not proof of a universal upstream outage or its cause.
    The [current protocol evidence](evidence/go-native1149-adf-protocol-2026-11-01.json)
    and [open follow-up](https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945)
-   record the remaining boundary. Next obtain a new, independently working
-   publisher-supported complete search/API/session path or a relevant upstream
-   compatibility correction. Do not repeat rejected header/form/window variants
-   without new evidence, accept partial inventory or reset the normal retry.
+   record the remaining boundary. Next reconcile caller, egress selection and
+   activation behavior between the successful native 1102 source and the later
+   failure. Matching ADF/direct-transport files alone do not rule out those
+   changes. Use a code-backed difference for the next bounded discriminating
+   test; a new working publisher source/session or upstream correction is also
+   useful evidence. Preserve the current freshness gap in final acceptance.
+   Do not repeat rejected header/form/window variants without new evidence,
+   accept partial inventory or reset the normal retry.
 
 2. **Close the original acceptance audit after that outcome.** Native 1149 and
    the latest renderer are installed and independently verified. All four final

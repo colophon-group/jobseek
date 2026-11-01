@@ -516,7 +516,7 @@
     "stage": "complete"
   },
   "conclusion": "Current complete ADF discovery remains unqualified. Go and latest Lightpanda pagination redirect to site root and then away from the application. Fresh document/viewstate, exact publisher-generated form bytes plus all browser cookie scope, and framework window-ID alignment do not resolve it. Official entry URL exactly matches registry; no alternate entry candidate. Source cause remains unproved; no universal upstream-failure or recovery claim and no speculative runtime patch.",
-  "next_discriminating_input": "An independently working publisher-supported complete search/API/session path or a relevant upstream compatibility correction; keep next normal retry and no-forced-work constraint. Do not repeat already rejected header/form/window variants without new evidence.",
+  "next_discriminating_input": "Code-backed reconciliation of caller/egress/activation behavior between native1102 production success and the later failure; then a bounded discriminating test if a concrete difference is found. A working publisher-supported complete source/session or relevant upstream correction is another possible input. Keep normal retry and no-forced-work constraints; do not repeat rejected variations without new evidence.",
   "constraints": "All active investigation local. Maximum500jobs/5000detail checks retained; this follow-up used no detail scan. No production queue/counter/schedule/backoff writes, no partial inventory accepted, no Chromium. Raw URLs, cookies, view states, headers and bodies stay only in RAM and are not preserved.",
   "production_last_independent_readback_utc": "2026-11-01T20:11:42.733811+00:00",
   "installed1149_adf_and_transport_files_unchanged_from_compared1148": {
@@ -528,5 +528,48 @@
   "local_latest_lightpanda": {
     "version": "1.1.0-nightly.11471+cebb8d51e",
     "macos_arm64_sha256": "6cb362374a27a83ba44112b4bab25bc9e72e142d8c34dff188b39ad19edff32f"
-  }
+  },
+  "historical_production_witness_reconciliation": {
+    "schema": "jobseek.adf-native-production-witness-reconciliation/v1",
+    "reviewed_at_utc": "2026-11-01T21:23:09.800314+00:00",
+    "original_candidate_PR": 10935,
+    "candidate_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+    "initial_1101_rollout": {
+      "run": 40480716439,
+      "native_activation_rejected": true,
+      "native_owner_inactive_at_1148z": true,
+      "scope": "Successful full workflow restored legacy/B0; not a nativeADFserving witness."
+    },
+    "production_witness": {
+      "runtime_version": "0.13.1102",
+      "source": "8b3a5b4994767033bd5b186f0ffda5e07a15e11e",
+      "PR": 10937,
+      "supported_full_rollout_run": 40510059509,
+      "rollout_conclusion": "success",
+      "rollout_completed_utc": "2026-10-27T13:33:21Z",
+      "postactivation_observed_utc": "2026-10-27T15:26:05.282477+00:00",
+      "active_ordinary_monitors": 8106,
+      "active_ordinary_details": 8125,
+      "epoch": 382,
+      "natural_ADF_observed_utc": "2026-10-27T15:27:39Z",
+      "native_ADF_jobs": 52,
+      "native_ADF_failures": 0,
+      "durable_evidence": "docs/evidence/go-native1102-serving-conservation-2026-10-27.json",
+      "witness_recording_commit": "16904e793eb29532cd20ca7e2565b691ab86e91f",
+      "witness_recorded_utc": "2026-10-27T15:42:39Z",
+      "oracleADF_and_direct_transport_blobs_match_qualified_source": true
+    },
+    "unique_original_registry_assignment_matches_current": {
+      "company_slug": true,
+      "board_slug": true,
+      "board_url": true,
+      "monitor_type": true,
+      "monitor_config": true,
+      "scraper_type": true,
+      "scraper_config": true
+    },
+    "correction": "The existing audit referenced only the local52-job candidate and missed a separate dated native production completion. Preserve that positive witness; do not infer later ownership solely from last_success timestamps.",
+    "completion_limit": "Historical native implementation/serving coverage is proved. Current original ADF pagination failure and freshness gap remain unclassified under the original final acceptance condition; this witness is not current inventory recovery or proof of no migration-related freshness regression. Goal remains active."
+  },
+  "caller_and_egress_limit": "Identical ADF/direct-transport files do not independently rule out changes in effective caller, egress selection or activation behavior. Reconcile those against successful native1102 before attributing the current failure to the publisher or proposing another origin control."
 }
