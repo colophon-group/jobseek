@@ -96,15 +96,17 @@ CREATE OR REPLACE FUNCTION public.jobseek_source_coverage_posting_first()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
 BEGIN
     INSERT INTO public.source_coverage_posting_first
-        (posting_id, company_id, board_id, revision)
-    VALUES (NEW.id, NEW.company_id, NEW.board_id,
-            (SELECT scope.revision FROM public.source_coverage_scope AS scope
-             WHERE scope.board_id = NEW.board_id));
-    RETURN NEW;
+        (posting_id, company_id, board_id, revision, first_observed_at)
+    SELECT posting.id, posting.company_id, posting.board_id, scope.revision,
+           clock_timestamp()
+    FROM inserted_postings AS posting
+    LEFT JOIN public.source_coverage_scope AS scope ON scope.board_id = posting.board_id;
+    RETURN NULL;
 END;
 $$;
 CREATE TRIGGER source_coverage_posting_first
 AFTER INSERT ON public.job_posting
-FOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_posting_first();;
+REFERENCING NEW TABLE AS inserted_postings
+FOR EACH STATEMENT EXECUTE FUNCTION public.jobseek_source_coverage_posting_first();;
 
 UPDATE alembic_version SET version_num='0042' WHERE alembic_version.version_num = '0041';

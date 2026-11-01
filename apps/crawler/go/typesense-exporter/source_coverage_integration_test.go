@@ -70,12 +70,20 @@ JOIN public.job_posting p ON p.id=o.posting_id WHERE s.board_id='00000000-0000-0
 		t.Fatal(err)
 	}
 	_, err = conn.Exec(ctx, `INSERT INTO public.job_posting(id,company_id,board_id,source_url,first_seen_at)
-VALUES ('00000000-0000-0000-0000-000000000104','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000102','https://example.com/jobs/2','1990-01-01T11:00:00Z')`)
+VALUES
+('00000000-0000-0000-0000-000000000104','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000102','https://example.com/jobs/2','1990-01-01T11:00:00Z'),
+('00000000-0000-0000-0000-000000000108','00000000-0000-0000-0000-000000000101','00000000-0000-0000-0000-000000000102','https://example.com/jobs/3','1980-01-01T11:00:00Z')`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := snapshot.QueryRow(ctx, `SELECT count(*) FROM public.source_coverage_posting_first`).Scan(&after); err != nil || before != after {
 		t.Fatalf("concurrent insert changed read-only snapshot: %d %d %v", before, after, err)
+	}
+	var inserted int
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM public.source_coverage_posting_first
+WHERE posting_id IN ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000108')
+  AND first_observed_at >= $1`, beforeInsert).Scan(&inserted); err != nil || inserted != 2 {
+		t.Fatalf("multi-row insert did not record both original observations: %d %v", inserted, err)
 	}
 	if err := snapshot.Commit(ctx); err != nil {
 		t.Fatal(err)
@@ -114,7 +122,7 @@ VALUES ('00000000-0000-0000-0000-000000000104','00000000-0000-0000-0000-00000000
 	if err := projection.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if len(view.Companies) != 1 || len(view.Scopes) != 1 || len(view.Postings) != 2 || view.Scopes[0].Coverage[0].State != "unknown" || view.Scopes[0].LastVerifiedAt != nil {
+	if len(view.Companies) != 1 || len(view.Scopes) != 1 || len(view.Postings) != 3 || view.Scopes[0].Coverage[0].State != "unknown" || view.Scopes[0].LastVerifiedAt != nil {
 		t.Fatalf("incomplete first-observation projection: %+v", view)
 	}
 	if _, err := conn.Exec(ctx, `INSERT INTO public.company(id,slug,name,website) VALUES
