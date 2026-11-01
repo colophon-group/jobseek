@@ -20,6 +20,7 @@ const DEPENDENCY_FILES = new Set([
 const NATIVE_REGISTRY_VALIDATION_FILES = new Set([
   ".github/workflows/ci.yml",
   "apps/crawler/go/typesense-exporter/registry_native_ci_test.go",
+  "apps/crawler/go/ordinary-queue/profile_shared_dom_api_registry_test.go",
   "apps/crawler/tests/lightpanda/test_routing.py",
   "scripts/check-crawler-version.mjs",
   "scripts/crawler-version.test.mjs",
