@@ -39,10 +39,7 @@ def fingerprints(
                 "rows": len(selected),
                 "fields": {
                     column: digest(
-                        [
-                            [row["source_url"], column in row, row.get(column)]
-                            for row in selected
-                        ]
+                        [[row["source_url"], column in row, row.get(column)] for row in selected]
                     )
                     for column in columns
                 },
@@ -76,8 +73,7 @@ def summarize(arms: list[dict[str, Any]]) -> dict[str, Any]:
         "arms": len(arms),
         "diagnosed_arms": len(available),
         "snapshots_match_collected": [
-            d.get("snapshot_matches_collected") if d is not None else None
-            for d in diagnostics
+            d.get("snapshot_matches_collected") if d is not None else None for d in diagnostics
         ],
         "differing_fields": differences,
     }
@@ -85,6 +81,7 @@ def summarize(arms: list[dict[str, Any]]) -> dict[str, Any]:
 
 async def snapshot() -> None:
     import asyncpg
+
     from admission.native_lane import driver
     from src.lightpanda.admission import STABLE_COLUMNS
 
@@ -112,10 +109,7 @@ async def snapshot() -> None:
     result = fingerprints(
         [dict(row) for row in rows], [dict(row) for row in descriptions], profiles
     )
-    print(
-        "NATIVE_LANE_FIELDS="
-        + json.dumps(result, sort_keys=True, separators=(",", ":"))
-    )
+    print("NATIVE_LANE_FIELDS=" + json.dumps(result, sort_keys=True, separators=(",", ":")))
 
 
 def main() -> int:

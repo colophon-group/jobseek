@@ -34,9 +34,7 @@ class FingerprintTests(unittest.TestCase):
         evidence = self.evidence()
         payload = {
             "postings": [{k: v for k, v in self.postings[0].items() if k != "id"}],
-            "descriptions": [
-                {k: v for k, v in self.descriptions[0].items() if k != "id"}
-            ],
+            "descriptions": [{k: v for k, v in self.descriptions[0].items() if k != "id"}],
         }
         self.assertEqual(evidence["canonical_sha256"], digest(payload))
         encoded = json.dumps(evidence)
@@ -53,10 +51,7 @@ class FingerprintTests(unittest.TestCase):
         changed[0]["technology_ids"].reverse()
         first, second = self.evidence(), self.evidence(changed)
         self.assertNotEqual(first["canonical_sha256"], second["canonical_sha256"])
-        arms = [
-            {"output": {"canonical_diagnostics": evidence}}
-            for evidence in (first, second)
-        ]
+        arms = [{"output": {"canonical_diagnostics": evidence}} for evidence in (first, second)]
         fields = summarize(arms)["differing_fields"]
         self.assertEqual(
             [(x["profile"], x["table"], x["column"]) for x in fields],
@@ -71,9 +66,7 @@ class FingerprintTests(unittest.TestCase):
 
     def test_unknown_source_cannot_silently_drop_rows(self):
         with self.assertRaises(KeyError):
-            fingerprints(
-                self.postings, self.descriptions, {"another-source": "dom_rendered"}
-            )
+            fingerprints(self.postings, self.descriptions, {"another-source": "dom_rendered"})
 
 
 if __name__ == "__main__":
