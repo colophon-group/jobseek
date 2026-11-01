@@ -87,6 +87,34 @@ class FingerprintTests(unittest.TestCase):
             [],
         )
 
+    def test_probe_identifies_partial_small_profile_upload_window(self):
+        current = [
+            {
+                "source_url": f"https://fixture.invalid/{i}",
+                "description_r2_hash": "uploaded",
+                "to_be_enriched": True,
+            }
+            for i in range(3)
+        ]
+        current.insert(
+            0,
+            {
+                "source_url": "https://fixture.invalid/prefix",
+                "description_r2_hash": "uploaded",
+                "to_be_enriched": True,
+            },
+        )
+        profiles = {row["source_url"]: "dom_rendered" for row in current}
+        profiles[current[0]["source_url"]] = "api_rich"
+        prior = copy.deepcopy(current)
+        for index in (1, 3):
+            prior[index].update(description_r2_hash=None, to_be_enriched=False)
+        target = digest({"postings": prior, "descriptions": []})
+        self.assertEqual(
+            publication_probe(current, [], profiles, target),
+            [{"profile": "dom_rendered", "kind": "pre_upload", "rows": 2}],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

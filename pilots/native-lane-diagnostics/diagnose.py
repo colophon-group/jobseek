@@ -61,6 +61,40 @@ def publication_probe(
             altered = [dict(row, **changes) if row in selected else row for row in rows]
             if digest({"postings": altered, "descriptions": descriptions}) == target:
                 matches.append({"profile": profile, "kind": kind, "rows": len(selected)})
+    # Independent READ COMMITTED reads can straddle several upload commits.
+    # Exhaust small fixture profiles, never the 500-job rich profile's powerset.
+    for profile in sorted(set(profiles.values())):
+        indexes = [i for i, row in enumerate(rows) if profiles[row["source_url"]] == profile]
+        if not 2 <= len(indexes) <= 12:
+            continue
+        for kind, changes in variants.items():
+            alternatives = {i: serialized(dict(rows[i], **changes)) for i in indexes}
+            active = [i for i in indexes if alternatives[i] != encoded[i]]
+            if len(active) < 2:
+                continue
+            first = active[0]
+            fixed = hashlib.sha256(
+                b'{"descriptions":'
+                + serialized(descriptions)
+                + b',"postings":['
+                + b",".join(encoded[:first])
+                + (b"," if first else b"")
+            )
+            for mask in range(1, (1 << len(active)) - 1):
+                count = mask.bit_count()
+                if count < 2:
+                    continue  # Single rows and complete profiles were tested above.
+                chosen = {i for bit, i in enumerate(active) if mask & (1 << bit)}
+                candidate = fixed.copy()
+                candidate.update(
+                    b",".join(
+                        alternatives[i] if i in chosen else encoded[i]
+                        for i in range(first, len(rows))
+                    )
+                    + b"]}"
+                )
+                if candidate.hexdigest() == target:
+                    matches.append({"profile": profile, "kind": kind, "rows": count})
     return matches
 
 

@@ -9,6 +9,8 @@ The existing canonical parity gate is unchanged.
 The publication probe tests whether a single-row or complete-profile upload
 pointer/enrichment-flag seam reproduces the original failed aggregate hash.
 Only matching profile/kind/count metadata is reported; values remain in memory.
+It also exhausts publication subsets within fixture profiles of at most 12 jobs.
+It never searches subsets of the 500-job rich profile or changes stored rows.
 
 The dedicated ARM64/generated workflow is diagnostic evidence only. Its measured
 window includes these extra queries, so do not substitute its resource numbers
