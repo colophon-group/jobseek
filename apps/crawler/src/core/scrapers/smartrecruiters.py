@@ -156,7 +156,10 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         )
         return JobContent()
 
-    return _parse_detail(resp.json())
+    result = _parse_detail(resp.json())
+    if url in config.get("omit_employment_type_urls", []):
+        result.employment_type = None
+    return result
 
 
 register("smartrecruiters", scrape)
