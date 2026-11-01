@@ -10,10 +10,35 @@ versioned file bundle for Justup. It does not write to the crawler database,
 contact Justup, or use Typesense or the old public job asset host. Run it with a
 dedicated PostgreSQL role granted only the listed tables and views. Keep its
 `LOCAL_DATABASE_URL` in a protected environment, outside Git and logs.
-The role also needs enough read visibility into `pg_locks` and
-`pg_stat_activity` for the existing writer-barrier query to identify active
-posting writers; a role that cannot prove the cutoff fails closed. Do not grant
-write privileges merely to make the exporter run.
+Use the fixed `justup_feed_readonly` login, separate from the crawler and
+labeller credentials. The protected PostgreSQL operator installs and audits it
+with [the fixed role helper](../../../../deploy/networking/justup-feed-readonly-role.py)
+and a root-owned mode-`0600` password file at
+`/etc/jobseek-feed/reader-password` on the PostgreSQL host. The matching
+credential reaches the crawler host only through its protected environment;
+neither the file nor the database URL belongs in Git or CI logs. The installer
+requires a fully committed ingress baseline and refuses pending rollback
+timers or containers. Its grants cover only the columns
+used by this exporter from `company`, `job_posting`, and the optional taxonomy
+tables. A security-barrier view exposes only uploaded description rows, and the
+login has no direct description-table access. A fixed, no-argument database
+function returns the writer-barrier cutoff without granting the login access
+to other sessions' PostgreSQL statistics. The login has a two-connection limit
+and read-only session defaults. The exact HBA admits it only from the crawler's
+private IPv4 address and rejects its local-socket logins before the general
+local trust rule. Apply and verify that HBA before installing the role. The
+ingress change requires the normal backup, rollback and host conformance gates.
+Do not grant write privileges or use a broader login to make an export succeed.
+The role can read these allowed fields across the crawler database, including
+inactive postings needed for closure and relist events. A selected company
+list limits each exported batch; it does not narrow database permissions to
+those companies. The `tdm_reserved` fact remains visible so Justup can exclude
+reserved postings from search and answers.
+Before each operator export, run the protected ingress workflow's read-only
+`audit-feed-role` action from current `main` and retain its successful receipt.
+A later schema or grant change can widen effective access
+even when the role itself was installed correctly. Keep export disabled if the
+audit fails.
 
 The feed is an operator-run transfer. A schedule, host deployment, data-copy path,
 and accepted Justup importer build must be qualified separately before product

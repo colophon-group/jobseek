@@ -113,6 +113,28 @@ snapshot_hba() {
   fi
 }
 
+snapshot_rejects_feed_local_login() {
+  local hba="$1" first_rule
+  # The staged policy writes this as the first active HBA rule. PostgreSQL
+  # uses first-match ordering, so a later reject cannot protect old trust.
+  first_rule="$(awk '/^[[:space:]]*(#|$)/ { next } { if (NF == 4) print $1, $2, $3, $4; exit }' "$hba")"
+  [[ "$first_rule" == 'local all justup_feed_readonly reject' ]]
+}
+
+snapshot_feed_role_boundary() {
+  local tx="$1" feed_role_present
+  feed_role_present="$(docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -XAtc \
+    "SELECT 1 FROM pg_roles WHERE rolname = 'justup_feed_readonly'")" ||
+    fail "feed-role state cannot be verified before staging"
+  [[ "$feed_role_present" == 1 || -z "$feed_role_present" ]] ||
+    fail "feed-role state is invalid before staging"
+  if [[ "$feed_role_present" == 1 ]]; then
+    snapshot_rejects_feed_local_login "$tx/pg_hba.conf" ||
+      fail "previous HBA would reopen feed-role local socket access"
+    install -o root -g root -m 0600 /dev/null "$tx/feed-role-present"
+  fi
+}
+
 write_network_config() {
   install -d -o root -g root -m 0700 /etc/jobseek-ingress
   local temporary
@@ -135,6 +157,7 @@ write_hba() {
 # Managed by colophon-group/jobseek deploy/networking/harden-postgresql.sh.
 # The Hetzner private path is isolated and source-restricted. TLS is not
 # required by the current policy; SCRAM remains mandatory for every TCP path.
+local all justup_feed_readonly reject
 local all all trust
 host crawler crawler 127.0.0.1/32 scram-sha-256
 host crawler jobseek_labeller_readonly 127.0.0.1/32 scram-sha-256
@@ -142,6 +165,9 @@ host crawler crawler ::1/128 scram-sha-256
 host crawler jobseek_labeller_readonly ::1/128 scram-sha-256
 host crawler crawler ${CRAWLER_PRIVATE_IP}/32 scram-sha-256
 host crawler jobseek_labeller_readonly ${CRAWLER_PRIVATE_IP}/32 scram-sha-256
+# The Justup feed reader can connect only from the crawler host. It has no
+# loopback or other host path and receives table grants separately.
+host crawler justup_feed_readonly ${CRAWLER_PRIVATE_IP}/32 scram-sha-256
 EOF
   chown "$uid:$gid" "$temporary"
   chmod "$mode" "$temporary"
@@ -179,6 +205,10 @@ rollback() {
   [[ -s "$PENDING_FILE" ]] || fail "no pending PostgreSQL network transaction"
   tx="$(cat "$PENDING_FILE")"
   [[ "$tx" == "$ROLLBACK_ROOT"/* && -s "$tx/pg_hba.conf" ]] || fail "invalid rollback state"
+  if [[ -f "$tx/feed-role-present" ]]; then
+    snapshot_rejects_feed_local_login "$tx/pg_hba.conf" ||
+      fail "rollback would reopen feed-role local socket access"
+  fi
   cancel_rollback_timer
   if docker container inspect "$ROLLBACK_NAME" >/dev/null 2>&1; then
     docker rm -f "$CURRENT_NAME" >/dev/null 2>&1 || true
@@ -292,6 +322,7 @@ stage() {
   tx="${ROLLBACK_ROOT}/${stamp}"
   install -d -o root -g root -m 0700 "$tx"
   snapshot_hba "$tx"
+  snapshot_feed_role_boundary "$tx"
   printf '%s\n' "$tx" >"${PENDING_FILE}.tmp"
   chmod 0600 "${PENDING_FILE}.tmp"
   mv "${PENDING_FILE}.tmp" "$PENDING_FILE"

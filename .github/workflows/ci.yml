@@ -148,6 +148,7 @@ jobs:
     outputs:
       code: ${{ steps.manual-default.outputs.code || steps.manual-pr.outputs.code || steps.filter-combined.outputs.code }}
       crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter-combined.outputs.crawler_code }}
+      feed_reader: ${{ steps.manual-default.outputs.feed_reader || steps.manual-pr.outputs.feed_reader || steps.filter.outputs.feed_reader }}
       go_http_pilot: ${{ steps.manual-default.outputs.go_http_pilot || steps.manual-pr.outputs.go_http_pilot || steps.filter.outputs.go_http_pilot }}
       boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
       company_reference: ${{ steps.manual-default.outputs.company_reference || steps.manual-pr.outputs.company_reference || steps.filter.outputs.company_reference }}
@@ -166,6 +167,7 @@ jobs:
             echo "company_reference=true"
             echo "code=true"
             echo "crawler_code=false"
+            echo "feed_reader=false"
             echo "go_http_pilot=true"
             echo "boards_csv=false"
             echo "is_pr=false"
@@ -220,6 +222,8 @@ jobs:
               - '!apps/crawler/VERSION'
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
+            feed_reader:
+              - '{apps/crawler/src/justup_feed/**,apps/crawler/src/export_cursor_fence.py,apps/crawler/tests/test_justup_feed*.py,apps/crawler/tests/test_export_cursor_fence.py,apps/crawler/tests/test_ingress_baseline.py,deploy/networking/{justup-feed-readonly-role.py,harden-postgresql.sh,run-remote.sh},scripts/jobseek-ingress-conformance.py,.github/workflows/{ci.yml,deploy-hetzner-ingress.yml}}'
             go_http_pilot:
               - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
             company_reference:
@@ -246,6 +250,39 @@ jobs:
           else
             echo 'crawler_code=false' >>"$GITHUB_OUTPUT"
           fi
+
+  test-feed-reader-pg16:
+    name: Test Feed Reader on PostgreSQL 16
+    needs: changes
+    if: needs.changes.outputs.feed_reader == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+      - name: Install matching PostgreSQL major version
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
+      - name: Test reader grants, cutoff and ingress with PostgreSQL 16
+        working-directory: apps/crawler
+        env:
+          JOBSEEK_TEST_PG_BIN: /usr/lib/postgresql/16/bin
+        run: >-
+          uv run --frozen pytest -q
+          tests/test_justup_feed_role.py
+          tests/test_justup_feed_role_postgres.py
+          tests/test_ingress_baseline.py
+          tests/test_export_cursor_fence.py
+          tests/test_justup_feed.py
 
   test-go-http-pilot:
     name: Test Go HTTP Sitemap Pilot
@@ -2395,6 +2432,7 @@ jobs:
       - workflow-security
       - test-web-postgresql-retirement
       - changes
+      - test-feed-reader-pg16
       - test-go-http-pilot
       - test-go-http-pilot-registry
       - test-go-b0-supervisor
@@ -2443,6 +2481,7 @@ jobs:
           const eventName = process.env.EVENT_NAME;
           const code = needs.changes?.outputs?.code === "true";
           const crawlerCode = needs.changes?.outputs?.crawler_code === "true";
+          const feedReader = needs.changes?.outputs?.feed_reader === "true";
           const companyReference = needs.changes?.outputs?.company_reference === "true";
           const goHttpPilot = needs.changes?.outputs?.go_http_pilot === "true";
           const boardsCsv = needs.changes?.outputs?.boards_csv === "true";
@@ -2464,6 +2503,7 @@ jobs:
           requireSuccess("workflow-security");
           requireSuccess("test-web-postgresql-retirement");
           requireSuccess("changes");
+          requireSuccess("test-feed-reader-pg16", feedReader);
           requireSuccess("data-validation");
           requireSuccess("test-company-reference", companyReference);
           requireSuccess("test-go-http-pilot", goHttpPilot);

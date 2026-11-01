@@ -24,7 +24,7 @@ from uuid import UUID, uuid4
 
 import asyncpg
 
-from src.export_cursor_fence import capture_cdc_snapshot_cutoff
+from src.export_cursor_fence import capture_justup_feed_cutoff
 
 SCHEMA_VERSION = 1
 ZERO_UUID = "00000000-0000-0000-0000-000000000000"
@@ -61,15 +61,15 @@ TAXONOMY_TABLE_COUNT_SQL = """SELECT num_nonnulls(
 TAXONOMY_COLUMNS = """
        ARRAY(SELECT n.name FROM unnest(jp.location_ids) WITH ORDINALITY AS x(id, ord)
              LEFT JOIN LATERAL (
-                 SELECT name FROM location_name
+                 SELECT name FROM public.location_name
                  WHERE location_id = x.id AND is_display = true
                  ORDER BY (locale = 'en') DESC, locale LIMIT 1
              ) AS n ON true ORDER BY x.ord) AS location_names,
        ARRAY(SELECT l.type FROM unnest(jp.location_ids) WITH ORDINALITY AS x(id, ord)
-             LEFT JOIN location AS l ON l.id = x.id ORDER BY x.ord) AS location_geo_types,
-       (SELECT name FROM occupation_name WHERE occupation_id = jp.occupation_id
+             LEFT JOIN public.location AS l ON l.id = x.id ORDER BY x.ord) AS location_geo_types,
+       (SELECT name FROM public.occupation_name WHERE occupation_id = jp.occupation_id
          AND locale = 'en' AND is_display = true ORDER BY name LIMIT 1) AS occupation_name,
-       (SELECT name FROM seniority_name WHERE seniority_id = jp.seniority_id
+       (SELECT name FROM public.seniority_name WHERE seniority_id = jp.seniority_id
          AND locale = 'en' AND is_display = true ORDER BY name LIMIT 1) AS seniority_name,
 """
 
@@ -95,13 +95,13 @@ SELECT jp.id::text AS id, jp.company_id::text AS company_id,
 {taxonomy_columns}
        d.locale AS body_locale, d.hash AS body_hash,
        d.body_bytes, d.html AS body_html
-FROM job_posting AS jp
-LEFT JOIN company AS c ON c.id = jp.company_id
+FROM public.job_posting AS jp
+LEFT JOIN public.company AS c ON c.id = jp.company_id
 LEFT JOIN LATERAL (
     SELECT locale, hash, octet_length(html) AS body_bytes,
            CASE WHEN octet_length(html) <= $4::int THEN html END AS html
-    FROM descriptions
-    WHERE posting_id = jp.id AND r2_uploaded IS TRUE
+    FROM justup_feed.uploaded_description
+    WHERE posting_id = jp.id
       AND locale = ANY(jp.locales) AND locale <> '__none'
     ORDER BY array_position(jp.locales, locale), locale LIMIT 1
 ) AS d ON true
@@ -129,7 +129,7 @@ ORDER BY jp.updated_at, jp.id LIMIT $5::int
 CHANGES_SQL = BASE_SELECT + CHANGES_FILTER
 CHANGES_SQL_NO_TAXONOMY = BASE_SELECT_NO_TAXONOMY + CHANGES_FILTER
 
-SOURCE_COUNT_SQL = """SELECT count(*) FROM job_posting AS jp
+SOURCE_COUNT_SQL = """SELECT count(*) FROM public.job_posting AS jp
 WHERE jp.is_active IS TRUE AND jp.first_seen_at >= $1::timestamptz
   AND jp.updated_at < $2::timestamptz
   AND ($3::uuid[] IS NULL OR jp.company_id = ANY($3::uuid[]))"""
@@ -650,7 +650,7 @@ async def build_batch(
     # Capture the writer floor BEFORE the repeatable-read user-table snapshot.
     # Reversing these calls can omit a writer that commits between them while
     # still advancing past its updated_at position.
-    cutoff = await capture_cdc_snapshot_cutoff(pool)
+    cutoff = await capture_justup_feed_cutoff(pool)
     previous = state["cursor"]
     if previous is not None and parse_stamp(previous["updatedAt"]) >= cutoff:
         raise FeedError("CDC cutoff has not advanced beyond the acknowledged cursor.")

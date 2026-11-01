@@ -754,9 +754,28 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
   );
   assert.match(classifyPrPathsScript, /emit "code" "\$code"/);
   assert.match(classifyPrPathsScript, /emit "crawler_code" "\$crawler_code"/);
+  assert.match(classifyPrPathsScript, /emit "feed_reader" "\$feed_reader"/);
   assert.match(classifyPrPathsScript, /emit "go_http_pilot" "\$go_http_pilot"/);
   assert.match(classifyPrPathsScript, /emit "boards_csv" "\$boards_csv"/);
   assert.match(classifyPrPathsScript, /emit "codeql" "\$code"/);
+});
+
+test("feed reader changes select the bounded PostgreSQL 16 proof", () => {
+  const selected = runClassifyPrPaths({
+    files: ["deploy/networking/justup-feed-readonly-role.py"],
+  });
+  const unrelated = runClassifyPrPaths({
+    files: ["apps/crawler/src/core/monitor.py"],
+  });
+  assert.equal(selected.status, 0, selected.stderr);
+  assert.equal(unrelated.status, 0, unrelated.stderr);
+  assert.match(selected.outputs, /^feed_reader=true$/m);
+  assert.match(unrelated.outputs, /^feed_reader=false$/m);
+  const job = jobBlock("test-feed-reader-pg16");
+  assert.match(job, /needs\.changes\.outputs\.feed_reader == 'true'/);
+  assert.match(job, /postgresql-16/);
+  assert.match(job, /test_justup_feed_role_postgres\.py/);
+  assert.match(jobBlock("required-ci"), /requireSuccess\("test-feed-reader-pg16", feedReader\)/);
 });
 
 test("manual PR classification exports the validated PR base context", () => {

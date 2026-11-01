@@ -67,6 +67,25 @@ is_crawler_code_path() {
   return 0
 }
 
+is_feed_reader_path() {
+  local file="$1"
+  case "$file" in
+    apps/crawler/src/justup_feed/* | \
+      apps/crawler/src/export_cursor_fence.py | \
+      apps/crawler/tests/test_justup_feed*.py | \
+      apps/crawler/tests/test_export_cursor_fence.py | \
+      apps/crawler/tests/test_ingress_baseline.py | \
+      deploy/networking/justup-feed-readonly-role.py | \
+      deploy/networking/harden-postgresql.sh | \
+      deploy/networking/run-remote.sh | \
+      scripts/jobseek-ingress-conformance.py | \
+      .github/workflows/ci.yml | \
+      .github/workflows/deploy-hetzner-ingress.yml)
+      return 0 ;;
+  esac
+  return 1
+}
+
 is_go_http_pilot_path() {
   local file="$1"
 
@@ -101,6 +120,7 @@ is_company_reference_path() {
 company_reference=false
 code=false
 crawler_code=false
+feed_reader=false
 go_http_pilot=false
 boards_csv=false
 
@@ -122,6 +142,10 @@ while IFS= read -r file; do
 
   if is_crawler_code_path "$file"; then
     crawler_code=true
+  fi
+
+  if is_feed_reader_path "$file"; then
+    feed_reader=true
   fi
 
   if is_company_reference_path "$file"; then
@@ -156,6 +180,7 @@ fi
 emit "company_reference" "$company_reference"
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
+emit "feed_reader" "$feed_reader"
 emit "go_http_pilot" "$go_http_pilot"
 emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"

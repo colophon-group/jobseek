@@ -6,7 +6,7 @@ umask 077
 MODE="${1:-}"
 ROLE="${2:-}"
 case "$MODE" in
-  audit|stage|verify-private-paths|rollback|commit) ;;
+  audit|stage|verify-private-paths|rollback|commit|install-feed-role|audit-feed-role) ;;
   *) exit 2 ;;
 esac
 case "$ROLE" in
@@ -66,6 +66,102 @@ require_deploy_identity() {
   [[ "$stage_id" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
   [[ "$stage_id" == "$deploy_sha"-* ]]
 }
+
+if [[ "$MODE" == audit-feed-role ]]; then
+  [[ "$ROLE" == postgresql && $# -eq 3 ]]
+  crawler_private_ip="$3"
+  require_private_ipv4 "$crawler_private_ip"
+  installer=deploy/networking/justup-feed-readonly-role.py
+  [[ -f "$installer" && ! -L "$installer" ]]
+  installer_sha="$(sha256sum "$installer" | awk '{print $1}')"
+  [[ "$installer_sha" =~ ^[0-9a-f]{64}$ ]]
+  remote 5m \
+    "python3 - --role postgresql --crawler-private-ip '$crawler_private_ip' --require-enforced" \
+    <scripts/jobseek-ingress-conformance.py
+  remote 5m "bash -s -- '$installer_sha'" <<'REMOTE_FEED_AUDIT'
+set -euo pipefail
+installer_sha="$1"
+[[ "$installer_sha" =~ ^[0-9a-f]{64}$ ]]
+installer=/usr/local/sbin/jobseek-justup-feed-role
+[[ -f "$installer" && ! -L "$installer" ]]
+[[ "$(stat -c '%u:%g:%a' -- "$installer")" == 0:0:700 ]]
+[[ "$(sha256sum "$installer" | awk '{print $1}')" == "$installer_sha" ]]
+python3 "$installer" audit
+REMOTE_FEED_AUDIT
+  exit 0
+fi
+
+if [[ "$MODE" == install-feed-role ]]; then
+  [[ "$ROLE" == postgresql && $# -eq 4 ]]
+  stage_id="$3"
+  crawler_private_ip="$4"
+  [[ "$stage_id" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
+  require_private_ipv4 "$crawler_private_ip"
+  installer=deploy/networking/justup-feed-readonly-role.py
+  conformance=scripts/jobseek-ingress-conformance.py
+  [[ -f "$installer" && ! -L "$installer" && -f "$conformance" && ! -L "$conformance" ]]
+  installer_sha="$(sha256sum "$installer" | awk '{print $1}')"
+  conformance_sha="$(sha256sum "$conformance" | awk '{print $1}')"
+  [[ "$installer_sha" =~ ^[0-9a-f]{64}$ && "$conformance_sha" =~ ^[0-9a-f]{64}$ ]]
+
+  # The exact local-socket reject must be committed before the login exists.
+  remote 5m \
+    "python3 - --role postgresql --crawler-private-ip '$crawler_private_ip' --require-enforced" \
+    <"$conformance"
+
+  remote 5m "bash -s -- '$stage_id'" <<'REMOTE_FEED_PREPARE'
+set -euo pipefail
+umask 077
+stage_id="$1"
+[[ "$stage_id" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
+for directory in /var/lib/jobseek-ingress /var/lib/jobseek-ingress/feed-role-staging; do
+  if [[ -e "$directory" || -L "$directory" ]]; then
+    [[ -d "$directory" && ! -L "$directory" ]]
+    [[ "$(stat -c '%u:%g:%a' -- "$directory")" == 0:0:700 ]]
+  else
+    install -d -o root -g root -m 0700 -- "$directory"
+  fi
+done
+stage="/var/lib/jobseek-ingress/feed-role-staging/$stage_id"
+[[ ! -e "$stage" && ! -L "$stage" ]]
+install -d -o root -g root -m 0700 -- "$stage"
+REMOTE_FEED_PREPARE
+
+  tar --create --file - "$installer" "$conformance" |
+    remote 5m \
+      "umask 077; tar --extract --file - --directory '/var/lib/jobseek-ingress/feed-role-staging/$stage_id' --no-same-owner --no-same-permissions --keep-old-files"
+
+  remote 10m \
+    "bash -s -- '$stage_id' '$crawler_private_ip' '$installer_sha' '$conformance_sha'" \
+    <<'REMOTE_FEED_INSTALL'
+set -euo pipefail
+stage_id="$1"
+crawler_private_ip="$2"
+installer_sha="$3"
+conformance_sha="$4"
+[[ "$stage_id" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
+[[ "$crawler_private_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+[[ "$installer_sha" =~ ^[0-9a-f]{64}$ && "$conformance_sha" =~ ^[0-9a-f]{64}$ ]]
+stage="/var/lib/jobseek-ingress/feed-role-staging/$stage_id"
+installer="$stage/deploy/networking/justup-feed-readonly-role.py"
+conformance="$stage/scripts/jobseek-ingress-conformance.py"
+[[ -f "$installer" && ! -L "$installer" ]]
+[[ "$(stat -c '%u:%g:%a' -- "$installer")" == 0:0:600 ]]
+[[ "$(sha256sum "$installer" | awk '{print $1}')" == "$installer_sha" ]]
+python3 "$installer" verify-stage \
+  --stage "$stage" \
+  --installer-sha256 "$installer_sha" \
+  --conformance-sha256 "$conformance_sha"
+python3 "$conformance" --role postgresql \
+  --crawler-private-ip "$crawler_private_ip" --require-enforced
+install -o root -g root -m 0700 "$installer" /usr/local/sbin/jobseek-justup-feed-role
+[[ "$(sha256sum /usr/local/sbin/jobseek-justup-feed-role | awk '{print $1}')" == "$installer_sha" ]]
+python3 /usr/local/sbin/jobseek-justup-feed-role install \
+  --password-file /etc/jobseek-feed/reader-password
+python3 /usr/local/sbin/jobseek-justup-feed-role audit
+REMOTE_FEED_INSTALL
+  exit 0
+fi
 
 if [[ "$MODE" == audit ]]; then
   [[ $# -eq 3 ]]
