@@ -165,6 +165,61 @@ def test_export_check_rejects_persistently_stale_fields_at_original_deadline(
     }
 
 
+def test_collection_snapshot_cannot_mix_two_upload_publications() -> None:
+    published = False
+    snapshots = []
+
+    class Connection:
+        generation = None
+
+        def transaction(self, *, isolation, readonly):
+            assert isolation == "repeatable_read" and readonly is True
+            return self
+
+        async def __aenter__(self):
+            self.generation = published
+            snapshots.append(self.generation)
+            return self
+
+        async def __aexit__(self, *args):
+            self.generation = None
+
+        async def fetch(self, sql):
+            nonlocal published
+            if "FROM descriptions" in sql:
+                return [{"r2_uploaded": self.generation} for _ in range(2)]
+            rows = [{"description_r2_hash": 100 + i if self.generation else None} for i in range(2)]
+            # A concurrent drain commits both uploads after the postings read.
+            published = True
+            return rows
+
+        async def fetchval(self, sql):
+            return 1
+
+    class Lease:
+        async def __aenter__(self):
+            return Connection()
+
+        async def __aexit__(self, *args):
+            pass
+
+    class Pool:
+        def acquire(self):
+            return Lease()
+
+    async def observe():
+        before = await driver.collection_snapshot(Pool())
+        after = await driver.collection_snapshot(Pool())
+        assert [row["description_r2_hash"] for row in before[0]] == [None, None]
+        assert [row["r2_uploaded"] for row in before[1]] == [False, False]
+        assert [row["description_r2_hash"] for row in after[0]] == [100, 101]
+        assert [row["r2_uploaded"] for row in after[1]] == [True, True]
+        assert before[2] == after[2] == 1
+
+    asyncio.run(observe())
+    assert snapshots == [False, True]
+
+
 def test_render_probe_uses_fixed_fixture_and_emits_only_typed_codes(monkeypatch) -> None:
     framing, pb = render_diagnostic.bindings()
     value = pb.BrowserResult(
