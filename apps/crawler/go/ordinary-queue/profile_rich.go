@@ -9,6 +9,7 @@ import (
 	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -16,7 +17,27 @@ var gemURLToken = regexp.MustCompile(`jobs\.gem\.com/([\pL\pN_-]+)`)
 var ashbyURLToken = regexp.MustCompile(`jobs\.ashbyhq\.com/([\pL\pN_-]+)`)
 var leverURLToken = regexp.MustCompile(`jobs\.(?:eu\.)?lever\.co/([\pL\pN_-]+)`)
 var leverEURegion = regexp.MustCompile(`(?:api|jobs)\.eu\.lever\.co/`)
+var leverPostingID = regexp.MustCompile(`^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$`)
 var richProviderToken = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$`)
+
+func leverBlankPostingExclusions(raw json.RawMessage) (string, error) {
+	if len(raw) == 0 {
+		return "", nil
+	}
+	var ids []string
+	if json.Unmarshal(raw, &ids) != nil || ids == nil || len(ids) > 100 {
+		return "", ErrUnsupportedProfile
+	}
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if !leverPostingID.MatchString(id) || seen[id] {
+			return "", ErrUnsupportedProfile
+		}
+		seen[id] = true
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, ","), nil
+}
 
 func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, error) {
 	if config["crawler_type"] == "greenhouse" {
@@ -193,6 +214,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "lever":
 		allowed["company"] = true
 		allowed["region"] = true
+		allowed["exclude_blank_posting_ids"] = true
 	case "recruitee":
 		allowed["slug"], allowed["api_base"] = true, true
 		allowed["company"], allowed["company_slug"] = true, true
@@ -426,6 +448,13 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 			region = "eu"
 		}
 	}
+	leverExcludedBlankIDs := ""
+	if config["crawler_type"] == "lever" {
+		leverExcludedBlankIDs, err = leverBlankPostingExclusions(md["exclude_blank_posting_ids"])
+		if err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+	}
 	// Admission retains the original values for binding. Only the validation
 	// copy supplies a canonical token and drops provider-specific aliases.
 	independentJSONLDDetail := false
@@ -528,6 +557,7 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	profile.SnapshotSHA256 = configDigest(config)
 	profile.Provider, profile.Region = config["crawler_type"], region
 	profile.Token = token
+	profile.LeverExcludeBlankPostingIDs = leverExcludedBlankIDs
 	profile.Profile = profile.Provider + ".token-skip/v1"
 	switch profile.Provider {
 	case "gem":

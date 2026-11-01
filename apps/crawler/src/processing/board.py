@@ -2060,6 +2060,11 @@ def _monitor_runtime_for_board(
         if selected.strip()
     }
     if board_id in lever_board_ids or (monitor_type == "lever" and percent_selected):
+        # The retained Go CLI route has no per-posting exclusion contract. The
+        # production ordinary worker handles this configuration natively;
+        # cold-reversal processing uses the Python monitor for this board.
+        if monitor_config and "exclude_blank_posting_ids" in monitor_config:
+            return PythonMonitorRuntime(_batch.monitor_one_stream)
         from src.runtime.lever_go import GoLeverMonitorRuntime
 
         return GoLeverMonitorRuntime(board_id=board_id)

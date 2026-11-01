@@ -42,6 +42,22 @@ def test_lever_route_is_default_off_and_explicit(monkeypatch):
     assert _monitor_runtime_for_board("board-b", None).implementation == "python"
 
 
+def test_exact_blank_exclusion_uses_python_in_retained_legacy_route(monkeypatch):
+    monkeypatch.setenv("LEVER_GO_BOARD_IDS", "board-a")
+    runtime = _monitor_runtime_for_board(
+        "board-a",
+        None,
+        monitor_type="lever",
+        board_url=BOARD_URL,
+        monitor_config={
+            "token": "acme",
+            "scraper_type": "skip",
+            "exclude_blank_posting_ids": ["e0b53a9a-da36-4b09-a336-afb73d9ccffb"],
+        },
+    )
+    assert runtime.implementation == "python"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("config", [CONFIG, {"scraper_type": "skip"}])
 async def test_same_bytes_produce_same_rich_job(config: dict):
