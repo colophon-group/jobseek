@@ -23,13 +23,25 @@ the removal gate for legacy server backups.
 [`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the
 fail-closed source of truth for the provider-side ownership labels and
 lifecycle protection of the Jobseek production fleet. Its allowlist is fixed
-in code: the `jobseek-crawler`, `jobseek-postings-postgresql`,
-`jobseek-typesense`, and `murmur-server` servers; the
+in code: the `nbg1-node-01`, `nbg1-node-02`,
+`nbg1-node-03`, and `nbg1-node-04` servers; the
 `jobseek-postings-postgresql`, `jobseek-typesense-snapshots`, and
 `murmur-volume` Volumes; and `jobseek-network`. The command does not accept
 names or provider IDs as arguments, does not use `hcloud` or `jq`, and does not
 change placement, server backups, snapshots, or any application backup
 schedule.
+
+The numbered Hetzner resource names describe location and stable inventory
+order. The workload roles remain in labels and this runbook. Renaming these
+provider resources does not change the guest OS hostnames, DNS, IPs, or
+running services. Infrastructure API credentials live in Doppler project
+`hetzner-infrastructure`: `prd_admin` holds a Read & Write token for bounded
+operator work, while `prd_inventory` holds a separate Read token. Neither
+config is an application or deployment environment. Use the inventory token
+for read-only checks and keep the admin token out of app and CI runtime.
+Justup's host-scoped SSH deploy key remains in `justup-deploy/dev_murmur`;
+it is separate from both Hetzner API tokens. Jobseek's protected deployment
+credentials remain in its existing protected environment.
 
 The desired labels are `environment=production`, `project=jobseek`,
 `owner=jobseek-operations`, and the resource's fixed `role`. Label updates
@@ -38,11 +50,11 @@ labels. All four servers require both delete and rebuild protection. All three
 Volumes and the private network require delete protection. Volume roles follow
 the owning service: `postgresql`, `typesense`, and `murmur` respectively.
 
-Load `HETZNER_API_KEY` from the root-only operator environment and run the
-default read-only check first:
+Run the default read-only check with Doppler's inventory token first:
 
 ```bash
-python3 scripts/manage-hetzner-fleet.py
+doppler run --project hetzner-infrastructure --config prd_inventory --no-fallback -- \
+  python3 scripts/manage-hetzner-fleet.py
 ```
 
 Exit `0` means the complete allowlist is conformant, `2` means the dry-run
@@ -61,7 +73,8 @@ After reviewing the complete dry-run, enable protection and merge the managed
 labels with the explicit apply flag:
 
 ```bash
-python3 scripts/manage-hetzner-fleet.py --apply
+doppler run --project hetzner-infrastructure --config prd_admin --no-fallback -- \
+  python3 scripts/manage-hetzner-fleet.py --apply
 ```
 
 Apply enables and verifies all required deletion/rebuild protections before

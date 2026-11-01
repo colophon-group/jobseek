@@ -75,15 +75,15 @@ class DesiredResource:
 
 
 DESIRED_RESOURCES = (
-    DesiredResource("server", "servers", "jobseek-crawler", "crawler-browser"),
+    DesiredResource("server", "servers", "nbg1-node-01", "crawler-browser"),
     DesiredResource(
         "server",
         "servers",
-        "jobseek-postings-postgresql",
+        "nbg1-node-02",
         "postgresql",
     ),
-    DesiredResource("server", "servers", "jobseek-typesense", "typesense"),
-    DesiredResource("server", "servers", "murmur-server", "murmur"),
+    DesiredResource("server", "servers", "nbg1-node-03", "typesense"),
+    DesiredResource("server", "servers", "nbg1-node-04", "murmur"),
     DesiredResource("volume", "volumes", "jobseek-postings-postgresql", "postgresql"),
     DesiredResource("volume", "volumes", "jobseek-typesense-snapshots", "typesense"),
     DesiredResource("volume", "volumes", "murmur-volume", "murmur"),
@@ -582,7 +582,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        transport = HttpTransport(os.environ.get("HETZNER_API_KEY", ""))
+        transport = HttpTransport(
+            os.environ.get("HETZNER_API_KEY") or os.environ.get("HETZNER_API_TOKEN", "")
+        )
         states = discover(transport)
         if args.apply:
             states = apply(transport, states)
