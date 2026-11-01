@@ -6222,6 +6222,7 @@ riverside-health-system,riverside-health-system-careers,https://rivhs.wd1.mywork
 riverside-health-system,riverside-health-system-provider,https://rivhs.wd1.myworkdayjobs.com/ProviderRHS,workday,"{""company"": ""rivhs"", ""wd_instance"": ""wd1"", ""site"": ""ProviderRHS"", ""all_sites"": false}",workday,
 rivia,rivia-careers,https://jobs.gem.com/rivia,gem,"{""token"": ""rivia""}",skip,
 rivian,rivian-careers,https://careers.rivian.com/careers-home/jobs,sitemap,"{""sitemap_url"": ""https://careers.rivian.com/sitemap.xml""}",json-ld,
+riviera-dining-group,riviera-dining-group-careers,https://jobs.lever.co/rivieradininggroup,lever,"{""token"": ""rivieradininggroup"", ""exclude_blank_posting_ids"": [""e0b53a9a-da36-4b09-a336-afb73d9ccffb""]}",skip,
 rivr,rivr-careers,https://jobs.lever.co/rivr,lever,,skip,
 ro,ro-lever,https://jobs.lever.co/ro,lever,"{""token"": ""ro""}",skip,
 roadie,roadie-greenhouse,https://job-boards.greenhouse.io/roadie,greenhouse,"{""token"": ""roadie""}",skip,
