@@ -1,0 +1,3541 @@
+{
+  "workflow_run_id": 41338441359,
+  "tested_PR": 11468,
+  "source": "9af885fcac5c859e5f6589462d47da8e5338a277",
+  "runtime_contract": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+  "scope": "Exact-head standard comparison: all nine actors and three alternating pairs per architecture/workload. The fixed fixture ordinary worker remains limited to one GiB; production's requested four-CPU/two-GiB allocation and120/30 slots require independent installed/live observation. All four final-head scenarios passed. No production or billed-cost claim.",
+  "scenarios": [
+    {
+      "job": 124943216348,
+      "name": "amd64-generated",
+      "conclusion": "success",
+      "summary": {
+        "complete": true,
+        "canonical_parity": true,
+        "source_revision": "9af885fcac5c859e5f6589462d47da8e5338a277",
+        "runtime_contract_sha256": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+        "workload_sha256": "1a00139aee761ab7e6de570f1cfea1c6658c52459a94936bf239937ce62fa82d",
+        "steps": {
+          "FIXTURE_OUTCOME": "success",
+          "IMAGES_OUTCOME": "success",
+          "MEASUREMENT_OUTCOME": "success"
+        }
+      },
+      "means": {
+        "native": {
+          "completion_seconds": 18.667976888000037,
+          "lifetime_cpu_seconds": 15.791169666666667,
+          "sampled_peak_mib": 448.48828125,
+          "retained_mib": 439.74609375,
+          "modeled_eur_per_1000": 1.9219548482044488e-05,
+          "correct_postings_per_lifetime_cpu_second": 33.94315767115628
+        },
+        "legacy": {
+          "completion_seconds": 32.19185039666672,
+          "lifetime_cpu_seconds": 31.139108333333336,
+          "sampled_peak_mib": 915.2760416666666,
+          "retained_mib": 858.18359375,
+          "modeled_eur_per_1000": 4.572234068658605e-05,
+          "correct_postings_per_lifetime_cpu_second": 17.213562092523677
+        }
+      },
+      "arms": [
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 18.326364384000044,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 1.906936571098012e-05,
+          "pair": 0,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 10.582191,
+            "duration_seconds": 53.32651690600005,
+            "retained_working_memory_bytes": 462069760,
+            "sampled_peak_working_memory_bytes": 469483520,
+            "samples": 530
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.07660530327155801,
+              "mean_working_memory_bytes": 182607053.76209804
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.033811133833815635,
+              "mean_working_memory_bytes": 23031628.204153173
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.07038475823606037,
+              "mean_working_memory_bytes": 156171793.28439018
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.013282828901962326,
+              "mean_working_memory_bytes": 25199864.484611742
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.0043574194131148145,
+              "mean_working_memory_bytes": 67516765.85621618
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.753374,
+              "lifetime_cpu_seconds": 5.780871,
+              "lifetime_memory_peak_bytes": 166174720,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.027497
+            },
+            {
+              "cpu_seconds": 1.383819,
+              "lifetime_cpu_seconds": 1.767355,
+              "lifetime_memory_peak_bytes": 11800576,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.383536
+            },
+            {
+              "cpu_seconds": 0.232366,
+              "lifetime_cpu_seconds": 0.36227,
+              "lifetime_memory_peak_bytes": 72183808,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.129904
+            },
+            {
+              "cpu_seconds": 1.80303,
+              "lifetime_cpu_seconds": 2.368767,
+              "lifetime_memory_peak_bytes": 28770304,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.565737
+            },
+            {
+              "cpu_seconds": 0.00552,
+              "lifetime_cpu_seconds": 0.103074,
+              "lifetime_memory_peak_bytes": 22994944,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.097554
+            },
+            {
+              "cpu_seconds": 0.109118,
+              "lifetime_cpu_seconds": 0.311596,
+              "lifetime_memory_peak_bytes": 67239936,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.202478
+            },
+            {
+              "cpu_seconds": 0.917055,
+              "lifetime_cpu_seconds": 0.958432,
+              "lifetime_memory_peak_bytes": 14356480,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.041377
+            },
+            {
+              "cpu_seconds": 1.669582,
+              "lifetime_cpu_seconds": 3.288357,
+              "lifetime_memory_peak_bytes": 114302976,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 1.618775
+            },
+            {
+              "cpu_seconds": 0.708327,
+              "lifetime_cpu_seconds": 0.805892,
+              "lifetime_memory_peak_bytes": 34787328,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.097565
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.1391862280002,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 4.5562151523472075e-05,
+          "pair": 0,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 19.743164999999998,
+            "duration_seconds": 67.13935664399992,
+            "retained_working_memory_bytes": 902365184,
+            "sampled_peak_working_memory_bytes": 960933888,
+            "samples": 667
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.19334221608392593,
+              "mean_working_memory_bytes": 640719963.3602177
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.03125354642771251,
+              "mean_working_memory_bytes": 24229138.175884757
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06526365784578288,
+              "mean_working_memory_bytes": 156412993.16924608
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004203048913564748,
+              "mean_working_memory_bytes": 67632203.56252126
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 4.38176,
+              "lifetime_cpu_seconds": 6.248033,
+              "lifetime_memory_peak_bytes": 170377216,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.866273
+            },
+            {
+              "cpu_seconds": 1.618156,
+              "lifetime_cpu_seconds": 2.00927,
+              "lifetime_memory_peak_bytes": 11837440,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.391114
+            },
+            {
+              "cpu_seconds": 0.28219,
+              "lifetime_cpu_seconds": 0.402998,
+              "lifetime_memory_peak_bytes": 72749056,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.120808
+            },
+            {
+              "cpu_seconds": 2.098343,
+              "lifetime_cpu_seconds": 2.674813,
+              "lifetime_memory_peak_bytes": 29773824,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.57647
+            },
+            {
+              "cpu_seconds": 0.007522,
+              "lifetime_cpu_seconds": 0.088158,
+              "lifetime_memory_peak_bytes": 23560192,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.080636
+            },
+            {
+              "cpu_seconds": 0.132628,
+              "lifetime_cpu_seconds": 0.361349,
+              "lifetime_memory_peak_bytes": 73957376,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.228721
+            },
+            {
+              "cpu_seconds": 0.959305,
+              "lifetime_cpu_seconds": 1.001285,
+              "lifetime_memory_peak_bytes": 13189120,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.04198
+            },
+            {
+              "cpu_seconds": 5.154043,
+              "lifetime_cpu_seconds": 8.743465,
+              "lifetime_memory_peak_bytes": 181669888,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.589422
+            },
+            {
+              "cpu_seconds": 5.109218,
+              "lifetime_cpu_seconds": 9.37891,
+              "lifetime_memory_peak_bytes": 435720192,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 4.269692
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.13021816600008,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 4.5806095816090564e-05,
+          "pair": 1,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 20.038345,
+            "duration_seconds": 67.13037890800001,
+            "retained_working_memory_bytes": 900775936,
+            "sampled_peak_working_memory_bytes": 965779456,
+            "samples": 667
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.1956460728159964,
+              "mean_working_memory_bytes": 644355612.0081863
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.03276881548687116,
+              "mean_working_memory_bytes": 25612338.333313983
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06596368249416047,
+              "mean_working_memory_bytes": 158339432.7106206
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004120340217043483,
+              "mean_working_memory_bytes": 66823424.78459871
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 4.428167,
+              "lifetime_cpu_seconds": 6.317317,
+              "lifetime_memory_peak_bytes": 169324544,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.88915
+            },
+            {
+              "cpu_seconds": 1.721957,
+              "lifetime_cpu_seconds": 2.107669,
+              "lifetime_memory_peak_bytes": 11915264,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.385712
+            },
+            {
+              "cpu_seconds": 0.2766,
+              "lifetime_cpu_seconds": 0.40593,
+              "lifetime_memory_peak_bytes": 71217152,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.12933
+            },
+            {
+              "cpu_seconds": 2.199783,
+              "lifetime_cpu_seconds": 2.785371,
+              "lifetime_memory_peak_bytes": 31506432,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.585588
+            },
+            {
+              "cpu_seconds": 0.008497,
+              "lifetime_cpu_seconds": 0.084462,
+              "lifetime_memory_peak_bytes": 22773760,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.075965
+            },
+            {
+              "cpu_seconds": 0.125674,
+              "lifetime_cpu_seconds": 0.338608,
+              "lifetime_memory_peak_bytes": 71081984,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.212934
+            },
+            {
+              "cpu_seconds": 0.962369,
+              "lifetime_cpu_seconds": 1.005649,
+              "lifetime_memory_peak_bytes": 13189120,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.04328
+            },
+            {
+              "cpu_seconds": 5.206424,
+              "lifetime_cpu_seconds": 8.807763,
+              "lifetime_memory_peak_bytes": 182022144,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.601339
+            },
+            {
+              "cpu_seconds": 5.108891,
+              "lifetime_cpu_seconds": 9.378729,
+              "lifetime_memory_peak_bytes": 437317632,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 4.269838
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 18.560319467,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 1.9168308590721813e-05,
+          "pair": 1,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 10.682847000000002,
+            "duration_seconds": 53.56048995299989,
+            "retained_working_memory_bytes": 459907072,
+            "sampled_peak_working_memory_bytes": 471097344,
+            "samples": 532
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.07680011896100306,
+              "mean_working_memory_bytes": 183183566.1843283
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.03385900692079884,
+              "mean_working_memory_bytes": 24408239.000603706
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.07086464301074628,
+              "mean_working_memory_bytes": 155901778.44887206
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.013470657207077874,
+              "mean_working_memory_bytes": 25521669.767089356
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.00445944389623012,
+              "mean_working_memory_bytes": 67022313.560034275
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.795545,
+              "lifetime_cpu_seconds": 5.765997,
+              "lifetime_memory_peak_bytes": 165912576,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.970452
+            },
+            {
+              "cpu_seconds": 1.397644,
+              "lifetime_cpu_seconds": 1.772535,
+              "lifetime_memory_peak_bytes": 11739136,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.374891
+            },
+            {
+              "cpu_seconds": 0.23885,
+              "lifetime_cpu_seconds": 0.366528,
+              "lifetime_memory_peak_bytes": 70930432,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.127678
+            },
+            {
+              "cpu_seconds": 1.813505,
+              "lifetime_cpu_seconds": 2.378743,
+              "lifetime_memory_peak_bytes": 29839360,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.565238
+            },
+            {
+              "cpu_seconds": 0.005753,
+              "lifetime_cpu_seconds": 0.096324,
+              "lifetime_memory_peak_bytes": 23764992,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.090571
+            },
+            {
+              "cpu_seconds": 0.107154,
+              "lifetime_cpu_seconds": 0.321971,
+              "lifetime_memory_peak_bytes": 72110080,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.214817
+            },
+            {
+              "cpu_seconds": 0.930403,
+              "lifetime_cpu_seconds": 0.972556,
+              "lifetime_memory_peak_bytes": 13500416,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.042153
+            },
+            {
+              "cpu_seconds": 1.672838,
+              "lifetime_cpu_seconds": 3.315305,
+              "lifetime_memory_peak_bytes": 98648064,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 1.642467
+            },
+            {
+              "cpu_seconds": 0.721495,
+              "lifetime_cpu_seconds": 0.819287,
+              "lifetime_memory_peak_bytes": 31944704,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.097792
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 19.117246813000065,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 1.9420971144431525e-05,
+          "pair": 2,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 10.758179999999998,
+            "duration_seconds": 54.11738178499991,
+            "retained_working_memory_bytes": 461344768,
+            "sampled_peak_working_memory_bytes": 470241280,
+            "samples": 538
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.07617628318343093,
+              "mean_working_memory_bytes": 181740445.89814255
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.034479846187185664,
+              "mean_working_memory_bytes": 25416360.614062935
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.07030582179891404,
+              "mean_working_memory_bytes": 156147076.76516825
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.013064933606894768,
+              "mean_working_memory_bytes": 23193407.118464217
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004766546190737901,
+              "mean_working_memory_bytes": 70567027.17277148
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.804767,
+              "lifetime_cpu_seconds": 5.769727,
+              "lifetime_memory_peak_bytes": 166092800,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.96496
+            },
+            {
+              "cpu_seconds": 1.444832,
+              "lifetime_cpu_seconds": 1.793654,
+              "lifetime_memory_peak_bytes": 11624448,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.348822
+            },
+            {
+              "cpu_seconds": 0.257953,
+              "lifetime_cpu_seconds": 0.382688,
+              "lifetime_memory_peak_bytes": 74706944,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.124735
+            },
+            {
+              "cpu_seconds": 1.865959,
+              "lifetime_cpu_seconds": 2.401344,
+              "lifetime_memory_peak_bytes": 31080448,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.535385
+            },
+            {
+              "cpu_seconds": 0.006956,
+              "lifetime_cpu_seconds": 0.089774,
+              "lifetime_memory_peak_bytes": 24928256,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.082818
+            },
+            {
+              "cpu_seconds": 0.10868,
+              "lifetime_cpu_seconds": 0.32126,
+              "lifetime_memory_peak_bytes": 70270976,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.21258
+            },
+            {
+              "cpu_seconds": 0.929023,
+              "lifetime_cpu_seconds": 0.971406,
+              "lifetime_memory_peak_bytes": 13393920,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.042383
+            },
+            {
+              "cpu_seconds": 1.633597,
+              "lifetime_cpu_seconds": 3.28231,
+              "lifetime_memory_peak_bytes": 117510144,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 1.648713
+            },
+            {
+              "cpu_seconds": 0.70704,
+              "lifetime_cpu_seconds": 0.805486,
+              "lifetime_memory_peak_bytes": 33812480,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.098446
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.306146795999894,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 4.5798774720195525e-05,
+          "pair": 2,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 20.344854,
+            "duration_seconds": 67.30634646099998,
+            "retained_working_memory_bytes": 896471040,
+            "sampled_peak_working_memory_bytes": 952496128,
+            "samples": 668
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.19931056587320656,
+              "mean_working_memory_bytes": 643068773.8399733
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.03159308314606159,
+              "mean_working_memory_bytes": 24041592.14504762
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06734356027817377,
+              "mean_working_memory_bytes": 157464462.5434576
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004025237057800847,
+              "mean_working_memory_bytes": 66602771.35645999
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 4.532649,
+              "lifetime_cpu_seconds": 6.353898,
+              "lifetime_memory_peak_bytes": 172744704,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.821249
+            },
+            {
+              "cpu_seconds": 1.625906,
+              "lifetime_cpu_seconds": 1.998584,
+              "lifetime_memory_peak_bytes": 11886592,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.372678
+            },
+            {
+              "cpu_seconds": 0.270924,
+              "lifetime_cpu_seconds": 0.397279,
+              "lifetime_memory_peak_bytes": 69926912,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.126355
+            },
+            {
+              "cpu_seconds": 2.126415,
+              "lifetime_cpu_seconds": 2.675908,
+              "lifetime_memory_peak_bytes": 29814784,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.549493
+            },
+            {
+              "cpu_seconds": 0.007758,
+              "lifetime_cpu_seconds": 0.102346,
+              "lifetime_memory_peak_bytes": 24399872,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.094588
+            },
+            {
+              "cpu_seconds": 0.124613,
+              "lifetime_cpu_seconds": 0.342994,
+              "lifetime_memory_peak_bytes": 72327168,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.218381
+            },
+            {
+              "cpu_seconds": 0.986891,
+              "lifetime_cpu_seconds": 1.028947,
+              "lifetime_memory_peak_bytes": 13037568,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.042056
+            },
+            {
+              "cpu_seconds": 5.343496,
+              "lifetime_cpu_seconds": 8.832755,
+              "lifetime_memory_peak_bytes": 179802112,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.489259
+            },
+            {
+              "cpu_seconds": 5.326311,
+              "lifetime_cpu_seconds": 9.544835,
+              "lifetime_memory_peak_bytes": 434970624,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 4.218524
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "job": 124943216573,
+      "name": "amd64-captured",
+      "conclusion": "success",
+      "summary": {
+        "complete": true,
+        "canonical_parity": true,
+        "source_revision": "9af885fcac5c859e5f6589462d47da8e5338a277",
+        "runtime_contract_sha256": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+        "workload_sha256": "3710caa8929549c832e485105d4b110adc302089811453933e4357d1631a902c",
+        "steps": {
+          "FIXTURE_OUTCOME": "success",
+          "IMAGES_OUTCOME": "success",
+          "MEASUREMENT_OUTCOME": "success"
+        }
+      },
+      "means": {
+        "native": {
+          "completion_seconds": 35.54898036833333,
+          "lifetime_cpu_seconds": 24.127229,
+          "sampled_peak_mib": 426.3059895833333,
+          "retained_mib": 416.01171875,
+          "modeled_eur_per_1000": 0.00022491097717060882,
+          "correct_postings_per_lifetime_cpu_second": 2.9846482227634374
+        },
+        "legacy": {
+          "completion_seconds": 67.64370021633333,
+          "lifetime_cpu_seconds": 36.749519,
+          "sampled_peak_mib": 819.7864583333334,
+          "retained_mib": 797.0104166666666,
+          "modeled_eur_per_1000": 0.0005076937081704241,
+          "correct_postings_per_lifetime_cpu_second": 1.9592726041260213
+        }
+      },
+      "arms": [
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 35.49588993399993,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.0002279556658417111,
+          "pair": 0,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 17.558923999999998,
+            "duration_seconds": 70.49610792899989,
+            "retained_working_memory_bytes": 434987008,
+            "sampled_peak_working_memory_bytes": 447844352,
+            "samples": 698
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.08352757581922773,
+              "mean_working_memory_bytes": 179732200.24034366
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.031405322436095076,
+              "mean_working_memory_bytes": 20532620.983941715
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.13142187947923262,
+              "mean_working_memory_bytes": 156612277.10793367
+            },
+            "renderer": {
+              "mean_cpu_cores": 2.241258484214896e-05,
+              "mean_working_memory_bytes": 15822848.000000026
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002699312140631245,
+              "mean_working_memory_bytes": 55660276.27046493
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 9.264731,
+              "lifetime_cpu_seconds": 11.879776,
+              "lifetime_memory_peak_bytes": 165298176,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.615045
+            },
+            {
+              "cpu_seconds": 2.492737,
+              "lifetime_cpu_seconds": 2.95067,
+              "lifetime_memory_peak_bytes": 11849728,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.457933
+            },
+            {
+              "cpu_seconds": 0.190291,
+              "lifetime_cpu_seconds": 0.367583,
+              "lifetime_memory_peak_bytes": 56594432,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.177292
+            },
+            {
+              "cpu_seconds": 2.213953,
+              "lifetime_cpu_seconds": 2.940797,
+              "lifetime_memory_peak_bytes": 25534464,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.726844
+            },
+            {
+              "cpu_seconds": 0.008985,
+              "lifetime_cpu_seconds": 0.119082,
+              "lifetime_memory_peak_bytes": 24408064,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.110097
+            },
+            {
+              "cpu_seconds": 0.138405,
+              "lifetime_cpu_seconds": 0.421789,
+              "lifetime_memory_peak_bytes": 75681792,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.283384
+            },
+            {
+              "cpu_seconds": 0.227375,
+              "lifetime_cpu_seconds": 0.283414,
+              "lifetime_memory_peak_bytes": 10301440,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.056039
+            },
+            {
+              "cpu_seconds": 3.020908,
+              "lifetime_cpu_seconds": 5.408628,
+              "lifetime_memory_peak_bytes": 117010432,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.38772
+            },
+            {
+              "cpu_seconds": 0.00158,
+              "lifetime_cpu_seconds": 0.14865,
+              "lifetime_memory_peak_bytes": 31305728,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.14707
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 67.58985078399996,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0005072402523619457,
+          "pair": 0,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 21.706335000000003,
+            "duration_seconds": 102.59007205299986,
+            "retained_working_memory_bytes": 836829184,
+            "sampled_peak_working_memory_bytes": 860999680,
+            "samples": 1015
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.09073757151852786,
+              "mean_working_memory_bytes": 595597064.6894858
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.028359488806060602,
+              "mean_working_memory_bytes": 20424214.764922515
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.0900575154604333,
+              "mean_working_memory_bytes": 155676652.461057
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002428617068046152,
+              "mean_working_memory_bytes": 55499017.21695259
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 9.239007,
+              "lifetime_cpu_seconds": 11.701624,
+              "lifetime_memory_peak_bytes": 167239680,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.462617
+            },
+            {
+              "cpu_seconds": 2.990854,
+              "lifetime_cpu_seconds": 3.497884,
+              "lifetime_memory_peak_bytes": 12046336,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.50703
+            },
+            {
+              "cpu_seconds": 0.249152,
+              "lifetime_cpu_seconds": 0.436551,
+              "lifetime_memory_peak_bytes": 56553472,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.187399
+            },
+            {
+              "cpu_seconds": 2.909402,
+              "lifetime_cpu_seconds": 3.691758,
+              "lifetime_memory_peak_bytes": 25411584,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.782356
+            },
+            {
+              "cpu_seconds": 0.016158,
+              "lifetime_cpu_seconds": 0.131346,
+              "lifetime_memory_peak_bytes": 23801856,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.115188
+            },
+            {
+              "cpu_seconds": 0.190633,
+              "lifetime_cpu_seconds": 0.491759,
+              "lifetime_memory_peak_bytes": 77389824,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.301126
+            },
+            {
+              "cpu_seconds": 0.243566,
+              "lifetime_cpu_seconds": 0.300596,
+              "lifetime_memory_peak_bytes": 10399744,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.05703
+            },
+            {
+              "cpu_seconds": 4.872918,
+              "lifetime_cpu_seconds": 9.578762,
+              "lifetime_memory_peak_bytes": 185241600,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 4.705844
+            },
+            {
+              "cpu_seconds": 0.994645,
+              "lifetime_cpu_seconds": 6.76049,
+              "lifetime_memory_peak_bytes": 333627392,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 5.765845
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 67.67921714699992,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0005079221709009466,
+          "pair": 1,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 21.711149,
+            "duration_seconds": 102.67948695199993,
+            "retained_working_memory_bytes": 834326528,
+            "sampled_peak_working_memory_bytes": 859250688,
+            "samples": 1016
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.08975059453022037,
+              "mean_working_memory_bytes": 594024828.2342465
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.0281961381571123,
+              "mean_working_memory_bytes": 20459926.690562263
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.09106335917290907,
+              "mean_working_memory_bytes": 155858163.13676292
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.0024357348037482443,
+              "mean_working_memory_bytes": 55201110.95528298
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 9.350339,
+              "lifetime_cpu_seconds": 11.795465,
+              "lifetime_memory_peak_bytes": 167469056,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.445126
+            },
+            {
+              "cpu_seconds": 2.943939,
+              "lifetime_cpu_seconds": 3.480139,
+              "lifetime_memory_peak_bytes": 11902976,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.5362
+            },
+            {
+              "cpu_seconds": 0.2501,
+              "lifetime_cpu_seconds": 0.425966,
+              "lifetime_memory_peak_bytes": 56557568,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.175866
+            },
+            {
+              "cpu_seconds": 2.895165,
+              "lifetime_cpu_seconds": 3.710823,
+              "lifetime_memory_peak_bytes": 25550848,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.815658
+            },
+            {
+              "cpu_seconds": 0.012106,
+              "lifetime_cpu_seconds": 0.115296,
+              "lifetime_memory_peak_bytes": 23613440,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.10319
+            },
+            {
+              "cpu_seconds": 0.189683,
+              "lifetime_cpu_seconds": 0.502036,
+              "lifetime_memory_peak_bytes": 77045760,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.312353
+            },
+            {
+              "cpu_seconds": 0.237926,
+              "lifetime_cpu_seconds": 0.292851,
+              "lifetime_memory_peak_bytes": 10260480,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.054925
+            },
+            {
+              "cpu_seconds": 4.84649,
+              "lifetime_cpu_seconds": 9.621416,
+              "lifetime_memory_peak_bytes": 184172544,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 4.774926
+            },
+            {
+              "cpu_seconds": 0.985494,
+              "lifetime_cpu_seconds": 6.668576,
+              "lifetime_memory_peak_bytes": 333209600,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 5.683082
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 35.57930297500002,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.0002229906596884897,
+          "pair": 1,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 17.204402,
+            "duration_seconds": 70.57949586200016,
+            "retained_working_memory_bytes": 440147968,
+            "sampled_peak_working_memory_bytes": 441171968,
+            "samples": 699
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.082283826613825,
+              "mean_working_memory_bytes": 173872539.79171836
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.0314801908523725,
+              "mean_working_memory_bytes": 20435103.910447296
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.12726394387347856,
+              "mean_working_memory_bytes": 156387120.30202273
+            },
+            "renderer": {
+              "mean_cpu_cores": 2.3675431222506968e-05,
+              "mean_working_memory_bytes": 15507455.999999996
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002707571053973584,
+              "mean_working_memory_bytes": 55743352.614561476
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 8.983693,
+              "lifetime_cpu_seconds": 11.618413,
+              "lifetime_memory_peak_bytes": 165232640,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.63472
+            },
+            {
+              "cpu_seconds": 2.481326,
+              "lifetime_cpu_seconds": 2.989254,
+              "lifetime_memory_peak_bytes": 11710464,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.507928
+            },
+            {
+              "cpu_seconds": 0.191099,
+              "lifetime_cpu_seconds": 0.371324,
+              "lifetime_memory_peak_bytes": 56909824,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.180225
+            },
+            {
+              "cpu_seconds": 2.221856,
+              "lifetime_cpu_seconds": 3.004965,
+              "lifetime_memory_peak_bytes": 25374720,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.783109
+            },
+            {
+              "cpu_seconds": 0.009382,
+              "lifetime_cpu_seconds": 0.118547,
+              "lifetime_memory_peak_bytes": 23130112,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.109165
+            },
+            {
+              "cpu_seconds": 0.135422,
+              "lifetime_cpu_seconds": 0.403563,
+              "lifetime_memory_peak_bytes": 77111296,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.268141
+            },
+            {
+              "cpu_seconds": 0.215816,
+              "lifetime_cpu_seconds": 0.271179,
+              "lifetime_memory_peak_bytes": 9875456,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.055363
+            },
+            {
+              "cpu_seconds": 2.97923,
+              "lifetime_cpu_seconds": 5.166594,
+              "lifetime_memory_peak_bytes": 98062336,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.187364
+            },
+            {
+              "cpu_seconds": 0.001671,
+              "lifetime_cpu_seconds": 0.133072,
+              "lifetime_memory_peak_bytes": 29585408,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.131401
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 35.571748196000044,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.00022378660598162565,
+          "pair": 2,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 17.002198,
+            "duration_seconds": 70.57196239399991,
+            "retained_working_memory_bytes": 433524736,
+            "sampled_peak_working_memory_bytes": 452026368,
+            "samples": 699
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.07985070570290832,
+              "mean_working_memory_bytes": 177201617.74306986
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.029923172437947423,
+              "mean_working_memory_bytes": 20480822.56322131
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.1284691921897134,
+              "mean_working_memory_bytes": 156366957.0034065
+            },
+            "renderer": {
+              "mean_cpu_cores": 2.6015997539500168e-05,
+              "mean_working_memory_bytes": 14839808.000000011
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002650925291768644,
+              "mean_working_memory_bytes": 55530202.99580628
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 9.066323,
+              "lifetime_cpu_seconds": 11.628916,
+              "lifetime_memory_peak_bytes": 168931328,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.562593
+            },
+            {
+              "cpu_seconds": 2.324885,
+              "lifetime_cpu_seconds": 2.798389,
+              "lifetime_memory_peak_bytes": 11706368,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.473504
+            },
+            {
+              "cpu_seconds": 0.187081,
+              "lifetime_cpu_seconds": 0.359001,
+              "lifetime_memory_peak_bytes": 56496128,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.17192
+            },
+            {
+              "cpu_seconds": 2.111737,
+              "lifetime_cpu_seconds": 2.828704,
+              "lifetime_memory_peak_bytes": 25444352,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.716967
+            },
+            {
+              "cpu_seconds": 0.009077,
+              "lifetime_cpu_seconds": 0.11728,
+              "lifetime_memory_peak_bytes": 22421504,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.108203
+            },
+            {
+              "cpu_seconds": 0.132878,
+              "lifetime_cpu_seconds": 0.400873,
+              "lifetime_memory_peak_bytes": 71688192,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.267995
+            },
+            {
+              "cpu_seconds": 0.207986,
+              "lifetime_cpu_seconds": 0.265981,
+              "lifetime_memory_peak_bytes": 10498048,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.057995
+            },
+            {
+              "cpu_seconds": 2.961539,
+              "lifetime_cpu_seconds": 5.255511,
+              "lifetime_memory_peak_bytes": 102408192,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.293972
+            },
+            {
+              "cpu_seconds": 0.001836,
+              "lifetime_cpu_seconds": 0.129732,
+              "lifetime_memory_peak_bytes": 29499392,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.127896
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 67.66203271800009,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0005079187012483802,
+          "pair": 2,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 22.391254999999997,
+            "duration_seconds": 102.66228344799993,
+            "retained_working_memory_bytes": 836022272,
+            "sampled_peak_working_memory_bytes": 858574848,
+            "samples": 1016
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.0937332453244539,
+              "mean_working_memory_bytes": 592587280.7385807
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.030413535478991234,
+              "mean_working_memory_bytes": 20451136.196825262
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.09150206565157995,
+              "mean_working_memory_bytes": 155844493.91024217
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002457104902870874,
+              "mean_working_memory_bytes": 55742156.83023449
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 9.393811,
+              "lifetime_cpu_seconds": 11.713714,
+              "lifetime_memory_peak_bytes": 167784448,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 2.319903
+            },
+            {
+              "cpu_seconds": 3.200974,
+              "lifetime_cpu_seconds": 3.697971,
+              "lifetime_memory_peak_bytes": 11915264,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.496997
+            },
+            {
+              "cpu_seconds": 0.252252,
+              "lifetime_cpu_seconds": 0.425898,
+              "lifetime_memory_peak_bytes": 57102336,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.173646
+            },
+            {
+              "cpu_seconds": 3.122323,
+              "lifetime_cpu_seconds": 3.858782,
+              "lifetime_memory_peak_bytes": 25526272,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.736459
+            },
+            {
+              "cpu_seconds": 0.011823,
+              "lifetime_cpu_seconds": 0.122131,
+              "lifetime_memory_peak_bytes": 23007232,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.110308
+            },
+            {
+              "cpu_seconds": 0.169181,
+              "lifetime_cpu_seconds": 0.474554,
+              "lifetime_memory_peak_bytes": 76550144,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.305373
+            },
+            {
+              "cpu_seconds": 0.237485,
+              "lifetime_cpu_seconds": 0.294438,
+              "lifetime_memory_peak_bytes": 10285056,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.056953
+            },
+            {
+              "cpu_seconds": 4.958105,
+              "lifetime_cpu_seconds": 9.707658,
+              "lifetime_memory_peak_bytes": 184475648,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 4.749553
+            },
+            {
+              "cpu_seconds": 1.045453,
+              "lifetime_cpu_seconds": 6.750073,
+              "lifetime_memory_peak_bytes": 332894208,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 5.70462
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "job": 124943216584,
+      "name": "arm64-generated",
+      "conclusion": "success",
+      "summary": {
+        "complete": true,
+        "canonical_parity": true,
+        "source_revision": "9af885fcac5c859e5f6589462d47da8e5338a277",
+        "runtime_contract_sha256": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+        "workload_sha256": "1a00139aee761ab7e6de570f1cfea1c6658c52459a94936bf239937ce62fa82d",
+        "steps": {
+          "FIXTURE_OUTCOME": "success",
+          "IMAGES_OUTCOME": "success",
+          "MEASUREMENT_OUTCOME": "success"
+        }
+      },
+      "means": {
+        "native": {
+          "completion_seconds": 19.784621608000027,
+          "lifetime_cpu_seconds": 14.401693,
+          "sampled_peak_mib": 462.2513020833333,
+          "retained_mib": 443.7955729166667,
+          "modeled_eur_per_1000": 1.98459498321674e-05,
+          "correct_postings_per_lifetime_cpu_second": 37.21807239443367
+        },
+        "legacy": {
+          "completion_seconds": 32.137226070666735,
+          "lifetime_cpu_seconds": 28.457403333333332,
+          "sampled_peak_mib": 965.4700520833334,
+          "retained_mib": 910.44140625,
+          "modeled_eur_per_1000": 4.86539988197566e-05,
+          "correct_postings_per_lifetime_cpu_second": 18.850802350472623
+        }
+      },
+      "arms": [
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 18.430217201999994,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 1.9142752203244256e-05,
+          "pair": 0,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 9.628576000000002,
+            "duration_seconds": 53.43043165500012,
+            "retained_working_memory_bytes": 459460608,
+            "sampled_peak_working_memory_bytes": 477048832,
+            "samples": 530
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.07185976008563077,
+              "mean_working_memory_bytes": 179364001.87805885
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.02777224428171236,
+              "mean_working_memory_bytes": 24908289.13255008
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06385913222695623,
+              "mean_working_memory_bytes": 151044153.2361471
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.011889160920536055,
+              "mean_working_memory_bytes": 23153591.42156337
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004827417484954239,
+              "mean_working_memory_bytes": 80748276.37102963
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.412021,
+              "lifetime_cpu_seconds": 5.063936,
+              "lifetime_memory_peak_bytes": 160591872,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.651915
+            },
+            {
+              "cpu_seconds": 1.055417,
+              "lifetime_cpu_seconds": 1.282781,
+              "lifetime_memory_peak_bytes": 12132352,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.227364
+            },
+            {
+              "cpu_seconds": 0.257931,
+              "lifetime_cpu_seconds": 0.360588,
+              "lifetime_memory_peak_bytes": 83644416,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.102657
+            },
+            {
+              "cpu_seconds": 1.483883,
+              "lifetime_cpu_seconds": 1.899058,
+              "lifetime_memory_peak_bytes": 30068736,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.415175
+            },
+            {
+              "cpu_seconds": 0.006531,
+              "lifetime_cpu_seconds": 0.067528,
+              "lifetime_memory_peak_bytes": 22376448,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.060997
+            },
+            {
+              "cpu_seconds": 0.11741,
+              "lifetime_cpu_seconds": 0.285377,
+              "lifetime_memory_peak_bytes": 69054464,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.167967
+            },
+            {
+              "cpu_seconds": 0.979753,
+              "lifetime_cpu_seconds": 1.006253,
+              "lifetime_memory_peak_bytes": 13848576,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.0265
+            },
+            {
+              "cpu_seconds": 1.680732,
+              "lifetime_cpu_seconds": 3.689297,
+              "lifetime_memory_peak_bytes": 99704832,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.008565
+            },
+            {
+              "cpu_seconds": 0.635255,
+              "lifetime_cpu_seconds": 0.70615,
+              "lifetime_memory_peak_bytes": 33976320,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.070895
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.084472414000174,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 5.3249864734289184e-05,
+          "pair": 0,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 19.455863,
+            "duration_seconds": 67.08467260499992,
+            "retained_working_memory_bytes": 1050763264,
+            "sampled_peak_working_memory_bytes": 1105281024,
+            "samples": 666
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.20201863516272006,
+              "mean_working_memory_bytes": 781749738.1090939
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.02574646238746449,
+              "mean_working_memory_bytes": 24708250.419465512
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.058011761090564606,
+              "mean_working_memory_bytes": 155993723.15345562
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004242638280070955,
+              "mean_working_memory_bytes": 75658212.68677408
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.891738,
+              "lifetime_cpu_seconds": 5.476096,
+              "lifetime_memory_peak_bytes": 166739968,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.584358
+            },
+            {
+              "cpu_seconds": 1.141558,
+              "lifetime_cpu_seconds": 1.37461,
+              "lifetime_memory_peak_bytes": 12427264,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.233052
+            },
+            {
+              "cpu_seconds": 0.284616,
+              "lifetime_cpu_seconds": 0.393907,
+              "lifetime_memory_peak_bytes": 79278080,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.109291
+            },
+            {
+              "cpu_seconds": 1.727193,
+              "lifetime_cpu_seconds": 2.152901,
+              "lifetime_memory_peak_bytes": 30121984,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.425708
+            },
+            {
+              "cpu_seconds": 0.008897,
+              "lifetime_cpu_seconds": 0.068206,
+              "lifetime_memory_peak_bytes": 23904256,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.059309
+            },
+            {
+              "cpu_seconds": 0.128538,
+              "lifetime_cpu_seconds": 0.320418,
+              "lifetime_memory_peak_bytes": 71278592,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.19188
+            },
+            {
+              "cpu_seconds": 1.075497,
+              "lifetime_cpu_seconds": 1.104614,
+              "lifetime_memory_peak_bytes": 13324288,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.029117
+            },
+            {
+              "cpu_seconds": 5.349848,
+              "lifetime_cpu_seconds": 8.530483,
+              "lifetime_memory_peak_bytes": 182124544,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.180635
+            },
+            {
+              "cpu_seconds": 5.850266,
+              "lifetime_cpu_seconds": 9.753647,
+              "lifetime_memory_peak_bytes": 580521984,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.903381
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.16543357699993,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 4.6200747431763906e-05,
+          "pair": 1,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 18.967804,
+            "duration_seconds": 67.16563669100015,
+            "retained_working_memory_bytes": 903073792,
+            "sampled_peak_working_memory_bytes": 961794048,
+            "samples": 666
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.19596187348825697,
+              "mean_working_memory_bytes": 644307091.6046457
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.025362120928547012,
+              "mean_working_memory_bytes": 24130558.758651707
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.0568219433035076,
+              "mean_working_memory_bytes": 156111411.20896494
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004257459827494147,
+              "mean_working_memory_bytes": 75821752.84183829
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.816482,
+              "lifetime_cpu_seconds": 5.434037,
+              "lifetime_memory_peak_bytes": 166776832,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.617555
+            },
+            {
+              "cpu_seconds": 1.150246,
+              "lifetime_cpu_seconds": 1.384505,
+              "lifetime_memory_peak_bytes": 12328960,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.233319
+            },
+            {
+              "cpu_seconds": 0.285955,
+              "lifetime_cpu_seconds": 0.394577,
+              "lifetime_memory_peak_bytes": 79454208,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.108622
+            },
+            {
+              "cpu_seconds": 1.703551,
+              "lifetime_cpu_seconds": 2.15482,
+              "lifetime_memory_peak_bytes": 29356032,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.451269
+            },
+            {
+              "cpu_seconds": 0.008776,
+              "lifetime_cpu_seconds": 0.082675,
+              "lifetime_memory_peak_bytes": 23658496,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.073899
+            },
+            {
+              "cpu_seconds": 0.131622,
+              "lifetime_cpu_seconds": 0.315697,
+              "lifetime_memory_peak_bytes": 72597504,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.184075
+            },
+            {
+              "cpu_seconds": 1.023738,
+              "lifetime_cpu_seconds": 1.053543,
+              "lifetime_memory_peak_bytes": 12988416,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.029805
+            },
+            {
+              "cpu_seconds": 5.339798,
+              "lifetime_cpu_seconds": 8.596162,
+              "lifetime_memory_peak_bytes": 181772288,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.256364
+            },
+            {
+              "cpu_seconds": 5.520409,
+              "lifetime_cpu_seconds": 9.459165,
+              "lifetime_memory_peak_bytes": 429813760,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.938756
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 20.46584503100007,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 2.022706197256348e-05,
+          "pair": 1,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 9.659761000000001,
+            "duration_seconds": 55.4660117630001,
+            "retained_working_memory_bytes": 468041728,
+            "sampled_peak_working_memory_bytes": 492961792,
+            "samples": 551
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.06827346837520616,
+              "mean_working_memory_bytes": 183373116.22540078
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.02644130979286176,
+              "mean_working_memory_bytes": 25026221.80339455
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06335878294289529,
+              "mean_working_memory_bytes": 155814642.86414117
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.011379076662242098,
+              "mean_working_memory_bytes": 24602862.359567467
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004703763470768215,
+              "mean_working_memory_bytes": 81316664.10802613
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.514259,
+              "lifetime_cpu_seconds": 5.16105,
+              "lifetime_memory_peak_bytes": 165367808,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.646791
+            },
+            {
+              "cpu_seconds": 1.051157,
+              "lifetime_cpu_seconds": 1.275523,
+              "lifetime_memory_peak_bytes": 12062720,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.224366
+            },
+            {
+              "cpu_seconds": 0.260899,
+              "lifetime_cpu_seconds": 0.364119,
+              "lifetime_memory_peak_bytes": 84586496,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.10322
+            },
+            {
+              "cpu_seconds": 1.466594,
+              "lifetime_cpu_seconds": 1.87455,
+              "lifetime_memory_peak_bytes": 30052352,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.407956
+            },
+            {
+              "cpu_seconds": 0.009129,
+              "lifetime_cpu_seconds": 0.064511,
+              "lifetime_memory_peak_bytes": 23158784,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.055382
+            },
+            {
+              "cpu_seconds": 0.117464,
+              "lifetime_cpu_seconds": 0.295385,
+              "lifetime_memory_peak_bytes": 69971968,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.177921
+            },
+            {
+              "cpu_seconds": 0.961324,
+              "lifetime_cpu_seconds": 0.989753,
+              "lifetime_memory_peak_bytes": 13680640,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.028429
+            },
+            {
+              "cpu_seconds": 1.64794,
+              "lifetime_cpu_seconds": 3.669093,
+              "lifetime_memory_peak_bytes": 117923840,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.021153
+            },
+            {
+              "cpu_seconds": 0.631166,
+              "lifetime_cpu_seconds": 0.702674,
+              "lifetime_memory_peak_bytes": 34148352,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.071508
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 20.457802591000018,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 2.016803532069447e-05,
+          "pair": 2,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 9.730567,
+            "duration_seconds": 55.458075637999855,
+            "retained_working_memory_bytes": 468557824,
+            "sampled_peak_working_memory_bytes": 484106240,
+            "samples": 551
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.06931749715033288,
+              "mean_working_memory_bytes": 183887391.5924359
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.02707014231433841,
+              "mean_working_memory_bytes": 23189607.059452582
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.06282850531532914,
+              "mean_working_memory_bytes": 153583852.6517449
+            },
+            "renderer": {
+              "mean_cpu_cores": 0.011524741755771662,
+              "mean_working_memory_bytes": 24938540.29807132
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.004717184954408113,
+              "mean_working_memory_bytes": 81355949.71640913
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.484399,
+              "lifetime_cpu_seconds": 5.140748,
+              "lifetime_memory_peak_bytes": 162840576,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.656349
+            },
+            {
+              "cpu_seconds": 1.050891,
+              "lifetime_cpu_seconds": 1.276951,
+              "lifetime_memory_peak_bytes": 12316672,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.22606
+            },
+            {
+              "cpu_seconds": 0.261606,
+              "lifetime_cpu_seconds": 0.367669,
+              "lifetime_memory_peak_bytes": 85118976,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.106063
+            },
+            {
+              "cpu_seconds": 1.501258,
+              "lifetime_cpu_seconds": 1.908535,
+              "lifetime_memory_peak_bytes": 28372992,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.407277
+            },
+            {
+              "cpu_seconds": 0.007596,
+              "lifetime_cpu_seconds": 0.055292,
+              "lifetime_memory_peak_bytes": 23740416,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.047696
+            },
+            {
+              "cpu_seconds": 0.114537,
+              "lifetime_cpu_seconds": 0.284077,
+              "lifetime_memory_peak_bytes": 70356992,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.16954
+            },
+            {
+              "cpu_seconds": 0.972178,
+              "lifetime_cpu_seconds": 0.997851,
+              "lifetime_memory_peak_bytes": 13434880,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.025673
+            },
+            {
+              "cpu_seconds": 1.70159,
+              "lifetime_cpu_seconds": 3.710269,
+              "lifetime_memory_peak_bytes": 116834304,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.008679
+            },
+            {
+              "cpu_seconds": 0.639154,
+              "lifetime_cpu_seconds": 0.706061,
+              "lifetime_memory_peak_bytes": 33951744,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.066907
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "3f3cebc8e626c0f80d5cfa69b6ff86b2c616dcadc04012e8c0b8eae2192a4e4b",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 32.16177222100009,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 4.6511384293216724e-05,
+          "pair": 2,
+          "postings": 536,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 17.958322,
+            "duration_seconds": 67.16193386700002,
+            "retained_working_memory_bytes": 910163968,
+            "sampled_peak_working_memory_bytes": 970031104,
+            "samples": 667
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.18476881598695843,
+              "mean_working_memory_bytes": 645374495.2079241
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.02373545412133032,
+              "mean_working_memory_bytes": 24788445.50526512
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.05461696512884896,
+              "mean_working_memory_bytes": 159750950.79388213
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.00426716420297743,
+              "mean_working_memory_bytes": 76860818.11880633
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 3.668181,
+              "lifetime_cpu_seconds": 5.181243,
+              "lifetime_memory_peak_bytes": 170729472,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.513062
+            },
+            {
+              "cpu_seconds": 1.06931,
+              "lifetime_cpu_seconds": 1.289046,
+              "lifetime_memory_peak_bytes": 12427264,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.219736
+            },
+            {
+              "cpu_seconds": 0.286591,
+              "lifetime_cpu_seconds": 0.389115,
+              "lifetime_memory_peak_bytes": 80551936,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.102524
+            },
+            {
+              "cpu_seconds": 1.594119,
+              "lifetime_cpu_seconds": 2.005224,
+              "lifetime_memory_peak_bytes": 30060544,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.411105
+            },
+            {
+              "cpu_seconds": 0.011532,
+              "lifetime_cpu_seconds": 0.062867,
+              "lifetime_memory_peak_bytes": 25755648,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.051335
+            },
+            {
+              "cpu_seconds": 0.140396,
+              "lifetime_cpu_seconds": 0.310387,
+              "lifetime_memory_peak_bytes": 69316608,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.169991
+            },
+            {
+              "cpu_seconds": 0.969911,
+              "lifetime_cpu_seconds": 0.996501,
+              "lifetime_memory_peak_bytes": 13467648,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.02659
+            },
+            {
+              "cpu_seconds": 5.081687,
+              "lifetime_cpu_seconds": 8.186591,
+              "lifetime_memory_peak_bytes": 180408320,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.104904
+            },
+            {
+              "cpu_seconds": 5.138542,
+              "lifetime_cpu_seconds": 8.901173,
+              "lifetime_memory_peak_bytes": 434069504,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.762631
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "job": 124943216513,
+      "name": "arm64-captured",
+      "conclusion": "success",
+      "summary": {
+        "complete": true,
+        "canonical_parity": true,
+        "source_revision": "9af885fcac5c859e5f6589462d47da8e5338a277",
+        "runtime_contract_sha256": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+        "workload_sha256": "3710caa8929549c832e485105d4b110adc302089811453933e4357d1631a902c",
+        "steps": {
+          "FIXTURE_OUTCOME": "success",
+          "IMAGES_OUTCOME": "success",
+          "MEASUREMENT_OUTCOME": "success"
+        }
+      },
+      "means": {
+        "native": {
+          "completion_seconds": 33.8846870416667,
+          "lifetime_cpu_seconds": 16.335983333333335,
+          "sampled_peak_mib": 428.125,
+          "retained_mib": 420.7630208333333,
+          "modeled_eur_per_1000": 0.0001899084652056135,
+          "correct_postings_per_lifetime_cpu_second": 4.407712046958732
+        },
+        "legacy": {
+          "completion_seconds": 65.68929651633339,
+          "lifetime_cpu_seconds": 24.247072,
+          "sampled_peak_mib": 822.234375,
+          "retained_mib": 803.5221354166666,
+          "modeled_eur_per_1000": 0.00047661856364295967,
+          "correct_postings_per_lifetime_cpu_second": 2.9698422646809988
+        }
+      },
+      "arms": [
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 33.95771679300003,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.0001911515814104935,
+          "pair": 0,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 11.654408,
+            "duration_seconds": 68.95793340600005,
+            "retained_working_memory_bytes": 441774080,
+            "sampled_peak_working_memory_bytes": 459821056,
+            "samples": 684
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.05531465070947311,
+              "mean_working_memory_bytes": 178623373.47369182
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.01701528659642093,
+              "mean_working_memory_bytes": 20778947.57285065
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.09409786052891499,
+              "mean_working_memory_bytes": 156208166.21520475
+            },
+            "renderer": {
+              "mean_cpu_cores": 2.0693775603719535e-05,
+              "mean_working_memory_bytes": 16220160.000000013
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002559009403037676,
+              "mean_working_memory_bytes": 60727008.40361147
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.48882,
+              "lifetime_cpu_seconds": 8.196806,
+              "lifetime_memory_peak_bytes": 165408768,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.707986
+            },
+            {
+              "cpu_seconds": 1.473643,
+              "lifetime_cpu_seconds": 1.709652,
+              "lifetime_memory_peak_bytes": 12308480,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.236009
+            },
+            {
+              "cpu_seconds": 0.176746,
+              "lifetime_cpu_seconds": 0.290628,
+              "lifetime_memory_peak_bytes": 62119936,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.113882
+            },
+            {
+              "cpu_seconds": 1.173339,
+              "lifetime_cpu_seconds": 1.613096,
+              "lifetime_memory_peak_bytes": 25260032,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.439757
+            },
+            {
+              "cpu_seconds": 0.008522,
+              "lifetime_cpu_seconds": 0.058435,
+              "lifetime_memory_peak_bytes": 23834624,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.049913
+            },
+            {
+              "cpu_seconds": 0.11,
+              "lifetime_cpu_seconds": 0.271191,
+              "lifetime_memory_peak_bytes": 68071424,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.161191
+            },
+            {
+              "cpu_seconds": 0.16952,
+              "lifetime_cpu_seconds": 0.197393,
+              "lifetime_memory_peak_bytes": 10559488,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.027873
+            },
+            {
+              "cpu_seconds": 2.052699,
+              "lifetime_cpu_seconds": 4.087348,
+              "lifetime_memory_peak_bytes": 115830784,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.034649
+            },
+            {
+              "cpu_seconds": 0.001427,
+              "lifetime_cpu_seconds": 0.071673,
+              "lifetime_memory_peak_bytes": 31395840,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.070246
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 65.72029468200003,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0004773365509624125,
+          "pair": 0,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 14.962605,
+            "duration_seconds": 100.72179891100006,
+            "retained_working_memory_bytes": 844140544,
+            "sampled_peak_working_memory_bytes": 867282944,
+            "samples": 999
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.06823264749344579,
+              "mean_working_memory_bytes": 594539656.4193851
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.01588323498286212,
+              "mean_working_memory_bytes": 20681189.86072158
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.062125379685972,
+              "mean_working_memory_bytes": 155816976.34325328
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002312528196659939,
+              "mean_working_memory_bytes": 60483078.02739346
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.25738,
+              "lifetime_cpu_seconds": 7.840002,
+              "lifetime_memory_peak_bytes": 167473152,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.582622
+            },
+            {
+              "cpu_seconds": 1.727428,
+              "lifetime_cpu_seconds": 1.959086,
+              "lifetime_memory_peak_bytes": 12406784,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.231658
+            },
+            {
+              "cpu_seconds": 0.232922,
+              "lifetime_cpu_seconds": 0.344604,
+              "lifetime_memory_peak_bytes": 61771776,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.111682
+            },
+            {
+              "cpu_seconds": 1.599788,
+              "lifetime_cpu_seconds": 2.032582,
+              "lifetime_memory_peak_bytes": 25227264,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.432794
+            },
+            {
+              "cpu_seconds": 0.010717,
+              "lifetime_cpu_seconds": 0.07566,
+              "lifetime_memory_peak_bytes": 24395776,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.064943
+            },
+            {
+              "cpu_seconds": 0.160211,
+              "lifetime_cpu_seconds": 0.323431,
+              "lifetime_memory_peak_bytes": 76443648,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.163207
+            },
+            {
+              "cpu_seconds": 0.200577,
+              "lifetime_cpu_seconds": 0.229607,
+              "lifetime_memory_peak_bytes": 10305536,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.02903
+            },
+            {
+              "cpu_seconds": 3.978198,
+              "lifetime_cpu_seconds": 7.147633,
+              "lifetime_memory_peak_bytes": 185622528,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.169435
+            },
+            {
+              "cpu_seconds": 0.796035,
+              "lifetime_cpu_seconds": 4.664018,
+              "lifetime_memory_peak_bytes": 330985472,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.867983
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 65.66552992999993,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0004776742662321851,
+          "pair": 1,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 14.672791,
+            "duration_seconds": 100.66579548600009,
+            "retained_working_memory_bytes": 843591680,
+            "sampled_peak_working_memory_bytes": 865415168,
+            "samples": 998
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.06659786442488663,
+              "mean_working_memory_bytes": 595685577.48146
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.015287576009013159,
+              "mean_working_memory_bytes": 20655230.50515747
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.061600148988664144,
+              "mean_working_memory_bytes": 155812115.60536948
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.0022718739656888325,
+              "mean_working_memory_bytes": 60390293.557721995
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.201028,
+              "lifetime_cpu_seconds": 7.766799,
+              "lifetime_memory_peak_bytes": 167501824,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.565771
+            },
+            {
+              "cpu_seconds": 1.667952,
+              "lifetime_cpu_seconds": 1.894087,
+              "lifetime_memory_peak_bytes": 12279808,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.226135
+            },
+            {
+              "cpu_seconds": 0.2287,
+              "lifetime_cpu_seconds": 0.339629,
+              "lifetime_memory_peak_bytes": 62009344,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.110929
+            },
+            {
+              "cpu_seconds": 1.538936,
+              "lifetime_cpu_seconds": 1.965837,
+              "lifetime_memory_peak_bytes": 25210880,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.426901
+            },
+            {
+              "cpu_seconds": 0.013453,
+              "lifetime_cpu_seconds": 0.063061,
+              "lifetime_memory_peak_bytes": 23896064,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.049608
+            },
+            {
+              "cpu_seconds": 0.142868,
+              "lifetime_cpu_seconds": 0.309307,
+              "lifetime_memory_peak_bytes": 77426688,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.166439
+            },
+            {
+              "cpu_seconds": 0.189637,
+              "lifetime_cpu_seconds": 0.217979,
+              "lifetime_memory_peak_bytes": 10870784,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.028342
+            },
+            {
+              "cpu_seconds": 3.901333,
+              "lifetime_cpu_seconds": 7.03677,
+              "lifetime_memory_peak_bytes": 184545280,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.135437
+            },
+            {
+              "cpu_seconds": 0.788884,
+              "lifetime_cpu_seconds": 4.610597,
+              "lifetime_memory_peak_bytes": 332206080,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.821713
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 33.82616518200007,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.00018876502008870815,
+          "pair": 1,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 11.39752,
+            "duration_seconds": 68.8265540509999,
+            "retained_working_memory_bytes": 439271424,
+            "sampled_peak_working_memory_bytes": 440328192,
+            "samples": 683
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.05346969713568764,
+              "mean_working_memory_bytes": 176241334.75855947
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.016717878962055687,
+              "mean_working_memory_bytes": 20679116.13113231
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.09295682586780693,
+              "mean_working_memory_bytes": 151553447.78675833
+            },
+            "renderer": {
+              "mean_cpu_cores": 1.8844470973208012e-05,
+              "mean_working_memory_bytes": 16220159.999999976
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.00243446736961206,
+              "mean_working_memory_bytes": 60608759.410814025
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.397898,
+              "lifetime_cpu_seconds": 8.085209,
+              "lifetime_memory_peak_bytes": 160317440,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.687311
+            },
+            {
+              "cpu_seconds": 1.418842,
+              "lifetime_cpu_seconds": 1.652593,
+              "lifetime_memory_peak_bytes": 12222464,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.233751
+            },
+            {
+              "cpu_seconds": 0.167556,
+              "lifetime_cpu_seconds": 0.281275,
+              "lifetime_memory_peak_bytes": 61714432,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.113719
+            },
+            {
+              "cpu_seconds": 1.150634,
+              "lifetime_cpu_seconds": 1.570132,
+              "lifetime_memory_peak_bytes": 25133056,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.419498
+            },
+            {
+              "cpu_seconds": 0.010871,
+              "lifetime_cpu_seconds": 0.06246,
+              "lifetime_memory_peak_bytes": 23756800,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.051589
+            },
+            {
+              "cpu_seconds": 0.109208,
+              "lifetime_cpu_seconds": 0.275721,
+              "lifetime_memory_peak_bytes": 73445376,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.166513
+            },
+            {
+              "cpu_seconds": 0.161257,
+              "lifetime_cpu_seconds": 0.187677,
+              "lifetime_memory_peak_bytes": 10186752,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.02642
+            },
+            {
+              "cpu_seconds": 1.979957,
+              "lifetime_cpu_seconds": 3.999908,
+              "lifetime_memory_peak_bytes": 115998720,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.019951
+            },
+            {
+              "cpu_seconds": 0.001297,
+              "lifetime_cpu_seconds": 0.07211,
+              "lifetime_memory_peak_bytes": 30838784,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.070813
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 33.87017915000001,
+          "exit_code": null,
+          "lane": "native",
+          "modeled_eur_per_1000": 0.0001898087941176388,
+          "pair": 2,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 11.451988000000002,
+            "duration_seconds": 68.87035865600001,
+            "retained_working_memory_bytes": 442560512,
+            "sampled_peak_working_memory_bytes": 446615552,
+            "samples": 684
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.05440702027872418,
+              "mean_working_memory_bytes": 181652859.56114352
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.01680068207252171,
+              "mean_working_memory_bytes": 20737881.772451825
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.09254743440260442,
+              "mean_working_memory_bytes": 153922221.80464366
+            },
+            "renderer": {
+              "mean_cpu_cores": 1.8542084358504313e-05,
+              "mean_working_memory_bytes": 14663679.99999999
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002509584723716877,
+              "mean_working_memory_bytes": 60787707.69624663
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.373775,
+              "lifetime_cpu_seconds": 8.085039,
+              "lifetime_memory_peak_bytes": 162684928,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.711264
+            },
+            {
+              "cpu_seconds": 1.427775,
+              "lifetime_cpu_seconds": 1.661477,
+              "lifetime_memory_peak_bytes": 12124160,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.233702
+            },
+            {
+              "cpu_seconds": 0.172836,
+              "lifetime_cpu_seconds": 0.28582,
+              "lifetime_memory_peak_bytes": 62222336,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.112984
+            },
+            {
+              "cpu_seconds": 1.159076,
+              "lifetime_cpu_seconds": 1.594188,
+              "lifetime_memory_peak_bytes": 25284608,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.435112
+            },
+            {
+              "cpu_seconds": 0.008407,
+              "lifetime_cpu_seconds": 0.063638,
+              "lifetime_memory_peak_bytes": 24694784,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.055231
+            },
+            {
+              "cpu_seconds": 0.112209,
+              "lifetime_cpu_seconds": 0.300183,
+              "lifetime_memory_peak_bytes": 73388032,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.187974
+            },
+            {
+              "cpu_seconds": 0.167175,
+              "lifetime_cpu_seconds": 0.196217,
+              "lifetime_memory_peak_bytes": 10223616,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.029042
+            },
+            {
+              "cpu_seconds": 2.031465,
+              "lifetime_cpu_seconds": 4.061321,
+              "lifetime_memory_peak_bytes": 117248000,
+              "memory_limit_bytes": 1073741824,
+              "service": "ordinary",
+              "startup_cpu_seconds": 2.029856
+            },
+            {
+              "cpu_seconds": 0.001277,
+              "lifetime_cpu_seconds": 0.07676,
+              "lifetime_memory_peak_bytes": 30175232,
+              "memory_limit_bytes": 1073741824,
+              "service": "renderer",
+              "startup_cpu_seconds": 0.075483
+            }
+          ]
+        },
+        {
+          "canonical_sha256": "ca8ffc82223ebbce28694d622798eb7adaf5c62639bbd6029eb5ef1bb11440d7",
+          "class": null,
+          "cleanup": true,
+          "completion_seconds": 65.68206493700018,
+          "exit_code": null,
+          "lane": "legacy",
+          "modeled_eur_per_1000": 0.0004748448737342813,
+          "pair": 2,
+          "postings": 72,
+          "stage": null,
+          "resource": {
+            "cpu_seconds": 14.451266,
+            "duration_seconds": 100.68276262099994,
+            "retained_working_memory_bytes": 839929856,
+            "sampled_peak_working_memory_bytes": 853827584,
+            "samples": 999
+          },
+          "groups": {
+            "crawler": {
+              "mean_cpu_cores": 0.06540710473737492,
+              "mean_working_memory_bytes": 590698444.1986358
+            },
+            "fixture": {
+              "mean_cpu_cores": 0.015161423467750686,
+              "mean_working_memory_bytes": 20644134.71809455
+            },
+            "postgresql": {
+              "mean_cpu_cores": 0.0606494184410308,
+              "mean_working_memory_bytes": 155783625.80374283
+            },
+            "typesense": {
+              "mean_cpu_cores": 0.002314725916662431,
+              "mean_working_memory_bytes": 60380939.79721887
+            }
+          },
+          "services": [
+            {
+              "cpu_seconds": 6.106351,
+              "lifetime_cpu_seconds": 7.673567,
+              "lifetime_memory_peak_bytes": 167198720,
+              "memory_limit_bytes": 536870912,
+              "service": "postgres",
+              "startup_cpu_seconds": 1.567216
+            },
+            {
+              "cpu_seconds": 1.647095,
+              "lifetime_cpu_seconds": 1.877808,
+              "lifetime_memory_peak_bytes": 12439552,
+              "memory_limit_bytes": 100663296,
+              "service": "redis",
+              "startup_cpu_seconds": 0.230713
+            },
+            {
+              "cpu_seconds": 0.233053,
+              "lifetime_cpu_seconds": 0.339294,
+              "lifetime_memory_peak_bytes": 61755392,
+              "memory_limit_bytes": 1073741824,
+              "service": "typesense",
+              "startup_cpu_seconds": 0.106241
+            },
+            {
+              "cpu_seconds": 1.526494,
+              "lifetime_cpu_seconds": 1.953583,
+              "lifetime_memory_peak_bytes": 25194496,
+              "memory_limit_bytes": 134217728,
+              "service": "fixture",
+              "startup_cpu_seconds": 0.427089
+            },
+            {
+              "cpu_seconds": 0.009971,
+              "lifetime_cpu_seconds": 0.069315,
+              "lifetime_memory_peak_bytes": 22859776,
+              "memory_limit_bytes": 134217728,
+              "service": "reaper",
+              "startup_cpu_seconds": 0.059344
+            },
+            {
+              "cpu_seconds": 0.140847,
+              "lifetime_cpu_seconds": 0.315048,
+              "lifetime_memory_peak_bytes": 76296192,
+              "memory_limit_bytes": 268435456,
+              "service": "exporter",
+              "startup_cpu_seconds": 0.174201
+            },
+            {
+              "cpu_seconds": 0.183644,
+              "lifetime_cpu_seconds": 0.215045,
+              "lifetime_memory_peak_bytes": 10305536,
+              "memory_limit_bytes": 268435456,
+              "service": "drain",
+              "startup_cpu_seconds": 0.031401
+            },
+            {
+              "cpu_seconds": 3.830221,
+              "lifetime_cpu_seconds": 6.933472,
+              "lifetime_memory_peak_bytes": 184291328,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-7",
+              "startup_cpu_seconds": 3.103251
+            },
+            {
+              "cpu_seconds": 0.77359,
+              "lifetime_cpu_seconds": 4.543395,
+              "lifetime_memory_peak_bytes": 330366976,
+              "memory_limit_bytes": 1610612736,
+              "service": "legacy-primary-8",
+              "startup_cpu_seconds": 3.769805
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "production_readbacks": {
+    "installed": {
+      "observed_at_utc": "2026-11-01T20:11:42.733811+00:00",
+      "candidate_pr": 11468,
+      "original_adf_schedule_preserved": {
+        "enabled": true,
+        "status": "quarantined",
+        "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+        "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+        "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+        "consecutive_failures": 12,
+        "tdm_reserved": false
+      },
+      "active_marker": {
+        "active_pointer_present": true,
+        "generation_name_sha256": "f023dc78ea46eb38022dea0d1a7e20224552ab4e888384b76021d39a47951401",
+        "manifest_format_fields": {
+          "RELEASE_FORMAT_VERSION": "3"
+        },
+        "source_env_success_match": true,
+        "complete_environment_match_excluding_compose_file": true,
+        "complete_csv_tree_hashes_match": true,
+        "data_csv_files": 8
+      },
+      "runtime_source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+      "runtime_contract": "69c84d7230f9bf0d4ad0d012caa3c0f2853cece83547010da2d8fafd03b485ea",
+      "image_digest": "sha256:bacc6e3714270501899cbd3e2658426bf4c2578b59f390e2b8d28bdeea2a9189",
+      "image_version": "0.13.1149",
+      "data_revision": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+      "data_contract": "c3e9d4473edae6e82589cf78c4a8c8982d513e92c98429d7637832e4d437e1fa",
+      "native_actors": {
+        "ordinary-go": {
+          "started_at_utc": "2026-11-01T19:54:28.152380757Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true,
+          "authorized_scaled_budgets_match": true
+        },
+        "lease-reaper": {
+          "started_at_utc": "2026-11-01T19:54:28.156340858Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        },
+        "exporter": {
+          "started_at_utc": "2026-11-01T19:54:28.160283633Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        },
+        "drain": {
+          "started_at_utc": "2026-11-01T19:54:28.157865328Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        }
+      },
+      "core_services": {
+        "ordinary-go": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-11-01T19:54:28.152380757Z"
+        },
+        "lease-reaper": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-01T19:54:28.156340858Z"
+        },
+        "exporter": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-01T19:54:28.160283633Z"
+        },
+        "drain": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-11-01T19:54:28.157865328Z"
+        },
+        "redis": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-09-14T14:32:28.413753887Z"
+        },
+        "alloy": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-01T19:54:30.592387821Z"
+        }
+      },
+      "legacy_running": 0,
+      "ordinary_health_http_status": 204,
+      "ordinary_health_source_matches": true,
+      "retired_runtime_commands_absent": true,
+      "canonical": {
+        "companies": 6286,
+        "enabled_boards": 8270,
+        "epoch": 404,
+        "schema": "0042",
+        "active_migration_plans": 0
+      },
+      "scope": "Protected read-only ADR006 post-capacity-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+    },
+    "queue": {
+      "observed_at_utc": "2026-11-01T20:11:42.224671+00:00",
+      "source_revision": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+      "detail_demand": null,
+      "actual_redis_queue_workload": {
+        "lanes": {
+          "simple": {
+            "regular_monitors_due": 1718,
+            "ready_domains": 2460,
+            "first_monitor_entries": 0,
+            "regular_details_over_week": 2842544,
+            "regular_details_over_day": 3103442,
+            "regular_details_due": 3169250,
+            "valid_inflight_entries": 66,
+            "inflight_entries": 66,
+            "regular_monitor_entries": 7827,
+            "first_detail_entries": 352,
+            "regular_detail_entries": 3292944
+          },
+          "browser": {
+            "regular_monitors_due": 168,
+            "ready_domains": 391,
+            "first_monitor_entries": 0,
+            "regular_details_over_week": 29721,
+            "regular_details_over_day": 42002,
+            "regular_details_due": 62359,
+            "valid_inflight_entries": 4,
+            "inflight_entries": 4,
+            "regular_monitor_entries": 418,
+            "first_detail_entries": 0,
+            "regular_detail_entries": 84590
+          }
+        },
+        "redis_now_epoch": 1793563901.9625
+      },
+      "original_adf": {
+        "enabled": true,
+        "status": "quarantined",
+        "interval": 60,
+        "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+        "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+        "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+        "consecutive_failures": 12,
+        "tdm_reserved": false
+      },
+      "original_adf_queue": {
+        "queued_scores": [
+          {
+            "fasttrack": false,
+            "score": 1793641037.8898,
+            "lane": "browser"
+          }
+        ],
+        "redis_now_epoch": 1793563901.9619
+      },
+      "worker_metrics": {
+        "jobseek_ordinary_go_ready": 1.0,
+        "jobseek_ordinary_go_active_claims": 51.0
+      },
+      "worker_limits": {
+        "cpu_cores": 4.0,
+        "memory_bytes": 2147483648,
+        "restarts": 0,
+        "settings": {
+          "MONITOR_CONCURRENCY": "30",
+          "GOMEMLIMIT": "1GiB",
+          "DISCOVERY_CONCURRENCY": "120"
+        },
+        "cgroup_cpu_stat": {
+          "usage_usec": 2374360618,
+          "user_usec": 2121793537,
+          "system_usec": 252567081,
+          "nr_periods": 10340,
+          "nr_throttled": 124,
+          "throttled_usec": 1556437
+        },
+        "cpu_pressure": [
+          "some avg10=0.10 avg60=0.11 avg300=0.22 total=9915972",
+          "full avg10=0.00 avg60=0.01 avg300=0.05 total=7443384"
+        ],
+        "memory_current_bytes": 191238144,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0
+        }
+      },
+      "canonical_board_keys_sha256": "651cbd58dd32ca986b477e1da315c57773ec8d1174833ef602c4e39db066a287",
+      "canonical_monitor_ids_sha256": "0d5cd7219ce3a5d7ddff2b7b7948a06a8a028a068cb0730aedd5e396acf927e1",
+      "monitor_conservation": {
+        "multiple_representations": 0,
+        "other_lane_representations": 0,
+        "missing": 0,
+        "inflight_token_missing": 0,
+        "inflight_token_present": 25,
+        "represented": 8270,
+        "expired_inflight_only": 0,
+        "missing_cache": 0,
+        "valid_inflight": 25,
+        "canonical_eligible": 8270,
+        "canonical_enabled": 8270,
+        "deadletter_only": 0,
+        "cache_lane_mismatch": 0,
+        "queued": 8245,
+        "cache_domain_mismatch": 0
+      },
+      "unexplained_missing": 0,
+      "gap_followup": null,
+      "scope": "Atomic bounded Redis observation for canonical enabled monitors; source-bound read-only SQL/Redis. IDs/URLs stay in RAM; token values never read, only HEXISTS booleans before output. No claims, repairs or origin work."
+    },
+    "pre_capacity_natural_window": {
+      "schema": "jobseek.natural-traffic-capacity-baseline/v1",
+      "native_source": "6b19a2ce3508e78f996624c4243f574eda3d7cae",
+      "version": "0.13.1148",
+      "nodes": {
+        "crawler": {
+          "observed_start_utc": "2026-11-01T19:31:04.633137+00:00",
+          "observed_end_utc": "2026-11-01T19:43:03.813779+00:00",
+          "elapsed_seconds": 719.1800000006333,
+          "host_cpu_count": 8,
+          "mean_host_busy_cores_excluding_iowait_steal": 2.555433452686484,
+          "minimum_sampled_available_memory_mib": 11891.859375,
+          "minimum_sampled_root_free_gib": 33.31216049194336,
+          "services": [
+            {
+              "service_class": "alloy",
+              "mean_cpu_cores": 0.03854899607883365,
+              "start_working_mib": 107.12890625,
+              "end_working_mib": 96.94921875,
+              "maximum_sampled_working_mib": 107.12890625,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "ordinary-go",
+              "mean_cpu_cores": 1.491972755080863,
+              "start_working_mib": 189.07421875,
+              "end_working_mib": 181.0625,
+              "maximum_sampled_working_mib": 189.07421875,
+              "restarts": 1,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "exporter",
+              "mean_cpu_cores": 0.0066137142300895626,
+              "start_working_mib": 93.3984375,
+              "end_working_mib": 114.84375,
+              "maximum_sampled_working_mib": 114.84375,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "lease-reaper",
+              "mean_cpu_cores": 0.0007764022914979675,
+              "start_working_mib": 23.15625,
+              "end_working_mib": 23.1640625,
+              "maximum_sampled_working_mib": 23.1640625,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "drain",
+              "mean_cpu_cores": 0.0041912372424112825,
+              "start_working_mib": 10.328125,
+              "end_working_mib": 10.53515625,
+              "maximum_sampled_working_mib": 10.53515625,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "other",
+              "mean_cpu_cores": 0.014546932617690685,
+              "start_working_mib": 66.77734375,
+              "end_working_mib": 59.203125,
+              "maximum_sampled_working_mib": 66.77734375,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "redis",
+              "mean_cpu_cores": 0.4331548749961424,
+              "start_working_mib": 2085.31640625,
+              "end_working_mib": 2085.5078125,
+              "maximum_sampled_working_mib": 2085.5078125,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            }
+          ],
+          "container_membership_fixed": true,
+          "no_restart_or_oom_increment": true,
+          "worker_counter_increments": {
+            "jobseek_ordinary_go_claim_errors_total": 44,
+            "monitor.failed": 27,
+            "monitor.host_circuit_half_open": 32,
+            "monitor.host_circuit_open": 9,
+            "monitor.succeeded": 1223,
+            "scrape.failed": 174,
+            "scrape.host_circuit_half_open": 0,
+            "scrape.host_circuit_open": 122,
+            "scrape.recovered": 1,
+            "scrape.skipped": 1628,
+            "scrape.succeeded": 2662,
+            "jobseek_ordinary_go_posting_touches_total": 187109
+          },
+          "worker_ready_both_samples": true,
+          "active_claims_samples": [
+            43,
+            43
+          ]
+        },
+        "postgresql": {
+          "observed_start_utc": "2026-11-01T19:31:04.074620+00:00",
+          "observed_end_utc": "2026-11-01T19:43:03.032579+00:00",
+          "elapsed_seconds": 718.9599999999627,
+          "host_cpu_count": 4,
+          "mean_host_busy_cores_excluding_iowait_steal": 0.8094446527222697,
+          "minimum_sampled_available_memory_mib": 5701.66796875,
+          "minimum_sampled_root_free_gib": 62.5936164855957,
+          "services": [
+            {
+              "service_class": "postgres-image-family",
+              "mean_cpu_cores": 0.0021444683987983755,
+              "start_working_mib": 169.0625,
+              "end_working_mib": 175.796875,
+              "maximum_sampled_working_mib": 175.796875,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "postgres-image-family",
+              "mean_cpu_cores": 0.6993885904640398,
+              "start_working_mib": 3113.7109375,
+              "end_working_mib": 3232.1640625,
+              "maximum_sampled_working_mib": 3232.1640625,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            }
+          ],
+          "container_membership_fixed": true,
+          "no_restart_or_oom_increment": true
+        },
+        "typesense": {
+          "observed_start_utc": "2026-11-01T19:31:04.741659+00:00",
+          "observed_end_utc": "2026-11-01T19:43:03.713246+00:00",
+          "elapsed_seconds": 718.9799999995157,
+          "host_cpu_count": 4,
+          "mean_host_busy_cores_excluding_iowait_steal": 0.5022152230971129,
+          "minimum_sampled_available_memory_mib": 2051.0078125,
+          "minimum_sampled_root_free_gib": 22.79867935180664,
+          "services": [
+            {
+              "service_class": "typesense-image-family",
+              "mean_cpu_cores": 0.3874711786144088,
+              "start_working_mib": 5250.4765625,
+              "end_working_mib": 5187.0,
+              "maximum_sampled_working_mib": 5250.4765625,
+              "restarts": 8,
+              "no_oom_event_increment": true
+            }
+          ],
+          "container_membership_fixed": true,
+          "no_restart_or_oom_increment": true,
+          "health_200_both_samples": true
+        },
+        "renderer": {
+          "observed_start_utc": "2026-11-01T19:31:04.461787+00:00",
+          "observed_end_utc": "2026-11-01T19:43:03.531761+00:00",
+          "elapsed_seconds": 719.070000000298,
+          "host_cpu_count": 2,
+          "mean_host_busy_cores_excluding_iowait_steal": 0.38409225930456053,
+          "minimum_sampled_available_memory_mib": 3144.19140625,
+          "minimum_sampled_root_free_gib": 9.790641784667969,
+          "services": [
+            {
+              "service_class": "renderer-image-family",
+              "mean_cpu_cores": 0.36742165435895047,
+              "start_working_mib": 186.28515625,
+              "end_working_mib": 97.24609375,
+              "maximum_sampled_working_mib": 186.28515625,
+              "restarts": 0,
+              "no_oom_event_increment": true
+            }
+          ],
+          "container_membership_fixed": true,
+          "no_restart_or_oom_increment": true,
+          "demo_reservation_preserved": true
+        }
+      },
+      "sum_node_mean_container_cpu_cores": 3.4462308043737258,
+      "sum_node_mean_host_busy_cores": 4.251185587810427,
+      "sum_end_container_working_gib": 10.99948501586914,
+      "scope": "Two read-only samples per each of four physical nodes under normal traffic, latest data3840 frozen. No generated provider work or scheduling changes. Sample maxima are lower bounds; lifetime memory_peak is not a window peak. Image-family labels do not prove process ownership; mixed work is not an equivalent-workload or billed-cost claim."
+    },
+    "post_capacity_natural_window": {
+      "schema": "jobseek.natural-traffic-capacity-post/v1",
+      "version": "0.13.1149",
+      "source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+      "nodes": {
+        "crawler": {
+          "start_utc": "2026-11-01T19:58:02.275331+00:00",
+          "end_utc": "2026-11-01T20:11:06.899691+00:00",
+          "elapsed_seconds": 784.6200000001118,
+          "host_cpu_count": 8,
+          "mean_host_busy_cores_excluding_iowait_steal": 3.6298721788892996,
+          "minimum_sampled_available_memory_mib": 11703.8359375,
+          "minimum_sampled_root_free_gib": 32.26704788208008,
+          "container_membership_fixed": false,
+          "start_only_container_count": 1,
+          "end_only_container_count": 0,
+          "common_containers": [
+            {
+              "service_class": "exporter",
+              "mean_cpu_cores": 0.004949971960948544,
+              "start_working_mib": 81.1875,
+              "end_working_mib": 88.9765625,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "drain",
+              "mean_cpu_cores": 0.0035598990594167905,
+              "start_working_mib": 8.421875,
+              "end_working_mib": 9.2265625,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "lease-reaper",
+              "mean_cpu_cores": 0.0007096275904258376,
+              "start_working_mib": 22.37890625,
+              "end_working_mib": 23.1875,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "ordinary-go",
+              "mean_cpu_cores": 2.3584601157244736,
+              "start_working_mib": 137.125,
+              "end_working_mib": 205.28515625,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "redis",
+              "mean_cpu_cores": 0.4490664793147636,
+              "start_working_mib": 2110.80859375,
+              "end_working_mib": 2086.46875,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "alloy",
+              "mean_cpu_cores": 0.036233821467711695,
+              "start_working_mib": 121.73046875,
+              "end_working_mib": 112.27734375,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "other",
+              "mean_cpu_cores": 0.014635243812289216,
+              "start_working_mib": 59.7265625,
+              "end_working_mib": 68.8125,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            }
+          ],
+          "worker_counter_increments": {
+            "jobseek_ordinary_go_claim_errors_total": 15,
+            "jobseek_ordinary_go_posting_touches_total": 421256,
+            "monitor.failed": 5,
+            "scrape.host_circuit_half_open": 0,
+            "scrape.succeeded": 1192,
+            "scrape.host_circuit_open": 267,
+            "monitor.succeeded": 1889,
+            "scrape.skipped": 577,
+            "monitor.host_circuit_open": 40,
+            "scrape.failed": 99
+          },
+          "active_claim_samples": [
+            64,
+            44
+          ],
+          "ready_both": true,
+          "successful_monitors_per_minute": 144.45209145826496,
+          "successful_details_per_minute": 91.15240498584004
+        },
+        "postgresql": {
+          "start_utc": "2026-11-01T19:58:01.057640+00:00",
+          "end_utc": "2026-11-01T20:11:05.654658+00:00",
+          "elapsed_seconds": 784.589999999851,
+          "host_cpu_count": 4,
+          "mean_host_busy_cores_excluding_iowait_steal": 1.1758412671556027,
+          "minimum_sampled_available_memory_mib": 5594.68359375,
+          "minimum_sampled_root_free_gib": 62.592979431152344,
+          "container_membership_fixed": true,
+          "start_only_container_count": 0,
+          "end_only_container_count": 0,
+          "common_containers": [
+            {
+              "service_class": "postgres-image-family",
+              "mean_cpu_cores": 0.0021285818070588677,
+              "start_working_mib": 168.9375,
+              "end_working_mib": 169.02734375,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            },
+            {
+              "service_class": "postgres-image-family",
+              "mean_cpu_cores": 1.0409934156695282,
+              "start_working_mib": 3286.89453125,
+              "end_working_mib": 3045.515625,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            }
+          ]
+        },
+        "typesense": {
+          "start_utc": "2026-11-01T19:58:02.174220+00:00",
+          "end_utc": "2026-11-01T20:11:06.700131+00:00",
+          "elapsed_seconds": 784.5200000004843,
+          "host_cpu_count": 4,
+          "mean_host_busy_cores_excluding_iowait_steal": 0.6009435476106422,
+          "minimum_sampled_available_memory_mib": 2139.41015625,
+          "minimum_sampled_root_free_gib": 22.767276763916016,
+          "container_membership_fixed": true,
+          "start_only_container_count": 0,
+          "end_only_container_count": 0,
+          "common_containers": [
+            {
+              "service_class": "typesense-image-family",
+              "mean_cpu_cores": 0.4930406962215893,
+              "start_working_mib": 5349.76953125,
+              "end_working_mib": 5587.0703125,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            }
+          ],
+          "health_200_both": true,
+          "health_observations": {
+            "search_health_status": [
+              200,
+              200
+            ]
+          }
+        },
+        "renderer": {
+          "start_utc": "2026-11-01T19:58:01.850507+00:00",
+          "end_utc": "2026-11-01T20:11:06.379435+00:00",
+          "elapsed_seconds": 784.5200000000186,
+          "host_cpu_count": 2,
+          "mean_host_busy_cores_excluding_iowait_steal": 0.2699993599180695,
+          "minimum_sampled_available_memory_mib": 3164.89453125,
+          "minimum_sampled_root_free_gib": 9.790512084960938,
+          "container_membership_fixed": true,
+          "start_only_container_count": 0,
+          "end_only_container_count": 0,
+          "common_containers": [
+            {
+              "service_class": "renderer-image-family",
+              "mean_cpu_cores": 0.2533013180033591,
+              "start_working_mib": 175.76953125,
+              "end_working_mib": 111.45703125,
+              "no_restart_increment": true,
+              "no_oom_event_increment": true
+            }
+          ],
+          "demo_reservation_preserved": true
+        }
+      },
+      "scope": "Two endpoint samples per four hosts; mixed natural traffic, not equivalent workload or billed savings. One unclassified crawler container disappeared between endpoints; no complete whole-lane container CPU integral claimed. Common processing generations and host CPU remain observable. Memory sample maxima are lower bounds; skips excluded from success throughput; posting touches are not unique job count."
+    }
+  },
+  "readback_limits": "Generated536 and captured72 (62 JSON-LD/10DOM,7hosts/3configs) are fixed equivalent-work fixtures, not universal production coverage. Captures preserve decoded HTML, not original response headers/render dependencies/timing. Sampled RAM peaks are lower bounds; lifecycle CPU includes startup of every actor. Modeled costs are not billed or universal. Production mTLS and mixed-workload effects require separate readbacks.",
+  "adf_followup": {
+    "runtime_functional_comparison": {
+      "qualified_local_source": "3346881ca99d4f59761b8ff5c0a5d43579cfe721",
+      "installed_source": "6b19a2ce3508e78f996624c4243f574eda3d7cae",
+      "verified_direct_transport_identical": true,
+      "last_http_transport_identical": true,
+      "oracle_discovery_diff": "Bounded diagnostic/error wrapping only; no request/form/pagination logic changed."
+    },
+    "conclusion": "Current pagination rejected with302 in verified Go HTTP; latest local Lightpanda also returns to the initial25 rows. Advertised action, successful form controls, standard AJAX/Origin headers, enabledHTTP2 and distinct page IDs did not prove a fix. Cause remains unproved; no universal source-failure claim, full inventory/recovery claim or production route relaxation.",
+    "canonical_session_local_control": {
+      "observed_at_utc": "2026-11-01T20:11:00+00:00",
+      "scope": "Local maximum three origin requests; no production state or detail scan",
+      "bootstrap_status": 200,
+      "canonical_bootstrap_status": 200,
+      "canonical_path_differs": true,
+      "initial_row_count": 25,
+      "successful_extra_control_values": 4,
+      "pagination_status": 302,
+      "partial_response_framing": false,
+      "redirect_class": "same_origin_other_path",
+      "conclusion": "Fresh canonical-path bootstrap does not resolve pagination; no production patch justified."
+    },
+    "constraints": "All tests local; current production board enabled/quarantined with preserved next retry. No production queue/counter/schedule changes, no forced production claims, no Chromium fallback. Cookies/view-state/URLs/bodies remain only in process RAM and are not stored in this report.",
+    "latest_local_lightpanda_two_more_actions": {
+      "after": {
+        "adf": true,
+        "component": true,
+        "fetch_index": 24,
+        "more": true,
+        "ready": "complete",
+        "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+        "rows": 25
+      },
+      "after_second_more": {
+        "adf": true,
+        "component": true,
+        "fetch_index": 24,
+        "more": true,
+        "ready": "complete",
+        "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+        "rows": 25
+      },
+      "before": {
+        "adf": true,
+        "component": true,
+        "fetch_index": 24,
+        "more": true,
+        "ready": "complete",
+        "row_identity_sha256": "64c572dd34463bbc77c703ec11edfa2719f6bb2e7f637a8f69c810133c9b04b9",
+        "rows": 25
+      },
+      "http_status_by_resource_type": {
+        "Document:200": 2,
+        "Fetch:200": 4,
+        "Fetch:403": 1,
+        "Script:200": 44,
+        "XHR:200": 2
+      },
+      "http_status_counts": {
+        "200": 52,
+        "403": 1
+      },
+      "javascript_error_categories": {},
+      "more_action_succeeded": true,
+      "navigation_succeeded": true,
+      "publisher_reservation": false,
+      "requests_before_more": 25,
+      "requests_observed": 56,
+      "scope": "latest local Lightpanda controlled by Go CDP; bounded initial page and two More actions; no production state",
+      "second_more_action_succeeded": true,
+      "stage": "complete"
+    }
+  },
+  "advisory_b0": {
+    "run_id": 41338441250,
+    "job_id": 124943219689,
+    "tested_head": "9af885fcac5c859e5f6589462d47da8e5338a277",
+    "conclusion": "success",
+    "admitted": true
+  }
+}
