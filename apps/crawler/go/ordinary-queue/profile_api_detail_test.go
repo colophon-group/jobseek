@@ -77,6 +77,38 @@ func TestAPIDetailRefusesUnimplementedConfigAndForeignRoutes(t *testing.T) {
 	}
 }
 
+func TestSmartRecruitersExactEmploymentTypeOmissionIsTenantBound(t *testing.T) {
+	const driver = "https://jobs.smartrecruiters.com/LeCollectionist/744000146943905"
+	const housekeeper = "https://jobs.smartrecruiters.com/LeCollectionist/744000156827705"
+	c := apiDetailConfig("smartrecruiters")
+	c["metadata"] = `{"token":"LeCollectionist","scraper_type":"smartrecruiters","scraper_config":{"omit_employment_type_urls":["` + driver + `","` + housekeeper + `"]}}`
+	for _, source := range []string{driver, housekeeper, "https://jobs.smartrecruiters.com/LeCollectionist/744000155975486"} {
+		p, err := InspectAPIDetail(jsonldBoardID, c, source, Simple)
+		if err != nil {
+			t.Fatal(source, err)
+		}
+		want := source == driver || source == housekeeper
+		if p.HTTPAPIConfig["omit_employment_type"] != want {
+			t.Fatal("incorrect exact-URL omission", source, p.HTTPAPIConfig)
+		}
+	}
+	if _, err := inspectAPIDetailOwnership(jsonldBoardID, c); err != nil {
+		t.Fatal("configured board lost ownership admission", err)
+	}
+	for _, list := range []string{
+		`["https://jobs.smartrecruiters.com/Other/744000146943905"]`,
+		`["https://jobs.smartrecruiters.com/LeCollectionist/744000146943905?x=1"]`,
+		`["` + driver + `","` + driver + `"]`,
+		`[]`,
+		`"` + driver + `"`,
+	} {
+		c["metadata"] = `{"token":"LeCollectionist","scraper_type":"smartrecruiters","scraper_config":{"omit_employment_type_urls":` + list + `}}`
+		if _, err := InspectAPIDetail(jsonldBoardID, c, driver, Simple); !errors.Is(err, ErrUnsupportedProfile) {
+			t.Fatal("unsafe omission accepted", list, err)
+		}
+	}
+}
+
 func TestRealAPIDetailColdRetirementPreservesCanonicalDeadline(t *testing.T) {
 	for _, tc := range apiDetailCases {
 		t.Run(tc.name, func(t *testing.T) {

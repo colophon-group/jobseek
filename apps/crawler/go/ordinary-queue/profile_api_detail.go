@@ -119,6 +119,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	if scraper == "workable" {
 		allowed["token"] = true
 	}
+	if scraper == "smartrecruiters" {
+		allowed["omit_employment_type_urls"] = true
+	}
 	if scraper == "oracle_hcm" {
 		allowed = map[string]bool{"host": true, "site": true, "enrich": true, "proxy": true, "fields": true, "api_url": true, "json_path": true}
 	}
@@ -254,6 +257,26 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	} else if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
 		profile = smartRecruitersDetailProfile
+		if raw, present := options["omit_employment_type_urls"]; present {
+			var urls []string
+			if json.Unmarshal(raw, &urls) != nil || len(urls) == 0 || len(urls) > 64 {
+				return fail()
+			}
+			var tenant string
+			if json.Unmarshal(metadata["token"], &tenant) != nil || tenant == "" {
+				return fail()
+			}
+			seen := map[string]bool{}
+			for _, candidate := range urls {
+				candidateTenant, _, e := smartrecruiters.DetailEndpoint(candidate)
+				parsed, parseErr := url.Parse(candidate)
+				if e != nil || parseErr != nil || candidateTenant != tenant || parsed.Host != "jobs.smartrecruiters.com" || parsed.RawQuery != "" || parsed.Fragment != "" || seen[candidate] {
+					return fail()
+				}
+				seen[candidate] = true
+			}
+			providerOptions = map[string]any{"omit_employment_type": seen[source]}
+		}
 	} else if scraper == "workable" {
 		if raw, ok := options["token"]; ok && string(raw) != "null" && json.Unmarshal(raw, &override) != nil {
 			return fail()
