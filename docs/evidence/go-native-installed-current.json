@@ -1,20 +1,30 @@
 {
-  "schema": 2,
-  "checkpoint_utc": "2026-11-02T06:36:00Z",
-  "migration_complete": false,
-  "remaining_blocker": "Original Oracle ADF board pagination/freshness",
-  "operator_scope": "Only performance-sensitive paths require Go. Low-frequency control/provisioning/security, offline workspace/labeller and retained cold-reversal Python may remain. Production routes remain Go HTTP/API or self-hosted Lightpanda; no Chromium fallback.",
+  "schema": 3,
+  "checkpoint_utc": "2026-11-02T19:42:28Z",
+  "goal_status": "implementation_complete",
+  "migration_complete": true,
+  "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
+  "original_goal": {
+    "plan_pr": 10185,
+    "plan_head": "0d4b603d511203fd11b06c7d576287d8b5087602",
+    "salary_pr": 10177,
+    "salary_merge": "3fe58bcaf639f3b666cb283627dd1e5bb5eda80f",
+    "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
+  },
+  "remaining_delivery": [],
   "supported_crawler_rollout": {
-    "run_id": 41384055528,
-    "attempt": 2,
-    "completed_at_utc": "2026-11-02T06:19:57Z",
+    "run_id": 41504447601,
+    "attempt": 1,
+    "completed_at_utc": "2026-11-02T19:06:11Z",
+    "source_revision": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
     "conclusion": "success",
-    "qualification_comment": "https://github.com/colophon-group/jobseek/pull/11477#issuecomment-6570579644"
+    "installed_runtime_qualification": "PASS"
   },
   "installed_crawler": {
-    "observed_at_utc": "2026-11-02T06:20:33.350873+00:00",
-    "candidate_pr": 11477,
-    "original_adf_schedule_preserved": {
+    "observed_at_utc": "2026-11-02T19:07:40.729212+00:00",
+    "candidate_pr": 11494,
+    "previous_data_only_pr": 11178,
+    "original_adf_natural_state_snapshot": {
       "enabled": true,
       "status": "quarantined",
       "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
@@ -24,8 +34,9 @@
       "tdm_reserved": false
     },
     "active_marker": {
+      "manifest_sha256": "8a7dd21fd820b2e838f03f24b38e4f711600a9a81d4c4c1f5d9cf79bd5dce052",
       "active_pointer_present": true,
-      "generation_name_sha256": "3035abd3e7b9f887c50b7099d8794379374dfde5c0280c90d151d2366c7ee189",
+      "generation_name_sha256": "7b2768f0351a54783526b89b57a5f93461fad2489f74064d808110c4d850733b",
       "manifest_format_fields": {
         "RELEASE_FORMAT_VERSION": "3"
       },
@@ -34,15 +45,16 @@
       "complete_csv_tree_hashes_match": true,
       "data_csv_files": 8
     },
-    "runtime_source": "9b5397482e57052eb3f53eac7f731d0d74f5dafe",
-    "runtime_contract": "7e5f1621c592260cab8ef46ef86a8fcc834e82b2e6440c4f11e1e44f135c23b3",
-    "image_digest": "sha256:65050831eea4d9ac081fee0f962328cecd8d968a5429dce2306d225ad7a11064",
-    "image_version": "0.13.1153",
-    "data_revision": "9b5397482e57052eb3f53eac7f731d0d74f5dafe",
-    "data_contract": "388889b6039f9b5aacf661a690b75f3c738bc5bc26819091d61523c5717ef6ad",
+    "runtime_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "runtime_contract": "bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff",
+    "image_digest": "sha256:d24f84b80424a7b6cee11fb1e92f7a2b290e7b182a47ada6344143e2f1506575",
+    "image_version": "0.13.1159",
+    "data_revision": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "data_contract": "d03e52c61e167beed6cb425e2be5e04a72d594464775d75befbc708944929d0d",
     "native_actors": {
       "ordinary-go": {
-        "started_at_utc": "2026-11-02T06:18:49.799362078Z",
+        "container_id_sha256": "92727aa4aa7f7700011ccfe7aa5cc0a7f41595316142b6a16b4cea376d3f3346",
+        "started_at_utc": "2026-11-02T19:04:58.887547768Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -51,7 +63,8 @@
         "authorized_scaled_budgets_match": true
       },
       "lease-reaper": {
-        "started_at_utc": "2026-11-02T06:18:49.805149117Z",
+        "container_id_sha256": "ce944fa7e6d7d0e9f73ca94b7c91e9897f03e77b10444960d14b2c4d8853db6c",
+        "started_at_utc": "2026-11-02T19:04:58.888973799Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -59,7 +72,8 @@
         "native_command": true
       },
       "exporter": {
-        "started_at_utc": "2026-11-02T06:18:49.800981208Z",
+        "container_id_sha256": "abb41e9847278ee3b02937631c10a30aa29c9cbc2a925c1374c9242ee27241a0",
+        "started_at_utc": "2026-11-02T19:04:58.884257645Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -67,7 +81,8 @@
         "native_command": true
       },
       "drain": {
-        "started_at_utc": "2026-11-02T06:18:49.802205976Z",
+        "container_id_sha256": "28f0f6ce0c0e69b1484ca9ad9027fc02b563b3f0c17114ecf5bcfe7a8d0c90c3",
+        "started_at_utc": "2026-11-02T19:04:58.886554399Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -80,25 +95,25 @@
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T06:18:49.799362078Z"
+        "started_at_utc": "2026-11-02T19:04:58.887547768Z"
       },
       "lease-reaper": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T06:18:49.805149117Z"
+        "started_at_utc": "2026-11-02T19:04:58.888973799Z"
       },
       "exporter": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T06:18:49.800981208Z"
+        "started_at_utc": "2026-11-02T19:04:58.884257645Z"
       },
       "drain": {
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T06:18:49.802205976Z"
+        "started_at_utc": "2026-11-02T19:04:58.886554399Z"
       },
       "redis": {
         "running": true,
@@ -110,7 +125,7 @@
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T06:18:52.356933981Z"
+        "started_at_utc": "2026-11-02T19:05:01.131822446Z"
       }
     },
     "legacy_running": 0,
@@ -118,39 +133,60 @@
     "ordinary_health_source_matches": true,
     "retired_runtime_commands_absent": true,
     "canonical": {
-      "companies": 6288,
-      "enabled_boards": 8273,
+      "companies": 6296,
+      "enabled_boards": 8298,
       "epoch": 404,
       "schema": "0042",
       "active_migration_plans": 0
     },
-    "scope": "Protected read-only ADR006 post-capacity-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+    "natural_fresh_effects": {
+      "sample_bound": 1000,
+      "records": 420,
+      "boards": 338,
+      "provider_groups": 28,
+      "browser_configured_records": 31,
+      "missing_title": 0,
+      "locale_title_length_mismatch": 15,
+      "description_hash_present": 415,
+      "postings_with_descriptions": 416,
+      "empty_current_descriptions": 0,
+      "description_hash_matches": 415,
+      "zero_failure_records": 420,
+      "next_due_present": 420,
+      "future_due_after_scrape": 420,
+      "uploaded_current_descriptions": 415,
+      "pending_current_descriptions": 0,
+      "since_native_started_at_utc": "2026-11-02T19:04:58.887547768Z",
+      "authority_epoch": 404,
+      "scope": "Bounded naturally completed scrape fences and canonical rows since this native process start; no IDs/content/URLs, no forced origins or queue writes; not universal freshness/backlog-clearance or paired-live causal claim."
+    },
+    "scope": "Protected read-only ADR006 post-corrective-native-acceptance1159-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
   },
   "monitor_conservation": {
     "multiple_representations": 0,
     "other_lane_representations": 0,
     "missing": 0,
     "inflight_token_missing": 0,
-    "inflight_token_present": 29,
-    "represented": 8273,
+    "inflight_token_present": 60,
+    "represented": 8298,
     "expired_inflight_only": 0,
     "missing_cache": 0,
-    "valid_inflight": 29,
-    "canonical_eligible": 8273,
-    "canonical_enabled": 8273,
+    "valid_inflight": 60,
+    "canonical_eligible": 8298,
+    "canonical_enabled": 8298,
     "deadletter_only": 0,
     "cache_lane_mismatch": 0,
-    "queued": 8244,
+    "queued": 8238,
     "cache_domain_mismatch": 0
   },
-  "board_key_sha256": "c5c36de08f2c8c11dbc6f15c86b7ae78649bf82ff211a34b177f9357f8f675f8",
-  "monitor_ids_sha256": "f5940503338e226e58dd54a28e233f9f1ee6e94bda4dc9c31b91c8191bd700ed",
-  "original_pre_capacity_monitor_identity": {
-    "count": 8270,
-    "UUID_sha256": "0d5cd7219ce3a5d7ddff2b7b7948a06a8a028a068cb0730aedd5e396acf927e1",
-    "key_sha256": "651cbd58dd32ca986b477e1da315c57773ec8d1174833ef602c4e39db066a287",
-    "all_preserved": true,
-    "added": 3
+  "monitor_observed_at_utc": "2026-11-02T19:07:34.824813+00:00",
+  "board_key_sha256": "9da39cf3454f6f76b997225fbef66e25f490fde7e14da37b817bb0fb4a5fed0b",
+  "monitor_ids_sha256": "ae4e28f1dfcaaff4d5bd4ba3a227243815512b086fc68c78eff11e394b472904",
+  "pre_retirement_full_monitor_identity": {
+    "count": 8288,
+    "keys_SHA256": "cf779b72dfdc13892912baef1103914bb7aac59be2255c587dd8e50921abaa52",
+    "UUID_SHA256": "14f8ff623ca996855464a4844f445ab0eef1229350d3c35a693d4810964275c3",
+    "all_preserved": true
   },
   "worker_budget": {
     "cpu_cores": 4,
@@ -158,6 +194,43 @@
     "GOMEMLIMIT": "1GiB",
     "discovery_concurrency": 120,
     "monitor_concurrency": 30
+  },
+  "source_retirement": {
+    "pr": 11488,
+    "merged_source": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
+    "version": "0.13.1156",
+    "source_deletions_merged": true,
+    "installed_qualified": true,
+    "scope": "Eleven superseded Python daemon modules and Python runtime image targets removed. Useful offline projection/workspace tooling remains. Runtime CLI aliases exec Go, and historical Python comparison source is separately frozen rather than retained as a current daemon implementation.",
+    "qualified_version": "0.13.1159",
+    "qualified_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f"
+  },
+  "failed_1156_rollout": {
+    "run_id": 41440630577,
+    "deploy_job": 125265337653,
+    "version": "0.13.1156",
+    "source_revision": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
+    "conclusion": "failure",
+    "promotion": "skipped",
+    "issue": 11489,
+    "phase": "Previous-release read-only inspection, before the intended schema/sync cutover. Docker rejected host networking with links. Rollback then failed a release-pointer parent check. The precise link/trap context is not claimed established.",
+    "blind_retry_forbidden": true
+  },
+  "protected_recovery": {
+    "issue": 11489,
+    "public_update": "https://github.com/colophon-group/jobseek/issues/11489#issuecomment-6577568197",
+    "operation": "restore-native-1155-v2",
+    "reviewed_revision": "fc22598d5b9055c7936e65126f80a6a850a0064f",
+    "terminal": "completed",
+    "wrapper_seconds": 23.244,
+    "forced_termination": false,
+    "restoration_failures": 0,
+    "qualification_sha256": "8a09c16a8338df622745cb7ea5cc20913a893402fe5d1b74480be8e4f835edb9",
+    "restored_runtime": "0.13.1155",
+    "no_sync_migration_epoch_or_direct_schedule_write": true,
+    "v1_refused_before_runtime_mutation": true,
+    "active_session": false,
+    "scope": "Finite independently reviewed full-release restore under the documented maintenance lock, provenance and budget, followed by independent installed and atomic queue qualification."
   },
   "supported_lightpanda_rollout": {
     "run_id": 41399782403,
@@ -188,13 +261,37 @@
     "physical_linux_qualification_run": 41387202472,
     "automatic_ARM_B0_run": 41387202492
   },
+  "latest_official_lightpanda_check": {
+    "checked_at_utc": "2026-11-02T19:35:59.322262+00:00",
+    "official_URL": "https://api.github.com/repos/lightpanda-io/browser/releases/tags/nightly",
+    "release_updated_at": "2026-11-02T02:41:35Z",
+    "installed_ARM_binary_SHA256": "4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756",
+    "latest_ARM_binary_matches_installed": true,
+    "new_Lightpanda_rollout_needed": false,
+    "stable_release_check": {
+      "checked_at_utc": "2026-11-02T19:35:59.322262+00:00",
+      "official_api": "https://api.github.com/repos/lightpanda-io/browser/releases/latest",
+      "tag_name": "1.0.2",
+      "published_at": "2026-10-23T09:01:02Z",
+      "interpretation": "Stable1.0.2 from October23 is older than installed latest nightly11500; no new runtime rollout is needed."
+    },
+    "nightly_asset_updated_at_utc": "2026-11-02T02:41:33Z",
+    "closeout_receipt_sha256": "65764eff2eacb303bb32ad4a60b540c8624e956bdd2edb2092d47fde06041202",
+    "nightly_tag_date_note": "Nightly is a rotating tag with an original2024 publication date; current asset update/digest establishes its2026 identity."
+  },
   "renderer_and_demo": {
-    "observed_at_utc": "2026-11-02T06:30:12.678198+00:00",
+    "observed_at_utc": "2026-11-02T19:10:51.186301+00:00",
     "generation_sha256": "b3981c6ac531496c390bff85ba7e20d7480e46d11551ab4af99c19a426e8d02e",
-    "generation_replaced_by_supported_rollout": true,
+    "generation_unchanged": true,
+    "expected_image_digest": "sha256:287a174a1a180cc58c027076284baeb03b10fcbfb6f69886bb3b6729bfd1790d",
+    "image_matches": true,
+    "renderer_CPU": 1.0,
+    "renderer_memory_bytes": 1073741824,
+    "allocation_unchanged": true,
     "restart_count": 0,
+    "restart_delta": 0,
     "oom_killed": false,
-    "new_generation_memory_events": {
+    "memory_event_deltas": {
       "low": 0,
       "high": 0,
       "max": 0,
@@ -202,11 +299,8 @@
       "oom_kill": 0,
       "oom_group_kill": 0
     },
-    "cross_generation_event_deltas": null,
-    "renderer_CPU": 1.0,
-    "renderer_memory_bytes": 1073741824,
-    "available_RAM_GiB": 3.2139892578125,
-    "root_free_GiB": 9.645320892333984,
+    "available_RAM_GiB": 3.1216888427734375,
+    "root_free_GiB": 9.62520980834961,
     "reservation": {
       "cpu_cores": 0.5,
       "memory_bytes": 1073741824,
@@ -214,74 +308,31 @@
       "root_floor_met": true
     },
     "already_allocated_Justup_filesystem_GiB": 2,
-    "health": "not_configured"
+    "health": "not_configured",
+    "provider_calls": 0,
+    "callback_exercised": false,
+    "scope": "Dated19:10:51 unchanged read-only renderer resource baseline. Allocation and demo reservation unchanged; no functional-render/provider/claim/restart/role or stage operation. Stage authority belongs the designated operator."
   },
   "controlled_comparisons": {
-    "source_revision": "4593979d5e7e60116a52fe49d18909c65423ac87",
-    "workflow_run": 41387202469,
+    "source_revision": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "merged_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "merged_tree_equals_reviewed_tested_tree": true,
+    "pull_request": 11494,
+    "arms": 24,
+    "canonical_parity": true,
+    "all_cleanup": true,
     "scenarios": [
       {
-        "scenario": "arm64_captured",
-        "native": {
-          "mean_completion_seconds": 34.08705555333336,
-          "mean_CPU_seconds": 11.712714,
-          "mean_sampled_peak_MiB": 424.7565104166667,
-          "mean_retained_MiB": 416.7890625,
-          "mean_modeled_EUR_per1000": 0.00019137039326316336,
-          "arm_exit_codes": [
-            null,
-            null,
-            null
-          ]
-        },
-        "legacy": {
-          "mean_completion_seconds": 65.71950105799995,
-          "mean_CPU_seconds": 14.926356,
-          "mean_sampled_peak_MiB": 817.5481770833334,
-          "mean_retained_MiB": 799.1328125,
-          "mean_modeled_EUR_per1000": 0.00047409674849215386,
-          "arm_exit_codes": [
-            null,
-            null,
-            null
-          ]
-        }
-      },
-      {
-        "scenario": "arm64_generated",
-        "native": {
-          "mean_completion_seconds": 19.2721119753334,
-          "mean_CPU_seconds": 10.030276666666666,
-          "mean_sampled_peak_MiB": 463.8723958333333,
-          "mean_retained_MiB": 448.5,
-          "mean_modeled_EUR_per1000": 1.9878732495299156e-05,
-          "arm_exit_codes": [
-            null,
-            null,
-            null
-          ]
-        },
-        "legacy": {
-          "mean_completion_seconds": 30.85374483433331,
-          "mean_CPU_seconds": 18.855940666666665,
-          "mean_sampled_peak_MiB": 944.1640625,
-          "mean_retained_MiB": 885.36328125,
-          "mean_modeled_EUR_per1000": 4.638182160286139e-05,
-          "arm_exit_codes": [
-            null,
-            null,
-            null
-          ]
-        }
-      },
-      {
         "scenario": "amd64_generated",
+        "job_id": 125463272474,
         "native": {
-          "mean_completion_seconds": 20.065830261666708,
-          "mean_CPU_seconds": 15.099795666666667,
-          "mean_sampled_peak_MiB": 460.5859375,
-          "mean_retained_MiB": 444.0065104166667,
-          "mean_modeled_EUR_per1000": 2.485588881667277e-05,
+          "mean_completion_seconds": 19.75428100033332,
+          "mean_CPU_seconds": 11.101510666666668,
+          "mean_startup_CPU_seconds": 5.239220333333334,
+          "mean_lifetime_CPU_seconds": 16.342508999999996,
+          "mean_modeled_EUR_per1000": 1.9731958905308636e-05,
+          "mean_sampled_peak_MiB": 456.3997395833333,
+          "mean_retained_MiB": 444.3072916666667,
           "arm_exit_codes": [
             null,
             null,
@@ -289,11 +340,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 35.830726988,
-          "mean_CPU_seconds": 28.109659999999998,
-          "mean_sampled_peak_MiB": 947.10546875,
-          "mean_retained_MiB": 891.3203125,
-          "mean_modeled_EUR_per1000": 5.176327537992762e-05,
+          "mean_completion_seconds": 32.350071754666715,
+          "mean_CPU_seconds": 21.025079333333334,
+          "mean_startup_CPU_seconds": 11.498980333333332,
+          "mean_lifetime_CPU_seconds": 32.53178833333333,
+          "mean_modeled_EUR_per1000": 4.581009944862833e-05,
+          "mean_sampled_peak_MiB": 908.7578125,
+          "mean_retained_MiB": 854.9036458333334,
           "arm_exit_codes": [
             null,
             null,
@@ -303,12 +356,15 @@
       },
       {
         "scenario": "amd64_captured",
+        "job_id": 125442035701,
         "native": {
-          "mean_completion_seconds": 35.71882857966659,
-          "mean_CPU_seconds": 14.928432,
-          "mean_sampled_peak_MiB": 426.2708333333333,
-          "mean_retained_MiB": 415.7630208333333,
-          "mean_modeled_EUR_per1000": 0.00021067673886300645,
+          "mean_completion_seconds": 35.49225873166665,
+          "mean_CPU_seconds": 17.484926333333334,
+          "mean_startup_CPU_seconds": 6.9434543333333325,
+          "mean_lifetime_CPU_seconds": 24.453780333333334,
+          "mean_modeled_EUR_per1000": 0.0002264258488940713,
+          "mean_sampled_peak_MiB": 425.4817708333333,
+          "mean_retained_MiB": 417.8424479166667,
           "arm_exit_codes": [
             null,
             null,
@@ -316,11 +372,77 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 66.53343476166674,
-          "mean_CPU_seconds": 19.752177,
-          "mean_sampled_peak_MiB": 816.4479166666666,
-          "mean_retained_MiB": 797.3424479166666,
-          "mean_modeled_EUR_per1000": 0.0004919876531676574,
+          "mean_completion_seconds": 67.63169438633327,
+          "mean_CPU_seconds": 21.83618,
+          "mean_startup_CPU_seconds": 14.661855999999998,
+          "mean_lifetime_CPU_seconds": 36.49836766666667,
+          "mean_modeled_EUR_per1000": 0.0005053811374502603,
+          "mean_sampled_peak_MiB": 817.0885416666666,
+          "mean_retained_MiB": 797.2526041666666,
+          "arm_exit_codes": [
+            null,
+            null,
+            null
+          ]
+        }
+      },
+      {
+        "scenario": "arm64_generated",
+        "job_id": 125442035676,
+        "native": {
+          "mean_completion_seconds": 20.494073831333328,
+          "mean_CPU_seconds": 10.365825333333333,
+          "mean_startup_CPU_seconds": 4.883878666666667,
+          "mean_lifetime_CPU_seconds": 15.251886666666666,
+          "mean_modeled_EUR_per1000": 2.0371190112730848e-05,
+          "mean_sampled_peak_MiB": 467.5390625,
+          "mean_retained_MiB": 450.2578125,
+          "arm_exit_codes": [
+            null,
+            null,
+            null
+          ]
+        },
+        "legacy": {
+          "mean_completion_seconds": 32.087043471666675,
+          "mean_CPU_seconds": 19.235248666666667,
+          "mean_startup_CPU_seconds": 9.680700666666667,
+          "mean_lifetime_CPU_seconds": 28.925383,
+          "mean_modeled_EUR_per1000": 4.633782048618385e-05,
+          "mean_sampled_peak_MiB": 920.5377604166666,
+          "mean_retained_MiB": 872.5533854166666,
+          "arm_exit_codes": [
+            null,
+            null,
+            null
+          ]
+        }
+      },
+      {
+        "scenario": "arm64_captured",
+        "job_id": 125442035706,
+        "native": {
+          "mean_completion_seconds": 34.076981095666646,
+          "mean_CPU_seconds": 11.500387666666667,
+          "mean_startup_CPU_seconds": 4.858913333333333,
+          "mean_lifetime_CPU_seconds": 16.364341333333332,
+          "mean_modeled_EUR_per1000": 0.00019107961203488618,
+          "mean_sampled_peak_MiB": 427.4401041666667,
+          "mean_retained_MiB": 421.84765625,
+          "arm_exit_codes": [
+            null,
+            null,
+            null
+          ]
+        },
+        "legacy": {
+          "mean_completion_seconds": 65.70825902000001,
+          "mean_CPU_seconds": 14.700487,
+          "mean_startup_CPU_seconds": 9.656312666666667,
+          "mean_lifetime_CPU_seconds": 24.358299333333335,
+          "mean_modeled_EUR_per1000": 0.0004758884410756291,
+          "mean_sampled_peak_MiB": 825.14453125,
+          "mean_retained_MiB": 803.4934895833334,
           "arm_exit_codes": [
             null,
             null,
@@ -329,137 +451,350 @@
         }
       }
     ],
-    "limits": "Four completed controlled scenarios; six alternating arms per scenario, three per lane, and nine actors per arm. Modeled cost is not invoiced cost; sampled peak is a lower bound; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not asserted zero."
+    "limits": "Exact corrective-head controlled source qualification; merged tree equals reviewed/tested tree. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Measured CPU, startup and lifetime counters are separate. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. These controls do not establish installed1157 or natural production freshness/demand completion.",
+    "merged_tree": "36f894f7eb03652090047cbb6386348d1eed5bb6",
+    "runtime_contract": "bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff"
   },
+  "maintenance_window": {
+    "change": "Move authenticated previous-Go-image inspection before writer quiescence. Repair remains after sync/epoch and opens a fresh authority snapshot with per-page checks and per-schedule CAS.",
+    "previous_1155_stop_completion_to_worker_start_seconds": 203.9650274,
+    "baseline_run": 41424740467,
+    "baseline_excludes": "Earlier graceful drain and final readiness/promotion.",
+    "corrective1157_elapsed_saving_qualified": true,
+    "recovery_seconds_are_not_maintenance_savings": true,
+    "corrective1157": {
+      "source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+      "run": 41455879195,
+      "deploy_job": 125315226894,
+      "four_writer_stop_output_at_utc": "2026-11-02T13:57:38.5081895Z",
+      "ordinary_worker_started_at_utc": "2026-11-02T13:59:59.7732643Z",
+      "post_stop_to_worker_start_seconds": 141.265075,
+      "prior1155_same_marker_seconds": 203.9650274,
+      "difference_seconds": 62.6999524,
+      "schedule_reports": [],
+      "limits": "Same observable post-stop to worker-start markers only; excludes preceding graceful drain and final readiness/promotion. One rollout comparison, not guaranteed future SLA. No opaque IDs or raw joblogs retained."
+    },
+    "scope": "Same observable post-stop-to-worker-start markers:141.265075s versus203.9650274s,62.6999524s shorter. Excludes preceding graceful drain and final readiness/promotion; one rollout comparison, not whole maintenance pause or future SLA."
+  },
+  "acceptance_audit": [
+    {
+      "milestone": 1,
+      "requirement": "Native salary extraction/conversion and canonical effects",
+      "status": "qualified_with_dated_scope",
+      "limits": "Original native salary evidence covers3502 operations and394 fresh rows on76 boards/14 locales, five fields with zero drift. The component changed since that witness; do not claim byte identity or a new fleet-wide natural proof.",
+      "evidence": [
+        "https://github.com/colophon-group/jobseek/pull/10177",
+        "docs/evidence/go-salary-production-2026-09-30.json"
+      ]
+    },
+    {
+      "milestone": 2,
+      "requirement": "Remaining CPU/location enrichment, cache and canonical semantics",
+      "status": "qualified_with_dated_scope",
+      "limits": "80641 historical native resolutions and140 browser-cohort rows establish bounded effects. The old browser executor was Python; current native caller ownership is established separately. Local cache benchmarks are not production cost attribution."
+    },
+    {
+      "milestone": 3,
+      "requirement": "Native Lightpanda executor, fencing, claims, failure/schedule/crash semantics",
+      "status": "native_executor_and_latest_renderer_installed",
+      "limits": "Current native image/ownership and latest binary identities are qualified; earlier interruptions do not establish a retrospective root cause. Security, mTLS and resource guards remain."
+    },
+    {
+      "milestone": 4,
+      "requirement": "Ordinary fetch/enrich/persist/reschedule, exporter and description drain",
+      "status": "qualified1159_native_actors_and_bounded_natural_canonical_effects",
+      "limits": "Four native actors have zero restarts/OOM in current1159 observations.420 zero-failure naturally fresh details across338boards/28provider groups include31browser-configured records;420future due dates,0missingtitles/emptycurrentdescriptions,415hashmatches/currentuploads. This is bounded current output, not universal convergence, backlog clearance or paired-production causal attribution. The previous inactive-description metadata discrepancy remains dated."
+    },
+    {
+      "milestone": 5,
+      "requirement": "Every enabled profile and original required-title case without board loss",
+      "status": "all8298_current_monitor_identities_preserved; old8290_and8288_floors_preserved; ADF_separate",
+      "limits": "Original named/title-case and provider witnesses remain dated. Native ADF52-job/zero-failure witness is dated October27; current pagination/freshness failure is unresolved and explicitly not a global migration gate."
+    },
+    {
+      "milestone": 6,
+      "requirement": "Retire superseded Python runtime implementations and assets",
+      "status": "superseded_performance_sensitive_Python_source_images_and_manual_acceptance_client_retired;1159_installed",
+      "limits": "Eleven daemon modules/Python image targets were removed through11488/1157.1159 additionally installs native Go renderer acceptance and deletes its Python client. No Python/uv/Playwright/Chromium runtime commands; useful offline/control Python remains permitted. No host manual-render/restart/reboot workflow execution grant follows."
+    },
+    {
+      "milestone": 7,
+      "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
+      "status": "qualified1159_delivery_controls_natural_effects_native_consumer_and_stopped_container_retirement_complete",
+      "limits": "Final24 AMD/ARM generated/captured arms have parity and cleanup with measured/startup/lifetimeCPU separate.1159 source/image/data/8298conservation/8290+8288floors, bounded natural DB effects and native manual acceptance implementation qualify. Five stopped legacy containers were retired without writer changes.1157 poststop-to-start savings and1137Go-to-Go reversal remain dated proof. Two old images are separate deferred housekeeping. No paired-production/globalcausalSLA/backlogzero/extra-soak gate."
+    }
+  ],
   "ADF_current_controls": {
-    "schema": 1,
-    "observed_at_utc": "2026-11-02T06:35:44.021226+00:00",
-    "human_authorization": "Allow local diagnostic only: one More click in a fresh temporary Chrome profile, no detail scans; production remains Go HTTP/Lightpanda",
-    "state": "COMPLETE_NOT_A_SUCCESSFUL_INVENTORY",
-    "chrome_version": "156.0.8078.74",
-    "control": {
-      "after_native_more": {
-        "fetch_index": 24,
-        "more": true,
-        "ready": "complete",
-        "rows": 25
-      },
-      "before": {
-        "adf": true,
-        "component": true,
-        "more": true,
-        "ready": "complete",
-        "rows": 25
-      },
-      "browser_cookie_api_supported": true,
-      "browser_cookie_classes": {
-        "other": 6
-      },
-      "browser_cookie_count": 6,
-      "browser_http_only_cookie_count": 0,
-      "browser_session_named_cookie_count": 0,
-      "captured_bytes": 681,
-      "captured_form_field_count": 11,
-      "control_browser": "installed Chrome; production remains Go/Lightpanda",
-      "detail_checks": 0,
-      "http_status_by_resource_type": {
-        "Document:200": 6,
-        "Fetch:200": 9,
-        "Image:200": 28,
-        "Image:304": 4,
-        "Other:200": 2,
-        "Ping:200": 1,
-        "Preflight:403": 1,
-        "Script:200": 48,
-        "Stylesheet:200": 6,
-        "XHR:200": 2
-      },
-      "http_status_counts": {
-        "200": 102,
-        "304": 4,
-        "403": 1
-      },
-      "javascript_error_categories": {
-        "other": 1
-      },
-      "more_actions_requested": 1,
-      "navigation_succeeded": true,
-      "pagination_redirect_events_observed": 2,
-      "pagination_request_match_count": 1,
-      "pagination_response_observed": false,
-      "primary_after_native_more": {
-        "fetch_index": 24,
-        "more": true,
-        "ready": "complete",
-        "rows": 25
-      },
-      "publisher_reservation": false,
-      "publisher_window_unmodified": true,
-      "publisher_xhr_body_bytes": 0,
-      "publisher_xhr_body_error": false,
-      "publisher_xhr_body_summary": {
-        "error_element": false,
-        "listing_row_markers": 0,
-        "redirect_element": false,
-        "root_class": "unknown",
-        "update_count": 0
-      },
-      "publisher_xhr_response_captured": true,
-      "publisher_xhr_response_url_available": false,
-      "publisher_xhr_status": 0,
-      "query_window_matches_body": true,
-      "requests_observed": 110,
-      "response_protocol_counts": {
-        "http/1.1": 107
-      },
-      "scope": "AUTHORIZED ONE LOCAL RUN: fresh-profile local Chrome control, original publisher window/form/headers, one More action; no details; no production state",
-      "stage": "complete"
-    },
-    "cleanup": {
-      "started_at_utc": "2026-11-02T06:34:46.075598+00:00",
-      "finished_at_utc": "2026-11-02T06:35:44.021226+00:00",
-      "owned_temp_bytes_removed": 189089180,
-      "temporary_directory_removed": true,
-      "shared_dependencies_and_original_dump_untouched": true
-    },
-    "comparison": {
-      "latest_Lightpanda": "1.1.0-nightly.11500+721618eeb",
+    "blocking": false,
+    "issue": 10790,
+    "followup": "https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945",
+    "enabled": true,
+    "status": "quarantined",
+    "consecutive_failures": 13,
+    "next_natural_retry_utc": "2026-11-03T19:19:01.429197+00:00",
+    "latest_local_controls": {
+      "Lightpanda_version": "1.1.0-nightly.11500+721618eeb",
       "Lightpanda_requests": 58,
+      "Chrome_version": "156.0.8078.74",
       "Chrome_requests": 110,
-      "both_initial_rows": 25,
+      "Chrome_More_clicks": 1,
+      "detail_checks": 0,
       "both_after_rows": 25,
-      "both_after_fetch_index": 24,
+      "both_fetch_index": 24,
       "both_after_more": true,
-      "both_pagination_redirect_events": 2,
+      "both_pagination_redirects": 2,
       "both_XHR_status": 0,
-      "both_XHR_body_bytes": 0,
-      "both_XHR_response_URL_available": false,
-      "Chrome_query_window_matches_body": true,
-      "Lightpanda_query_window_matches_body": false
+      "both_XHR_body_bytes": 0
     },
-    "conclusion": "Observed fresh local Chrome and Lightpanda native More controls both fail to advance the listing. This does not isolate the failure to Lightpanda, prove a universal publisher outage or establish a CORS/session root cause. Window mismatch is not sufficient to explain both outcomes. No safe production patch or complete inventory is qualified. No more guessed header/form/window probes without new input.",
-    "production_mutations": false,
-    "detail_checks": 0,
-    "remaining": "ADF original board stays enabled/quarantined with unchanged natural retry2026-11-02T17:37:17.889837Z. Full migration remains incomplete."
+    "conclusion": "Both authorized local controls failed to advance the listing; no complete inventory, Lightpanda-specific cause, universal publisher outage or CORS/session root cause is established. The Chrome exception is consumed and its temporary artifacts removed.",
+    "constraints": "The natural November2 retry checked at19:18:54 failed;13failures and nextNovember3 19:19:01 are publisher backoff facts, with no causal classification. Preserve enabled/unreserved state, policy, quarantine/backoff/counters and schedules. No forced work, speculative variants or production Chromium.",
+    "last_natural_state_observed_at_utc": "2026-11-02T19:22:17.120375+00:00",
+    "next_natural_retry_utc_is_dated_snapshot": true,
+    "last_checked_at_utc": "2026-11-02T19:18:54.613351+00:00",
+    "last_success_at_utc": "2026-10-28T13:37:57.808563+00:00",
+    "tdm_reserved": false,
+    "latest_natural_receipt_sha256": "5845995b34b89dd62a8e0d646933838dec8238dcc918038a339ee460b5d86fde"
   },
-  "backup_health": "One supported backup retry succeeded; normal deployment guard accepted recovery and1153 deployed. Incident11478 is closed; historical lock cause remains unproven. No permanent source fix or new restore drill claimed.",
   "previous_qualified_cases": {
-    "five_former_deadletters": "Accenture, Beisen, both API-sniffer routes and Amazon naturally succeeded under1139; dated evidence, not a new1153 per-provider run.",
+    "five_former_deadletters": "Accenture, Beisen, both API-sniffer routes and Amazon naturally succeeded under1139. Dated evidence; this checkpoint does not re-exercise those providers.",
     "original_required_title_case": "Existing native BambooHR monitor + HTTP api_sniffer detail route; original41 stored jobs included2 active jobs with titles, locations, staged/uploaded descriptions and post-monitor detail completion. Dated qualification; no new fullR2comparison.",
-    "downstream": "Previously sampled canonical/search/R2 evidence remains bounded and dated; pre-existing backlog and one historical inactive description metadata mismatch remain explicit.1153 does not remeasure universal freshness."
+    "downstream": "Previously sampled canonical/search/R2 evidence remains bounded and dated; pre-existing backlog and one historical inactive-description metadata discrepancy remain explicit. This checkpoint does not remeasure universal freshness."
   },
   "reversal": {
     "supported_cold_exercise_run": 41213487268,
     "version": "0.13.1137",
+    "runtime": "Go-to-Go",
     "dated_evidence_only": true,
-    "new_1153_or_11500_exercise_claimed": false
+    "new_retirement_or_corrective_exercise_claimed": false
   },
+  "capacity_limits": "Worker4CPU/2GiB, GOMEMLIMIT1GiB,120 runners/30 monitor cap; renderer1CPU/1GiB/four shared slots. More scaling is unqualified: SQL/Redis admission, per-origin policy and lookup serialization can dominate. Measure eligible successful unique detail throughput with all downstream pressures before allocating more.",
   "limits": [
-    "All current schedule identities are conserved; the latest observer deliberately omits expensive detail-demand SQL. No current universal freshness result.",
-    "No new natural four-host throughput window or causal production speedup claim. Current1153 Go processing tree/Compose are unchanged; latestLP comparison has current binary pins.",
-    "Generation changes as intended on LP rollout; lifetime cgroup counters are not subtracted across generations.",
-    "Postrollout resource proof does not authorize Justup API/stage or prove functional rendering via a Docker health check; none is configured.",
-    "Chrome is one explicitly authorized local diagnostic only; no production Chromium route was introduced.",
-    "Keep active regressions and supported rollback assets; remove owned temporary binaries/caches/raw history. Preserve dump.rdb and shared dependencies."
-  ]
+    "Current monitor identity and schedule conservation do not prove posting freshness or backlog completion. Expensive detail-demand SQL was deliberately omitted.",
+    "No new causal natural-traffic throughput speedup, invoiced-cost saving or four-host natural-traffic window is claimed. The measured maintenance marker reduction is separately bounded.",
+    "OfficialGitHub release recheck at19:35:59 verifies installed latest ARM nightly digest4021; stable1.0.2 remains older. Rotating nightly tag publication date is not the current binary asset date. Renderer resources remain the separate19:10:51 read-only baseline.",
+    "Justup reservations remain0.5CPU/1GiB plus its already allocated2GiB filesystem and8GiB root-free floor. No new API/stage window, functional-render proof, quota increase or activation follows.",
+    "Use normal exact-head Required CI/Crawler Deploy Gate, immutable full-release workflows, mutation locks, full writer quiescence and complete rollback. No rsync, mutable deployment, partial writer restart or hold bypass.",
+    "Remove owned closed temporary assets and caches. Preserve shared dependencies, active regression inputs, supported rollback assets, other contributors changes and original dump.rdb."
+  ],
+  "qualified_corrective_release": {
+    "pr": 11490,
+    "head": "cc369d37d0cf850b81c3a97feecbfddc581740ac",
+    "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
+    "version": "0.13.1157",
+    "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
+    "merged": true,
+    "installed": true,
+    "state": "Supported full1157 rollout succeeded at14:01:12UTC. Independent installed14:06 and atomic queue14:02 receipts qualify the immutable source/image/data, four native actors, all8288 monitor identities and conservation. Source/image-bound native private path verification passed at14:38UTC.",
+    "source_change": "Authenticated previous-release inspection and rollback sync use standalone native maintenance instead of Compose one-offs. Helpers preserve the host root/env used by ERR/EXIT traps. Existing repair authority and post-quiescence ordering remain. Mandatory CI checks real Compose rendering and Docker create/inspect without starting the fixture containers.",
+    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "merged_tree": "f071b5ab55d6b2700724f07a365536b395a095b4",
+    "merged_tree_equals_reviewed_tested_tree": true,
+    "supported_rollout_run": 41455879195,
+    "required_CI": "success",
+    "crawler_deploy_gate": "success",
+    "mandatory_actual_Docker_proof": "success"
+  },
+  "native_private_paths": {
+    "status": "pass",
+    "duration_seconds": 0.717,
+    "scope": "PG SELECT1 and Typesense GET/health only, exact source/image bound under maintenance lock; no role, Redis, Timescale, ingress installer, Justup or provider qualification",
+    "observed_at_utc": "2026-11-02T14:38:00Z",
+    "observed_time_precision": "minute",
+    "source_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "image_digest": "sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924",
+    "verifier_returncode": 0,
+    "source_image_and_exporter_readiness_unchanged_under_maintenance_lock": true,
+    "exporter_readiness": "not_configured"
+  },
+  "latest_fully_qualified_release": {
+    "qualification": "PASS",
+    "version": "0.13.1159",
+    "source": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "runtime_contract": "bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff",
+    "image": "sha256:d24f84b80424a7b6cee11fb1e92f7a2b290e7b182a47ada6344143e2f1506575",
+    "data_revision": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "data_contract": "d03e52c61e167beed6cb425e2be5e04a72d594464775d75befbc708944929d0d",
+    "supported_run": 41504447601,
+    "supported_run_completed_at_utc": "2026-11-02T19:06:11Z",
+    "Required_CI_job": 125479353346,
+    "Required_CI": "success",
+    "Crawler_Deploy_Gate": "success",
+    "tested_head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "tested_and_merged_tree": "36f894f7eb03652090047cbb6386348d1eed5bb6",
+    "tree_equivalent": true
+  },
+  "current_installed_assessment": {
+    "recorded_at_utc": "2026-11-02T19:15:58.191869+00:00",
+    "qualification": "PASS",
+    "qualification_receipt_sha256": "bfbdd15ea09ae813dd6f3493808dcd18290db932325b23882d851be493335aa5",
+    "receipts_sha256": {
+      "native1159-installed-current.json": "4fbaf899b8de4cb6c51770b2b189fa4930b2ef2afa269db2ebd2f0b1a934dc85",
+      "native1159-queue-current.json": "6891c3ae0ba2d6d8e796195ea0ea0c3446928523d734a935c7720a480cfb3891",
+      "native1159-crawler-current.json": "3848f1c3c063c6eb6379c09f3bf466d76899dac72f14962131545bcf9ef6bdb0",
+      "native1159-natural-shapes-current.json": "cf464f3dd863d2cacb65b7c32ccb5d487a8e697f90b07eb97b4165b8bc2db891",
+      "native1159-comparison-current.json": "c2a834ddda5c9b6f7071fc26653c36a53fd48791e467793e82f5f3cf8b3ed2d5",
+      "lightpanda-nightly-recheck-final-current.json": "70e0c1c635401ce25efc6e18082b293b9359ad8090789e4434c0f42a3d670717",
+      "lightpanda-stable-recheck-final-current.json": "6662d8cdeb6be2f291be54726bfffd152e41b70f6553e07035a7501f48312721"
+    },
+    "scope": "Actual1159 immutable source/image/data, v3/env/eightCSV, allfour native actors with zero restarts/OOM,8298 monitor conservation and8290/8288 identity floors qualified. Natural canonical effects are bounded and current; no universal freshness/SLA/backlog or invoice claim."
+  },
+  "original_acceptance_evidence_limits": [
+    "No historical agreed Python rollback-observation duration receipt is claimed. The latest explicit human instruction to delete superseded implementation supersedes a pending local Python observation-window agreement; preserve verified immutable native Go rollback. This is not a new waiting requirement.",
+    "Captured same-workload comparisons and bounded natural canonical/downstream effects remain faithful acceptance evidence. No paired-production, global causal SLA or backlog-zero gate is required or claimed; unpaired observations do not establish universal causal freshness effects."
+  ],
+  "pre_1159_full_monitor_identity": {
+    "count": 8290,
+    "keys_SHA256": "acbd720c5314d8e3be56e15c143a9e8e9328633f1f0ae2a6cd3808156c6280f9",
+    "UUID_SHA256": "b0dd7fd635008da0447e12b019c5b610a273fedd93a28a6e2293642bc2fa6c65",
+    "all_preserved": true
+  },
+  "qualified_1159_release": {
+    "PR": 11494,
+    "url": "https://github.com/colophon-group/jobseek/pull/11494",
+    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "base": "42140b870f459e5aada974025757c190e162c6ee",
+    "tree": "36f894f7eb03652090047cbb6386348d1eed5bb6",
+    "version": "0.13.1159",
+    "runtime_contract": "bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff",
+    "data_contract": "d03e52c61e167beed6cb425e2be5e04a72d594464775d75befbc708944929d0d",
+    "preservation": {
+      "prior_CSV_rows_removed_or_changed": 0,
+      "boards_before": 8290,
+      "boards_candidate": 8298,
+      "companies_CSV_before": 6269,
+      "companies_CSV_candidate": 6270,
+      "descriptions_CSV_before": 6134,
+      "descriptions_CSV_candidate": 6135
+    },
+    "source_review": "Independent combined-source review passed with no blocking findings. Tested and merged tree equal.",
+    "installed": true,
+    "installed_qualified": true,
+    "scope": [
+      "Contained publisher redirect response-error classification; origin allowlists and fatal caller-configuration guards preserved.",
+      "Native Go renderer acceptance client and superseded Python client deletion.",
+      "Exactly eight Michel boards, one company and one description; zero prior8290 CSV rows changed or removed.",
+      "Single1159 VERSION and one supported full-release rollout."
+    ],
+    "CI": {
+      "Required_CI": "success",
+      "Required_CI_job": 125479353346,
+      "Crawler_Deploy_Gate": "success",
+      "all_four_current_comparisons": "success",
+      "all_24_arms_parity_and_cleanup": true,
+      "prior_failed_build": "One first-attempt AMD64 generated build failed before measurement in unchanged ats-inventory stage; same-head failed-job-only retry completed with original assertions unchanged."
+    },
+    "host_manual_renderer_workflow_execution_authorized": false,
+    "merged_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "merged_tree": "36f894f7eb03652090047cbb6386348d1eed5bb6",
+    "supported_run": 41504447601
+  },
+  "natural_fresh_effects": {
+    "sample_bound": 1000,
+    "records": 420,
+    "boards": 338,
+    "provider_groups": 28,
+    "browser_configured_records": 31,
+    "missing_title": 0,
+    "locale_title_length_mismatch": 15,
+    "description_hash_present": 415,
+    "postings_with_descriptions": 416,
+    "empty_current_descriptions": 0,
+    "description_hash_matches": 415,
+    "zero_failure_records": 420,
+    "next_due_present": 420,
+    "future_due_after_scrape": 420,
+    "uploaded_current_descriptions": 415,
+    "pending_current_descriptions": 0,
+    "since_native_started_at_utc": "2026-11-02T19:04:58.887547768Z",
+    "authority_epoch": 404,
+    "scope": "Bounded naturally completed scrape fences and canonical rows since this native process start; no IDs/content/URLs, no forced origins or queue writes; not universal freshness/backlog-clearance or paired-live causal claim."
+  },
+  "canonical_shape_observation": {
+    "observed_at_utc": "2026-11-02T19:10:53.949887+00:00",
+    "source": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "original_sample_cutoff": "2026-11-02T19:07:40.729212+00:00",
+    "unmodified_original_window_subset": {
+      "records": 437,
+      "extra_content_locales": 11,
+      "more_titles_than_locales": 4,
+      "empty_titles": 0,
+      "empty_locales": 4,
+      "missing_hash": 4,
+      "missing_hash_enrich_excludes_description": 0,
+      "max_title_variants": 1,
+      "max_content_locales": 2
+    },
+    "scope": "Readonly original natural-window shape classification only; no IDs/URLs/content/provider requests or writes. Later naturally modified rows can drop from subset. BuildLocales permits additional detected content languages without synthesizing new translated titles.",
+    "interpretation": "Locale/title counts need not match: BuildLocales independently appends detected description languages; absent language/description can preserve empty locales under COALESCE. Independent cutoff-window shape observation437rows:11extra-content-locales,4empty-locales/4missinghashes,0emptytitles; no new translated titles synthesized. This is not the same420-row query snapshot. See docs08language/enrich semantics and native prepare.go/content.go, unchanged by1159.",
+    "not_the_same420_record_snapshot": true,
+    "repair_or_new_gate_required": false
+  },
+  "publication": "Completed delivery record prepared for the normal documentation PR/check/merge workflow. No self-referential documentation merge identity is claimed; no extra runtime rollout is needed.",
+  "operating_followups": [
+    "Oracle ADF remains enabled and explicitly nonblocking; its latest natural retry failed and publisher backoff remains untouched. No forced work or production Chromium.",
+    "Two unused legacy images remain intentionally retained as separate image-retention housekeeping. Current GC can refuse unified native browser/crawler aliases when an exact repository alias is not locally pulled; no automatic retirement promise, broad prune or image-policy change.",
+    "Retain normal native Go rollback, publisher limits, demo reserve, quiescence/maintenance authority and bounded operational monitoring. No new soak quota or universal freshness/backlog gate."
+  ],
+  "legacy_container_retirement": {
+    "status": "completed",
+    "state": "EXACT_STOPPED_LEGACY_CONTAINERS_RETIRED",
+    "source_revision": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "removed_containers": 5,
+    "removed_services": [
+      "worker-1",
+      "worker-2",
+      "worker-3",
+      "browser-1",
+      "lightpanda-claimant"
+    ],
+    "images_deleted": 0,
+    "images_explicitly_deferred": true,
+    "duration_seconds": 19.701,
+    "maintenance_returncode": 0,
+    "forced_termination": false,
+    "restoration_failures": 0,
+    "native_actors_unchanged": true,
+    "protected_metadata_unchanged": true,
+    "required_existing_image_leases_preserved": true,
+    "image_lease_proof": "legacy-image-ids-disjoint-from-complete-required-closure",
+    "writer_stops_restarts_syncs_queue_changes_provider_work": 0,
+    "receipt_sha256": "0b14ab04dba57620bddc941ee5f8f3a8cf279107e35e8d592570959bd56a579b",
+    "reviewed_child_sha256": "9c978ed97dcad45242eb771e10a364655e5352480584105b78681533decb969e",
+    "qualified_pins_sha256": "abb2b5e12cb6dae77449487a3a3d3a26f6a3bccf1fdcca9e763127144f4545bb",
+    "automatic_retry": false,
+    "scope": "Exactly five stopped legacy containers retired under reviewed standard maintenance. Both old images remain; complete required image closure was disjoint from their IDs and existing image leases were preserved. No image-policy change or expectation that current routine GC will retire them automatically.",
+    "deferred_image_housekeeping": {
+      "old_images": [
+        {
+          "image_id": "sha256:4b3f150d0c29e2598facca6cb57b797dac5d5346c5a841c86127d09d184b9265",
+          "size_bytes": 398160927,
+          "matches_resolved_release_image": false,
+          "matches_any_retained_digest_pin": false,
+          "repository_digests_count": 1
+        },
+        {
+          "image_id": "sha256:0db54d7bf6388b7cb24ee6ab7fb507c348340ffb3e50509c705ce762485efe82",
+          "size_bytes": 814145891,
+          "matches_resolved_release_image": false,
+          "matches_any_retained_digest_pin": false,
+          "repository_digests_count": 1
+        }
+      ],
+      "inventory_observed_at_utc": "2026-11-02T17:57:05.139883+00:00",
+      "reason": "Intentionally outside stopped-container retirement. Exact alias-aware GC may refuse an unpulled browser/crawler repository alias even when the same immutable image digest is present. No broad prune or current image deletion authorized."
+    }
+  },
+  "manual_renderer_acceptance": {
+    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "base": "42140b870f459e5aada974025757c190e162c6ee",
+    "state": "Combined1159 PR11494 installed and qualified; Go client replaces the deleted Python client. No host manual-render/restart/reboot workflow execution was granted or claimed.",
+    "source_only": false,
+    "sequence": "Delivered together with contained publisher redirect classification and exactly eight Michel boards in one1159 full release.",
+    "no_public_render_restart_reboot_execution_authorized": true,
+    "prepared_component_head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
+    "PR": 11494,
+    "url": "https://github.com/colophon-group/jobseek/pull/11494",
+    "installed_qualified": true,
+    "merged_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f"
+  }
 }
