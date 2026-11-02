@@ -397,6 +397,14 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         )
         for user in allowed_users
     }
+    expected_network_rules.add(
+        (
+            str(ipaddress.ip_network(f"{crawler_ip}/32")),
+            "crawler",
+            "justup_feed_readonly",
+            "scram-sha-256",
+        )
+    )
     actual_network_rules = []
     local_rules = []
     if rules_match:
@@ -420,7 +428,11 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             actual_network_rules.append((str(network), database, user, method))
     rules_match = (
         rules_match
-        and local_rules == [("all", "all", "trust")]
+        and local_rules
+        == [
+            ("all", "justup_feed_readonly", "reject"),
+            ("all", "all", "trust"),
+        ]
         and len(actual_network_rules) == len(expected_network_rules)
         and set(actual_network_rules) == expected_network_rules
     )

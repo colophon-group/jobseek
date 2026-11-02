@@ -221,7 +221,7 @@ def test_cutoff_precedes_snapshot_so_a_writer_committing_during_capture_is_visib
         return cutoff
 
     state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         pending = asyncio.run(
             feed.build_batch(pool, tmp_path, state, False, None, {"kind": "all_eligible"})
         )
@@ -243,7 +243,7 @@ def test_missing_optional_taxonomy_tables_preserve_ids_with_unavailable_labels(t
         return cutoff
 
     state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         pending = asyncio.run(
             feed.build_batch(
                 FakePool(connection), tmp_path, state, False, None, {"kind": "all_eligible"}
@@ -268,7 +268,7 @@ def test_partially_present_taxonomy_schema_fails_closed(tmp_path):
 
     state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
     with (
-        patch.object(feed, "capture_cdc_snapshot_cutoff", capture),
+        patch.object(feed, "capture_justup_feed_cutoff", capture),
         pytest.raises(feed.FeedError, match="partially present"),
     ):
         asyncio.run(
@@ -290,7 +290,7 @@ def test_pre_cutoff_active_writer_is_recovered_by_next_changes_batch(tmp_path):
         return first_cutoff
 
     initial = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture_first):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture_first):
         pending = asyncio.run(
             feed.build_batch(pool, tmp_path, initial, False, None, {"kind": "all_eligible"})
         )
@@ -309,7 +309,7 @@ def test_pre_cutoff_active_writer_is_recovered_by_next_changes_batch(tmp_path):
     async def capture_second(_):
         return second_cutoff
 
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture_second):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture_second):
         next_pending = asyncio.run(
             feed.build_batch(pool, tmp_path, state, False, None, {"kind": "all_eligible"})
         )
@@ -329,7 +329,7 @@ def test_changed_scope_requires_reconciliation_and_resets_batch_boundary(tmp_pat
     async def capture(_):
         return START + timedelta(seconds=2)
 
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         with pytest.raises(feed.FeedError, match="scope requires"):
             asyncio.run(feed.build_batch(pool, tmp_path, state, False, [UUID(COMPANY)], new_scope))
         pending = asyncio.run(
@@ -351,14 +351,14 @@ def test_inactive_change_is_explicit_and_never_inferred_from_snapshot_absence(tm
         return START + timedelta(seconds=2)
 
     state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         initial = asyncio.run(feed.build_batch(pool, tmp_path, state, False, None, scope))
     manifest, rows = read_rows(tmp_path, initial)
     assert rows == []
     assert manifest["sourceScopeRowCount"] == 0
 
     state = {"schemaVersion": 1, "cursor": feed.cursor(START), "scope": scope, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         changed = asyncio.run(feed.build_batch(pool, tmp_path, state, False, None, scope))
     manifest, rows = read_rows(tmp_path, changed)
     assert manifest["kind"] == "changes"
@@ -379,7 +379,7 @@ def test_partial_change_batch_requires_following_page_before_complete(tmp_path):
         return START + timedelta(seconds=2)
 
     state = {"schemaVersion": 1, "cursor": feed.cursor(START), "scope": scope, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         first = asyncio.run(feed.build_batch(pool, tmp_path, state, False, None, scope))
     manifest, exported = read_rows(tmp_path, first)
     assert manifest["complete"] is False
@@ -387,7 +387,7 @@ def test_partial_change_batch_requires_following_page_before_complete(tmp_path):
     assert manifest["toCursor"]["id"] == rows[feed.CHANGE_ROW_LIMIT - 1]["id"]
 
     state = {"schemaVersion": 1, "cursor": manifest["toCursor"], "scope": scope, "pending": None}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         second = asyncio.run(feed.build_batch(pool, tmp_path, state, False, None, scope))
     next_manifest, next_rows = read_rows(tmp_path, second)
     assert next_manifest["complete"] is True
@@ -484,7 +484,7 @@ def test_next_export_replays_pending_after_cleaning_crash_orphans(tmp_path):
         return START + timedelta(seconds=2)
 
     state = {"schemaVersion": 1, "cursor": None, "scope": None, "pending": None, "accepted": []}
-    with patch.object(feed, "capture_cdc_snapshot_cutoff", capture):
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
         pending = asyncio.run(
             feed.build_batch(
                 FakePool(connection), target, state, False, None, {"kind": "all_eligible"}

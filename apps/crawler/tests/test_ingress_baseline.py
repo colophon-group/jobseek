@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -390,6 +392,7 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
     monkeypatch.setattr(conformance, "POSTGRES_NETWORK_CONFIG", NetworkConfig())
     hba = "\n".join(
         [
+            "local|||all|justup_feed_readonly|reject",
             "local|||all|all|trust",
             "host|127.0.0.1|255.255.255.255|crawler|crawler|scram-sha-256",
             "host|127.0.0.1|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
@@ -397,6 +400,7 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
             "host|::1|ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff|crawler|jobseek_labeller_readonly|scram-sha-256",
             "host|10.0.0.2|255.255.255.255|crawler|crawler|scram-sha-256",
             "host|10.0.0.2|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
+            "host|10.0.0.2|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
         ]
     )
     bounded_log_config = '{"Type":"json-file","Config":{"max-size":"50m","max-file":"3"}}\n'
@@ -462,6 +466,54 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
         "compliant"
     ]
 
+    def missing_feed_run(command):
+        result = compliant_run(command)
+        if "pg_hba_file_rules" in command[-1]:
+            return conformance.CommandResult(
+                0,
+                result.stdout.replace(
+                    "\nhost|10.0.0.3|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
+                    "",
+                ),
+            )
+        return result
+
+    monkeypatch.setattr(conformance, "_run", missing_feed_run)
+    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
+        "compliant"
+    ]
+
+    def missing_socket_reject_run(command):
+        result = compliant_run(command)
+        if "pg_hba_file_rules" in command[-1]:
+            return conformance.CommandResult(
+                0,
+                result.stdout.replace("local|||all|justup_feed_readonly|reject\n", ""),
+            )
+        return result
+
+    monkeypatch.setattr(conformance, "_run", missing_socket_reject_run)
+    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
+        "compliant"
+    ]
+
+    def extra_feed_loopback_run(command):
+        result = compliant_run(command)
+        if "pg_hba_file_rules" in command[-1]:
+            return conformance.CommandResult(
+                0,
+                result.stdout
+                + "\nhost|127.0.0.1|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
+            )
+        return result
+
+    monkeypatch.setattr(conformance, "_run", extra_feed_loopback_run)
+    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
+        "compliant"
+    ]
+
+    monkeypatch.setattr(conformance, "_run", compliant_run)
+
     def unbounded_log_run(command):
         if command[:4] == [
             "docker",
@@ -516,6 +568,10 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert '--setenv="JOBSEEK_POSTGRES_PRIVATE_IP=' in postgres
     assert "root-password-was-unlocked" in host
     assert "postgres-rollback-pre-ingress" in postgres
+    assert "host crawler justup_feed_readonly ${CRAWLER_PRIVATE_IP}/32 scram-sha-256" in postgres
+    assert postgres.index("local all justup_feed_readonly reject") < postgres.index(
+        "local all all trust"
+    )
     assert 'run_replacement "$data"' in postgres
     assert "a fresh successful PostgreSQL backup is required" in postgres
     assert "postgresql-network.env" in migration
@@ -580,7 +636,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
     transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
     combined = workflow + transport
 
-    assert workflow.count("bash deploy/networking/run-remote.sh") == 19
+    assert workflow.count("bash deploy/networking/run-remote.sh") == 21
     assert "secrets[" not in workflow
     assert "&& secrets." not in workflow
     assert "appleboy/" not in combined
@@ -596,7 +652,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
 
     for host_secret, known_hosts_secret, expected_connections in (
         ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS", 7),
-        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 6),
+        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 8),
         ("HETZNER_TYPESENSE_HOST", "HETZNER_TYPESENSE_KNOWN_HOSTS", 6),
     ):
         assert (
@@ -612,7 +668,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
         for block in workflow.split("      - name:")[1:]
         if "bash deploy/networking/run-remote.sh" in block
     ]
-    assert len(remote_steps) == 19
+    assert len(remote_steps) == 21
     role_mappings = {
         "crawler": ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS"),
         "postgresql": ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS"),
@@ -626,6 +682,138 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
         assert step.count("SSH_KNOWN_HOSTS:") == 1
         assert f"TARGET_HOST: ${{{{ secrets.{host_secret} }}}}" in step
         assert f"SSH_KNOWN_HOSTS: ${{{{ secrets.{known_hosts_secret} }}}}" in step
+
+
+def test_feed_role_install_uses_merged_main_and_verified_postgresql_transport() -> None:
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
+    job = _workflow_job(workflow, "feed-role-maintenance")
+    assert 'test "$GITHUB_REF" = refs/heads/main' in job
+    assert 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"' in job
+    assert "git ls-remote origin refs/heads/main" in job
+    assert job.index("Require the exact current merged main revision") < job.index(
+        "Verify applied HBA, transport and install the fixed feed role"
+    )
+    assert "TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}" in job
+    assert "SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}" in job
+    assert "install-feed-role|audit-feed-role)" in transport
+    assert "justup-feed-readonly-role.py" in transport
+    assert "verify-stage" in transport
+    assert transport.index("--require-enforced") < transport.index(
+        "python3 /usr/local/sbin/jobseek-justup-feed-role install"
+    )
+    assert "audit-feed-role" in job
+    assert "/usr/local/sbin/jobseek-justup-feed-role" in transport
+
+
+def test_postgresql_rollback_uses_snapshot_when_new_container_is_absent(tmp_path: Path) -> None:
+    source = (ROOT / "deploy/networking/harden-postgresql.sh").read_text()
+    hba_check = source.split("\nsnapshot_rejects_feed_local_login() {\n", 1)[1].split(
+        "\n}\n\nsnapshot_feed_role_boundary()", 1
+    )[0]
+    rollback = source.split("\nrollback() {\n", 1)[1].split("\n}\n\nrollback_on_error()", 1)[0]
+    transaction = tmp_path / "rollback" / "candidate"
+    transaction.mkdir(parents=True)
+    (transaction / "pg_hba.conf").write_text(
+        "local all justup_feed_readonly reject\nlocal all all trust\n"
+    )
+    (transaction / "feed-role-present").touch()
+    pending = tmp_path / "pending"
+    pending.write_text(str(transaction) + "\n")
+    script = f"""
+set -euo pipefail
+CURRENT_NAME=postgres
+ROLLBACK_NAME=postgres-rollback-pre-ingress
+ROLLBACK_ROOT={shlex.quote(str(transaction.parent))}
+PENDING_FILE={shlex.quote(str(pending))}
+LOG={shlex.quote(str(tmp_path / "calls"))}
+fail() {{ exit 90; }}
+snapshot_rejects_feed_local_login() {{
+{hba_check}
+}}
+cancel_rollback_timer() {{ :; }}
+restore_hba() {{ test -s "$1/pg_hba.conf"; }}
+wait_ready() {{ :; }}
+docker() {{
+  printf '%s\\n' "$*" >> "$LOG"
+  case "$*" in
+    'container inspect postgres-rollback-pre-ingress' | \
+    'rm -f postgres' | \
+    'rename postgres-rollback-pre-ingress postgres' | \
+    'start postgres') return 0 ;;
+    *) return 91 ;;
+  esac
+}}
+rollback() {{
+{rollback}
+}}
+rollback
+"""
+    result = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    calls = (tmp_path / "calls").read_text()
+    assert "rename postgres-rollback-pre-ingress postgres" in calls
+    assert "start postgres" in calls
+    assert "exec " not in calls
+    assert not pending.exists()
+
+    pending.write_text(str(transaction) + "\n")
+    (transaction / "pg_hba.conf").write_text("local all all trust\n")
+    rejected = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert rejected.returncode == 90
+    assert pending.exists()
+    (transaction / "pg_hba.conf").write_text(
+        "local all all trust\nlocal all justup_feed_readonly reject\n"
+    )
+    reversed_order = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert reversed_order.returncode == 90
+    assert pending.exists()
+
+
+def test_postgresql_stage_rejects_an_old_hba_before_pending_state(tmp_path: Path) -> None:
+    source = (ROOT / "deploy/networking/harden-postgresql.sh").read_text()
+    hba_check = source.split("\nsnapshot_rejects_feed_local_login() {\n", 1)[1].split(
+        "\n}\n\nsnapshot_feed_role_boundary()", 1
+    )[0]
+    preflight = source.split("\nsnapshot_feed_role_boundary() {\n", 1)[1].split(
+        "\n}\n\nwrite_network_config()", 1
+    )[0]
+    stage = source.split("\nstage() {\n", 1)[1].split("\n}\n\ncommit()", 1)[0]
+    assert stage.index('snapshot_feed_role_boundary "$tx"') < stage.index(
+        'printf \'%s\\n\' "$tx" >"${PENDING_FILE}.tmp"'
+    )
+    transaction = tmp_path / "candidate"
+    transaction.mkdir()
+    hba = transaction / "pg_hba.conf"
+    hba.write_text("local all all trust\n")
+    script = f"""
+set -euo pipefail
+CURRENT_NAME=postgres
+fail() {{ exit 90; }}
+docker() {{
+  [[ "$*" == *"SELECT 1 FROM pg_roles WHERE rolname = 'justup_feed_readonly'"* ]]
+  printf '1\\n'
+}}
+install() {{ local destination="${{!#}}"; touch "$destination"; }}
+snapshot_rejects_feed_local_login() {{
+{hba_check}
+}}
+snapshot_feed_role_boundary() {{
+{preflight}
+}}
+snapshot_feed_role_boundary {shlex.quote(str(transaction))}
+"""
+    rejected = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert rejected.returncode == 90
+    assert not (transaction / "feed-role-present").exists()
+    hba.write_text("local all all trust\nlocal all justup_feed_readonly reject\n")
+    reversed_order = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert reversed_order.returncode == 90
+    assert not (transaction / "feed-role-present").exists()
+    hba.write_text("local all justup_feed_readonly reject\nlocal all all trust\n")
+    accepted = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert accepted.returncode == 0, accepted.stderr
+    assert (transaction / "feed-role-present").exists()
 
 
 def test_ingress_transport_executes_only_verified_root_owned_payloads() -> None:

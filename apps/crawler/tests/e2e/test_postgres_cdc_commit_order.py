@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import os
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -18,6 +20,12 @@ from src.export_cursor_fence import (
 )
 from src.justup_feed import __main__ as justup_feed
 from src.reconciliation import reconcile_partition
+
+ROLE_HELPER = Path(__file__).resolve().parents[4] / "deploy/networking/justup-feed-readonly-role.py"
+ROLE_SPEC = importlib.util.spec_from_file_location("justup_feed_role_e2e", ROLE_HELPER)
+assert ROLE_SPEC is not None and ROLE_SPEC.loader is not None
+feed_role = importlib.util.module_from_spec(ROLE_SPEC)
+ROLE_SPEC.loader.exec_module(feed_role)
 
 REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
 pytestmark = pytest.mark.skipif(
@@ -370,6 +378,7 @@ async def test_justup_feed_handles_absent_and_complete_taxonomy_tables(tmp_path)
     control = await asyncpg.connect(dsn)
     company_id, board_id, posting_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     created_tables: list[str] = []
+    feed_schema_installed = False
 
     def private_spool(name: str):
         directory = tmp_path / name
@@ -389,6 +398,10 @@ async def test_justup_feed_handles_absent_and_complete_taxonomy_tables(tmp_path)
     try:
         present = await control.fetchval(justup_feed.TAXONOMY_TABLE_COUNT_SQL)
         assert present == 0, "fresh crawler migrations must not require taxonomy display tables"
+        # Install the production feed schema, uploaded-only view and cutoff
+        # function in this disposable database before exercising the exporter.
+        await control.execute(feed_role.install_sql("A" * 64))
+        feed_schema_installed = True
         await control.execute(
             "INSERT INTO company (id, slug, name, website) VALUES ($1, $2, $3, $4)",
             company_id,
@@ -493,4 +506,11 @@ async def test_justup_feed_handles_absent_and_complete_taxonomy_tables(tmp_path)
         await control.execute("DELETE FROM job_posting WHERE id = $1", posting_id)
         await control.execute("DELETE FROM job_board WHERE id = $1", board_id)
         await control.execute("DELETE FROM company WHERE id = $1", company_id)
+        if feed_schema_installed:
+            await control.execute("DROP SCHEMA justup_feed CASCADE")
+            await control.execute("DROP OWNED BY justup_feed_readonly")
+            await control.execute("DROP ROLE justup_feed_readonly")
+            await control.execute("REVOKE pg_read_all_stats FROM justup_feed_cutoff_owner")
+            await control.execute("DROP OWNED BY justup_feed_cutoff_owner")
+            await control.execute("DROP ROLE justup_feed_cutoff_owner")
         await control.close()

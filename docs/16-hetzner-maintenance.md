@@ -539,7 +539,23 @@ networking, so local Alloy can still scrape ports 9093–9098 without exposing
 them on a host interface. PostgreSQL binds only to loopback and its private
 address. Its exact HBA permits the `crawler` and
 `jobseek_labeller_readonly` roles, on the `crawler` database, from loopback and
-the exact crawler private address, using SCRAM-SHA-256.
+the exact crawler private address. The dedicated `justup_feed_readonly` role
+is admitted only from that crawler private address; a preceding local-socket
+reject prevents the general local trust rule from admitting it. All TCP entries
+require SCRAM-SHA-256. After the applied HBA passes audit, role grants are
+installed and audited by the fixed
+[`justup-feed-readonly-role.py`](../deploy/networking/justup-feed-readonly-role.py)
+helper through the protected ingress workflow's `install-feed-role` action.
+The reader gets selected public posting columns, an uploaded-description view,
+and a fixed cutoff function; the privileged statistics membership stays with a
+non-login function owner. An HBA entry alone does not create the login or
+authorize a data transfer.
+The installer expects `/etc/jobseek-feed/reader-password`, owned by root with
+mode `0600`, and the matching protected crawler-side database URL. Those
+credentials are provisioned separately from the workflow. Before each
+operator export, run the workflow's read-only `audit-feed-role` action from the
+exact current `main` revision and retain its successful role/HBA receipt; a
+future automated export must make that audit its own preflight.
 
 PostgreSQL TLS is not required on this local-crawler data path under the
 current threat model: the database contains crawler-source job data rather
