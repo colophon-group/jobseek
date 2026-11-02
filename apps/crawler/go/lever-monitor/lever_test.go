@@ -8,22 +8,18 @@ import (
 func TestParsePageExcludesOnlyConfiguredBlankPosting(t *testing.T) {
 	const blankID = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
 	const otherID = "ff34692c-d3a5-4d41-a0be-49b06d695ea8"
-	for _, filled := range []bool{false, true} {
-		description := ""
-		if filled {
-			description = "<p>New duties</p>"
-		}
+	for _, description := range []string{"", " \n\t ", "<p>New duties</p>"} {
 		body, _ := json.Marshal([]map[string]any{
 			{"id": blankID, "hostedUrl": "https://jobs.lever.co/rivieradininggroup/" + blankID, "text": "Prep Cook", "description": description, "categories": map[string]any{"location": "Winter Park, Florida"}},
 			{"id": otherID, "hostedUrl": "https://jobs.lever.co/rivieradininggroup/" + otherID, "text": "Other Prep Cook", "description": "<p>Real duties</p>", "categories": map[string]any{"location": "Miami, Florida"}},
 		})
 		jobs, count, err := ParsePageWithBlankExclusions(body, map[string]bool{blankID: true})
 		want := 1
-		if filled {
+		if description == "<p>New duties</p>" {
 			want = 2
 		}
 		if err != nil || count != 2 || len(jobs) != want || jobs[len(jobs)-1].Metadata["id"] != otherID {
-			t.Fatalf("filled=%v count=%d jobs=%+v err=%v", filled, count, jobs, err)
+			t.Fatalf("description=%q count=%d jobs=%+v err=%v", description, count, jobs, err)
 		}
 	}
 }

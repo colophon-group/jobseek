@@ -397,7 +397,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         for raw in batch:
             parsed = _parse_job(raw)
             if parsed:
-                if raw.get("id") in excluded_blank_ids and not parsed.description:
+                if raw.get("id") in excluded_blank_ids and (
+                    not parsed.description or not parsed.description.strip()
+                ):
                     continue
                 jobs.append(parsed)
 

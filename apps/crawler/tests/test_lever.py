@@ -247,8 +247,8 @@ class TestApiUrl:
 
 
 class TestDiscover:
-    @pytest.mark.parametrize("filled", [False, True])
-    async def test_exact_blank_posting_exclusion_preserves_other_jobs(self, filled: bool):
+    @pytest.mark.parametrize("description", ["", " \n\t ", "<p>New duties</p>"])
+    async def test_exact_blank_posting_exclusion_preserves_other_jobs(self, description: str):
         blank_id = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
         other_id = "ff34692c-d3a5-4d41-a0be-49b06d695ea8"
 
@@ -260,7 +260,7 @@ class TestDiscover:
                         "id": blank_id,
                         "hostedUrl": f"https://jobs.lever.co/testco/{blank_id}",
                         "text": "Prep Cook",
-                        "description": "<p>New duties</p>" if filled else "",
+                        "description": description,
                         "categories": {"location": "Winter Park, Florida"},
                     },
                     {
@@ -282,7 +282,7 @@ class TestDiscover:
                 client,
             )
         assert [job.metadata["id"] for job in jobs] == (
-            [blank_id, other_id] if filled else [other_id]
+            [blank_id, other_id] if description.strip() else [other_id]
         )
         assert all(job.description and job.locations for job in jobs)
 
