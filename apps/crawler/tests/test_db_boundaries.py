@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -52,27 +51,6 @@ async def test_web_pool_does_not_fall_back_to_the_crawler_mirror(monkeypatch) ->
         await db.create_web_pool()
 
     create.assert_not_awaited()
-
-
-async def test_export_command_never_opens_or_passes_the_crawler_mirror(monkeypatch) -> None:
-    local_pool = object()
-    run_exporter = AsyncMock()
-    monkeypatch.setattr(
-        cli,
-        "parse_args",
-        lambda: argparse.Namespace(command="export", batch_size=20, interval=3),
-    )
-    monkeypatch.setattr(cli, "start_metrics_server", lambda _port: None)
-    monkeypatch.setattr(cli, "create_local_pool", AsyncMock(return_value=local_pool))
-    monkeypatch.setattr(cli, "close_all_pools", AsyncMock())
-    monkeypatch.setattr(cli.settings, "database_url", "postgresql://must-not-open.invalid/mirror")
-
-    with patch("src.exporter.run_exporter", new=run_exporter):
-        await cli.run()
-
-    run_exporter.assert_awaited_once()
-    assert run_exporter.await_args.args[0] is local_pool
-    assert run_exporter.await_args.args[1] is None
 
 
 async def test_reconcile_command_execs_go_without_opening_python_pools(monkeypatch) -> None:

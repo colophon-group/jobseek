@@ -51,7 +51,7 @@ def _assignment_names(node: ast.Assign | ast.AnnAssign) -> list[str]:
 def test_crawler_sql_calls_do_not_use_f_string_templates():
     violations: list[str] = []
     for path in (
-        _source_root() / "exporter.py",
+        _source_root() / "typesense_projection.py",
         _source_root() / "bootstrap.py",
         _source_root() / "indexnow.py",
     ):
@@ -71,7 +71,7 @@ def test_crawler_sql_calls_do_not_use_f_string_templates():
 def test_sql_template_constants_do_not_use_f_strings():
     violations: list[str] = []
     for path in (
-        _source_root() / "exporter.py",
+        _source_root() / "typesense_projection.py",
         _source_root() / "bootstrap.py",
         _source_root() / "indexnow.py",
     ):

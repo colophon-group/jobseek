@@ -27,19 +27,19 @@ import structlog
 
 from src.config import settings
 from src.export_cursor_fence import export_cursor_fence
-from src.exporter import (
+from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_HI_FIELD,
+    CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
+    build_candidate_order_readiness_receipt,
+)
+from src.typesense_projection import (
     PostingSchema,
     TaxonomyMaps,
     _build_typesense_docs,
     _get_taxonomy_maps,
     _upsert_to_supabase,
     _upsert_to_typesense,
-)
-from src.typesense_candidate_order import (
-    CANDIDATE_ORDER_HI_FIELD,
-    CANDIDATE_ORDER_KEY_FIELD,
-    CANDIDATE_ORDER_LO_FIELD,
-    build_candidate_order_readiness_receipt,
 )
 
 log = structlog.get_logger()

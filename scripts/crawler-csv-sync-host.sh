@@ -370,19 +370,14 @@ sync_release_data() {
   if [[ "$ACTIVE_RELEASE_FORMAT" == 3 ]]; then
     data_args=(-v "$ACTIVE_DATA_DIR:/app/data:ro")
   fi
-  # Normal publication has passed the exact runtime-contract gate and uses
-  # the installed Go synchronizer directly. Bootstrap/recovery may select a
-  # historical image; inspect that exact image for its supported recovery CLI.
-  local command_args=(uv run --no-sync crawler sync) runtime_backend
-  if [[ "$role" == csv-sync ]]; then
-    maintenance_backend=native
-    command_args=(go-typesense-exporter --sync-registry)
-  else
-    maintenance_backend="$(crawler_image_maintenance_backend "$image")" || return 1
-    if [[ "$maintenance_backend" == native ]]; then
-      command_args=(go-typesense-exporter --sync-registry)
-    fi
-  fi
+  # Publication and recovery execute only the advertised native maintenance CLI.
+  # Older Python-only images cannot recover a retired runtime.
+  local command_args=(go-typesense-exporter --sync-registry) runtime_backend
+  maintenance_backend="$(crawler_image_maintenance_backend "$image")" || return 1
+  [[ "$maintenance_backend" == native ]] || {
+    echo "ERROR: CSV publication and recovery require native maintenance" >&2
+    return 1
+  }
   runtime_backend="$(crawler_image_runtime_backend "$image")" || return 1
   if [[ "$runtime_backend" == go ]]; then
     [[ "$maintenance_backend" == native ]] || {

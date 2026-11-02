@@ -243,7 +243,23 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     assert stop < migrate < sync < start
 
     ingress = (ROOT / "deploy/networking/verify-private-paths.sh").read_text(encoding="utf-8")
-    assert '"application_name": "jobseek:ingress:private-path-verifier"' in ingress
+    assert "/usr/local/bin/go-typesense-exporter --verify-private-paths" in ingress
+    assert "uv run" not in ingress
+    native_ingress = (CRAWLER / "go/typesense-exporter/private_paths.go").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'config.RuntimeParams["application_name"] = "jobseek:ingress:private-path-verifier"'
+        in native_ingress
+    )
+    # Native ingress still owns one direct connection, not another pool, and
+    # bounds connection/query/cleanup phases before releasing that slot.
+    assert native_ingress.count("pgx.ConnectConfig(") == 1
+    assert "pgxpool" not in native_ingress and "openPool(" not in native_ingress
+    assert "context.WithTimeout(ctx, 10*time.Second)" in native_ingress
+    assert "context.WithTimeout(ctx, 30*time.Second)" in native_ingress
+    assert "context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)" in native_ingress
+    assert "connection.Close(closeCtx)" in native_ingress
     # Independent deploy overlap: labeller 2 + backup 2 + sampler 1 + ingress 1.
     independent = 2 + 2 + 1 + 1
     # Migration uses one NullPool connection; sync uses a four-slot local pool.

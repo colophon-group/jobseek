@@ -52,5 +52,6 @@ still owned by the web app's Supabase/Drizzle layer.
 - [Crawler architecture](../03-crawler-architecture.md)
 - [System design](../07-system-design.md)
 - [Typesense deployment state](../11-typesense.md)
-- [`apps/crawler/src/exporter.py`](../../apps/crawler/src/exporter.py)
+- [Native Typesense exporter](../../apps/crawler/go/typesense-exporter/writer.go)
+- [Offline projection helpers](../../apps/crawler/src/typesense_projection.py)
 - [`apps/crawler/src/sync.py`](../../apps/crawler/src/sync.py)

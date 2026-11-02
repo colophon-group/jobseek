@@ -38,10 +38,10 @@ Experiment in a disposable worktree; preserve unrelated data edits.
   writer-floor/CDC export, canonical registry sync, migrations, maintenance and
   lease recovery. `go/r2-drain/` uploads descriptions. No direct production
   mutation outside the documented maintenance/deployment workflows.
-- `src/core/`, `src/workers/`, `processing/` and Python export/sync/drain paths
-  support offline parity/tooling and the retained cold-reversal contract. They
-  are not the default production processors; do not add new production-only
-  behavior there or remove required rollback compatibility speculatively.
+- `src/core/`, `src/processing/`, `src/typesense_projection.py` and Python sync
+  helpers support offline parity and workspace tooling. Superseded Python
+  daemons and browser images are retired. Roll back through the exact previous
+  immutable Go release; do not add Python runtime fallbacks.
 - `src/workspace/`: agent setup CLI, state, runtime templates, gates and KB.
   `src/labeller/`: sampling, task rendering, validation, merging and uploading.
 - Inspect [architecture](../../docs/03-crawler-architecture.md),

@@ -5,50 +5,23 @@ Postgres, with CDC publication to Typesense.
 
 ## Infrastructure
 
-```
-                         +-----------+
-                         | Typesense |
-                         | read index|
-                         +-----^-----+
-                               | document upserts
-                               |
-      +-------------------------------+-------------------------------+
-      |  Hetzner (116.203.192.19)     |                               |
-      |                    +----------+-----------+                    |
-      |  +---------+      |     Exporter         |   +------------+  |
-      |  |  Redis  |<-----|  (CDC on updated_at)  |-->| Local      |  |
-      |  | (queues)|      +----------------------+   | Postgres   |  |
-      |  +---------+             ^                    | (crawler   |  |
-      |       |                  |                    |  DB)       |  |
-      |       |                  | read/write          +-----^-----+  |
-      |  +----v-----------------+---+                       |         |
-      |  |  Worker instances (x3)   |  write directly       |         |
-      |  |  claim from Redis queues |<----------------------+         |
-      |  +-------------------------+                                  |
-      |  +--------------------------+                                 |
-      |  |  Browser instance (x1)   |  (same pipeline, Chromium)     |
-      |  +--------------------------+                                 |
-      |  +--------------+                                             |
-      |  |  R2 Drain    |-- poll descriptions WHERE NOT r2_uploaded   |
-      |  +--------------+     --> PUT to R2                           |
-      |  +--------------+                                             |
-      |  |  Alloy       |-- metrics (Prometheus) + logs (Loki)        |
-      |  +--------------+     --> Grafana Cloud                       |
-      +---------------------------------------------------------------+
-
-      Dedicated Postgres machine (178.104.102.63):
-        Postgres 16, 20GB XFS volume, source of truth
-
-      CLI: crawler {run|run-browser|export|drain|sync|reconcile|board}
+```mermaid
+flowchart LR
+    Redis[Redis schedules and leases] <--> Worker[Go ordinary worker]
+    Worker --> Lightpanda[Self-hosted Lightpanda]
+    Worker --> PG[Local PostgreSQL truth]
+    PG --> Exporter[Go Typesense exporter]
+    Exporter --> Search[Typesense read index]
+    PG --> Drain[Go description drain]
+    Drain --> R2[R2 descriptions]
+    Reaper[Go lease reaper] <--> Redis
 ```
 
-The three legacy HTTP workers and browser worker use the packaged
-`go-ordinary-worker --worker-health=<port>` executable for their container root
-health probes on loopback ports 9095–9098. The probe requires no worker assets,
-SQL/Redis credentials or ordinary ownership, ignores proxy environment variables,
-and fails on a non-success response, redirect, missing listener or timeout.
-Worker execution migrates independently; changing these probes removes four
-routine Python launchers without claiming that the legacy workers are native.
+Production execution uses Go HTTP/API routes or Lightpanda. The independent
+native worker, exporter, description drain and lease reaper share the protected
+release contract; Python remains for offline workspace and control tools.
+See the [current migration checkpoint](27-go-lightpanda-continuation-plan.md)
+for installed identities, resource limits and verification scope.
 
 ## Redis Tiered Ready Queues
 
@@ -145,17 +118,12 @@ host-circuit metrics with the bounded, backward-compatible label
 
 ### Inflight Leases And Dead-Letter Recovery
 
-The expired-lease reaper runs as `go-typesense-exporter --reap-leases`, one
-supervised child per worker. Go owns both lane sweeps and the 30-second loop;
-the Python worker forwards its events to the existing metrics and reaps it
-on shutdown. An unexpected child exit triggers the pipeline's existing early
-exit/drain behavior. Failed PostgreSQL lifecycle observation does not stop
-Redis lease recovery. The default Go topology runs one independent native
-`lease-reaper` service instead of the Python supervisors. Complete deployments
-stop it with the writers and use `--drain-expired-leases` before provider route
-repair in either direction. That bounded operation preserves the normal clock,
-batch, strikes, committed SQL receipts and Redis compare-and-set fences; live
-leases are never erased or moved.
+The expired-lease reaper runs as the independent native `lease-reaper` service,
+using `go-typesense-exporter --reap-leases`. Complete deployments stop it with
+the writers and use `--drain-expired-leases` before provider route repair in
+either direction. That bounded operation preserves the normal clock, batch,
+strikes, committed SQL receipts and Redis compare-and-set fences; live leases
+are never erased or moved. Python worker supervisors are retired.
 
 `claim_work.lua` moves claimed tasks into `inflight:<wtype>` with a lease deadline. Workers clear the lease when they reschedule or complete the task, and the reaper moves expired leases back to the appropriate per-domain queue. If the same task expires too many times (`redis_reaper_max_strikes`), the reaper stops retrying it and parks the descriptor in `deadletter:<wtype>`.
 
@@ -692,46 +660,18 @@ Exporter CDC -> commit-safe cutoff + keyset read -> Typesense
 
 ## File Structure
 
-```
-apps/crawler/src/
-├── workers/
-│   ├── pipeline.py          # Discovery coroutines, claim from Redis, dispatch
-│   └── r2_drain.py          # Producer-consumer: descriptions -> R2
-├── processing/
-│   ├── board.py             # Streaming monitor processing, timestamp gone detection
-│   ├── scrape.py            # Single-job scraping, fallback chain
-│   ├── cpu.py               # CPU-bound processing (salary, location, etc.)
-│   └── r2_stage.py          # Stage descriptions for R2 upload
-├── queries/
-│   ├── monitor.py           # SQL: DIFF_BATCH, MARK_GONE_BY_TIMESTAMP, record success/fail
-│   ├── scrape.py            # SQL: UPDATE_JOB_CONTENT (conditional updated_at), RECORD_SCRAPE_*
-│   └── lookups.py           # Cached lookup table loaders
-├── redis_queue.py           # Lua-backed claim/enqueue/reschedule
-├── lua/                     # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py              # CDC: local Postgres -> Typesense
-├── sync.py                  # Local-first CSV sync + deferred Redis/Typesense publication
-├── bootstrap.py             # Non-executable rollback helpers for the retired mirror
-├── cli.py                   # Entry point: crawler run/run-browser/export/drain/sync/board
-├── config.py                # Settings: discovery_concurrency, monitor_concurrency, etc.
-├── metrics.py               # Prometheus metrics
-├── core/
-│   ├── monitors/            # Monitor implementations (35+ types)
-│   ├── scrapers/            # Scraper implementations
-│   ├── description_store.py # R2 put/get
-│   ├── monitor.py           # monitor_one, monitor_one_stream dispatchers
-│   └── scrape.py            # scrape_one dispatcher
-├── shared/
-│   ├── browser.py           # Playwright launch (open_page context manager)
-│   ├── http.py              # httpx client factory
-│   └── ...
-└── migrations/              # Alembic for local Postgres
-```
+Production modules live under `apps/crawler/go/`: `ordinary-worker`,
+`ordinary-queue`, `job-enrichment`, `pdf-text`, `typesense-exporter` and `r2-drain`.
+`src/lua/` supplies shared atomic queue operations and `src/migrations/` retains
+schema assets. Python `src/core/`, `src/processing/`, `src/typesense_projection.py`,
+workspace and labeller modules support offline extraction, parity and control.
+The superseded Python worker, polling exporter and drain daemons are removed.
 
 ## CLI Commands
 
 ```bash
-crawler run              # HTTP worker (claims from simple queues)
-crawler run-browser      # Browser worker (claims from browser queues)
+crawler run              # Exec native Go worker (HTTP and Lightpanda profiles)
+crawler run-browser      # Compatibility alias for the same combined Go worker
 crawler export           # Typesense CDC
 crawler drain            # R2 description uploader
 crawler sync             # CSV -> local DB, then Redis + Typesense
@@ -742,15 +682,17 @@ crawler board <slug>     # Process single board (debug)
 
 ## Deployment
 
-```bash
-# docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes a rollback-backed least-privilege env, pulls the requested manifest digests, stops processors, migrates Postgres, patches Typesense, runs plain crawler sync, starts + gates services
-# CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
-```
+The supported workflow builds the digest-pinned `native` image and deploys the
+complete Go stack through `deploy.sh`. It verifies and pulls before quiescence,
+then migrates, syncs, repairs and starts all writers behind readiness gates.
+Rollback reselects the exact previous immutable Go release and committed data.
+See [ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md) for the full
+publication, quiescence and recovery contract.
 
-Docker images:
-- `crawler-slim` (~200MB): Python + httpx only (workers, exporter, drain)
-- `crawler-full` (~600MB): Python + httpx + Playwright + Chromium (browser worker)
+Docker's explicit `tools` target supports offline workspace/parity checks.
+Python/Chromium processing images and their `slim`, `full` and browser targets
+are retired. Resource and metrics-port definitions are authoritative in
+[`docker-compose.yml`](../apps/crawler/docker-compose.yml).
 
 ### Registry sync ordering
 

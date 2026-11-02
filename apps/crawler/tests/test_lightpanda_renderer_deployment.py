@@ -1053,7 +1053,7 @@ def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
     for name in (
         "go-lightpanda-pilot.yml",
         "deploy-lightpanda-renderer.yml",
-        "crawler-b0-whole-lane.yml",
+        "crawler-native-whole-lane.yml",
     ):
         workflow = (ROOT / ".github/workflows" / name).read_text()
         commands = re.findall(

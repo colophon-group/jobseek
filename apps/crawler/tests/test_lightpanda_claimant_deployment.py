@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import time
 from pathlib import Path
 from types import ModuleType
 
@@ -2782,78 +2781,6 @@ def test_credentials_module_imports_without_optional_cryptography_runtime() -> N
     )
 
     assert result.returncode == 0, result.stderr
-
-
-def test_direct_executable_dark_mode_starts_without_socket_or_authority_imports(
-    installed_generation: Path,
-    tmp_path: Path,
-) -> None:
-    for name in ("ca.pem", "client.pem", "ca.sha256", "server-leaf.sha256", "server-spki.sha256"):
-        (installed_generation / name).chmod(0o444)
-    (installed_generation / "client-key.pem").chmod(0o400)
-    ready = tmp_path / "ready"
-    child = "\n".join(
-        (
-            "import os, sys",
-            "from pathlib import Path",
-            "import src.lightpanda.credentials as credentials",
-            "import src.lightpanda.entrypoint as entrypoint",
-            "root = Path(os.environ['TEST_CREDENTIAL_DIR'])",
-            "credentials.CLAIMANT_CA_PATH = root / 'ca.pem'",
-            "credentials.CLAIMANT_CLIENT_CERTIFICATE_PATH = root / 'client.pem'",
-            "credentials.CLAIMANT_CLIENT_PRIVATE_KEY_PATH = root / 'client-key.pem'",
-            "credentials.CLAIMANT_CA_PIN_PATH = root / 'ca.sha256'",
-            "credentials.CLAIMANT_SERVER_LEAF_PIN_PATH = root / 'server-leaf.sha256'",
-            "credentials.CLAIMANT_SERVER_SPKI_PIN_PATH = root / 'server-spki.sha256'",
-            "credentials.CLAIMANT_UID = os.getuid()",
-            "credentials.CLAIMANT_GID = os.getgid()",
-            "entrypoint._READY_FILE = Path(os.environ['TEST_READY_FILE'])",
-            "def audit(event, args):",
-            "    if event in {'socket.connect', 'socket.bind'}:",
-            "        raise RuntimeError(f'network I/O: {event}')",
-            "sys.addaudithook(audit)",
-            "status = entrypoint.main()",
-            "for name in ('src.lightpanda.claimant', 'src.db', 'src.redis_queue',",
-            "             'src.lightpanda_queue', 'asyncpg', 'redis'):",
-            "    if name in sys.modules:",
-            "        raise SystemExit(f'forbidden import: {name}')",
-            "raise SystemExit(status)",
-        )
-    )
-    environment = {
-        **os.environ,
-        "TEST_CREDENTIAL_DIR": str(installed_generation),
-        "TEST_READY_FILE": str(ready),
-        "LIGHTPANDA_B0_CLAIMANT_MODE": "dark",
-        "LIGHTPANDA_B0_SERVICE_HOST": "10.0.0.5",
-        "LIGHTPANDA_B0_CA_CERTIFICATE": str(installed_generation / "ca.pem"),
-        "LIGHTPANDA_B0_CLIENT_CERTIFICATE": str(installed_generation / "client.pem"),
-        "LIGHTPANDA_B0_CLIENT_PRIVATE_KEY": str(installed_generation / "client-key.pem"),
-        "LIGHTPANDA_B0_CA_SHA256_FILE": str(installed_generation / "ca.sha256"),
-        "LIGHTPANDA_B0_SERVER_LEAF_SHA256_FILE": str(installed_generation / "server-leaf.sha256"),
-        "LIGHTPANDA_B0_SERVER_SPKI_SHA256_FILE": str(installed_generation / "server-spki.sha256"),
-        "LIGHTPANDA_B0_QUEUE_NAMESPACE": "production-b0",
-        "LIGHTPANDA_B0_SHARD_ID": "lightpanda-b0",
-        "LIGHTPANDA_B0_ROUTING_EPOCH": "1",
-        "CRAWLER_DB_POOL_MIN": "0",
-        "CRAWLER_DB_POOL_MAX": "1",
-    }
-    process = subprocess.Popen(
-        [sys.executable, "-c", child],
-        cwd=CRAWLER,
-        env=environment,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline and not ready.exists() and process.poll() is None:
-        time.sleep(0.05)
-    assert ready.read_text(encoding="ascii") == "lightpanda-b0-dark-ready\n"
-    process.terminate()
-    stdout, stderr = process.communicate(timeout=10)
-    assert process.returncode == 0, f"{stdout}\n{stderr}"
-    assert not ready.exists()
 
 
 def test_deploy_discovers_claimant_only_from_exact_rollback_compose() -> None:

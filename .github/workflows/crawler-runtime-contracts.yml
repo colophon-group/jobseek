@@ -207,8 +207,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build slim crawler image
-        run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
+      - name: Build offline crawler tools image
+        run: docker build --target tools --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
 
       - name: Build default Python-free crawler image
         run: docker build --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:native-runtime-v1 apps/crawler

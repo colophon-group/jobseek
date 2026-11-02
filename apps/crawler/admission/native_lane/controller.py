@@ -638,10 +638,32 @@ def arm(base: dict[str, str], lane: str, ordinal: int) -> dict[str, Any]:
     return result
 
 
+def _comparison_image_provenance(
+    images: dict[str, str], source: str, legacy_source: str
+) -> dict[str, dict[str, str]]:
+    provenance: dict[str, dict[str, str]] = {}
+    for name, image in images.items():
+        if not re.fullmatch("sha256:[0-9a-f]{64}", image):
+            raise RuntimeError("comparison requires local immutable image IDs")
+        item = json.loads(run(["docker", "image", "inspect", image]))[0]
+        expected_source = legacy_source if name == "legacy" else source
+        if item["Config"]["Labels"].get("org.opencontainers.image.revision") != expected_source:
+            raise RuntimeError("comparison image source differs")
+        provenance[name] = {
+            "id": item["Id"],
+            "architecture": item["Architecture"],
+            "source_revision": expected_source,
+        }
+    if len({value["architecture"] for value in provenance.values()}) != 1:
+        raise RuntimeError("comparison image architectures differ")
+    return provenance
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--native-image", required=True)
     parser.add_argument("--legacy-image", required=True)
+    parser.add_argument("--legacy-source-sha")
     parser.add_argument("--renderer-image", required=True)
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -658,16 +680,10 @@ def main() -> int:
         "legacy": args.legacy_image,
         "renderer": args.renderer_image,
     }
-    provenance = {}
-    for name, image in images.items():
-        if not re.fullmatch("sha256:[0-9a-f]{64}", image):
-            raise RuntimeError("comparison requires local immutable image IDs")
-        item = json.loads(run(["docker", "image", "inspect", image]))[0]
-        if item["Config"]["Labels"].get("org.opencontainers.image.revision") != args.source_sha:
-            raise RuntimeError("comparison image source differs")
-        provenance[name] = {"id": item["Id"], "architecture": item["Architecture"]}
-    if len({value["architecture"] for value in provenance.values()}) != 1:
-        raise RuntimeError("comparison image architectures differ")
+    legacy_source = args.legacy_source_sha or args.source_sha
+    if not re.fullmatch("[0-9a-f]{40}", legacy_source):
+        raise RuntimeError("legacy comparison source is invalid")
+    provenance = _comparison_image_provenance(images, args.source_sha, legacy_source)
     document: dict[str, Any] = {
         "schema": "jobseek.native-whole-lane/v1",
         "source_revision": args.source_sha,
@@ -702,6 +718,7 @@ def main() -> int:
             "worker/render/storage/export/drain/reaper/fixture containers included. Fixture- "
             "generated production-cardinality lookup data; no actual origin or production "
             "writes. CPU includes startup separately; peak samples are not absolute peaks. This "
+            "The legacy control source is independently bound in images. This "
             "bounded comparison does not alone prove fleet coverage, natural recovery or "
             "production freshness. "
         ),

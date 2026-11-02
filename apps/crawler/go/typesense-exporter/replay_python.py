@@ -12,7 +12,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from src.exporter import TaxonomyMaps, _build_typesense_docs
+from src.typesense_projection import TaxonomyMaps, _build_typesense_docs
 
 GO_DIR = Path(__file__).parent
 NOW = datetime(2025, 6, 15, 12, tzinfo=UTC)

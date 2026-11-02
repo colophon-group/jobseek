@@ -713,7 +713,7 @@ jobs:
       - name: Verify retained ownership and supported cutover contracts
         if: matrix.lane == 'worker'
         working-directory: apps/crawler
-        run: uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_pipeline_owned_claims.py tests/test_ordinary_go_cutover.py
+        run: uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_ordinary_go_cutover.py
 
   test-go-r2-drain:
     name: Test Go R2 drain
@@ -881,7 +881,7 @@ jobs:
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
-      - name: Guard exact slim image build context
+      - name: Guard exact offline image build context
         env:
           TESTED_BUILD_SHA: ${{ github.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -899,11 +899,11 @@ jobs:
           test "$(git rev-parse HEAD^1)" = "$parent_one"
           test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"
 
-      - name: Build slim crawler image
+      - name: Build offline crawler tools image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/crawler
-          target: slim
+          target: tools
           build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
           platforms: linux/amd64
           tags: jobseek-crawler-slim-ci:pr
@@ -1069,42 +1069,6 @@ jobs:
             --entrypoint /app/.venv/bin/python worker-1 -c \
             'import asyncio; from src.lightpanda.producer_client import request_manifest; result = asyncio.run(request_manifest("c1")); assert result.board_slugs == ("browser-use-careers",)'
 
-      - name: Guard exact full image build context
-        env:
-          TESTED_BUILD_SHA: ${{ github.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          test -z "$(git status --porcelain=v1 --untracked-files=all)"
-          read -r commit parent_one parent_two extra <<<"$(git rev-list --parents -n 1 HEAD)"
-          test "$commit" = "$TESTED_BUILD_SHA"
-          git merge-base --is-ancestor "$BASE_SHA" "$parent_one"
-          git merge-base --is-ancestor "$parent_one" origin/main
-          test "$parent_two" = "$PR_HEAD_SHA"
-          test -z "${extra:-}"
-          test "$(git rev-parse HEAD)" = "$TESTED_BUILD_SHA"
-          test "$(git rev-parse HEAD^1)" = "$parent_one"
-          test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"
-
-      - name: Build full crawler image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: apps/crawler
-          target: full
-          build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
-          platforms: linux/amd64
-          tags: jobseek-crawler-ci:pr
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            com.colophon-group.jobseek.pr-head=${{ github.event.pull_request.head.sha }}
-            com.colophon-group.jobseek.base=${{ steps.merge-provenance.outputs.base_sha }}
-          load: true
-          push: false
-          cache-from: type=gha,scope=crawler-browser
-          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
-
       - name: Verify installed native ATS inventory entrypoint offline
         run: |
           timeout --foreground --signal=TERM --kill-after=5s 30s \
@@ -1194,9 +1158,6 @@ jobs:
             --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/dom-detail/testdata,target=/fixtures,readonly" \
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/dom-detail-parse /usr/local/bin/dom-detail-fetch
-
-      - name: Self-test sampler container probe
-        run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
 
       - name: Verify installed build info for all long-lived roles
         run: |
@@ -1412,35 +1373,8 @@ jobs:
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
             -e PYTHONDONTWRITEBYTECODE=1 \
             --entrypoint /app/.venv/bin/crawler \
-            jobseek-crawler-ci:pr \
+            jobseek-crawler-slim-ci:pr \
             --help >/dev/null
-
-      - name: Exercise real sampler and container shutdown lifecycle
-        env:
-          TESTED_BUILD_SHA: ${{ github.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ steps.merge-provenance.outputs.base_sha }}
-          SOURCE_URL: https://github.com/${{ github.repository }}
-          EVIDENCE_PATH: ${{ runner.temp }}/crawler-sampler-container-smoke.json
-        run: |
-          python3 .github/scripts/crawler-sampler-container-smoke.py \
-            --slim-image jobseek-crawler-slim-ci:pr \
-            --full-image jobseek-crawler-ci:pr \
-            --tested-build-sha "$TESTED_BUILD_SHA" \
-            --pr-head-sha "$PR_HEAD_SHA" \
-            --base-sha "$BASE_SHA" \
-            --source-url "$SOURCE_URL" \
-            --metrics-port 19091 \
-            --evidence "$EVIDENCE_PATH"
-
-      - name: Upload sampler lifecycle evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: crawler-sampler-container-smoke-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/crawler-sampler-container-smoke.json
-          if-no-files-found: error
-          retention-days: 14
 
   lint-web:
     name: Lint Web
@@ -2028,7 +1962,6 @@ jobs:
           tests/e2e/test_location_taxonomy_repair.py
           tests/e2e/test_postgres_pool_session_guards.py
           tests/e2e/test_lightpanda_write_fence.py
-          tests/lightpanda/test_claimant_postgres_e2e.py
           tests/e2e/test_durable_source_identity.py
           tests/e2e/test_merck_identity_migration.py
           tests/e2e/test_nw_provider_migration.py
