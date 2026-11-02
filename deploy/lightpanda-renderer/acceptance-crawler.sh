@@ -44,10 +44,11 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 inspect="$STAGE/worker.json"
 image_inspect="$STAGE/image.json"
-mapfile -t worker_ids < <(docker ps --all --no-trunc --quiet \
+worker_listing="$(docker ps --all --no-trunc --quiet \
   --filter label=com.docker.compose.project=deploy \
-  --filter label=com.docker.compose.service=ordinary-go)
-[[ "${#worker_ids[@]}" -eq 1 && "${worker_ids[0]}" =~ ^[0-9a-f]{64}$ ]]
+  --filter label=com.docker.compose.service=ordinary-go)" || exit 1
+mapfile -t worker_ids <<<"$worker_listing"
+[[ "${#worker_ids[@]}" -eq 1 && "${worker_ids[0]}" =~ ^[0-9a-f]{64}$ ]] || exit 1
 # Select only public identity fields; never copy the worker's environment or
 # authority-bearing mounts into this standalone probe or its staged evidence.
 docker inspect --format '{"id":{{json .Id}},"image_ref":{{json .Config.Image}},"image_id":{{json .Image}},"running":{{json .State.Running}},"health":{{json .State.Health.Status}}}' \

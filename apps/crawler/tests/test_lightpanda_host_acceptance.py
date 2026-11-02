@@ -302,6 +302,55 @@ def crawler_validator(
     )
 
 
+@pytest.mark.parametrize(
+    ("rows", "discovery_status", "accepted"),
+    [
+        ("c" * 64 + "\n", 0, True),
+        ("c" * 64 + "\n", 23, False),
+        ("", 0, False),
+        ("c" * 64 + "\n" + "d" * 64 + "\n", 0, False),
+    ],
+)
+def test_native_discovery_requires_success_and_exactly_one_actor(
+    rows: str, discovery_status: int, accepted: bool
+) -> None:
+    crawler = CRAWLER.read_text(encoding="utf-8")
+    selection = crawler[
+        crawler.index("worker_listing=") : crawler.index("# Select only public identity fields;")
+    ]
+    # Docker is a shell fixture, never the installed client. Bash 3 on macOS
+    # lacks mapfile; its fixture shim only fills the source's worker_ids array.
+    script = (
+        r"""
+set -euo pipefail
+docker() {
+    [[ "$1" == ps ]] || return 99
+    printf '%s' "$DISCOVERY_ROWS"
+    return "$DISCOVERY_STATUS"
+}
+if ! type mapfile >/dev/null 2>&1; then
+    mapfile() {
+        worker_ids=()
+        while IFS= read -r row; do worker_ids+=("$row"); done
+    }
+fi
+"""
+        + selection
+        + r"""
+printf 'selected:%s\n' "${worker_ids[0]}"
+"""
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        env={**os.environ, "DISCOVERY_ROWS": rows, "DISCOVERY_STATUS": str(discovery_status)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert (result.returncode == 0) == accepted, result.stderr
+    assert ("selected:" in result.stdout) == accepted
+
+
 @pytest.mark.parametrize("mutation", [None, "stopped", "unhealthy", "mutable", "missing_id"])
 def test_native_worker_selection_rejects_identity_drift(
     tmp_path: Path, mutation: str | None
