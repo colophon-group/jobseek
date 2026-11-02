@@ -695,8 +695,8 @@ case "$1 $2" in
   'run --detach') echo synthetic-container; exit 0 ;;
   'exec '*)
     case "$*" in
-      *pg_is_in_recovery*) echo f ;;
       *current_setting*) echo '16.13|f|off' ;;
+      *pg_is_in_recovery*) echo f ;;
     esac
     exit 0 ;;
   'rm -f') exit 0 ;;
