@@ -29,25 +29,40 @@ cleanup() {
   local rc=$?
   trap - EXIT
   if [[ "$rc" -ne 0 ]]; then
+    docker inspect "$RESTORE_CONTAINER" --format \
+      'restore_load_container status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} error={{.State.Error}}' \
+      2>/dev/null || true
     docker inspect "$CONTAINER" --format \
       'restore_container status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} error={{.State.Error}}' \
       2>/dev/null || true
+    docker logs --tail 100 "$RESTORE_CONTAINER" 2>/dev/null || true
     docker logs --tail 100 "$CONTAINER" 2>/dev/null || true
-    if [[ "$KEEP_FAILED" == true ]]; then
-      echo "Retained failed restore drill data for diagnosis: $DATA_DIR" >&2
-      exit "$rc"
-    fi
   fi
   docker rm -f "$RESTORE_CONTAINER" >/dev/null 2>&1 || true
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  if docker container inspect "$RESTORE_CONTAINER" >/dev/null 2>&1 || \
-    docker container inspect "$CONTAINER" >/dev/null 2>&1; then
-    rc=1
+  local remaining_containers
+  if ! remaining_containers="$(docker container ls --all --format '{{.Names}}')"; then
+    echo "Restore drill container removal could not be verified" >&2
+    exit 1
+  fi
+  if [[ $'\n'"$remaining_containers"$'\n' == *$'\n'"$RESTORE_CONTAINER"$'\n'* || \
+    $'\n'"$remaining_containers"$'\n' == *$'\n'"$CONTAINER"$'\n'* ]]; then
+    echo "Restore drill container remains; retain data for operator recovery" >&2
+    exit 1
   fi
   [[ "$DATA_DIR" == "$BASE_DIR"/* ]]
   [[ "$SPOOL_DIR" == "$BASE_DIR"/*-spool ]]
+  if [[ "$rc" -ne 0 && "$KEEP_FAILED" == true ]]; then
+    rm -rf "$SPOOL_DIR" || rc=1
+    [[ ! -e "$SPOOL_DIR" ]] || rc=1
+    echo "Retained failed restore drill data for diagnosis: $DATA_DIR" >&2
+    exit "$rc"
+  fi
   rm -rf "$DATA_DIR" "$SPOOL_DIR" || rc=1
   [[ ! -e "$DATA_DIR" && ! -e "$SPOOL_DIR" ]] || rc=1
+  if [[ "$rc" -eq 0 ]]; then
+    echo "PostgreSQL production backup restore and relation integrity drill passed"
+  fi
   exit "$rc"
 }
 trap cleanup EXIT
@@ -132,5 +147,3 @@ docker exec "$CONTAINER" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
    select 'active_job_postings=' || count(*) from job_posting where is_active;
    select 'invalid_job_postings=' || count(*) from job_posting
      where id is null or company_id is null or board_id is null or source_url is null;"
-
-echo "PostgreSQL production backup restore and relation integrity drill passed"

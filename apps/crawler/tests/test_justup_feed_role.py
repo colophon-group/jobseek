@@ -626,6 +626,7 @@ def test_restore_timeout_stops_process_group(monkeypatch) -> None:
         assert args == ("/bin/bash", "/protected/restore", "20261102-010000F")
         assert kwargs["pass_fds"] == (3,)
         assert kwargs["start_new_session"] is True
+        assert kwargs["env"]["JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED"] == "false"
         return process
 
     monkeypatch.setattr(role.subprocess, "Popen", spawn)
@@ -665,12 +666,20 @@ def test_isolated_restore_drill_selects_exact_backup_set(tmp_path: Path) -> None
     for name, source in {
         "mountpoint": "#!/bin/sh\nexit 0\n",
         "findmnt": "#!/bin/sh\necho cifs\n",
-        "install": '#!/bin/sh\nfor value do target=$value; done\nmkdir -p -- "$target"\n',
+        "install": (
+            '#!/bin/sh\nfor value do case "$value" in /*) mkdir -p -- "$value";; esac; done\n'
+        ),
         "docker": """#!/bin/sh
 printf '%s\\n' "$*" >> "$TRACE"
 case "$1 $2" in
   'image inspect') exit 0 ;;
   'container inspect') exit 1 ;;
+  'container ls')
+    [ "${DOCKER_LIST_FAIL:-}" = 1 ] && exit 51
+    if [ "${DOCKER_LIST_RETAIN:-}" = 1 ]; then
+      sed -n 's/^run --rm --name \\([^ ]*\\).*/\\1/p' "$TRACE" | tail -1
+    fi
+    exit 0 ;;
   'run --rm')
     found=false
     for value do
@@ -742,6 +751,49 @@ exit 0
     assert mismatched.returncode != 0
     assert "restore and relation integrity drill passed" not in mismatched.stdout
     assert "--set=20261102-020000F" in trace.read_text(encoding="utf-8")
+
+    trace.unlink()
+    retained = subprocess.run(
+        ("bash", str(drill), "20261102-020000F"),
+        env={**env, "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "true"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert retained.returncode != 0
+    retained_trace = trace.read_text(encoding="utf-8")
+    assert "rm -f jobseek-postgresql-restore-load-" in retained_trace
+    assert "rm -f jobseek-postgresql-restore-" in retained_trace
+    remaining = list(base.iterdir())
+    assert len(remaining) == 1 and not remaining[0].name.endswith("-spool")
+    assert "Retained failed restore drill data" in retained.stderr
+
+    trace.unlink()
+    unverified_cleanup = subprocess.run(
+        ("bash", str(drill), label),
+        env={**env, "DOCKER_LIST_FAIL": "1"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert unverified_cleanup.returncode != 0
+    assert "removal could not be verified" in unverified_cleanup.stderr
+    assert "restore and relation integrity drill passed" not in unverified_cleanup.stdout
+
+    trace.unlink()
+    remaining_container = subprocess.run(
+        ("bash", str(drill), label),
+        env={**env, "DOCKER_LIST_RETAIN": "1"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert remaining_container.returncode != 0
+    assert "container remains" in remaining_container.stderr
+    assert "restore and relation integrity drill passed" not in remaining_container.stdout
 
     trace.unlink()
     latest = subprocess.run(
