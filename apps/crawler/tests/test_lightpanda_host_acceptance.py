@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import runpy
@@ -9,7 +8,6 @@ import stat
 import subprocess
 import sys
 import tarfile
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -19,7 +17,7 @@ DEPLOY = ROOT / "deploy" / "lightpanda-renderer"
 HOST = DEPLOY / "acceptance-host.py"
 REMOTE = DEPLOY / "acceptance-remote.sh"
 CRAWLER = DEPLOY / "acceptance-crawler.sh"
-CLIENT = DEPLOY / "acceptance-client.py"
+CLIENT = ROOT / "apps/crawler/go/ordinary-worker/cmd/live/renderer_acceptance.go"
 VERIFY = DEPLOY / "verify.py"
 INSTALL = DEPLOY / "install-host.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "accept-lightpanda-renderer-host.yml"
@@ -284,142 +282,107 @@ def test_phase_a_is_a_pre_start_component_gate() -> None:
     assert 'receipt.get("protected_containers") != snapshot_protected()' in verify
 
 
-def test_client_stage_is_readable_by_numeric_container_identity() -> None:
-    remote = REMOTE.read_text(encoding="utf-8")
-    assert "chmod 0444 '$crawler_stage/acceptance-client.py'" in remote
-    if shutil.which("setpriv") is None or (os.geteuid() != 0 and shutil.which("sudo") is None):
-        pytest.skip("numeric-user permission execution requires setpriv privilege")
-    if os.geteuid() != 0 and subprocess.run(["sudo", "-n", "true"], check=False).returncode:
-        pytest.skip("passwordless privilege is unavailable")
-    directory = Path(tempfile.mkdtemp(prefix="jobseek-acceptance-client-", dir="/tmp"))
-    try:
-        directory.chmod(0o755)
-        staged = directory / "acceptance-client.py"
-        shutil.copyfile(CLIENT, staged)
-        staged.chmod(0o444)
-        prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
-        completed = subprocess.run(
-            [
-                *prefix,
-                "setpriv",
-                "--reuid=10001",
-                "--regid=10001",
-                "--clear-groups",
-                "test",
-                "-r",
-                staged,
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert completed.returncode == 0, completed.stderr
-    finally:
-        shutil.rmtree(directory)
+def crawler_validator(
+    marker: str, tmp_path: Path, document: object, *args: str
+) -> subprocess.CompletedProcess[str]:
+    # Execute the source planner used on the host with synthetic inspect evidence;
+    # this never starts Docker or accesses any installed credentials.
+    script = (
+        CRAWLER.read_text(encoding="utf-8")
+        .split(f"<<'{marker}'\n", 1)[1]
+        .split(f"\n{marker}", 1)[0]
+    )
+    evidence = tmp_path / "inspect.json"
+    evidence.write_text(json.dumps(document), encoding="utf-8")
+    return subprocess.run(
+        [sys.executable, "-c", script, str(evidence), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
 
 
-def test_credential_digest_uses_fixed_files_through_traversal_only_directory() -> None:
-    client = CLIENT.read_text(encoding="utf-8")
-    assert "for name in CREDENTIAL_FILES:" in client
-    assert "CREDS.iterdir()" not in client
-    if shutil.which("setpriv") is None or (os.geteuid() != 0 and shutil.which("sudo") is None):
-        pytest.skip("numeric-user permission execution requires setpriv privilege")
-    if os.geteuid() != 0 and subprocess.run(["sudo", "-n", "true"], check=False).returncode:
-        pytest.skip("passwordless privilege is unavailable")
+@pytest.mark.parametrize("mutation", [None, "stopped", "unhealthy", "mutable", "missing_id"])
+def test_native_worker_selection_rejects_identity_drift(
+    tmp_path: Path, mutation: str | None
+) -> None:
+    evidence = {
+        "id": "c" * 64,
+        "image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "d" * 64,
+        "image_id": "sha256:" + "e" * 64,
+        "running": True,
+        "health": "healthy",
+    }
+    if mutation == "stopped":
+        evidence["running"] = False
+    elif mutation == "unhealthy":
+        evidence["health"] = "starting"
+    elif mutation == "mutable":
+        evidence["image_ref"] = "ghcr.io/colophon-group/jobseek-crawler:latest"
+    elif mutation == "missing_id":
+        del evidence["image_id"]
+    result = crawler_validator("PYWORKER", tmp_path, evidence)
+    assert (result.returncode == 0) == (mutation is None), result.stderr
+    if mutation is None:
+        assert result.stdout.splitlines() == [
+            evidence["id"],
+            evidence["image_ref"],
+            evidence["image_id"],
+        ]
 
-    directory = Path(tempfile.mkdtemp(prefix="jobseek-acceptance-credentials-", dir="/tmp"))
-    client_stage = Path(tempfile.mkdtemp(prefix="jobseek-acceptance-client-", dir="/tmp"))
-    try:
-        directory.chmod(0o711)
-        client_stage.chmod(0o755)
-        staged_client = client_stage / "acceptance-client.py"
-        shutil.copyfile(CLIENT, staged_client)
-        staged_client.chmod(0o444)
-        names = (
-            "ca.pem",
-            "ca.sha256",
-            "client-key.pem",
-            "client.pem",
-            "server-leaf.sha256",
-            "server-spki.sha256",
-        )
-        for name in names:
-            path = directory / name
-            path.write_bytes(name.encode())
-            path.chmod(0o444)
-        expected = hashlib.sha256()
-        for name in names:
-            expected.update(name.encode() + b"\0" + name.encode() + b"\0")
-        prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
-        key = directory / "client-key.pem"
-        subprocess.run([*prefix, "chown", "10001:10001", key], check=True)
-        subprocess.run([*prefix, "chmod", "0400", key], check=True)
-        system_python = Path("/usr/bin/python3")
-        if not system_python.is_file():
-            pytest.skip("system Python is required for numeric-user permission execution")
-        code = """
-import pathlib
-import runpy
-import sys
-import types
 
-root = pathlib.Path(sys.argv[1])
-try:
-    list(root.iterdir())
-except PermissionError:
-    pass
-else:
-    raise SystemExit("traversal-only directory was enumerable")
+@pytest.mark.parametrize("mutation", [None, "image", "legacy", "revision"])
+def test_native_image_is_source_bound(tmp_path: Path, mutation: str | None) -> None:
+    image_id = "sha256:" + "e" * 64
+    evidence = {
+        "id": image_id,
+        "labels": {
+            "org.opencontainers.image.revision": COMMIT,
+            "org.jobseek.crawler.default-native-runtime": "v1",
+        },
+    }
+    if mutation == "image":
+        evidence["id"] = "sha256:" + "f" * 64
+    elif mutation == "legacy":
+        evidence["labels"].pop("org.jobseek.crawler.default-native-runtime")
+    elif mutation == "revision":
+        evidence["labels"]["org.opencontainers.image.revision"] = "invalid"
+    result = crawler_validator("PYIMAGE", tmp_path, evidence, image_id)
+    assert (result.returncode == 0) == (mutation is None), result.stderr
+    if mutation is None:
+        assert result.stdout.strip() == COMMIT
 
-src = types.ModuleType("src")
-src.__path__ = []
-lightpanda = types.ModuleType("src.lightpanda")
-lightpanda.__path__ = []
-client = types.ModuleType("src.lightpanda.client")
-client.LightpandaB0Client = object
-client.LightpandaServiceConfig = object
-routing = types.ModuleType("src.lightpanda.routing")
-routing.resolve_render_assignment = lambda *args, **kwargs: None
-queue = types.ModuleType("src.lightpanda_queue")
-queue.LightpandaB0Task = object
-queue.RouteIdentity = object
-src.lightpanda = lightpanda
-lightpanda.client = client
-lightpanda.routing = routing
-src.lightpanda_queue = queue
-sys.modules.update({
-    "src": src,
-    "src.lightpanda": lightpanda,
-    "src.lightpanda.client": client,
-    "src.lightpanda.routing": routing,
-    "src.lightpanda_queue": queue,
-})
-namespace = runpy.run_path(sys.argv[2], run_name="acceptance_client_test")
-print(namespace["credential_digest"](root))
-"""
-        completed = subprocess.run(
-            [
-                *prefix,
-                "setpriv",
-                "--reuid=10001",
-                "--regid=10001",
-                "--clear-groups",
-                system_python,
-                "-c",
-                code,
-                str(directory),
-                str(staged_client),
-            ],
-            cwd=ROOT / "apps" / "crawler",
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        assert completed.returncode == 0, completed.stderr
-        assert completed.stdout.strip() == expected.hexdigest()
-    finally:
-        shutil.rmtree(directory)
-        shutil.rmtree(client_stage)
+
+@pytest.mark.parametrize("mutation", [None, "source", "status", "target", "digest"])
+def test_native_public_render_report_requires_exact_proof(
+    tmp_path: Path, mutation: str | None
+) -> None:
+    image_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "d" * 64
+    image_id = "sha256:" + "e" * 64
+    evidence = {
+        "status": "accepted",
+        "target": "https://example.com/",
+        "http_status": 200,
+        "credential_bundle_sha256": "f" * 64,
+        "crawler_source_revision": COMMIT,
+    }
+    if mutation == "source":
+        evidence["crawler_source_revision"] = "b" * 40
+    elif mutation == "status":
+        evidence["http_status"] = 302
+    elif mutation == "target":
+        evidence["target"] = "https://example.com/redirect"
+    elif mutation == "digest":
+        evidence["credential_bundle_sha256"] = "invalid"
+    result = crawler_validator(
+        "PYREPORT", tmp_path, evidence, "c" * 64, image_ref, COMMIT, image_id
+    )
+    assert (result.returncode == 0) == (mutation is None), result.stderr
+    if mutation is None:
+        report = json.loads(result.stdout)
+        assert report["ordinary_worker_container_id"] == "c" * 64
+        assert report["crawler_image_ref"] == image_ref
+        assert report["crawler_image_id"] == image_id
 
 
 def test_host_stage_discards_archive_owner_and_normalizes_verifier_metadata(
@@ -518,11 +481,21 @@ def test_negative_and_mtls_probes_use_real_installed_components() -> None:
     assert "iptables-save" in host and "packet_delta" in host and "nsenter" in host
     assert all(name in host for name in ("ingress_new", "egress_dns", "egress_https"))
     assert "iptables -I" not in host and "acceptance-sink" not in remote
-    assert "LightpandaB0Client" in client and "https://example.com/" in client
-    assert "credential_digest" in client and "--network host" in crawler
+    assert "lp.New(config)" in client and "https://example.com/" in client
+    assert "client.Reserve(ctx)" in client and "reservation.Execute(ctx, input)" in client
+    assert "executor.RenderedHTML" in client
+    assert "acceptanceCredentials" in client and "--network host" in crawler
+    assert "--renderer-acceptance" in crawler
+    assert "--entrypoint /usr/local/bin/go-ordinary-worker" in crawler
+    assert "service=ordinary-go" in crawler
+    assert "acceptance-client.py" not in remote + crawler
+    assert not (DEPLOY / "acceptance-client.py").exists()
     assert "/home/deploy/.env" in crawler and "LIGHTPANDA_B0_CREDENTIAL_DIR" in crawler
     assert "10001:10001:400:1" in crawler and "$(id -u):$(id -g):711" in crawler
-    assert 'item.get("Mounts") not in (None, [])' in crawler
+    assert "--cgroupns private" in crawler and "--pull never" in crawler
+    assert "json .Config.Env" not in crawler and "json .Mounts" not in crawler
+    assert "--read-only" in crawler and "--cap-drop ALL" in crawler
+    assert "--memory-swap 256m" in crawler and "--pids-limit 32" in crawler
     before = remote.index('traffic_counters >"$traffic_before"')
     render = remote.index("acceptance-crawler.sh' '$crawler_stage' '$owner'", before)
     after = remote.index('traffic_counters >"$traffic_after"', render)

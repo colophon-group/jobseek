@@ -170,9 +170,9 @@ snapshot running "$initial"
 crawler_stage="$(ssh "${crawler_ssh[@]}" "deploy@$CRAWLER_HOST" \
   "umask 077; mktemp -d '/tmp/jobseek-lightpanda-crawler-acceptance.${owner}.XXXXXX'")"
 [[ "$crawler_stage" =~ ^/tmp/jobseek-lightpanda-crawler-acceptance\.${owner}\.[A-Za-z0-9]+$ ]]
-tar -czf "$root/crawler.tar.gz" -C "$artifact_root" acceptance-crawler.sh acceptance-client.py
+tar -czf "$root/crawler.tar.gz" -C "$artifact_root" acceptance-crawler.sh
 ssh "${crawler_ssh[@]}" "deploy@$CRAWLER_HOST" \
-  "tar -xzf - -C '$crawler_stage'; chmod 0500 '$crawler_stage/acceptance-crawler.sh'; chmod 0444 '$crawler_stage/acceptance-client.py'" \
+  "tar -xzf - -C '$crawler_stage'; chmod 0500 '$crawler_stage/acceptance-crawler.sh'" \
   <"$root/crawler.tar.gz"
 traffic_counters >"$traffic_before"
 timeout --foreground --kill-after=30s 3m ssh "${crawler_ssh[@]}" "deploy@$CRAWLER_HOST" \
