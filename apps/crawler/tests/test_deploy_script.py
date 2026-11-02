@@ -2512,9 +2512,8 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
         )
     ]
     assert 'read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF' in rollback_sync
-    assert "go-typesense-exporter --sync-registry --require-native" in rollback_sync
+    assert 'previous_native_maintenance "$ROLLBACK_ACTIVE_RELEASE_TARGET" sync' in rollback_sync
     assert "0 native &&" in rollback_sync
-    assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
         '"${forward_sync_command[@]}"', script.index("FORWARD_SYNC_STARTED=1")
     )
@@ -2567,6 +2566,7 @@ def test_previous_config_restore_requires_go_and_never_passes_legacy_web_secret(
             'ENV_FILE="$TEST_ENV_FILE"',
             'ROLLBACK_SYNC_WEB_DATABASE_URL=""',
             'ACTIVE_RELEASE_FORMAT="3"',
+            'ROLLBACK_ACTIVE_RELEASE_TARGET="$TEST_DATA_SNAPSHOT"',
             'ACTIVE_DATA_SNAPSHOT="$TEST_DATA_SNAPSHOT"',
             'ACTIVE_DATA_FILES_MANIFEST="$TEST_DATA_MANIFEST"',
             "verify_exact_csv_tree() { return 0; }",
@@ -2574,7 +2574,7 @@ def test_previous_config_restore_requires_go_and_never_passes_legacy_web_secret(
             'crawler_image_maintenance_backend() { printf "%s\\n" "$TEST_BACKEND"; }',
             'crawler_image_runtime_backend() { printf "%s\\n" "$TEST_RUNTIME_BACKEND"; }',
             rollback_sync,
-            "rollback_compose() {",
+            "previous_native_maintenance() {",
             '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "$EXPECTED_WEB_DATABASE_URL"',
             '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
             '  return "$COMPOSE_STATUS"',
@@ -2633,12 +2633,7 @@ def test_previous_config_restore_requires_go_and_never_passes_legacy_web_secret(
         if reap_status:
             assert calls == [f"status={reap_status}"]
             continue
-        assert calls[0] == (
-            f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
-            "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
-            "-e CRAWLER_DB_POOL_MAX=4 worker-1 "
-            "go-typesense-exporter --sync-registry --require-native"
-        )
+        assert calls[0] == f"{data_snapshot} sync"
         if compose_status == 0:
             assert calls[1] == "rollback-umantis-identity-cutover 0 native"
         assert calls[-1] == f"status={expected_status}"

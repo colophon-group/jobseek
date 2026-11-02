@@ -1308,30 +1308,77 @@ repair_default_missing_schedules() {
     "$CRAWLER_IMAGE_REF" go-typesense-exporter "${arguments[@]}"
 }
 
-# Read the current generation with its own Compose/env/data contract before
-# migration. Incoming SSH credentials and Compose files must not override it.
-inspect_default_missing_schedules() {
-  [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || return 0
-  local DEPLOY_DIR="$ROLLBACK_ACTIVE_RELEASE_TARGET"
-  local ENV_FILE="$DEPLOY_DIR/environment.env"
-  local ROLLBACK_USE_POOL_OVERRIDE=0
-  local ROLLBACK_SYNC_WEB_DATABASE_URL=""
-  [[ -d "$DEPLOY_DIR" && ! -L "$DEPLOY_DIR" && \
-     -f "$ENV_FILE" && ! -L "$ENV_FILE" && \
-     -f "$DEPLOY_DIR/docker-compose.yml" && ! -L "$DEPLOY_DIR/docker-compose.yml" && \
-     -d "$DEPLOY_DIR/data" && ! -L "$DEPLOY_DIR/data" ]] || {
-    echo "ERROR: previous native schedule inspection evidence is unsafe" >&2
+# Native maintenance is independent of Compose's processing-service lifecycle.
+# Compose run can synthesize links to existing project containers even for a
+# host-networked one-off. Use the authenticated generation's exact image, data
+# and required credentials, as standalone CSV maintenance does. Never shadow
+# DEPLOY_DIR/ENV_FILE: an ERR or EXIT trap must still restore the real host root.
+previous_native_maintenance() {
+  local maintenance_release="$1" maintenance_operation="$2"
+  local maintenance_env maintenance_image maintenance_key maintenance_value
+  local -a maintenance_keys=(LOCAL_DATABASE_URL)
+  local -a maintenance_command maintenance_mounts maintenance_options=()
+  local -a maintenance_process_environment=(
+    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}"
+    "HOME=${HOME:-/home/deploy}"
+    "REDIS_URL=redis://localhost:6379/0"
+  )
+
+  maintenance_env="$maintenance_release/environment.env"
+  [[ -d "$maintenance_release" && ! -L "$maintenance_release" && \
+     -f "$maintenance_env" && ! -L "$maintenance_env" && \
+     -f "$maintenance_release/docker-compose.yml" && ! -L "$maintenance_release/docker-compose.yml" && \
+     -d "$maintenance_release/data" && ! -L "$maintenance_release/data" ]] || {
+    echo "ERROR: previous native maintenance evidence is unsafe" >&2
     return 1
   }
-  env -i "$NATIVE_DEPLOY_TOOLS" release-bridge "$DEPLOY_DIR" "$OWNER" >/dev/null || return 1
-  rollback_compose run --rm --no-deps \
-    -e CRAWLER_DB_ROLE=deploy-missing-schedules-inspect \
-    -e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_MAX=1 \
-    -v "$DEPLOY_DIR/data:/app/data:ro" \
-    -v jobseek-lightpanda-b0-producer-socket:/run/jobseek-lightpanda-producer:ro \
-    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  env -i "$NATIVE_DEPLOY_TOOLS" release-bridge "$maintenance_release" "$OWNER" >/dev/null || return 1
+  maintenance_image="$(read_exact_release_value "$maintenance_env" CRAWLER_IMAGE_REF)" || return 1
+  [[ "$maintenance_image" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: previous native maintenance image is invalid" >&2
+    return 1
+  }
+  maintenance_mounts=(-v "$maintenance_release/data:/app/data:ro")
+  case "$maintenance_operation" in
+    inspect)
+      maintenance_command=(--redis-capacity repair-missing --limit 50000)
+      maintenance_mounts+=(-v jobseek-lightpanda-b0-producer-socket:/run/jobseek-lightpanda-producer:ro)
+      maintenance_options+=(-e CRAWLER_DB_ROLE=deploy-missing-schedules-inspect -e CRAWLER_DB_POOL_MAX=1)
+      ;;
+    sync)
+      maintenance_keys+=(TYPESENSE_HOST TYPESENSE_PORT TYPESENSE_PROTOCOL TYPESENSE_OPERATIONS_KEY)
+      maintenance_command=(--sync-registry --require-native)
+      maintenance_options+=(-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MAX=4)
+      ;;
+    *) echo "ERROR: previous native maintenance operation is invalid" >&2; return 1 ;;
+  esac
+  for maintenance_key in "${maintenance_keys[@]}"; do
+    maintenance_value="$(read_exact_release_value "$maintenance_env" "$maintenance_key")" || return 1
+    [[ -n "$maintenance_value" ]] || {
+      echo "ERROR: previous native maintenance variable is empty" >&2
+      return 1
+    }
+    maintenance_process_environment+=("$maintenance_key=$maintenance_value")
+    maintenance_options+=(-e "$maintenance_key")
+  done
+  if [[ -n "${DOCKER_CONFIG:-}" ]]; then
+    maintenance_process_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")
+  fi
+  env -i "${maintenance_process_environment[@]}" docker run --rm \
+    --network host --init --cpus 1 --memory 1g \
     --entrypoint /usr/local/bin/go-typesense-exporter \
-    worker-1 --redis-capacity repair-missing --limit 50000
+    -e REDIS_URL -e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_IDLE_SECONDS=60 \
+    "${maintenance_options[@]}" "${maintenance_mounts[@]}" \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label "com.docker.compose.service=deploy-previous-$maintenance_operation" \
+    "$maintenance_image" "${maintenance_command[@]}"
+}
+
+# Inspect before migration with the previous immutable Go release. The later
+# repair still opens its own current snapshot and rechecks every write guard.
+inspect_default_missing_schedules() {
+  [[ "$CRAWLER_RUNTIME_BACKEND" == go ]] || return 0
+  previous_native_maintenance "$ROLLBACK_ACTIVE_RELEASE_TARGET" inspect
 }
 
 repair_worker_route_cutover() {
@@ -1391,8 +1438,6 @@ prepare_default_go_epoch() {
 
 rollback_sync_previous_config() {
   local crawler_ref status
-  local -a sync_command=(go-typesense-exporter --sync-registry --require-native)
-  local -a data_args=()
   crawler_ref="$(read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF)" || return 1
   [[ "$crawler_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
     echo "ERROR: restored crawler image identity is invalid for config rollback" >&2
@@ -1405,19 +1450,12 @@ rollback_sync_previous_config() {
   }
   if [[ "${ACTIVE_RELEASE_FORMAT:-}" == 3 ]]; then
     verify_exact_csv_tree "${ACTIVE_DATA_SNAPSHOT:-}" "${ACTIVE_DATA_FILES_MANIFEST:-}"
-    data_args=(-v "${ACTIVE_DATA_SNAPSHOT}:/app/data:ro")
   else
     echo "ERROR: exact previous CSV rollback evidence is unavailable" >&2
     return 1
   fi
   if drain_expired_worker_leases rollback-pre-sync-reap && \
-    rollback_compose run --rm --no-deps \
-    "${data_args[@]}" \
-    -e CRAWLER_DB_ROLE=rollback-sync \
-    -e CRAWLER_DB_POOL_MIN=0 \
-    -e CRAWLER_DB_POOL_MAX=4 \
-    worker-1 \
-    "${sync_command[@]}" && \
+    previous_native_maintenance "$ROLLBACK_ACTIVE_RELEASE_TARGET" sync && \
     repair_umantis_identity_cutover rollback-umantis-identity-cutover \
       0 native && \
     repair_worker_route_cutover rollback-worker-route-cutover

@@ -950,6 +950,12 @@ jobs:
           go test -race -count=1 -run 'TestRealNativeExecutable|TestRealFirstOwnershipExecutable' ./...
           go test -race -count=1 -run '^TestRealFirstOwnershipHostContainersCutoverAndRecovery$' ./...
 
+      - name: Prove previous native maintenance container networking
+        env:
+          JOBSEEK_TRUSTED_MAINTENANCE_CONTAINER_TEST: "1"
+          JOBSEEK_MAINTENANCE_TEST_IMAGE: jobseek-crawler-slim-ci:pr
+        run: python3 apps/crawler/scripts/verify-native-maintenance-container.py
+
       - name: Prove fresh producer volume initialization and client connectivity
         env:
           COMPOSE_PROJECT_NAME: jobseek-b0-volume-ci
