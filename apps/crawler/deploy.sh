@@ -1330,7 +1330,6 @@ inspect_default_missing_schedules() {
     -v "$DEPLOY_DIR/data:/app/data:ro" \
     -v jobseek-lightpanda-b0-producer-socket:/run/jobseek-lightpanda-producer:ro \
     "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
-    --label com.docker.compose.service=deploy-missing-schedules-inspect \
     --entrypoint /usr/local/bin/go-typesense-exporter \
     worker-1 --redis-capacity repair-missing --limit 50000
 }
