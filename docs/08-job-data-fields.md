@@ -16,7 +16,7 @@ These must extract for every job (N/N in `ws run scraper` output). 0/N on either
 | Format | Plain text (no HTML) |
 | DB column | `job_posting.title` (text) / `job_posting.titles` (text[]) |
 
-Stored in both `title` (legacy single value) and `titles[]` (new, parallel to `locales[]`). After R2 migration completes, `title` will be dropped; use `titles[1]`.
+Stored in both `title` (legacy single value) and `titles[]`. Monitor-provided localization variants contribute correspondingly ordered titles and locale keys. The stored arrays do not have a global same-length invariant: `locales[]` can also include detected description languages without adding translated titles, and can remain empty for title-only content with neither language nor description. See native [`prepare.go`](../apps/crawler/go/lightpanda-b0-executor/prepare.go) and [`BuildLocales`](../apps/crawler/go/lightpanda-b0-executor/content.go). After R2 migration completes, `title` will be dropped; use `titles[1]`.
 
 Examples: `"Senior Software Engineer"`, `"Marketing Manager — EMEA"`
 
