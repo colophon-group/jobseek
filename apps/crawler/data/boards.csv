@@ -3245,6 +3245,7 @@ gocardless,gocardless-greenhouse,https://job-boards.greenhouse.io/gocardless,gre
 godaddy,godaddy-careers,https://careers.godaddy/jobs/search,sitemap,"{""sitemap_url"": ""https://careers.godaddy/sitemap.xml"", ""url_filter"": ""/jobs/""}",json-ld,"{""render"": true}"
 gofundme,gofundme-greenhouse,https://job-boards.greenhouse.io/gofundme,greenhouse,"{""token"": ""gofundme""}",skip,
 goguardian,goguardian-greenhouse,https://job-boards.greenhouse.io/goguardian,greenhouse,"{""token"": ""goguardian""}",skip,
+gohealth-urgent-care,gohealth-urgent-care-careers,https://gohealthuc.wd12.myworkdayjobs.com/external,workday,,workday,
 goldbeck,goldbeck-careers,https://goldbeck.wd103.myworkdayjobs.com/goldbeck-jobs,workday,,workday,
 goldbeck,goldbeck-czech-prefabrikace,https://prace-goldbeck.cz/prace-v-goldbeck,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""resource_policy"": ""auto"", ""bot_protection"": false, ""link_selector"": ""a[href*=\""/volne-pozice/\""]"", ""url_filter"": ""/volne-pozice/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""M\u00edsto"", ""field"": ""location"", ""regex"": ""^M\u00edsto\\s+(.+)$""}, {""text"": ""O pozici"", ""field"": ""description"", ""html"": true, ""stop"": ""Poslat \u017eivotopis"", ""stop_count"": 44}]}"
 golden-apple-foundation-careers,golden-apple-foundation-careers-greenhouse,https://job-boards.greenhouse.io/goldenapplefoundationcareers,greenhouse,"{""token"": ""goldenapplefoundationcareers""}",skip,
