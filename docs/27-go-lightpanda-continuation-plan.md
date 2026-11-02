@@ -1,18 +1,18 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-02 17:11 UTC / 18:11 CET**.
-The latest independently qualified production snapshot is **0.13.1157**:
-corrective [PR #11490](https://github.com/colophon-group/jobseek/pull/11490)
-is installed, including the Python daemon source retirement merged in
-[PR #11488](https://github.com/colophon-group/jobseek/pull/11488). The supported
-[1157 rollout](https://github.com/colophon-group/jobseek/actions/runs/41455879195)
-succeeded at **14:01:12 UTC**. Company successor **1158**, merged as
-`42140b870f459e5aada974025757c190e162c6ee`, has an
-[in-progress supported rollout](https://github.com/colophon-group/jobseek/actions/runs/41487771596)
-at the operator update used here; it is **not installed-qualified** in this checkpoint.
-Full migration remains active. Oracle ADF is a separate compatibility follow-up,
-not a global delivery gate. The [current qualification](evidence/go-native-installed-current.json)
-records installed identities, conservation, the incident/recovery and explicit limits.
+Current checkpoint: **2026-11-02 17:38 UTC / 18:38 CET**.
+Production **0.13.1158** is installed: its
+[supported rollout](https://github.com/colophon-group/jobseek/actions/runs/41487771596)
+succeeded at **17:26:15 UTC**. All **8,290** enabled monitors are represented and
+the full previous 8,288-board identity floor is preserved. Full runtime qualification
+requires a correction for the first fatal `detail_execution:configuration` error
+in `peoplesoft`: the ordinary worker restarted once, then remained running with no
+OOM or panic. The exact failed response Location remains unproven.
+The latest fully qualified release remains **1157**; its Python daemon retirement
+and bounded maintenance improvement remain valid dated evidence. Full migration
+is active. Oracle ADF remains a separate compatibility follow-up, not a global gate.
+The [portable receipt](evidence/go-native-installed-current.json) separates the
+installed 1158 assessment from qualified 1157 evidence and the next 1159 source batch.
 
 ## Objective and language boundary
 
@@ -30,35 +30,50 @@ Rollback uses the previous verified immutable Go release. Delete superseded
 Python runtime implementations and images; preserve every enabled board,
 publisher policy, fences/leases, canonical output and the demo reserve.
 
-## Qualified installed state
+## Current installed assessment and qualified release
 
-The supported 1157 rollout succeeded after the corrective source passed normal
-exact-head CI and merge. Independent **14:06:06 UTC** readback verifies:
+Independent **17:26:32 UTC** readback verifies the actual installed release:
 
 | Installed crawler identity | Value |
 | --- | --- |
-| Version | `0.13.1157` |
-| Runtime source | `a32864661b902b5786139e1fdbb69716e53da3b4` |
-| Runtime contract | `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee` |
-| Immutable image | `sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924` |
-| Data source | `a32864661b902b5786139e1fdbb69716e53da3b4` |
-| Data contract | `f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b` |
+| Version | `0.13.1158` |
+| Runtime source | `42140b870f459e5aada974025757c190e162c6ee` |
+| Runtime contract | `549a5972e6ae4dea3a8c4dc41b253414d8bea6a24f7796898896d66de0ae26bb` |
+| Immutable image | `sha256:73e259b1832a2de782bf0f3cc6733bf9e67f2017a33c5c5229c2b54ea1687ea4` |
+| Data source | `42140b870f459e5aada974025757c190e162c6ee` |
+| Data contract | `0642eafb10a008dbb919baef224b77afe9673baf471713df76865a9bc034e48c` |
 
 All four native actors and six core services run, with healthy checks where
-configured and zero actor restarts/OOM. Format-v3 release, environment except
-the documented `COMPOSE_FILE`, success/manifest and all eight CSV hashes match.
-No legacy processor runs; the image exposes no Python, uv, Playwright or
-Chromium command. Epoch **404**, schema **0042** and zero active migration plans remain.
+configured. The ordinary worker has **one restart**, stable through the **17:29**
+observation; no actor OOM and no worker panic were found. The first fatal diagnostic
+is `detail_execution:configuration profile=peoplesoft`. First-run fence evidence
+covers only the new company and does not establish the exact failed response
+Location. Bounded natural Monte-Carlo output includes **42 fresh successful details /
+48 active postings** at **17:33:46 UTC**, which does not resolve that attribution.
+This real runtime error is the remaining 1158 qualification blocker; successful
+workflow completion and controlled parity do not replace runtime qualification.
 
-Independent **14:02:17 UTC** atomic observation finds all **8,288** enabled
-monitors represented: **8,258 queued + 30 valid leases**, with zero unexplained
-gaps, duplicates, wrong lanes, cache/domain mismatches or lease-token-presence
-gaps. Every pre-retirement key and UUID matches the full 8,288-board baseline.
-Token checks use `HEXISTS`, never token values. A separately locked, source/image-bound
-native private-path verification passed at **14:38 UTC** in **0.717 seconds**:
-PostgreSQL `SELECT 1` and Typesense `GET /health` only. It grants no provider,
-Justup, Redis/Timescale, role or ingress-installation qualification. These are dated monitor/schedule
-facts, not universal posting-freshness or backlog-completion results.
+Format-v3 release, environment except the documented `COMPOSE_FILE`, success/manifest
+and all eight CSV hashes match. No legacy processor runs; no Python, uv, Playwright
+or Chromium runtime command is present. Canonical companies **6,295**, epoch **404**,
+schema **0042** and zero active migration plans are verified.
+
+Independent **17:26:31 UTC** atomic observation finds all **8,290** enabled monitors
+represented: **8,223 queued + 67 valid leases**, with zero unexplained gaps,
+duplicates, wrong lanes, cache/domain mismatches or lease-token-presence gaps.
+All previous 8,288 board keys and UUIDs are preserved. Token checks use `HEXISTS`,
+never token values. These are dated monitor/schedule facts, not universal posting
+freshness or backlog completion results.
+
+The latest fully qualified snapshot is **1157**, source
+`a32864661b902b5786139e1fdbb69716e53da3b4`, image
+`sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924`.
+Its [normal rollout](https://github.com/colophon-group/jobseek/actions/runs/41455879195)
+succeeded at **14:01:12 UTC**, followed by independent installed and queue checks.
+Its source/image-bound private-path verification passed at **14:38 UTC** in
+**0.717 seconds**: PostgreSQL `SELECT 1` and Typesense `GET /health` only.
+That dated check grants no provider, Justup, Redis/Timescale, role or ingress-installation
+qualification for 1158.
 
 [Incident #11489](https://github.com/colophon-group/jobseek/issues/11489)
 tracks the [failed 1156 deployment](https://github.com/colophon-group/jobseek/actions/runs/41440630577).
@@ -72,7 +87,8 @@ the complete previous Go release in **23.244 seconds**, with no forced terminati
 or restoration failures. Independent installed and queue checks followed. No
 migration, sync, epoch or direct schedule write ran. The first recovery packet
 refused before runtime mutation. The recovery and subsequent corrective 1157
-installation are qualified. The closed incident drivers remain in reviewed Git history rather than current source.
+installation are qualified. Closed incident drivers remain in reviewed Git history
+rather than current source.
 The 23.244-second recovery is separate from normal deployment timing; no new
 Justup stage or API authority follows from the corrective release.
 
@@ -90,30 +106,32 @@ and independent binary/image/containment checks remain qualified:
 | Actual ARM64 binary SHA-256 | `4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756` |
 
 The [official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly)
-was rechecked at **13:00:23 UTC**: its latest ARM executable still matches the
+was rechecked at **17:12:36 UTC**: its latest ARM executable still matches the
 installed binary; no newer rollout was needed. Runtime/resource observations
 remain separately dated. No new forced browser/provider work was performed.
 
 Worker allocation remains **4 CPU / 2 GiB**, **1 GiB Go memory target**,
 **120 runners / 30 monitor slots**. Renderer allocation remains
 **1 CPU / 1 GiB / four shared slots**, zero swap and 64 PIDs. The dated
-**11:45 UTC** renderer baseline shows unchanged allocation, zero restart/OOM
-and memory-event deltas, **3.150 GiB RAM available / 9.635 GiB root free**.
+**17:12 UTC** renderer baseline shows unchanged allocation, zero restart/OOM
+and memory-event deltas, **3.220 GiB RAM available / 9.626 GiB root free**.
 Justup retains **0.5 CPU / 1 GiB**, its already allocated **2 GiB filesystem**
 and **8 GiB root-free floor**; do not subtract the filesystem twice.
 
-There is no active Justup host grant or new owner probe. A resource snapshot
-or released metadata-only window grants no API/stage activation, functional
-render/restart/reboot acceptance or quota increase. More crawler scaling needs
+This checkpoint grants no Justup host operation or new owner probe. Resource
+snapshots grant no API/stage activation, functional render/restart/reboot acceptance
+or quota increase; the designated operator coordinates any separate window.
+More crawler scaling needs
 eligible successful unique-detail throughput and SQL/Redis, origin-policy,
 search and renderer pressure together. CPU usage alone does not identify the
 bottleneck. Preserve the demo reserve and publisher limits.
 
 ## Dated controlled comparison and acceptance audit
 
-The [corrective-source comparison](https://github.com/colophon-group/jobseek/pull/11490/checks)
-is bound to **`cc369d37d0cf850b81c3a97feecbfddc581740ac`**. Its tested tree
-equals merged source `a32864661b902b5786139e1fdbb69716e53da3b4`.
+The [current 1158 comparison](https://github.com/colophon-group/jobseek/pull/11491/checks)
+is bound to **`d2ddfb5204dabd40d8d1c15b47a9acbdc82285a6`**. Its tested tree
+`a51ce5c3458826723ded353a30e29e52f72d05fc` matches the tree of merged source
+`42140b870f459e5aada974025757c190e162c6ee`.
 All **24 arms** have canonical parity and successful cleanup:
 four physical AMD64/ARM64 generated/captured scenarios, six alternating arms
 per scenario, three per lane and nine actors per arm. Generated fixtures contain
@@ -121,18 +139,19 @@ per scenario, three per lane and nine actors per arm. Generated fixtures contain
 
 | Scenario | Elapsed seconds | CPU seconds | Sampled peak MiB |
 | --- | --- | --- | --- |
-| AMD64 generated | 19.230 / 33.777 | 12.403 / 23.139 | 455.17 / 935.36 |
-| AMD64 captured | 35.565 / 67.583 | 17.808 / 22.670 | 422.60 / 814.60 |
-| ARM64 generated | 19.489 / 30.132 | 9.988 / 18.796 | 465.76 / 921.64 |
-| ARM64 captured | 33.902 / 65.730 | 11.956 / 15.082 | 429.20 / 824.70 |
+| AMD64 generated | 19.656 / 34.763 | 13.928 / 25.810 | 448.59 / 912.88 |
+| AMD64 captured | 35.475 / 67.488 | 17.636 / 22.238 | 423.78 / 820.46 |
+| ARM64 generated | 19.735 / 32.189 | 10.109 / 19.164 | 459.22 / 924.39 |
+| ARM64 captured | 34.021 / 64.631 | 11.204 / 14.281 | 418.94 / 824.90 |
 
 The table uses reported measured CPU; the full CI report records startup/lifetime
 counters separately. Sampled peaks are lower bounds, modeled cost is not invoiced
 cost, and the equal-fixture TLS exception is not production
 TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero.
-Fixture budgets differ from production. Exact-head Required CI, Crawler Deploy
-Gate and the real Docker maintenance proof passed; independent installed-state
-qualification followed. Measured, startup and lifetime CPU remain separate in the report.
+Fixture budgets differ from production. These successful 1158 controls do not
+qualify stability after the real fatal restart. The separate 1157 correction passed
+Required CI, Crawler Deploy Gate and real Docker maintenance proof before its
+installed qualification. Measured, startup and lifetime CPU remain separate.
 
 The complete original acceptance scope remains:
 
@@ -141,10 +160,10 @@ The complete original acceptance scope remains:
 | Salary extraction/conversion | Native historical effects: 3,502 operations, 394 fresh rows, 76 boards/14 locales, five fields and zero drift. Component changes since that witness require current conformance; no byte-identity claim. |
 | Location/CPU stages | 80,641 historical native resolutions and 140 browser-cohort rows; the old browser caller was Python. Current native caller ownership is verified separately. |
 | Lightpanda executor and ownership | Native image/claims/fences/failure/schedule/crash contracts and latest binary installed; earlier interruption causes remain unproven. |
-| Ordinary processing/export/drain | Four native actors installed; canonical/search/R2 output evidence remains sampled and dated. Old backlog and one inactive-description metadata discrepancy remain explicit. |
-| Enabled profiles and original title case | All current 8,288 monitor identities preserved. Prior named/title/provider witnesses remain dated; ADF stays enabled and separate. |
+| Ordinary processing/export/drain | Four native actors installed. 1158 first fatal Peoplesoft configuration-classified response error requires correction. Canonical/search/R2 effects remain sampled/dated; old backlog and one inactive-description metadata discrepancy remain explicit. |
+| Enabled profiles and original title case | All current 8,290 monitor identities represented and previous 8,288 floor preserved. Prior named/title/provider witnesses remain dated; ADF stays enabled and separate. |
 | Python implementation retirement | Eleven superseded daemon modules and Python image targets removed in qualified 1157; useful control/offline tooling retained. Manual renderer acceptance follow-up remains source-only. |
-| Efficiency/cutover/reversal/completion | Corrective rollout/source/image/data/queue and native private-path checks qualified; measured maintenance marker shortened. Dated whole-lane controls and Go-to-Go cold reversal retained. Manual consumer and final portable reconciliation remain. |
+| Efficiency/cutover/reversal/completion | 1157 installation/private paths/timing qualified; 1158 controls and identity floor verified, runtime correction pending. Dated whole-lane controls and Go-to-Go cold reversal retained. Combined 1159 consumer/fix and final audit remain. |
 
 The [52-minute normal-traffic qualification](evidence/go-native1149-steady-2026-11-01.json)
 showed headroom after scaling but retained substantial pre-existing detail backlog.
@@ -153,14 +172,14 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
 
 ## Next delivery steps
 
-1. **Qualify the company successor before advancing this snapshot.** The installed
-   1157 source is `a32864661b902b5786139e1fdbb69716e53da3b4`, tree
-   `f071b5ab55d6b2700724f07a365536b395a095b4`, matching reviewed/tested PR #11490
-   head `cc369d37d0cf850b81c3a97feecbfddc581740ac`. Runtime contract is
-   `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`.
-   Source/image/data, all 8,288 identities and queue conservation are qualified.
-   The 1158 company rollout is in progress; independently read back its installed
-   source/image/data and enabled identities before declaring it qualified.
+1. **Deliver one contained 1159 source batch.** Intake owns publisher redirect
+   response-error classification; root assembles it with the reviewed native Go
+   manual-renderer acceptance consumer in one source PR and full release at the
+   actual next VERSION. Preserve origin allowlists and fatal caller-configuration
+   guards. No host manual-render/restart/reboot acceptance execution is granted.
+   Independently qualify the corrected runtime, then release held Michel company
+   data while preserving all 8,290 enabled identities plus authorized additions,
+   queues, publisher policy and demo reserve. No forced provider work is needed.
 
 2. **Preserve the shortened maintenance path and its authority checks.**
    Authenticated previous-Go-image inspection runs with required credentials and
@@ -175,24 +194,29 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
    nor a future SLA. The 23-second recovery is a different operation. Preserve
    preflight, lock, complete rollback and readiness.
 
-3. **Ship the separate manual renderer consumer.** Reviewed native acceptance
-   source `32fb5e606d3478f8a4ca57e889bf0368e54ab894` is prepared on merged 1156.
-   Publish after the coordinated company successors at the actual next VERSION.
-   Do not delay their work for this follow-up. It has no PR/rollout yet, and no
-   public render, restart or host reboot workflow execution is authorized.
+3. **Include the reviewed manual consumer in that batch.** Native acceptance
+   source is rebased onto 1158 as `0a6698ea4d4fbaaff919c2e83e6620f3f08a4066`,
+   preserving the reviewed patches. Source readiness grants no host workflow
+   execution. Keep the runtime correction and acceptance consumer together to
+   avoid an extra full maintenance release.
 
-4. **Close the full acceptance audit on the final source.** Preserve every enabled
-   board, canonical output, publisher policy, fences/leases and downstream
-   publication. Reconcile original salary/enrichment, profile, ownership,
-   efficiency and dated natural-effects/reversal evidence. Update this report
-   when the final source is qualified; retain the 1157 source/image/queue/timing
-   proof; do not claim universal posting freshness or cleared demand.
+4. **Publish the full acceptance audit with explicit original evidence limits.**
+   Preserve all seven milestones, salary/enrichment, named/profile cases, ownership,
+   downstream effects, efficiency and dated natural/reversal evidence. No agreed
+   Python rollback observation duration or receipt was found; the latest human
+   instruction explicitly authorized deleting the superseded implementation, and
+   the historical duration criterion is not claimed proved. Unpaired production
+   windows also do not prove global no-material-freshness-regression. Existing
+   bounded canonical/downstream effects, mixed natural work, controlled parity and
+   supported cold reversal remain valid within their recorded scope. Do not invent
+   a soak quota or hold, universal posting freshness or cleared demand.
 
 ## Separate ADF compatibility follow-up
 
-The original Oracle ADF board remains enabled, unreserved and quarantined after
-its normal November 1 pagination HTTP 302 failure; failures **12**. Its unchanged
-next retry is **November 2 17:37:17 UTC / 18:37:17 CET**. Do not force work or reset
+The **17:26 UTC** snapshot records the original Oracle ADF board enabled,
+unreserved and quarantined after its normal November 1 pagination HTTP 302 failure;
+failures **12**, with the scheduled natural retry **November 2 17:37:17 UTC /
+18:37:17 CET**. No later natural result is claimed here. Do not force work or reset
 publisher policy, schedules, counters or backoff. Native 1102 evidence records
 52 jobs/zero failures on October 27; last-success October 28 alone does not
 establish runtime ownership of that attempt.

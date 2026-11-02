@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "checkpoint_utc": "2026-11-02T17:11:46Z",
+  "checkpoint_utc": "2026-11-02T17:38:02Z",
   "goal_status": "active",
   "migration_complete": false,
   "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
@@ -12,23 +12,23 @@
     "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
   },
   "remaining_delivery": [
-    "Independently qualify the in-progress company successor1158 before advancing the installed checkpoint beyond1157; preserve enabled board identities, queues and publisher policy.",
-    "Ship reviewed native manual-renderer acceptance source after the coordinated company sequence at the actual next VERSION; no public-render/restart/reboot execution is authorized.",
-    "Reconcile the complete original acceptance audit against the final installed source and preserve dated scope limits."
+    "Deliver the contained publisher redirect response-error classification fix and reviewed native Go manual-acceptance consumer together in one1159 source PR/full release, at the actual next VERSION. Preserve origin allowlists and fatal caller-configuration guards; no host manual-acceptance workflow execution is granted.",
+    "Independently qualify the corrected runtime, then release held Michel company data. Preserve all8290 enabled identities plus any authorized additions, queue conservation, publisher policy and demo reserve.",
+    "Publish the final portable seven-milestone audit, retaining the unproved original Python rollback-observation duration and global production freshness-regression criteria as explicit evidence limits. Do not invent a soak quota, hold or completion claim."
   ],
   "supported_crawler_rollout": {
-    "run_id": 41455879195,
+    "run_id": 41487771596,
     "attempt": 1,
-    "completed_at_utc": "2026-11-02T14:01:12Z",
-    "source_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "completed_at_utc": "2026-11-02T17:26:15Z",
+    "source_revision": "42140b870f459e5aada974025757c190e162c6ee",
     "conclusion": "success",
-    "subsequent_recovery_required": false
+    "installed_runtime_qualification": "correction_required; one fatal detail_execution:configuration restart"
   },
   "installed_crawler": {
-    "observed_at_utc": "2026-11-02T14:06:06.486577+00:00",
-    "candidate_pr": 11490,
+    "observed_at_utc": "2026-11-02T17:26:32.120709+00:00",
+    "candidate_pr": 11491,
     "previous_data_only_pr": 11178,
-    "original_adf_schedule_preserved": {
+    "original_adf_natural_state_snapshot": {
       "enabled": true,
       "status": "quarantined",
       "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
@@ -39,7 +39,7 @@
     },
     "active_marker": {
       "active_pointer_present": true,
-      "generation_name_sha256": "cd2aea0e70fff42d62da8775c6e8ceecb7d916e89815b68d6e900e3aa7f156f1",
+      "generation_name_sha256": "08c72aa9776d93ae03ded4f0fd55d9e8f5cbc7e41af489413f648f2364c50cf6",
       "manifest_format_fields": {
         "RELEASE_FORMAT_VERSION": "3"
       },
@@ -48,16 +48,16 @@
       "complete_csv_tree_hashes_match": true,
       "data_csv_files": 8
     },
-    "runtime_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
-    "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
-    "image_digest": "sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924",
-    "image_version": "0.13.1157",
-    "data_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
-    "data_contract": "f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b",
+    "runtime_source": "42140b870f459e5aada974025757c190e162c6ee",
+    "runtime_contract": "549a5972e6ae4dea3a8c4dc41b253414d8bea6a24f7796898896d66de0ae26bb",
+    "image_digest": "sha256:73e259b1832a2de782bf0f3cc6733bf9e67f2017a33c5c5229c2b54ea1687ea4",
+    "image_version": "0.13.1158",
+    "data_revision": "42140b870f459e5aada974025757c190e162c6ee",
+    "data_contract": "0642eafb10a008dbb919baef224b77afe9673baf471713df76865a9bc034e48c",
     "native_actors": {
       "ordinary-go": {
-        "started_at_utc": "2026-11-02T13:59:59.488265603Z",
-        "restarts": 0,
+        "started_at_utc": "2026-11-02T17:26:04.692400562Z",
+        "restarts": 1,
         "running": true,
         "oom": false,
         "image_matches": true,
@@ -65,7 +65,7 @@
         "authorized_scaled_budgets_match": true
       },
       "lease-reaper": {
-        "started_at_utc": "2026-11-02T13:59:59.487166064Z",
+        "started_at_utc": "2026-11-02T17:25:04.989827759Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -73,7 +73,7 @@
         "native_command": true
       },
       "exporter": {
-        "started_at_utc": "2026-11-02T13:59:59.485811411Z",
+        "started_at_utc": "2026-11-02T17:25:04.988254655Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -81,7 +81,7 @@
         "native_command": true
       },
       "drain": {
-        "started_at_utc": "2026-11-02T13:59:59.482985318Z",
+        "started_at_utc": "2026-11-02T17:25:05.0083264Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -94,25 +94,25 @@
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T13:59:59.488265603Z"
+        "started_at_utc": "2026-11-02T17:26:04.692400562Z"
       },
       "lease-reaper": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T13:59:59.487166064Z"
+        "started_at_utc": "2026-11-02T17:25:04.989827759Z"
       },
       "exporter": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T13:59:59.485811411Z"
+        "started_at_utc": "2026-11-02T17:25:04.988254655Z"
       },
       "drain": {
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T13:59:59.482985318Z"
+        "started_at_utc": "2026-11-02T17:25:05.0083264Z"
       },
       "redis": {
         "running": true,
@@ -124,7 +124,7 @@
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T14:00:02.534425967Z"
+        "started_at_utc": "2026-11-02T17:25:07.50668807Z"
       }
     },
     "legacy_running": 0,
@@ -132,34 +132,34 @@
     "ordinary_health_source_matches": true,
     "retired_runtime_commands_absent": true,
     "canonical": {
-      "companies": 6293,
-      "enabled_boards": 8288,
+      "companies": 6295,
+      "enabled_boards": 8290,
       "epoch": 404,
       "schema": "0042",
       "active_migration_plans": 0
     },
-    "scope": "Protected read-only ADR006 post-retirement1157-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+    "scope": "Protected read-only ADR006 post-combined-provider1158-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
   },
   "monitor_conservation": {
     "multiple_representations": 0,
     "other_lane_representations": 0,
     "missing": 0,
     "inflight_token_missing": 0,
-    "inflight_token_present": 30,
-    "represented": 8288,
+    "inflight_token_present": 67,
+    "represented": 8290,
     "expired_inflight_only": 0,
     "missing_cache": 0,
-    "valid_inflight": 30,
-    "canonical_eligible": 8288,
-    "canonical_enabled": 8288,
+    "valid_inflight": 67,
+    "canonical_eligible": 8290,
+    "canonical_enabled": 8290,
     "deadletter_only": 0,
     "cache_lane_mismatch": 0,
-    "queued": 8258,
+    "queued": 8223,
     "cache_domain_mismatch": 0
   },
-  "monitor_observed_at_utc": "2026-11-02T14:02:17.949894+00:00",
-  "board_key_sha256": "cf779b72dfdc13892912baef1103914bb7aac59be2255c587dd8e50921abaa52",
-  "monitor_ids_sha256": "14f8ff623ca996855464a4844f445ab0eef1229350d3c35a693d4810964275c3",
+  "monitor_observed_at_utc": "2026-11-02T17:26:31.399705+00:00",
+  "board_key_sha256": "acbd720c5314d8e3be56e15c143a9e8e9328633f1f0ae2a6cd3808156c6280f9",
+  "monitor_ids_sha256": "b0dd7fd635008da0447e12b019c5b610a273fedd93a28a6e2293642bc2fa6c65",
   "pre_retirement_full_monitor_identity": {
     "count": 8288,
     "keys_SHA256": "cf779b72dfdc13892912baef1103914bb7aac59be2255c587dd8e50921abaa52",
@@ -240,7 +240,7 @@
     "automatic_ARM_B0_run": 41387202492
   },
   "latest_official_lightpanda_check": {
-    "checked_at_utc": "2026-11-02T13:00:23Z",
+    "checked_at_utc": "2026-11-02T17:12:36.047399+00:00",
     "official_URL": "https://api.github.com/repos/lightpanda-io/browser/releases/tags/nightly",
     "release_updated_at": "2026-11-02T02:41:35Z",
     "installed_ARM_binary_SHA256": "4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756",
@@ -248,7 +248,7 @@
     "new_Lightpanda_rollout_needed": false
   },
   "renderer_and_demo": {
-    "observed_at_utc": "2026-11-02T11:45:21.299279+00:00",
+    "observed_at_utc": "2026-11-02T17:12:36.015422+00:00",
     "generation_sha256": "b3981c6ac531496c390bff85ba7e20d7480e46d11551ab4af99c19a426e8d02e",
     "generation_unchanged": true,
     "expected_image_digest": "sha256:287a174a1a180cc58c027076284baeb03b10fcbfb6f69886bb3b6729bfd1790d",
@@ -267,8 +267,8 @@
       "oom_kill": 0,
       "oom_group_kill": 0
     },
-    "available_RAM_GiB": 3.149829864501953,
-    "root_free_GiB": 9.634956359863281,
+    "available_RAM_GiB": 3.2195777893066406,
+    "root_free_GiB": 9.625762939453125,
     "reservation": {
       "cpu_cores": 0.5,
       "memory_bytes": 1073741824,
@@ -279,28 +279,28 @@
     "health": "not_configured",
     "provider_calls": 0,
     "callback_exercised": false,
-    "scope": "Dated11:45 resource baseline for the released metadata-only Justup window. Allocation and reserved headroom unchanged; no later resource measurement, functional render or API activation claimed."
+    "scope": "Dated17:12 unchanged read-only renderer resource baseline. Allocation and demo reservation unchanged; no functional-render/provider/claim/restart/role or stage operation. Stage authority belongs the designated operator."
   },
   "controlled_comparisons": {
-    "source_revision": "cc369d37d0cf850b81c3a97feecbfddc581740ac",
-    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "source_revision": "d2ddfb5204dabd40d8d1c15b47a9acbdc82285a6",
+    "merged_source": "42140b870f459e5aada974025757c190e162c6ee",
     "merged_tree_equals_reviewed_tested_tree": true,
-    "pull_request": 11490,
+    "pull_request": 11491,
     "arms": 24,
     "canonical_parity": true,
     "all_cleanup": true,
     "scenarios": [
       {
         "scenario": "amd64_generated",
-        "job_id": 125295098724,
+        "job_id": 125339475050,
         "native": {
-          "mean_completion_seconds": 19.23035959699996,
-          "mean_CPU_seconds": 12.403298333333332,
-          "mean_startup_CPU_seconds": 5.739525333333334,
-          "mean_lifetime_CPU_seconds": 18.145358,
-          "mean_modeled_EUR_per1000": 2.053239762338014e-05,
-          "mean_sampled_peak_MiB": 455.16796875,
-          "mean_retained_MiB": 439.7708333333333,
+          "mean_completion_seconds": 19.655740926333312,
+          "mean_CPU_seconds": 13.928266666666666,
+          "mean_startup_CPU_seconds": 6.5434936666666665,
+          "mean_lifetime_CPU_seconds": 20.473398,
+          "mean_modeled_EUR_per1000": 2.300241038372376e-05,
+          "mean_sampled_peak_MiB": 448.5859375,
+          "mean_retained_MiB": 431.91015625,
           "arm_exit_codes": [
             null,
             null,
@@ -308,13 +308,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 33.77726492700003,
-          "mean_CPU_seconds": 23.13916,
-          "mean_startup_CPU_seconds": 13.219694333333333,
-          "mean_lifetime_CPU_seconds": 36.361073,
-          "mean_modeled_EUR_per1000": 4.8111601946714845e-05,
-          "mean_sampled_peak_MiB": 935.3567708333334,
-          "mean_retained_MiB": 882.2083333333334,
+          "mean_completion_seconds": 34.76296918733343,
+          "mean_CPU_seconds": 25.809556,
+          "mean_startup_CPU_seconds": 14.180342,
+          "mean_lifetime_CPU_seconds": 40.00181466666667,
+          "mean_modeled_EUR_per1000": 4.8737753004929573e-05,
+          "mean_sampled_peak_MiB": 912.8763020833334,
+          "mean_retained_MiB": 865.26953125,
           "arm_exit_codes": [
             null,
             null,
@@ -324,15 +324,15 @@
       },
       {
         "scenario": "amd64_captured",
-        "job_id": 125295098188,
+        "job_id": 125339475129,
         "native": {
-          "mean_completion_seconds": 35.5653618743332,
-          "mean_CPU_seconds": 17.80751366666667,
-          "mean_startup_CPU_seconds": 7.0317289999999995,
-          "mean_lifetime_CPU_seconds": 24.840203,
-          "mean_modeled_EUR_per1000": 0.00022958900571471455,
-          "mean_sampled_peak_MiB": 422.6028645833333,
-          "mean_retained_MiB": 415.1171875,
+          "mean_completion_seconds": 35.47540244700008,
+          "mean_CPU_seconds": 17.635500333333333,
+          "mean_startup_CPU_seconds": 7.159578333333335,
+          "mean_lifetime_CPU_seconds": 24.816921,
+          "mean_modeled_EUR_per1000": 0.0002279552656778757,
+          "mean_sampled_peak_MiB": 423.7838541666667,
+          "mean_retained_MiB": 416.5078125,
           "arm_exit_codes": [
             null,
             null,
@@ -340,13 +340,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 67.58294189866668,
-          "mean_CPU_seconds": 22.670395333333335,
-          "mean_startup_CPU_seconds": 15.018785999999999,
-          "mean_lifetime_CPU_seconds": 37.719805,
-          "mean_modeled_EUR_per1000": 0.0005094262229243287,
-          "mean_sampled_peak_MiB": 814.6015625,
-          "mean_retained_MiB": 798.37109375,
+          "mean_completion_seconds": 67.487677308,
+          "mean_CPU_seconds": 22.238011,
+          "mean_startup_CPU_seconds": 14.763341666666665,
+          "mean_lifetime_CPU_seconds": 37.001480666666666,
+          "mean_modeled_EUR_per1000": 0.0005067862682108718,
+          "mean_sampled_peak_MiB": 820.46484375,
+          "mean_retained_MiB": 797.2213541666666,
           "arm_exit_codes": [
             null,
             null,
@@ -356,15 +356,15 @@
       },
       {
         "scenario": "arm64_generated",
-        "job_id": 125295098805,
+        "job_id": 125339475033,
         "native": {
-          "mean_completion_seconds": 19.48876795833333,
-          "mean_CPU_seconds": 9.988144666666667,
-          "mean_startup_CPU_seconds": 4.823646666666667,
-          "mean_lifetime_CPU_seconds": 14.813539,
-          "mean_modeled_EUR_per1000": 1.9982338301751666e-05,
-          "mean_sampled_peak_MiB": 465.7604166666667,
-          "mean_retained_MiB": 454.12109375,
+          "mean_completion_seconds": 19.734845412333396,
+          "mean_CPU_seconds": 10.108538,
+          "mean_startup_CPU_seconds": 4.861386,
+          "mean_lifetime_CPU_seconds": 14.971301333333335,
+          "mean_modeled_EUR_per1000": 1.9843315803227237e-05,
+          "mean_sampled_peak_MiB": 459.2239583333333,
+          "mean_retained_MiB": 449.6393229166667,
           "arm_exit_codes": [
             null,
             null,
@@ -372,13 +372,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 30.131744552666685,
-          "mean_CPU_seconds": 18.796254666666666,
-          "mean_startup_CPU_seconds": 9.614050666666667,
-          "mean_lifetime_CPU_seconds": 28.413675,
-          "mean_modeled_EUR_per1000": 4.5037496272953494e-05,
-          "mean_sampled_peak_MiB": 921.640625,
-          "mean_retained_MiB": 870.8763020833334,
+          "mean_completion_seconds": 32.18923308700005,
+          "mean_CPU_seconds": 19.164344666666665,
+          "mean_startup_CPU_seconds": 9.770467333333333,
+          "mean_lifetime_CPU_seconds": 28.934847666666666,
+          "mean_modeled_EUR_per1000": 4.653048730699696e-05,
+          "mean_sampled_peak_MiB": 924.39453125,
+          "mean_retained_MiB": 871.8138020833334,
           "arm_exit_codes": [
             null,
             null,
@@ -388,15 +388,15 @@
       },
       {
         "scenario": "arm64_captured",
-        "job_id": 125295098782,
+        "job_id": 125339474679,
         "native": {
-          "mean_completion_seconds": 33.90199535733333,
-          "mean_CPU_seconds": 11.955743,
-          "mean_startup_CPU_seconds": 5.038749666666667,
-          "mean_lifetime_CPU_seconds": 16.994587666666664,
-          "mean_modeled_EUR_per1000": 0.00019262919250731566,
-          "mean_sampled_peak_MiB": 429.1953125,
-          "mean_retained_MiB": 420.5729166666667,
+          "mean_completion_seconds": 34.02067364599998,
+          "mean_CPU_seconds": 11.203890666666666,
+          "mean_startup_CPU_seconds": 4.766859333333333,
+          "mean_lifetime_CPU_seconds": 15.973092000000001,
+          "mean_modeled_EUR_per1000": 0.0001877893708143703,
+          "mean_sampled_peak_MiB": 418.9361979166667,
+          "mean_retained_MiB": 414.2174479166667,
           "arm_exit_codes": [
             null,
             null,
@@ -404,13 +404,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 65.72983244499999,
-          "mean_CPU_seconds": 15.082226333333333,
-          "mean_startup_CPU_seconds": 9.813488666666668,
-          "mean_lifetime_CPU_seconds": 24.902079,
-          "mean_modeled_EUR_per1000": 0.0004757900261384467,
-          "mean_sampled_peak_MiB": 824.69921875,
-          "mean_retained_MiB": 804.47265625,
+          "mean_completion_seconds": 64.63105077033329,
+          "mean_CPU_seconds": 14.280982333333332,
+          "mean_startup_CPU_seconds": 9.348063,
+          "mean_lifetime_CPU_seconds": 23.63009866666667,
+          "mean_modeled_EUR_per1000": 0.00047153124959251134,
+          "mean_sampled_peak_MiB": 824.9049479166666,
+          "mean_retained_MiB": 804.6276041666666,
           "arm_exit_codes": [
             null,
             null,
@@ -419,7 +419,9 @@
         }
       }
     ],
-    "limits": "Exact corrective-head controlled source qualification; merged tree equals reviewed/tested tree. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Measured CPU, startup and lifetime counters are separate. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. These controls do not establish installed1157 or natural production freshness/demand completion."
+    "limits": "Exact corrective-head controlled source qualification; merged tree equals reviewed/tested tree. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Measured CPU, startup and lifetime counters are separate. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. These controls do not establish installed1157 or natural production freshness/demand completion.",
+    "merged_tree": "a51ce5c3458826723ded353a30e29e52f72d05fc",
+    "runtime_contract": "549a5972e6ae4dea3a8c4dc41b253414d8bea6a24f7796898896d66de0ae26bb"
   },
   "maintenance_window": {
     "change": "Move authenticated previous-Go-image inspection before writer quiescence. Repair remains after sync/epoch and opens a fresh authority snapshot with per-page checks and per-schedule CAS.",
@@ -468,13 +470,13 @@
     {
       "milestone": 4,
       "requirement": "Ordinary fetch/enrich/persist/reschedule, exporter and description drain",
-      "status": "installed_native_actors",
-      "limits": "Canonical/search/R2 effects remain sampled and dated, with pre-existing backlog and one historical inactive-description metadata discrepancy explicit. No universal per-record convergence claim."
+      "status": "native_actors_installed;1158_first_fatal_restart_requires_correction",
+      "limits": "All four native actors are running; ordinary worker restart count1, no OOM/panic, first fatal detail_execution:configuration in peoplesoft. Current response Location is unproven. Canonical/search/R2 effects remain sampled and dated, with old backlog and one historical inactive-description metadata discrepancy. No universal convergence claim."
     },
     {
       "milestone": 5,
       "requirement": "Every enabled profile and original required-title case without board loss",
-      "status": "all8288_current_monitor_identities_preserved; ADF_separate",
+      "status": "all8290_current_monitor_identities_preserved; old8288_floor_preserved; ADF_separate",
       "limits": "Original named/title-case and provider witnesses remain dated. Native ADF52-job/zero-failure witness is dated October27; current pagination/freshness failure is unresolved and explicitly not a global migration gate."
     },
     {
@@ -486,8 +488,8 @@
     {
       "milestone": 7,
       "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
-      "status": "corrective_release_installed; controlled_efficiency_and_dated_cold_reversal_qualified; manual_consumer_pending",
-      "limits": "All24 corrective comparison arms have parity and cleanup.1157 installed source/image/data, all8288 identities and atomic queue conservation are qualified. Native PG SELECT1/Typesense health passed. Post-stop-to-start is62.7s shorter for one rollout, excluding drain/readiness. The1137 cold Go-to-Go reversal remains dated, not a fresh1157 exercise. No demand-cleared or universal freshness assertion."
+      "status": "1157_installed_qualified;1158_controls_and_identity_verified_but_runtime_correction_required;1159_batch_pending",
+      "limits": "All24 current1158 controlled arms have parity/cleanup and match the merged source tree; they do not disprove the production fatal restart.1157 installed/private-path/timing proof remains dated.1137 cold Go-to-Go reversal is dated. Manual consumer awaits combined1159. Original agreed Python rollback-observation duration and global no-material-freshness-regression criterion are unproved; latest human explicitly authorized Python implementation deletion. No invented soak requirement or demand/freshness claim."
     }
   ],
   "ADF_current_controls": {
@@ -513,14 +515,16 @@
       "both_XHR_body_bytes": 0
     },
     "conclusion": "Both authorized local controls failed to advance the listing; no complete inventory, Lightpanda-specific cause, universal publisher outage or CORS/session root cause is established. The Chrome exception is consumed and its temporary artifacts removed.",
-    "constraints": "Leave publisher policy, quarantine/backoff/counters and schedules unchanged. No forced work, guessed variants, Chromium production route or further control runs without new authority."
+    "constraints": "The17:26 snapshot preceded the scheduled17:37 retry; no later natural outcome is claimed. Leave publisher policy, quarantine/backoff/counters and schedules unchanged. No forced work, guessed variants, Chromium production route or further control runs without new authority.",
+    "last_natural_state_observed_at_utc": "2026-11-02T17:26:32.120709+00:00",
+    "next_natural_retry_utc_is_dated_snapshot": true
   },
   "manual_renderer_acceptance_followup": {
-    "head": "32fb5e606d3478f8a4ca57e889bf0368e54ab894",
-    "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
-    "state": "Source prepared and independently reviewed; no VERSION, PR, rollout or host acceptance execution yet.",
+    "head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
+    "base": "42140b870f459e5aada974025757c190e162c6ee",
+    "state": "Independently reviewed source rebased onto1158; assembly with contained redirect-classification fix into one1159 source batch is next. No PR, rollout or host manual-acceptance execution is claimed.",
     "source_only": true,
-    "sequence": "After coordinated company successors, at the actual next main VERSION. Do not delay company work for it.",
+    "sequence": "Intake owns the contained response-error classification fix; root assembles it with the reviewed Go acceptance consumer in a single1159 release. Preserve allowlists and fatal caller-configuration guards.",
     "no_public_render_restart_reboot_execution_authorized": true
   },
   "previous_qualified_cases": {
@@ -539,7 +543,7 @@
   "limits": [
     "Current monitor identity and schedule conservation do not prove posting freshness or backlog completion. Expensive detail-demand SQL was deliberately omitted.",
     "No new causal natural-traffic throughput speedup, invoiced-cost saving or four-host natural-traffic window is claimed. The measured maintenance marker reduction is separately bounded.",
-    "The official13:00 release check verifies latest available Lightpanda binary identity; the separate installed/runtime/resource observations remain dated.",
+    "The official17:12 release check verifies latest available Lightpanda binary identity; runtime/resource observations remain separately dated.",
     "Justup reservations remain0.5CPU/1GiB plus its already allocated2GiB filesystem and8GiB root-free floor. No new API/stage window, functional-render proof, quota increase or activation follows.",
     "Use normal exact-head Required CI/Crawler Deploy Gate, immutable full-release workflows, mutation locks, full writer quiescence and complete rollback. No rsync, mutable deployment, partial writer restart or hold bypass.",
     "Remove owned closed temporary assets and caches. Preserve shared dependencies, active regression inputs, supported rollback assets, other contributors changes and original dump.rdb."
@@ -562,12 +566,6 @@
     "crawler_deploy_gate": "success",
     "mandatory_actual_Docker_proof": "success"
   },
-  "pending_successor_release": {
-    "version": "0.13.1158",
-    "merged_source": "42140b870f459e5aada974025757c190e162c6ee",
-    "supported_rollout_run": 41487771596,
-    "state": "In progress at the operator update used for this checkpoint. Not installed-qualified;1157 remains the latest independently qualified snapshot."
-  },
   "native_private_paths": {
     "status": "pass",
     "duration_seconds": 0.717,
@@ -580,12 +578,340 @@
     "source_image_and_exporter_readiness_unchanged_under_maintenance_lock": true,
     "exporter_readiness": "not_configured"
   },
-  "qualification_receipts_sha256": {
-    "native1157-installed-current.json": "f8ac58173b79285bda655956815d896b84d623ea789a6307c5f70ab61717ded6",
-    "native1157-queue-current.json": "960a2f7d7df77a64d314d55934fd5106b57ece6887755ab6e6c0104da482cbce",
-    "native1157-crawler-current.json": "ba1f41dbca2fd0d6d258bb2b8577381e7f17ad01d6726677dbdf1b36b8e72ba5",
-    "native1157-private-paths-v2-current.jsonl": "8543874c69d5266a6eb9a3ad17a2b045954501484240fce380a825524a1c8493",
-    "native1157-maintenance-timing-current.json": "65715d36f23039ddfbfd1986f6c09b4cc1187588b48bb5a412a0e0fb49998bab",
-    "native1157-comparison-current.json": "fbaa96e025aebe6ce599b31dd6ed88132a1a8a73891734c284dc13d8c2cf9f95"
-  }
+  "latest_fully_qualified_release": {
+    "run_id": 41455879195,
+    "attempt": 1,
+    "completed_at_utc": "2026-11-02T14:01:12Z",
+    "source_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "conclusion": "success",
+    "subsequent_recovery_required": false,
+    "version": "0.13.1157",
+    "installed_crawler": {
+      "observed_at_utc": "2026-11-02T14:06:06.486577+00:00",
+      "candidate_pr": 11490,
+      "previous_data_only_pr": 11178,
+      "original_adf_schedule_preserved": {
+        "enabled": true,
+        "status": "quarantined",
+        "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+        "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+        "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+        "consecutive_failures": 12,
+        "tdm_reserved": false
+      },
+      "active_marker": {
+        "active_pointer_present": true,
+        "generation_name_sha256": "cd2aea0e70fff42d62da8775c6e8ceecb7d916e89815b68d6e900e3aa7f156f1",
+        "manifest_format_fields": {
+          "RELEASE_FORMAT_VERSION": "3"
+        },
+        "source_env_success_match": true,
+        "complete_environment_match_excluding_compose_file": true,
+        "complete_csv_tree_hashes_match": true,
+        "data_csv_files": 8
+      },
+      "runtime_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+      "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
+      "image_digest": "sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924",
+      "image_version": "0.13.1157",
+      "data_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
+      "data_contract": "f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b",
+      "native_actors": {
+        "ordinary-go": {
+          "started_at_utc": "2026-11-02T13:59:59.488265603Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true,
+          "authorized_scaled_budgets_match": true
+        },
+        "lease-reaper": {
+          "started_at_utc": "2026-11-02T13:59:59.487166064Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        },
+        "exporter": {
+          "started_at_utc": "2026-11-02T13:59:59.485811411Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        },
+        "drain": {
+          "started_at_utc": "2026-11-02T13:59:59.482985318Z",
+          "restarts": 0,
+          "running": true,
+          "oom": false,
+          "image_matches": true,
+          "native_command": true
+        }
+      },
+      "core_services": {
+        "ordinary-go": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-11-02T13:59:59.488265603Z"
+        },
+        "lease-reaper": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-02T13:59:59.487166064Z"
+        },
+        "exporter": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-02T13:59:59.485811411Z"
+        },
+        "drain": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-11-02T13:59:59.482985318Z"
+        },
+        "redis": {
+          "running": true,
+          "oom": false,
+          "docker_health": "healthy",
+          "started_at_utc": "2026-09-14T14:32:28.413753887Z"
+        },
+        "alloy": {
+          "running": true,
+          "oom": false,
+          "docker_health": "not_configured",
+          "started_at_utc": "2026-11-02T14:00:02.534425967Z"
+        }
+      },
+      "legacy_running": 0,
+      "ordinary_health_http_status": 204,
+      "ordinary_health_source_matches": true,
+      "retired_runtime_commands_absent": true,
+      "canonical": {
+        "companies": 6293,
+        "enabled_boards": 8288,
+        "epoch": 404,
+        "schema": "0042",
+        "active_migration_plans": 0
+      },
+      "scope": "Protected read-only ADR006 post-retirement1157-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+    },
+    "monitor_conservation": {
+      "multiple_representations": 0,
+      "other_lane_representations": 0,
+      "missing": 0,
+      "inflight_token_missing": 0,
+      "inflight_token_present": 30,
+      "represented": 8288,
+      "expired_inflight_only": 0,
+      "missing_cache": 0,
+      "valid_inflight": 30,
+      "canonical_eligible": 8288,
+      "canonical_enabled": 8288,
+      "deadletter_only": 0,
+      "cache_lane_mismatch": 0,
+      "queued": 8258,
+      "cache_domain_mismatch": 0
+    },
+    "monitor_observed_at_utc": "2026-11-02T14:02:17.949894+00:00",
+    "controlled_comparisons": {
+      "source_revision": "d2ddfb5204dabd40d8d1c15b47a9acbdc82285a6",
+      "merged_source": "42140b870f459e5aada974025757c190e162c6ee",
+      "merged_tree_equals_reviewed_tested_tree": true,
+      "pull_request": 11491,
+      "arms": 24,
+      "canonical_parity": true,
+      "all_cleanup": true,
+      "scenarios": [
+        {
+          "scenario": "amd64_generated",
+          "job_id": 125339475050,
+          "native": {
+            "mean_completion_seconds": 19.655740926333312,
+            "mean_CPU_seconds": 13.928266666666666,
+            "mean_startup_CPU_seconds": 6.5434936666666665,
+            "mean_lifetime_CPU_seconds": 20.473398,
+            "mean_modeled_EUR_per1000": 2.300241038372376e-05,
+            "mean_sampled_peak_MiB": 448.5859375,
+            "mean_retained_MiB": 431.91015625,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          },
+          "legacy": {
+            "mean_completion_seconds": 34.76296918733343,
+            "mean_CPU_seconds": 25.809556,
+            "mean_startup_CPU_seconds": 14.180342,
+            "mean_lifetime_CPU_seconds": 40.00181466666667,
+            "mean_modeled_EUR_per1000": 4.8737753004929573e-05,
+            "mean_sampled_peak_MiB": 912.8763020833334,
+            "mean_retained_MiB": 865.26953125,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        {
+          "scenario": "amd64_captured",
+          "job_id": 125339475129,
+          "native": {
+            "mean_completion_seconds": 35.47540244700008,
+            "mean_CPU_seconds": 17.635500333333333,
+            "mean_startup_CPU_seconds": 7.159578333333335,
+            "mean_lifetime_CPU_seconds": 24.816921,
+            "mean_modeled_EUR_per1000": 0.0002279552656778757,
+            "mean_sampled_peak_MiB": 423.7838541666667,
+            "mean_retained_MiB": 416.5078125,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          },
+          "legacy": {
+            "mean_completion_seconds": 67.487677308,
+            "mean_CPU_seconds": 22.238011,
+            "mean_startup_CPU_seconds": 14.763341666666665,
+            "mean_lifetime_CPU_seconds": 37.001480666666666,
+            "mean_modeled_EUR_per1000": 0.0005067862682108718,
+            "mean_sampled_peak_MiB": 820.46484375,
+            "mean_retained_MiB": 797.2213541666666,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        {
+          "scenario": "arm64_generated",
+          "job_id": 125339475033,
+          "native": {
+            "mean_completion_seconds": 19.734845412333396,
+            "mean_CPU_seconds": 10.108538,
+            "mean_startup_CPU_seconds": 4.861386,
+            "mean_lifetime_CPU_seconds": 14.971301333333335,
+            "mean_modeled_EUR_per1000": 1.9843315803227237e-05,
+            "mean_sampled_peak_MiB": 459.2239583333333,
+            "mean_retained_MiB": 449.6393229166667,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          },
+          "legacy": {
+            "mean_completion_seconds": 32.18923308700005,
+            "mean_CPU_seconds": 19.164344666666665,
+            "mean_startup_CPU_seconds": 9.770467333333333,
+            "mean_lifetime_CPU_seconds": 28.934847666666666,
+            "mean_modeled_EUR_per1000": 4.653048730699696e-05,
+            "mean_sampled_peak_MiB": 924.39453125,
+            "mean_retained_MiB": 871.8138020833334,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        {
+          "scenario": "arm64_captured",
+          "job_id": 125339474679,
+          "native": {
+            "mean_completion_seconds": 34.02067364599998,
+            "mean_CPU_seconds": 11.203890666666666,
+            "mean_startup_CPU_seconds": 4.766859333333333,
+            "mean_lifetime_CPU_seconds": 15.973092000000001,
+            "mean_modeled_EUR_per1000": 0.0001877893708143703,
+            "mean_sampled_peak_MiB": 418.9361979166667,
+            "mean_retained_MiB": 414.2174479166667,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          },
+          "legacy": {
+            "mean_completion_seconds": 64.63105077033329,
+            "mean_CPU_seconds": 14.280982333333332,
+            "mean_startup_CPU_seconds": 9.348063,
+            "mean_lifetime_CPU_seconds": 23.63009866666667,
+            "mean_modeled_EUR_per1000": 0.00047153124959251134,
+            "mean_sampled_peak_MiB": 824.9049479166666,
+            "mean_retained_MiB": 804.6276041666666,
+            "arm_exit_codes": [
+              null,
+              null,
+              null
+            ]
+          }
+        }
+      ],
+      "limits": "Exact corrective-head controlled source qualification; merged tree equals reviewed/tested tree. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Measured CPU, startup and lifetime counters are separate. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. These controls do not establish installed1157 or natural production freshness/demand completion.",
+      "merged_tree": "a51ce5c3458826723ded353a30e29e52f72d05fc",
+      "runtime_contract": "549a5972e6ae4dea3a8c4dc41b253414d8bea6a24f7796898896d66de0ae26bb"
+    },
+    "receipts_sha256": {
+      "native1157-installed-current.json": "f8ac58173b79285bda655956815d896b84d623ea789a6307c5f70ab61717ded6",
+      "native1157-queue-current.json": "960a2f7d7df77a64d314d55934fd5106b57ece6887755ab6e6c0104da482cbce",
+      "native1157-crawler-current.json": "ba1f41dbca2fd0d6d258bb2b8577381e7f17ad01d6726677dbdf1b36b8e72ba5",
+      "native1157-private-paths-v2-current.jsonl": "8543874c69d5266a6eb9a3ad17a2b045954501484240fce380a825524a1c8493",
+      "native1157-maintenance-timing-current.json": "65715d36f23039ddfbfd1986f6c09b4cc1187588b48bb5a412a0e0fb49998bab",
+      "native1157-comparison-current.json": "fbaa96e025aebe6ce599b31dd6ed88132a1a8a73891734c284dc13d8c2cf9f95"
+    }
+  },
+  "current_installed_assessment": {
+    "recorded_at_utc": "2026-11-02T17:36:23.039097+00:00",
+    "sha256": "0dc1874fef396b4a3ac75924241703cab0c65a9772afa25f331704a73d19a554",
+    "qualification_status": "correction_required_before_Michel_data_release",
+    "verified": {
+      "all4native_running_healthy": true,
+      "no_python_commands": true,
+      "all8290_enabled_represented": true,
+      "old8288_key_and_UUID_floor_preserved": true,
+      "queue_gaps_duplicates_mismatches": 0,
+      "controlled_comparison_24arms_parity_cleanup": true
+    },
+    "finding": {
+      "ordinary_go_restarts": 1,
+      "oom": false,
+      "panic": false,
+      "first_exit_diagnostic": "detail_execution:configuration profile=peoplesoft",
+      "cause_location_unproven": true,
+      "latest_restart_observation_at_utc": "2026-11-02T17:29:22.749642+00:00",
+      "bounded_natural_Monte_successful_details": 42,
+      "scope": "First-run fence evidence covers the new company only; it does not establish the exact failed response Location."
+    },
+    "receipts_sha256": {
+      "native1158-installed-current.json": "1d22528b6bdb58a2c360820e65e689a9f64415e2ef75c808e6ed18aa04ca3beb",
+      "native1158-queue-current.json": "740155958cad5dfc4197e4297cf462cbadcc6f925c38510e596bc502b3fd5bb3",
+      "native1158-crawler-current.json": "c959d1cfa163eb2288a347af7b1a68d5ba75af9e5b70fd61bdc2d22d3b0a13b0",
+      "native1158-first-exit-reason-current.json": "57e30d3c6aec26c76c4b4e19ed4b4db0045435959288c9469cc2c2c4cf6440d2",
+      "native1158-peoplesoft-fences-current.json": "9ff3c0898e8dcf8c2536e516bf26e137671238d1dc7c7670d436a18ef0afa5d6",
+      "native1158-comparison-current.json": "0f2284b69493bf2f58d092642fb6260cd2b59d94bc1c42362838016eb4fe6c70"
+    },
+    "scope": "1158 is actually installed and all identities/queues are verified. One stable observed worker restart blocks full runtime qualification. No OOM or panic; exact failed response Location remains unproven."
+  },
+  "natural_1158_peoplesoft_details": {
+    "observed_at_utc": "2026-11-02T17:33:46.281758+00:00",
+    "new_company": "Monte-Carlo",
+    "active_postings": 48,
+    "successful_fresh_details_since1158": 42,
+    "first_run_fence_scope": "New company only, not proof of the exact failed response Location; no forced work."
+  },
+  "original_acceptance_evidence_limits": [
+    "No operator-agreed Python rollback observation duration or receipt has been found. The latest human instruction explicitly authorized deleting the superseded implementation; the historical duration criterion is not claimed proved.",
+    "Unpaired natural production windows do not establish global no-material-freshness-regression. Bounded canonical/downstream effects, dated natural work, controlled parity and supported cold reversal remain valid within their recorded scopes."
+  ]
 }
