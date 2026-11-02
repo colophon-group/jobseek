@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import shlex
 import subprocess
@@ -378,7 +379,79 @@ def test_ufw_parser_requires_only_the_role_private_service_path() -> None:
     )["compliant"]
 
 
-def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
+@pytest.fixture
+def postgresql_hba() -> list[dict]:
+    # The complete ordered policy written by harden-postgresql.sh, with full arrays.
+    policy = [
+        ("local", None, None, ["all"], ["justup_feed_readonly"], "reject"),
+        ("local", None, None, ["all"], ["all"], "trust"),
+        ("host", "127.0.0.1", "255.255.255.255", ["crawler"], ["crawler"], "scram-sha-256"),
+        (
+            "host",
+            "127.0.0.1",
+            "255.255.255.255",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "::1",
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            ["crawler"],
+            ["crawler"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "::1",
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        ("host", "10.0.0.3", "255.255.255.255", ["crawler"], ["crawler"], "scram-sha-256"),
+        (
+            "host",
+            "10.0.0.3",
+            "255.255.255.255",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "10.0.0.3",
+            "255.255.255.255",
+            ["crawler"],
+            ["justup_feed_readonly"],
+            "scram-sha-256",
+        ),
+    ]
+    return [
+        dict(
+            zip(
+                (
+                    "rule_number",
+                    "type",
+                    "address",
+                    "netmask",
+                    "database",
+                    "user_name",
+                    "auth_method",
+                    "options",
+                    "error",
+                ),
+                (number, *rule, None, None),
+                strict=True,
+            )
+        )
+        for number, rule in enumerate(policy, 1)
+    ]
+
+
+@pytest.fixture
+def postgresql_state(monkeypatch, postgresql_hba):
     class NetworkConfig:
         @staticmethod
         def read_text(*, encoding: str) -> str:
@@ -390,165 +463,191 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
             return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o100600)
 
     monkeypatch.setattr(conformance, "POSTGRES_NETWORK_CONFIG", NetworkConfig())
-    hba = "\n".join(
-        [
-            "local|||all|justup_feed_readonly|reject",
-            "local|||all|all|trust",
-            "host|127.0.0.1|255.255.255.255|crawler|crawler|scram-sha-256",
-            "host|127.0.0.1|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
-            "host|::1|ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff|crawler|crawler|scram-sha-256",
-            "host|::1|ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff|crawler|jobseek_labeller_readonly|scram-sha-256",
-            "host|10.0.0.2|255.255.255.255|crawler|crawler|scram-sha-256",
-            "host|10.0.0.2|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
-            "host|10.0.0.2|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
-        ]
-    )
-    bounded_log_config = '{"Type":"json-file","Config":{"max-size":"50m","max-file":"3"}}\n'
 
-    def run(command):
-        query = command[-1]
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "1073741824\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
+    def state(*, hba_stdout=None, hba_returncode=0, shm_bytes=1073741824, bounded_log=True):
+        def run(command):
+            if command[:4] == [
+                "docker",
+                "inspect",
+                "--format",
+                "{{json .HostConfig.LogConfig}}",
+            ]:
+                config = {"max-size": "50m", "max-file": "3"} if bounded_log else {}
+                return conformance.CommandResult(
+                    0, json.dumps({"Type": "json-file", "Config": config})
+                )
+            if command[:2] == ["docker", "inspect"]:
+                return conformance.CommandResult(0, str(shm_bytes))
+            if command[-2:] == ["-B1", "/dev/shm"]:
+                return conformance.CommandResult(
+                    0,
+                    "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                    f"shm {shm_bytes} 67108864 1006632960 7% /dev/shm\n",
+                )
+            if "pg_settings" in command[-1]:
+                return conformance.CommandResult(
+                    0,
+                    "listen_addresses|127.0.0.1,10.0.0.4\n"
+                    "password_encryption|scram-sha-256\nssl|off\n",
+                )
+            assert command[:10] == [
+                "docker",
+                "exec",
+                "container",
+                "psql",
+                "-U",
+                "crawler",
+                "-d",
+                "crawler",
+                "-At",
+                "-c",
+            ]
+            # Include expansion can reuse file-local line numbers. The query must
+            # preserve full arrays, errors and options in PostgreSQL's effective order.
+            assert command[-1] == (
+                "select coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
+                "'[]'::json) from (select rule_number,type,address,netmask,database,user_name,"
+                "auth_method,options,error from pg_hba_file_rules) rules"
             )
-        if "pg_settings" in query:
             return conformance.CommandResult(
-                0,
-                "listen_addresses|127.0.0.1,10.0.0.4\npassword_encryption|scram-sha-256\nssl|off\n",
+                hba_returncode,
+                json.dumps(postgresql_hba) if hba_stdout is None else hba_stdout,
             )
-        return conformance.CommandResult(0, hba)
 
-    monkeypatch.setattr(conformance, "_run", run)
+        monkeypatch.setattr(conformance, "_run", run)
+        return conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
 
-    state = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    return state
+
+
+def test_postgresql_conformance_accepts_only_complete_ordered_policy(postgresql_state) -> None:
+    state = postgresql_state()
+    assert state["hba_exact"] is True
+    assert state["compliant"] is True
+    assert "10.0.0." not in json.dumps(state)
+
+
+@pytest.mark.parametrize("row", [0, 1, 2, 3, 4, 5, 6, 7, 8])
+@pytest.mark.parametrize("field", ["database", "user_name"])
+def test_postgresql_conformance_rejects_extra_array_members(
+    postgresql_state, postgresql_hba, row, field
+) -> None:
+    postgresql_hba[row][field].append("additional_identity")
+    state = postgresql_state()
+    assert state["hba_exact"] is False
     assert state["compliant"] is False
 
-    private_hba = hba.replace("10.0.0.2", "10.0.0.3")
 
-    def compliant_run(command):
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "1073741824\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
-            )
-        return (
-            conformance.CommandResult(
-                0,
-                "listen_addresses|127.0.0.1,10.0.0.4\npassword_encryption|scram-sha-256\nssl|off\n",
-            )
-            if "pg_settings" in command[-1]
-            else conformance.CommandResult(0, private_hba)
-        )
+@pytest.mark.parametrize("row", [0, 1, 2, 8])
+def test_postgresql_conformance_rejects_authentication_options(
+    postgresql_state, postgresql_hba, row
+) -> None:
+    postgresql_hba[row]["options"] = ["map=unexpected"]
+    assert not postgresql_state()["hba_exact"]
 
-    monkeypatch.setattr(conformance, "_run", compliant_run)
-    assert conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
-        "compliant"
-    ]
 
-    def missing_feed_run(command):
-        result = compliant_run(command)
-        if "pg_hba_file_rules" in command[-1]:
-            return conformance.CommandResult(
-                0,
-                result.stdout.replace(
-                    "\nhost|10.0.0.3|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
-                    "",
-                ),
-            )
-        return result
+@pytest.mark.parametrize("location", ["extra_row", "existing_row"])
+def test_postgresql_conformance_rejects_every_invalid_hba_row(
+    postgresql_state, postgresql_hba, location
+) -> None:
+    invalid = {key: None for key in postgresql_hba[0]}
+    invalid["error"] = "invalid authentication rule"
+    if location == "extra_row":
+        postgresql_hba.append(invalid)
+    else:
+        postgresql_hba[2] = invalid
+    state = postgresql_state()
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
 
-    monkeypatch.setattr(conformance, "_run", missing_feed_run)
-    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
-        "compliant"
-    ]
 
-    def missing_socket_reject_run(command):
-        result = compliant_run(command)
-        if "pg_hba_file_rules" in command[-1]:
-            return conformance.CommandResult(
-                0,
-                result.stdout.replace("local|||all|justup_feed_readonly|reject\n", ""),
-            )
-        return result
+@pytest.mark.parametrize("first,second", [(0, 1), (1, 2), (2, 3), (6, 8)])
+def test_postgresql_conformance_rejects_reordered_policy(
+    postgresql_state, postgresql_hba, first, second
+) -> None:
+    postgresql_hba[first], postgresql_hba[second] = postgresql_hba[second], postgresql_hba[first]
+    # PostgreSQL assigns rule numbers after include expansion and parsing; a real
+    # reordered file has consecutive rule numbers but different authentication order.
+    for number, rule in enumerate(postgresql_hba, 1):
+        rule["rule_number"] = number
+    assert not postgresql_state()["hba_exact"]
 
-    monkeypatch.setattr(conformance, "_run", missing_socket_reject_run)
-    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
-        "compliant"
-    ]
 
-    def extra_feed_loopback_run(command):
-        result = compliant_run(command)
-        if "pg_hba_file_rules" in command[-1]:
-            return conformance.CommandResult(
-                0,
-                result.stdout
-                + "\nhost|127.0.0.1|255.255.255.255|crawler|justup_feed_readonly|scram-sha-256",
-            )
-        return result
+@pytest.mark.parametrize("row", [0, 8])
+def test_postgresql_conformance_rejects_missing_feed_rules(
+    postgresql_state, postgresql_hba, row
+) -> None:
+    postgresql_hba.pop(row)
+    assert not postgresql_state()["hba_exact"]
 
-    monkeypatch.setattr(conformance, "_run", extra_feed_loopback_run)
-    assert not conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
-        "compliant"
-    ]
 
-    monkeypatch.setattr(conformance, "_run", compliant_run)
+def test_postgresql_conformance_rejects_extra_feed_loopback(
+    postgresql_state, postgresql_hba
+) -> None:
+    postgresql_hba.append({**postgresql_hba[8], "rule_number": 10, "address": "127.0.0.1"})
+    assert not postgresql_state()["hba_exact"]
 
-    def unbounded_log_run(command):
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, '{"Type":"json-file","Config":{}}\n')
-        return compliant_run(command)
 
-    monkeypatch.setattr(conformance, "_run", unbounded_log_run)
-    unbounded = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+@pytest.mark.parametrize("duplicate", ["extra", "replacement"])
+def test_postgresql_conformance_rejects_duplicate_rules(
+    postgresql_state, postgresql_hba, duplicate
+) -> None:
+    if duplicate == "extra":
+        postgresql_hba.append({**postgresql_hba[2], "rule_number": 10})
+    else:
+        postgresql_hba[3] = {**postgresql_hba[2], "rule_number": 4}
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("address", "10.0.0.2"),
+        ("netmask", "255.255.255.0"),
+        ("type", "hostssl"),
+        ("auth_method", "trust"),
+        ("error", ""),
+        ("options", []),
+        ("rule_number", None),
+        ("rule_number", True),
+        ("rule_number", 1.0),
+        ("database", "crawler"),
+        ("user_name", None),
+    ],
+)
+def test_postgresql_conformance_rejects_changed_or_malformed_rule_fields(
+    postgresql_state, postgresql_hba, field, value
+) -> None:
+    postgresql_hba[0 if field == "rule_number" else 8][field] = value
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize("output", ["", "not-json", "null", "{}", "[]", "[null]", "[{}]"])
+def test_postgresql_conformance_fails_closed_on_malformed_hba_output(
+    postgresql_state, output
+) -> None:
+    state = postgresql_state(hba_stdout=output)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_rejects_missing_field(postgresql_state, postgresql_hba) -> None:
+    del postgresql_hba[0]["error"]
+    assert not postgresql_state()["hba_exact"]
+
+
+def test_postgresql_conformance_fails_closed_on_hba_query_failure(postgresql_state) -> None:
+    # Even canonical-looking output cannot override an unsuccessful inspection.
+    state = postgresql_state(hba_returncode=1)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_retains_container_resource_checks(postgresql_state) -> None:
+    unbounded = postgresql_state(bounded_log=False)
     assert unbounded["bounded_container_log"] is False
     assert unbounded["compliant"] is False
-
-    def undersized_run(command):
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "67108864\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 67108864 22315008 44793856 34% /dev/shm\n",
-            )
-        return compliant_run(command)
-
-    monkeypatch.setattr(conformance, "_run", undersized_run)
-    undersized = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    undersized = postgresql_state(shm_bytes=67108864)
     assert undersized["shared_memory_contract"] is False
     assert undersized["compliant"] is False
 

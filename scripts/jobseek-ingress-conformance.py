@@ -89,18 +89,58 @@ def _address_scope(value: str) -> str:
     return "public"
 
 
-def _network_from_address_mask(
-    address: str, netmask: str
-) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
-    parsed_address = ipaddress.ip_address(address)
-    parsed_mask = ipaddress.ip_address(netmask)
-    if parsed_address.version != parsed_mask.version:
-        raise ValueError("address and netmask families differ")
-    bits = f"{int(parsed_mask):0{parsed_mask.max_prefixlen}b}"
-    if "01" in bits:
-        raise ValueError("non-contiguous netmask")
-    prefix = bits.count("1")
-    return ipaddress.ip_network(f"{parsed_address}/{prefix}", strict=False)
+def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address) -> bool:
+    if result.returncode != 0:
+        return False
+    try:
+        actual = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(actual, list) or any(
+        not isinstance(rule, dict) or type(rule.get("rule_number")) is not int for rule in actual
+    ):
+        return False
+
+    # Match write_hba's complete policy, including precedence and singleton arrays.
+    # Errors and authentication options must remain NULL; no parsed row is ignored.
+    policy = [
+        ("local", None, None, "all", "justup_feed_readonly", "reject"),
+        ("local", None, None, "all", "all", "trust"),
+        *[
+            ("host", address, netmask, "crawler", user, "scram-sha-256")
+            for address, netmask in (
+                ("127.0.0.1", "255.255.255.255"),
+                ("::1", "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"),
+                (str(crawler_ip), "255.255.255.255"),
+            )
+            for user in ("crawler", "jobseek_labeller_readonly")
+        ],
+        (
+            "host",
+            str(crawler_ip),
+            "255.255.255.255",
+            "crawler",
+            "justup_feed_readonly",
+            "scram-sha-256",
+        ),
+    ]
+    expected = [
+        {
+            "rule_number": number,
+            "type": connection_type,
+            "address": address,
+            "netmask": netmask,
+            "database": [database],
+            "user_name": [user],
+            "auth_method": method,
+            "options": None,
+            "error": None,
+        }
+        for number, (connection_type, address, netmask, database, user, method) in enumerate(
+            policy, 1
+        )
+    ]
+    return actual == expected
 
 
 def _listener_scopes(output: str) -> dict[int, set[str]]:
@@ -377,65 +417,17 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             "crawler",
             "-d",
             "crawler",
-            "-AtF",
-            "|",
+            "-At",
             "-c",
             (
-                "select type,coalesce(address,''),coalesce(netmask,''),database[1],user_name[1],"
-                "auth_method from pg_hba_file_rules where error is null order by line_number"
+                # rule_number is the effective order, including rules from included files.
+                "select coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
+                "'[]'::json) from (select rule_number,type,address,netmask,database,user_name,"
+                "auth_method,options,error from pg_hba_file_rules) rules"
             ),
         ]
     )
-    rules_match = hba.returncode == 0
-    allowed_users = {"crawler", "jobseek_labeller_readonly"}
-    expected_network_rules = {
-        (str(network), "crawler", user, "scram-sha-256")
-        for network in (
-            ipaddress.ip_network("127.0.0.1/32"),
-            ipaddress.ip_network("::1/128"),
-            ipaddress.ip_network(f"{crawler_ip}/32"),
-        )
-        for user in allowed_users
-    }
-    expected_network_rules.add(
-        (
-            str(ipaddress.ip_network(f"{crawler_ip}/32")),
-            "crawler",
-            "justup_feed_readonly",
-            "scram-sha-256",
-        )
-    )
-    actual_network_rules = []
-    local_rules = []
-    if rules_match:
-        for line in hba.stdout.splitlines():
-            parts = line.split("|", 5)
-            if len(parts) != 6:
-                rules_match = False
-                break
-            connection_type, address, netmask, database, user, method = parts
-            if connection_type == "local":
-                local_rules.append((database, user, method))
-                continue
-            if connection_type != "host":
-                rules_match = False
-                continue
-            try:
-                network = _network_from_address_mask(address, netmask)
-            except ValueError:
-                rules_match = False
-                continue
-            actual_network_rules.append((str(network), database, user, method))
-    rules_match = (
-        rules_match
-        and local_rules
-        == [
-            ("all", "justup_feed_readonly", "reject"),
-            ("all", "all", "trust"),
-        ]
-        and len(actual_network_rules) == len(expected_network_rules)
-        and set(actual_network_rules) == expected_network_rules
-    )
+    rules_match = _postgres_hba_exact(hba, crawler_ip)
     return {
         "readable": True,
         "shared_memory_bytes": shared_memory_bytes,
