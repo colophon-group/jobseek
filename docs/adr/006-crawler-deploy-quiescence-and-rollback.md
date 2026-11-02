@@ -31,6 +31,11 @@ The deploy script must:
   quiescence using the previous immutable Go image and its pre-migration schema.
   The later repair must reopen its own snapshot and revalidate
   ownership and schedule lifecycle; the inspection result is not write authority;
+- execute previous-release inspection and rollback sync as standalone native
+  maintenance containers with the verified generation's image, required
+  credentials and read-only data. Do not use Compose processing-service one-offs,
+  which can synthesize links incompatible with host networking. Maintenance
+  helpers must not shadow the deployment root or env path used by error/exit traps;
 - validate required environment before stopping processors;
 - preserve a rollback copy of the env file;
 - pull images and run non-mutating preflights before quiescing processors;
