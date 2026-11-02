@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "checkpoint_utc": "2026-11-02T17:38:02Z",
+  "checkpoint_utc": "2026-11-02T18:04:23Z",
   "goal_status": "active",
   "migration_complete": false,
   "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
@@ -12,9 +12,10 @@
     "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
   },
   "remaining_delivery": [
-    "Deliver the contained publisher redirect response-error classification fix and reviewed native Go manual-acceptance consumer together in one1159 source PR/full release, at the actual next VERSION. Preserve origin allowlists and fatal caller-configuration guards; no host manual-acceptance workflow execution is granted.",
-    "Independently qualify the corrected runtime, then release held Michel company data. Preserve all8290 enabled identities plus any authorized additions, queue conservation, publisher policy and demo reserve.",
-    "Publish the final portable seven-milestone audit, retaining the unproved original Python rollback-observation duration and global production freshness-regression criteria as explicit evidence limits. Do not invent a soak quota, hold or completion claim."
+    "Finish exact-head PR11494 CI and investigate the unchanged ats-inventory-stage comparison build failure before normal fresh merge authority. Do not claim current1159 comparison parity before all required measured reports qualify.",
+    "Deliver combined1159 redirect-classification fix, native Go acceptance/Python-client deletion and exactly eight Michel boards through one supported full release. Independently qualify source/image/data, all8298 identities and the complete8290 prior key/UUID floor; the actual1158 fatal restart remains the runtime qualification issue.",
+    "After1159 qualifies, complete only the separately reviewed maintenance cleanup packet for the exact five stopped legacy services and two old images, rechecking coherent protected identities under the maintenance lock. Read-only inventory grants no deletion clearance; no broad prune or active/rollback-asset deletion.",
+    "Publish the final portable seven-milestone audit, preserving the two unproved original evidence criteria and dated effects/reversal evidence; no arbitrary soak quota or new runtime hold."
   ],
   "supported_crawler_rollout": {
     "run_id": 41487771596,
@@ -483,12 +484,12 @@
       "milestone": 6,
       "requirement": "Retire superseded Python runtime implementations and assets",
       "status": "processing_image_native; source_deletions_installed_in1157",
-      "limits": "Eleven superseded Python daemon modules and Python runtime image targets are removed in qualified1157. Useful offline/control Python remains permitted. No Python/uv/Playwright/Chromium runtime commands are present. Separate manual renderer acceptance consumer remains source-only."
+      "limits": "Eleven superseded Python daemon modules and Python runtime image targets were removed in qualified1157; current1158 image also has no Python/uv/Playwright/Chromium runtime commands. Useful offline/control Python remains permitted. The remaining manual acceptance Python client deletion and Go replacement are included in pending combined1159 PR11494, not yet installed."
     },
     {
       "milestone": 7,
       "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
-      "status": "1157_installed_qualified;1158_controls_and_identity_verified_but_runtime_correction_required;1159_batch_pending",
+      "status": "1157_installed_qualified;1158_controls_and_identity_verified_but_runtime_correction_required;combined1159_PR11494_CI_pending",
       "limits": "All24 current1158 controlled arms have parity/cleanup and match the merged source tree; they do not disprove the production fatal restart.1157 installed/private-path/timing proof remains dated.1137 cold Go-to-Go reversal is dated. Manual consumer awaits combined1159. Original agreed Python rollback-observation duration and global no-material-freshness-regression criterion are unproved; latest human explicitly authorized Python implementation deletion. No invented soak requirement or demand/freshness claim."
     }
   ],
@@ -520,12 +521,15 @@
     "next_natural_retry_utc_is_dated_snapshot": true
   },
   "manual_renderer_acceptance_followup": {
-    "head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
+    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
     "base": "42140b870f459e5aada974025757c190e162c6ee",
-    "state": "Independently reviewed source rebased onto1158; assembly with contained redirect-classification fix into one1159 source batch is next. No PR, rollout or host manual-acceptance execution is claimed.",
+    "state": "Reviewed native consumer and superseded Python client deletion are included in combined1159 PR11494. CI is in progress; source is not installed and no host manual-acceptance workflow execution is authorized.",
     "source_only": true,
-    "sequence": "Intake owns the contained response-error classification fix; root assembles it with the reviewed Go acceptance consumer in a single1159 release. Preserve allowlists and fatal caller-configuration guards.",
-    "no_public_render_restart_reboot_execution_authorized": true
+    "sequence": "Intake owns exact-head CI assessment and normal fresh merge audit. One full1159 release includes redirect response classification, native acceptance consumer and exactly eight Michel boards.",
+    "no_public_render_restart_reboot_execution_authorized": true,
+    "prepared_component_head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
+    "PR": 11494,
+    "url": "https://github.com/colophon-group/jobseek/pull/11494"
   },
   "previous_qualified_cases": {
     "five_former_deadletters": "Accenture, Beisen, both API-sniffer routes and Amazon naturally succeeded under1139. Dated evidence; this checkpoint does not re-exercise those providers.",
@@ -913,5 +917,84 @@
   "original_acceptance_evidence_limits": [
     "No operator-agreed Python rollback observation duration or receipt has been found. The latest human instruction explicitly authorized deleting the superseded implementation; the historical duration criterion is not claimed proved.",
     "Unpaired natural production windows do not establish global no-material-freshness-regression. Bounded canonical/downstream effects, dated natural work, controlled parity and supported cold reversal remain valid within their recorded scopes."
-  ]
+  ],
+  "pending_1159_release": {
+    "PR": 11494,
+    "url": "https://github.com/colophon-group/jobseek/pull/11494",
+    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "base": "42140b870f459e5aada974025757c190e162c6ee",
+    "tree": "36f894f7eb03652090047cbb6386348d1eed5bb6",
+    "version": "0.13.1159",
+    "runtime_contract": "bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff",
+    "data_contract": "d03e52c61e167beed6cb425e2be5e04a72d594464775d75befbc708944929d0d",
+    "preservation": {
+      "prior_CSV_rows_removed_or_changed": 0,
+      "boards_before": 8290,
+      "boards_candidate": 8298,
+      "companies_CSV_before": 6269,
+      "companies_CSV_candidate": 6270,
+      "descriptions_CSV_before": 6134,
+      "descriptions_CSV_candidate": 6135
+    },
+    "source_review": "Independent combined-source review passed with no blocking findings.",
+    "installed": false,
+    "installed_qualified": false,
+    "scope": [
+      "Contained publisher redirect response-error classification; origin allowlists and fatal caller-configuration guards preserved.",
+      "Native Go renderer acceptance client and superseded Python client deletion.",
+      "Exactly eight Michel boards, one company and one description; zero prior8290 CSV rows changed or removed.",
+      "Single1159 VERSION and one supported full-release rollout."
+    ],
+    "CI": {
+      "state": "in_progress",
+      "successful_checks_at_operator_update": 45,
+      "Required_CI": "No failure reported at this update; conclusion not yet qualified successful.",
+      "comparison_build_failure": "One AMD64 generated comparison build failed in unchanged ats-inventory stage before measurement. Intake is assessing sibling results and a targeted retry for a possible transient failure.",
+      "current_1159_24arm_parity_and_cleanup_qualified": false,
+      "scope": "This is the operator-provided in-progress status, not a green current1159 or merge/deployment authorization."
+    },
+    "host_manual_renderer_workflow_execution_authorized": false
+  },
+  "legacy_cleanup_pending": {
+    "status": "Read-only inventory only; separate reviewed maintenance packet being prepared for after1159 qualification. No deletions performed or cleared.",
+    "source_revision": "42140b870f459e5aada974025757c190e162c6ee",
+    "identity_scope": "Source-bound observations only, not a coherent locked runtime/data/deletion authorization.",
+    "container_observed_at_utc": "2026-11-02T17:49:27.746946+00:00",
+    "retained_metadata_observed_at_utc": "2026-11-02T17:57:05.139883+00:00",
+    "stopped_legacy_services": [
+      "worker-1",
+      "worker-2",
+      "worker-3",
+      "browser-1",
+      "lightpanda-claimant"
+    ],
+    "all_five_stopped_since": "2026-10-29",
+    "retained_generation_directories": 70,
+    "release_metadata_files": 282,
+    "unique_protected_digest_pins": 18,
+    "resolved_local_image_configs": 18,
+    "unresolved_pins_count": 0,
+    "old_legacy_images": [
+      {
+        "image_id": "sha256:4b3f150d0c29e2598facca6cb57b797dac5d5346c5a841c86127d09d184b9265",
+        "size_bytes": 398160927,
+        "matches_resolved_release_image": false,
+        "matches_any_retained_digest_pin": false,
+        "repository_digests_count": 1
+      },
+      {
+        "image_id": "sha256:0db54d7bf6388b7cb24ee6ab7fb507c348340ffb3e50509c705ce762485efe82",
+        "size_bytes": 814145891,
+        "matches_resolved_release_image": false,
+        "matches_any_retained_digest_pin": false,
+        "repository_digests_count": 1
+      }
+    ],
+    "old_images_match_any_retained_pin_or_resolved_release_image": false,
+    "receipts_sha256": {
+      "native1158-legacy-asset-inventory-current.json": "293d117357104bce4de49ed0b4f729729de9b3a1b0d2b07655c75c172b2321c0",
+      "native1158-retained-image-closure-current.json": "3ff48b5a1330c121db3d104ceae54b9d85614bbaecf7f7847ec20634dd80bd54"
+    },
+    "next_action": "Root prepares a separate independently reviewed maintenance packet after1159 qualifies. Recheck exact stopped-container identities, coherent active/success/env/journal/rollback/spec and all protected retained image identities under lock; retain all required assets. No broad prune, active asset deletion or rollback asset deletion."
+  }
 }

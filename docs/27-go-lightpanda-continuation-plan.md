@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-02 17:38 UTC / 18:38 CET**.
+Current checkpoint: **2026-11-02 18:04 UTC / 19:04 CET**.
 Production **0.13.1158** is installed: its
 [supported rollout](https://github.com/colophon-group/jobseek/actions/runs/41487771596)
 succeeded at **17:26:15 UTC**. All **8,290** enabled monitors are represented and
@@ -12,7 +12,8 @@ The latest fully qualified release remains **1157**; its Python daemon retiremen
 and bounded maintenance improvement remain valid dated evidence. Full migration
 is active. Oracle ADF remains a separate compatibility follow-up, not a global gate.
 The [portable receipt](evidence/go-native-installed-current.json) separates the
-installed 1158 assessment from qualified 1157 evidence and the next 1159 source batch.
+installed 1158 assessment from qualified 1157 evidence and pending
+[combined 1159 PR #11494](https://github.com/colophon-group/jobseek/pull/11494).
 
 ## Objective and language boundary
 
@@ -172,14 +173,33 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
 
 ## Next delivery steps
 
-1. **Deliver one contained 1159 source batch.** Intake owns publisher redirect
-   response-error classification; root assembles it with the reviewed native Go
-   manual-renderer acceptance consumer in one source PR and full release at the
-   actual next VERSION. Preserve origin allowlists and fatal caller-configuration
-   guards. No host manual-render/restart/reboot acceptance execution is granted.
-   Independently qualify the corrected runtime, then release held Michel company
-   data while preserving all 8,290 enabled identities plus authorized additions,
-   queues, publisher policy and demo reserve. No forced provider work is needed.
+1. **Finish the exact-head combined 1159 PR and one full release.**
+   [PR #11494](https://github.com/colophon-group/jobseek/pull/11494) contains the
+   publisher redirect response-error classification fix, native Go renderer
+   acceptance client and superseded Python client deletion, plus **exactly eight
+   Michel boards / one company / one description**. Candidate total is **8,298**
+   enabled boards; **zero previous 8,290 CSV rows changed or were removed**.
+   Independent combined-source review passed with no blocking findings.
+
+   | Candidate 1159 identity | Value |
+   | --- | --- |
+   | Exact PR head | `0a9b34254f506a5bb57a44895bbbf04f574390e1` |
+   | Base | `42140b870f459e5aada974025757c190e162c6ee` |
+   | Tree | `36f894f7eb03652090047cbb6386348d1eed5bb6` |
+   | Runtime contract | `bd6d173ccdbab1050b362f8af412552c01b06ef09bf8c0adb20bddfd438d48ff` |
+   | Data contract | `d03e52c61e167beed6cb425e2be5e04a72d594464775d75befbc708944929d0d` |
+
+   CI is still in progress at the operator update: **45 successful checks** and
+   no Required CI failure reported yet. **One AMD64 generated comparison build
+   failed before measurement in the unchanged `ats-inventory` stage**; Intake
+   is assessing sibling results and a targeted retry for a possible transient
+   failure. No green current 1159 24-arm result is claimed. Complete the fresh
+   exact-head checks and merge audit before a supported full release. Preserve
+   origin allowlists and fatal caller-configuration guards. Independently qualify
+   corrected actors, source/image/data, all 8,298 identities and the complete
+   prior 8,290 key/UUID floor. The real 1158 fatal restart remains the runtime
+   qualification issue; this checkpoint adds no new runtime hold or arbitrary soak.
+   No host manual-render/restart/reboot acceptance execution is granted.
 
 2. **Preserve the shortened maintenance path and its authority checks.**
    Authenticated previous-Go-image inspection runs with required credentials and
@@ -194,11 +214,18 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
    nor a future SLA. The 23-second recovery is a different operation. Preserve
    preflight, lock, complete rollback and readiness.
 
-3. **Include the reviewed manual consumer in that batch.** Native acceptance
-   source is rebased onto 1158 as `0a6698ea4d4fbaaff919c2e83e6620f3f08a4066`,
-   preserving the reviewed patches. Source readiness grants no host workflow
-   execution. Keep the runtime correction and acceptance consumer together to
-   avoid an extra full maintenance release.
+3. **Remove closed legacy assets through the separate reviewed maintenance packet.**
+   The **17:49 UTC** source-bound inventory found five stopped legacy services:
+   `worker-1`, `worker-2`, `worker-3`, `browser-1` and `lightpanda-claimant`, stopped
+   since October 29. The **17:57 UTC** retained-image inventory covered all **70**
+   retained generation directories and **282** release metadata files. All **18**
+   unique immutable SHA pins resolve; neither of the **two old legacy images**
+   matches a retained pin or resolved release image. This is read-only inventory,
+   **not coherent locked deletion clearance**. Root is preparing a separate
+   independently reviewed maintenance packet for after 1159 qualifies. It must
+   recheck exact stopped identities and coherent active/rollback/spec/retained
+   image protection under the maintenance lock. No broad prune, active asset
+   deletion or required rollback-asset deletion is authorized by this checkpoint.
 
 4. **Publish the full acceptance audit with explicit original evidence limits.**
    Preserve all seven milestones, salary/enrichment, named/profile cases, ownership,
