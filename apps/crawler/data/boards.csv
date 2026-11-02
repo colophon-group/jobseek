@@ -7016,6 +7016,7 @@ stockx,stockx-greenhouse,https://job-boards.greenhouse.io/stockx,greenhouse,"{""
 stoik,stoik-careers,https://careers.stoik.io,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.stoik.io/jobs.rss""}",skip,
 stoiximan,stoiximan-greenhouse,https://job-boards.greenhouse.io/stoiximan,greenhouse,"{""token"": ""stoiximan""}",skip,
 stone-linkedin,stone-linkedin-greenhouse,https://job-boards.greenhouse.io/stone,greenhouse,"{""token"": ""stone""}",skip,
+stonebridge-companies,stonebridge-companies-careers,https://sbcos.wd1.myworkdayjobs.com/sbcos2,workday,,workday,
 store-space-self-storage,store-space-self-storage-greenhouse,https://job-boards.greenhouse.io/storespace,greenhouse,"{""token"": ""storespace""}",skip,
 storiogroup,storiogroup-careers,https://jobs.lever.co/storiogroup,lever,"{""token"": ""storiogroup""}",skip,
 story-cannabis,story-cannabis-greenhouse,https://job-boards.greenhouse.io/storycannabis,greenhouse,"{""token"": ""storycannabis""}",skip,
