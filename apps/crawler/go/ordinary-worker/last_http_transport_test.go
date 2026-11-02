@@ -327,6 +327,62 @@ func TestPeopleSoftDetailBootstrapFallbackKeepsAnonymousCookie(t *testing.T) {
 	}
 }
 
+func TestPeopleSoftPublisherRedirectFailureDoesNotBecomeCallerConfiguration(t *testing.T) {
+	board := "https://fixture.example/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL"
+	base, err := api.LastHTTPOptionsFromMetadata("peoplesoft", board, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint := base.PeopleSoftJobURL("115978")
+	detail, err := api.LastHTTPDetailOptionsFromConfig("peoplesoft", board, endpoint, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, location, wantKind string
+		maxHops                  bool
+		wantRequests             int
+	}{
+		{name: "missing location", wantKind: "redirect", wantRequests: 1},
+		{name: "malformed location", location: "https://[bad", wantKind: "request_failed", wantRequests: 3},
+		{name: "outside origin", location: "https://outside.example/", wantKind: "redirect", wantRequests: 1},
+		{name: "outside detail path", location: "https://fixture.example/other", wantKind: "redirect", wantRequests: 1},
+		{name: "hop bound", maxHops: true, wantKind: "redirect", wantRequests: 21},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			client := verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.URL.Path != "/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL" {
+					t.Error("publisher redirect escaped the bound detail path")
+				}
+				location := tc.location
+				if tc.maxHops {
+					w.Header().Set("Set-Cookie", fmt.Sprintf("PSJSESSIONID=%d; Path=/; Secure", requests))
+					location = endpoint
+				}
+				if location != "" {
+					w.Header().Set("Location", location)
+				}
+				w.WriteHeader(http.StatusFound)
+			}))
+			fetch, err := lastHTTPFetcher(client, base, detail, func(context.Context, time.Duration) error { return nil }, &lastHTTPObservation{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, err = fetch(context.Background(), api.Request{Method: http.MethodGet, URL: endpoint})
+			var failure *DiscoveryError
+			if !errors.As(err, &failure) || failure.Kind != tc.wantKind || errors.Is(err, queue.ErrConfiguration) || requests != tc.wantRequests {
+				t.Fatalf("publisher redirect changed failure class or escaped scope: failure=%v requests=%d want=%d", err, requests, tc.wantRequests)
+			}
+			_, _, err = fetch(context.Background(), api.Request{Method: http.MethodGet, URL: endpoint + "&unsafe=1"})
+			if !errors.Is(err, queue.ErrConfiguration) || requests != tc.wantRequests {
+				t.Fatalf("invalid caller detail URL was not fatal before request: failure=%v requests=%d", err, requests)
+			}
+		})
+	}
+}
+
 func TestLastHTTPPairedOriginalFieldsThroughVerifiedSessions(t *testing.T) {
 	cases := []lastHTTPDetailCase{}
 	for _, provider := range []string{"infor", "peoplesoft"} {

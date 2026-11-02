@@ -190,7 +190,9 @@ func lastHTTPFetcher(client *http.Client, o api.LastHTTPOptions, scope providerR
 				// Infor returns to the initial URL with new cookies. State-aware
 				// loop detection above and the original hard bound preserve it.
 				if e != nil || response.location == "" || redirects >= 20 || !scope.ResourceMatches(next) {
-					return nil, nil, queue.ErrConfiguration
+					// The publisher controls Location. Reject it without following,
+					// while keeping invalid caller requests fatal above.
+					return nil, nil, &DiscoveryError{Kind: "redirect"}
 				}
 				current.URL = next
 				// Redirect requests rebuild ordinary jar cookies for the new URL.
