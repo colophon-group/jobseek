@@ -165,8 +165,8 @@ ws reject --issue <N> --reason <key> --message "..."
 ws reject --reason <key> --message "..."  # Uses active workspace's issue
 
 # Run crawler workers
-uv run crawler run                     # HTTP worker (claims from simple queues)
-uv run crawler run-browser             # Browser worker (claims from browser queues)
+uv run crawler run                     # Exec native Go worker (HTTP and Lightpanda)
+uv run crawler run-browser             # Alias for the same combined Go worker
 uv run crawler export                  # Typesense CDC
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
@@ -698,18 +698,15 @@ docker exec deploy-redis-1 redis-cli INFO persistence | tr -d '\r' \
 docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
 ```
 
-### Current Container Layout (metrics ports)
+### Current Container Layout
 
-| Container | Image | Metrics Port | CPU | Memory |
-|-----------|-------|-------------|-----|--------|
-| worker-1 | crawler-slim | 9095 | 1 | 1GB |
-| worker-2 | crawler-slim | 9096 | 1 | 1GB |
-| worker-3 | crawler-slim | 9097 | 1 | 1GB |
-| browser-1 | crawler-full | 9098 | 3 | 6GB |
-| exporter | crawler-slim | 9093 | — | — |
-| drain | crawler-slim | 9094 | — | — |
-| alloy | grafana/alloy | 12346 | 0.5 | 512MB (256MiB Go soft limit) |
-| redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
+Production processing uses `ordinary-go`, `lease-reaper`, `exporter` and `drain`,
+with Redis and Alloy. The `worker-1` service is a Go-only one-off maintenance
+carrier. Python/Chromium worker images are retired. Use the authoritative
+[`docker-compose.yml`](../../apps/crawler/docker-compose.yml) for resources and
+metrics ports and the [migration checkpoint](../27-go-lightpanda-continuation-plan.md)
+for installed release verification; do not infer the live topology from old
+container names.
 
 ### Querying Metrics
 
