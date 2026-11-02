@@ -137,7 +137,7 @@ func TestLastHTTPCanonicalRegistryAndPairedDetails(t *testing.T) {
 		})
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"infor": 1, "peoplesoft": 1, "papa_johns": 1, "unisante": 1}) {
-		t.Fatal("canonical four-provider coverage changed", counts)
+	if !reflect.DeepEqual(counts, map[string]int{"infor": 1, "peoplesoft": 2, "papa_johns": 1, "unisante": 1}) {
+		t.Fatal("canonical provider board coverage changed", counts)
 	}
 }
