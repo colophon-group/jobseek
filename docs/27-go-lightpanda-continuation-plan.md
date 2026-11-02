@@ -1,10 +1,12 @@
 # Go and Lightpanda migration continuation plan
 
-Current qualified checkpoint: **2026-11-02 13:15 UTC / 14:15 CET**.
+Current qualified checkpoint: **2026-11-02 13:48 UTC / 14:48 CET**.
 Production is the fully restored **0.13.1155** Go release. Python daemon source
 retirement is merged in [PR #11488](https://github.com/colophon-group/jobseek/pull/11488),
 but its 1156 deployment failed. Corrective [PR #11490](https://github.com/colophon-group/jobseek/pull/11490)
-is in exact-head CI and **is not installed**. Full migration remains active.
+is merged as `a32864661b902b5786139e1fdbb69716e53da3b4`; its supported
+[1157 rollout](https://github.com/colophon-group/jobseek/actions/runs/41455879195)
+was building at this checkpoint and **is not qualified installed**. Full migration remains active.
 Oracle ADF is a separate compatibility follow-up, not a global delivery gate.
 The [current qualification](evidence/go-native-installed-current.json) records
 installed identities, conservation, the incident/recovery and explicit limits.
@@ -103,25 +105,28 @@ bottleneck. Preserve the demo reserve and publisher limits.
 
 ## Dated controlled comparison and acceptance audit
 
-The [retirement-source comparison](https://github.com/colophon-group/jobseek/actions/runs/41435115068)
-is bound to **`87e6c9452a7dcd086c28101f7612e9e4fa2803c1`**, rather than the
-pending 1157 head. All **24 arms** have canonical parity and successful cleanup:
+The [corrective-source comparison](https://github.com/colophon-group/jobseek/pull/11490/checks)
+is bound to **`cc369d37d0cf850b81c3a97feecbfddc581740ac`**. Its tested tree
+equals merged source `a32864661b902b5786139e1fdbb69716e53da3b4`.
+All **24 arms** have canonical parity and successful cleanup:
 four physical AMD64/ARM64 generated/captured scenarios, six alternating arms
 per scenario, three per lane and nine actors per arm. Generated fixtures contain
 536 postings; captured fixtures 72. Values below are means, **native / legacy**:
 
 | Scenario | Elapsed seconds | CPU seconds | Sampled peak MiB |
 | --- | --- | --- | --- |
-| AMD64 generated | 19.820 / 35.752 | 14.853 / 27.350 | 450.00 / 917.16 |
-| AMD64 captured | 35.721 / 67.558 | 17.734 / 21.785 | 424.42 / 817.11 |
-| ARM64 generated | 19.445 / 32.054 | 9.822 / 18.531 | 462.99 / 926.76 |
-| ARM64 captured | 33.928 / 65.812 | 11.317 / 14.526 | 427.31 / 823.54 |
+| AMD64 generated | 19.230 / 33.777 | 12.403 / 23.139 | 455.17 / 935.36 |
+| AMD64 captured | 35.565 / 67.583 | 17.808 / 22.670 | 422.60 / 814.60 |
+| ARM64 generated | 19.489 / 30.132 | 9.988 / 18.796 | 465.76 / 921.64 |
+| ARM64 captured | 33.902 / 65.730 | 11.956 / 15.082 | 429.20 / 824.70 |
 
 The table uses reported measured CPU; the full CI report records startup/lifetime
 counters separately. Sampled peaks are lower bounds, modeled cost is not invoiced
 cost, and the equal-fixture TLS exception is not production
 TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero.
-Fixture budgets differ from production. New corrective-head CI is still pending.
+Fixture budgets differ from production. Exact-head Required CI, Crawler Deploy
+Gate and the real Docker maintenance proof passed; installed-state qualification
+remains pending. Measured, startup and lifetime CPU remain separate in the report.
 
 The complete original acceptance scope remains:
 
@@ -142,14 +147,16 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
 
 ## Next delivery steps
 
-1. **Complete corrective 1157.** PR #11490 head
-   `cc369d37d0cf850b81c3a97feecbfddc581740ac`, runtime contract
-   `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`,
-   is not installed. Finish exact-head Required CI and Crawler Deploy Gate,
-   including real Compose rendering and Docker create/inspect maintenance proof.
-   Re-read head/base/main/draft/reviews/holds immediately before a normal
-   head-bound merge. Use the supported full immutable rollout and independent
-   installed image/data, board identity and queue qualification.
+1. **Qualify the supported corrective 1157 rollout.** PR #11490 head
+   `cc369d37d0cf850b81c3a97feecbfddc581740ac` passed Required CI, Crawler Deploy
+   Gate, real Compose rendering/Docker create-inspect proof and all four
+   comparisons. The normal head-bound merge produced
+   `a32864661b902b5786139e1fdbb69716e53da3b4`, tree
+   `f071b5ab55d6b2700724f07a365536b395a095b4`, matching reviewed/tested source.
+   Runtime contract is `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`.
+   Full rollout **41455879195** is in progress; **1157 is not yet qualified
+   installed**. Finish that supported immutable workflow and independently
+   verify installed image/data, board identities, queue conservation and timing.
 
 2. **Verify the shortened writer pause.** Inspect with the authenticated previous
    Go image, required credentials and read-only data while workers serve.

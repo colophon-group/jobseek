@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "checkpoint_utc": "2026-11-02T13:15:21.308041+00:00",
+  "checkpoint_utc": "2026-11-02T13:48:00Z",
   "goal_status": "active",
   "migration_complete": false,
   "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
@@ -12,7 +12,7 @@
     "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
   },
   "remaining_delivery": [
-    "Qualify and deploy corrective1157 through exact-head required checks and normal full rollout; independently verify installed source/image/data, all enabled identities, queue conservation and maintenance timing.",
+    "Finish the supported full1157 rollout and independently verify installed source/image/data, all enabled identities, queue conservation and maintenance timing. Exact-head Required CI/Crawler Deploy Gate and mandatory Docker proof are green; normal head-bound merge is complete.",
     "Ship reviewed native manual-renderer acceptance source after the coordinated company sequence at the actual next VERSION; no public-render/restart/reboot execution is authorized.",
     "Reconcile the complete original acceptance audit against the final installed source and preserve dated scope limits."
   ],
@@ -214,10 +214,17 @@
     "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
     "version": "0.13.1157",
     "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
-    "merged": false,
+    "merged": true,
     "installed": false,
-    "state": "Exact-head required CI running at this checkpoint; no installed1157 claim.",
-    "source_change": "Authenticated previous-release inspection and rollback sync use standalone native maintenance instead of Compose one-offs. Helpers preserve the host root/env used by ERR/EXIT traps. Existing repair authority and post-quiescence ordering remain. Mandatory CI checks real Compose rendering and Docker create/inspect without starting the fixture containers."
+    "state": "Normal expected-head merge completed after Required CI/Crawler Deploy Gate and actual Docker proof succeeded. Supported full1157 rollout41455879195 was building at13:48UTC; production qualification remains pending.",
+    "source_change": "Authenticated previous-release inspection and rollback sync use standalone native maintenance instead of Compose one-offs. Helpers preserve the host root/env used by ERR/EXIT traps. Existing repair authority and post-quiescence ordering remain. Mandatory CI checks real Compose rendering and Docker create/inspect without starting the fixture containers.",
+    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "merged_tree": "f071b5ab55d6b2700724f07a365536b395a095b4",
+    "merged_tree_equals_reviewed_tested_tree": true,
+    "supported_rollout_run": 41455879195,
+    "required_CI": "success",
+    "crawler_deploy_gate": "success",
+    "mandatory_actual_Docker_proof": "success"
   },
   "supported_lightpanda_rollout": {
     "run_id": 41399782403,
@@ -291,21 +298,25 @@
     "scope": "Dated11:45 resource baseline for the released metadata-only Justup window. Allocation and reserved headroom unchanged; no later resource measurement, functional render or API activation claimed."
   },
   "controlled_comparisons": {
-    "source_revision": "87e6c9452a7dcd086c28101f7612e9e4fa2803c1",
-    "workflow_run": 41435115068,
-    "runtime_contract": "56ab8eef1927ecfe02814fbc122d12fe9133c9a5fbc8f1add23f34b65566a2ec",
+    "source_revision": "cc369d37d0cf850b81c3a97feecbfddc581740ac",
+    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "merged_tree_equals_reviewed_tested_tree": true,
+    "pull_request": 11490,
     "arms": 24,
     "canonical_parity": true,
     "all_cleanup": true,
     "scenarios": [
       {
         "scenario": "amd64_generated",
+        "job_id": 125295098724,
         "native": {
-          "mean_completion_seconds": 19.81962173399999,
-          "mean_CPU_seconds": 14.852524,
-          "mean_sampled_peak_MiB": 449.99609375,
-          "mean_retained_MiB": 434.3541666666667,
-          "mean_modeled_EUR_per1000": 2.43249081545194e-05,
+          "mean_completion_seconds": 19.23035959699996,
+          "mean_CPU_seconds": 12.403298333333332,
+          "mean_startup_CPU_seconds": 5.739525333333334,
+          "mean_lifetime_CPU_seconds": 18.145358,
+          "mean_modeled_EUR_per1000": 2.053239762338014e-05,
+          "mean_sampled_peak_MiB": 455.16796875,
+          "mean_retained_MiB": 439.7708333333333,
           "arm_exit_codes": [
             null,
             null,
@@ -313,11 +324,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 35.751858357999936,
-          "mean_CPU_seconds": 27.34963766666667,
-          "mean_sampled_peak_MiB": 917.1588541666666,
-          "mean_retained_MiB": 857.1145833333334,
-          "mean_modeled_EUR_per1000": 4.984171258150991e-05,
+          "mean_completion_seconds": 33.77726492700003,
+          "mean_CPU_seconds": 23.13916,
+          "mean_startup_CPU_seconds": 13.219694333333333,
+          "mean_lifetime_CPU_seconds": 36.361073,
+          "mean_modeled_EUR_per1000": 4.8111601946714845e-05,
+          "mean_sampled_peak_MiB": 935.3567708333334,
+          "mean_retained_MiB": 882.2083333333334,
           "arm_exit_codes": [
             null,
             null,
@@ -327,12 +340,15 @@
       },
       {
         "scenario": "amd64_captured",
+        "job_id": 125295098188,
         "native": {
-          "mean_completion_seconds": 35.72136098366673,
-          "mean_CPU_seconds": 17.733607333333335,
-          "mean_sampled_peak_MiB": 424.4244791666667,
-          "mean_retained_MiB": 415.1341145833333,
-          "mean_modeled_EUR_per1000": 0.00022885034524332054,
+          "mean_completion_seconds": 35.5653618743332,
+          "mean_CPU_seconds": 17.80751366666667,
+          "mean_startup_CPU_seconds": 7.0317289999999995,
+          "mean_lifetime_CPU_seconds": 24.840203,
+          "mean_modeled_EUR_per1000": 0.00022958900571471455,
+          "mean_sampled_peak_MiB": 422.6028645833333,
+          "mean_retained_MiB": 415.1171875,
           "arm_exit_codes": [
             null,
             null,
@@ -340,11 +356,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 67.55801216666661,
-          "mean_CPU_seconds": 21.785427666666664,
-          "mean_sampled_peak_MiB": 817.109375,
-          "mean_retained_MiB": 794.39453125,
-          "mean_modeled_EUR_per1000": 0.000505662401795215,
+          "mean_completion_seconds": 67.58294189866668,
+          "mean_CPU_seconds": 22.670395333333335,
+          "mean_startup_CPU_seconds": 15.018785999999999,
+          "mean_lifetime_CPU_seconds": 37.719805,
+          "mean_modeled_EUR_per1000": 0.0005094262229243287,
+          "mean_sampled_peak_MiB": 814.6015625,
+          "mean_retained_MiB": 798.37109375,
           "arm_exit_codes": [
             null,
             null,
@@ -354,12 +372,15 @@
       },
       {
         "scenario": "arm64_generated",
+        "job_id": 125295098805,
         "native": {
-          "mean_completion_seconds": 19.444797602666615,
-          "mean_CPU_seconds": 9.822291,
-          "mean_sampled_peak_MiB": 462.9895833333333,
-          "mean_retained_MiB": 445.6627604166667,
-          "mean_modeled_EUR_per1000": 1.9882365582247984e-05,
+          "mean_completion_seconds": 19.48876795833333,
+          "mean_CPU_seconds": 9.988144666666667,
+          "mean_startup_CPU_seconds": 4.823646666666667,
+          "mean_lifetime_CPU_seconds": 14.813539,
+          "mean_modeled_EUR_per1000": 1.9982338301751666e-05,
+          "mean_sampled_peak_MiB": 465.7604166666667,
+          "mean_retained_MiB": 454.12109375,
           "arm_exit_codes": [
             null,
             null,
@@ -367,11 +388,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 32.054234567000016,
-          "mean_CPU_seconds": 18.531141333333334,
-          "mean_sampled_peak_MiB": 926.7565104166666,
-          "mean_retained_MiB": 865.0755208333334,
-          "mean_modeled_EUR_per1000": 4.630439582743483e-05,
+          "mean_completion_seconds": 30.131744552666685,
+          "mean_CPU_seconds": 18.796254666666666,
+          "mean_startup_CPU_seconds": 9.614050666666667,
+          "mean_lifetime_CPU_seconds": 28.413675,
+          "mean_modeled_EUR_per1000": 4.5037496272953494e-05,
+          "mean_sampled_peak_MiB": 921.640625,
+          "mean_retained_MiB": 870.8763020833334,
           "arm_exit_codes": [
             null,
             null,
@@ -381,12 +404,15 @@
       },
       {
         "scenario": "arm64_captured",
+        "job_id": 125295098782,
         "native": {
-          "mean_completion_seconds": 33.92770187533347,
-          "mean_CPU_seconds": 11.317211333333333,
-          "mean_sampled_peak_MiB": 427.3125,
-          "mean_retained_MiB": 421.5807291666667,
-          "mean_modeled_EUR_per1000": 0.0001884960474559215,
+          "mean_completion_seconds": 33.90199535733333,
+          "mean_CPU_seconds": 11.955743,
+          "mean_startup_CPU_seconds": 5.038749666666667,
+          "mean_lifetime_CPU_seconds": 16.994587666666664,
+          "mean_modeled_EUR_per1000": 0.00019262919250731566,
+          "mean_sampled_peak_MiB": 429.1953125,
+          "mean_retained_MiB": 420.5729166666667,
           "arm_exit_codes": [
             null,
             null,
@@ -394,11 +420,13 @@
           ]
         },
         "legacy": {
-          "mean_completion_seconds": 65.81220550166661,
-          "mean_CPU_seconds": 14.52584,
-          "mean_sampled_peak_MiB": 823.53515625,
-          "mean_retained_MiB": 800.8802083333334,
-          "mean_modeled_EUR_per1000": 0.00047555472823269614,
+          "mean_completion_seconds": 65.72983244499999,
+          "mean_CPU_seconds": 15.082226333333333,
+          "mean_startup_CPU_seconds": 9.813488666666668,
+          "mean_lifetime_CPU_seconds": 24.902079,
+          "mean_modeled_EUR_per1000": 0.0004757900261384467,
+          "mean_sampled_peak_MiB": 824.69921875,
+          "mean_retained_MiB": 804.47265625,
           "arm_exit_codes": [
             null,
             null,
@@ -407,7 +435,7 @@
         }
       }
     ],
-    "limits": "Dated retirement-source control at87e6, not corrective1157 qualification. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. Table CPU uses the reported measured cpu_seconds field; startup/lifetime counters are recorded separately in the full CI report."
+    "limits": "Exact corrective-head controlled source qualification; merged tree equals reviewed/tested tree. Physical AMD64/ARM64, generated536/captured72 postings, six alternating arms per scenario and nine actors per arm. Measured CPU, startup and lifetime counters are separate. Modelled role-weighted cost is not invoiced cost; sampled peaks are lower bounds; fixture TLS exception is not production TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero. Fixture budgets differ from the scaled production worker. These controls do not establish installed1157 or natural production freshness/demand completion."
   },
   "maintenance_window": {
     "change": "Move authenticated previous-Go-image inspection before writer quiescence. Repair remains after sync/epoch and opens a fresh authority snapshot with per-page checks and per-schedule CAS.",
@@ -461,8 +489,8 @@
     {
       "milestone": 7,
       "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
-      "status": "dated_controls_and_cold_reversal_qualified; final_corrective_release_and_manual_consumer_pending",
-      "limits": "All24 retirement comparison arms have parity and cleanup. The1137 cold Go-to-Go reversal is dated evidence, not a fresh1157 exercise. Recovery of1155 is separately reported. No demand-cleared or universal freshness assertion."
+      "status": "corrective_head_controls_and_dated_cold_reversal_qualified; installed_corrective_release_and_manual_consumer_pending",
+      "limits": "All24 corrective comparison arms have parity and cleanup. The1137 cold Go-to-Go reversal is dated evidence, not a fresh1157 exercise. Recovery of1155 is separately reported. No demand-cleared or universal freshness assertion."
     }
   ],
   "ADF_current_controls": {
