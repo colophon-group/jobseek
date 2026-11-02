@@ -734,7 +734,8 @@ exit 0
         timeout=20,
         check=False,
     )
-    assert exact.returncode == 0, exact.stderr
+    trace_at_failure = trace.read_text(encoding="utf-8") if trace.exists() else "no docker trace"
+    assert exact.returncode == 0, f"{exact.stderr}\n{trace_at_failure}"
     assert f"--set={label}" in trace.read_text(encoding="utf-8")
     assert "--name jobseek-postgresql-restore-load-" in trace.read_text(encoding="utf-8")
     assert "restore and relation integrity drill passed" in exact.stdout
