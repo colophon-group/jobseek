@@ -28,6 +28,9 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	if proto.Unmarshal(request.Input, input) != nil {
 		return response, actions.ErrActions
 	}
+	if request.WarmupURL != "" && (input.Plan == nil || !actions.SameOriginWarmup(input.Plan.TargetUrl, request.WarmupURL)) {
+		return response, actions.ErrActions
+	}
 	// Reuse the same strict navigation adapter and cleanup sanitizer. Actions are
 	// attached only after navigation input validation, and never to B1 evaluation.
 	var identities []string
@@ -35,7 +38,7 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	if request.LargeDocument {
 		constructor = lightpandaadapter.NewLargeDocumentSessionRenderOnly
 	}
-	adapter, err := constructor(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities, largeDocument: request.LargeDocument}, request.Actions, request.InlineCards, len(execution.dayforceConfig.proxyEndpoints) > 0)
+	adapter, err := constructor(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...), inlineCards: request.InlineCards, inlineIdentities: &identities, largeDocument: request.LargeDocument, documentWarmupURL: request.WarmupURL}, request.Actions, request.InlineCards, len(execution.dayforceConfig.proxyEndpoints) > 0)
 	if err != nil {
 		return response, err
 	}
@@ -59,6 +62,9 @@ func (service *runtimeV1Service) handleDocumentActions(parent context.Context, c
 		return
 	}
 	budget := 260*time.Second + actions.Budget(request.Actions) + inlineCardBudget(request.InlineCards)
+	if request.WarmupURL != "" {
+		budget += 30 * time.Second
+	}
 	_ = conn.SetDeadline(time.Now().Add(budget + 15*time.Second))
 	ctx, cancel := context.WithTimeout(parent, budget)
 	done := make(chan runtimeV1PostMarkerRead, 1)
