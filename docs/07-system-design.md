@@ -346,32 +346,15 @@ src/core/scrape.py               # scrape_one() dispatcher
 
 ## Crawler: Worker Pipeline
 
-Workers run a fixed internal pipeline claiming from Redis queues.
+The native `go/ordinary-worker/` process owns monitor/detail work through Go
+HTTP/API and self-hosted Lightpanda. `go/ordinary-queue/` preserves claims,
+leases, publisher policy, canonical writes and rescheduling. The independent
+Go lease reaper recovers expired attempts. Python worker/browser daemons are
+retired; `crawler run` and `crawler run-browser` both exec the combined native
+worker and require its protected runtime configuration.
 
-```
-src/workers/pipeline.py     # Discovery coroutines, claim from Redis, dispatch
-```
-
-### HTTP Worker (`crawler run`)
-
-Claims from `ready:simple:*` queues. Processes both monitors and scrapes. 3 replicas on the current Hetzner deployment, each allocated 1 CPU and 1GB memory.
-
-### Browser Worker (`crawler run-browser`)
-
-Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium available. 1 replica with 3 CPUs and 6GB memory. Each discovery coroutine reuses one Playwright driver between claims and recycles it after six hours to bound long-lived driver and renderer memory growth.
-
-### Processing Flow
-
-All monitors use the streaming path (`_process_one_board_streaming` in `processing/board.py`):
-
-1. Monitor discovers jobs (yields batches for large datasets)
-2. Diff against local Postgres in a single SQL query (new/touched/relisted,
-   including canonical recovery from foreign-board liveness evidence, then
-   gone)
-3. Rich data: insert full `job_posting` rows directly
-4. URL-only: insert URL stubs, enqueue scrapes to Redis
-5. Upload descriptions to `descriptions` table (R2 drain picks them up)
-6. Record success/failure, reschedule board in Redis
+Use [the current checkpoint](27-go-lightpanda-continuation-plan.md) for installed
+identities and the authoritative Compose file for resource limits.
 
 ---
 
@@ -380,8 +363,8 @@ All monitors use the streaming path (`_process_one_board_streaming` in `processi
 Job descriptions are stored on Cloudflare R2 (S3-compatible). Only `latest.html` per locale -- no version history.
 
 ```
-src/core/description_store.py    # R2 put/get
-src/workers/r2_drain.py          # Producer-consumer drain pipeline
+go/r2-drain/                    # Native production description drain
+src/core/description_store.py   # Offline/control R2 helpers
 ```
 
 ### R2 Layout
@@ -409,7 +392,8 @@ The `descriptions` table in local Postgres serves as the upload queue:
 ## Crawler: Exporter CDC
 
 ```
-src/exporter.py    # CDC: local Postgres -> Typesense
+go/typesense-exporter/          # Native CDC: local Postgres -> Typesense
+src/typesense_projection.py     # Offline projection/parity helpers
 ```
 
 The exporter queries local Postgres with a commit-safe `(updated_at, id)`

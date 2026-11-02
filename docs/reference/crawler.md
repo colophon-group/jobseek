@@ -8,17 +8,14 @@ Commands below assume `apps/crawler` as the working directory.
 Redis-orchestrated workers writing to local Postgres, with CDC export to
 Typesense:
 
-1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
-2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; the
-   production CLI advances only the `typesense:job_posting` cursor
-4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
-5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
-   Postgres first, then updates Redis and Typesense
+1. **Native worker** (`go/ordinary-worker/`) — HTTP/API and Lightpanda execution.
+2. **Queue authority** (`go/ordinary-queue/`) — claims, leases, canonical persistence and scheduling.
+3. **Exporter** (`go/typesense-exporter/`) — local PostgreSQL CDC to Typesense.
+4. **R2 drain** (`go/r2-drain/`) — description upload with durable claims and retry.
+5. **Offline tools** (`src/core/`, workspace and labeller) — Python extraction, parity and control.
 
-See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
-See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
-See [source coverage](source-coverage.md) for the private weekly Hiring Wire evidence export.
+See the [current migration checkpoint](../27-go-lightpanda-continuation-plan.md)
+for installed identities and verification scope.
 
 ## Key Files
 
