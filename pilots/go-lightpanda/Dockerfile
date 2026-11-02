@@ -1,4 +1,4 @@
-ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:9a5f29a6d0d36e6d166a736e2f83e96f923fbc68e7569a9cc80270785039ef50
+ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:d4efe798fc74fecad51543ebfc6384fce91f5c2aa930d9a63c76950fd920c899
 ARG GO_IMAGE=docker.io/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56
 FROM ${GO_IMAGE} AS go-source
 
@@ -48,7 +48,7 @@ FROM docker.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
 
 FROM docker.io/library/debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
-LABEL org.jobseek.lightpanda.release="1.1.0-nightly.11471+cebb8d51e"
+LABEL org.jobseek.lightpanda.release="1.1.0-nightly.11500+721618eeb"
 COPY lightpanda-release.json /usr/local/share/jobseek/lightpanda-release.json
 # Copy only the binary. The upstream image's entrypoint, user, libraries and
 # network configuration never become the Jobseek runtime.
@@ -56,8 +56,8 @@ COPY --from=lightpanda-source /usr/bin/lightpanda /usr/local/bin/lightpanda
 
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-        amd64) lightpanda_sha=49c84433d35ae81a94daebf696d48c2c3095f9d78d6f953c383e390eb6e5c76f ;; \
-        arm64) lightpanda_sha=dfbb4a2d32867db31e6ab3ee74545e7cd5daeb847b94e0ae29a70b4732e960d4 ;; \
+        amd64) lightpanda_sha=e7621a1643b573c51940aa82613623004107b330ea0c91a782fe591e99456178 ;; \
+        arm64) lightpanda_sha=4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && echo "${lightpanda_sha}  /usr/local/bin/lightpanda" \
