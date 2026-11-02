@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "checkpoint_utc": "2026-11-02T13:48:00Z",
+  "checkpoint_utc": "2026-11-02T17:11:46Z",
   "goal_status": "active",
   "migration_complete": false,
   "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
@@ -12,22 +12,22 @@
     "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
   },
   "remaining_delivery": [
-    "Finish the supported full1157 rollout and independently verify installed source/image/data, all enabled identities, queue conservation and maintenance timing. Exact-head Required CI/Crawler Deploy Gate and mandatory Docker proof are green; normal head-bound merge is complete.",
+    "Independently qualify the in-progress company successor1158 before advancing the installed checkpoint beyond1157; preserve enabled board identities, queues and publisher policy.",
     "Ship reviewed native manual-renderer acceptance source after the coordinated company sequence at the actual next VERSION; no public-render/restart/reboot execution is authorized.",
     "Reconcile the complete original acceptance audit against the final installed source and preserve dated scope limits."
   ],
   "supported_crawler_rollout": {
-    "run_id": 41424740467,
+    "run_id": 41455879195,
     "attempt": 1,
-    "completed_at_utc": "2026-11-02T10:14:08Z",
-    "source_revision": "2a200c349ffdf0df3899e1ac38dea83e32031bbe",
+    "completed_at_utc": "2026-11-02T14:01:12Z",
+    "source_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
     "conclusion": "success",
-    "subsequent_recovery_required": true
+    "subsequent_recovery_required": false
   },
   "installed_crawler": {
-    "observed_at_utc": "2026-11-02T12:43:35.729435+00:00",
-    "candidate_pr": 11486,
-    "data_publication_pr": 11178,
+    "observed_at_utc": "2026-11-02T14:06:06.486577+00:00",
+    "candidate_pr": 11490,
+    "previous_data_only_pr": 11178,
     "original_adf_schedule_preserved": {
       "enabled": true,
       "status": "quarantined",
@@ -39,7 +39,7 @@
     },
     "active_marker": {
       "active_pointer_present": true,
-      "generation_name_sha256": "fd2e346d5277376636d2635873c044098db5c93b31074e1ecf329e03247b7397",
+      "generation_name_sha256": "cd2aea0e70fff42d62da8775c6e8ceecb7d916e89815b68d6e900e3aa7f156f1",
       "manifest_format_fields": {
         "RELEASE_FORMAT_VERSION": "3"
       },
@@ -48,15 +48,15 @@
       "complete_csv_tree_hashes_match": true,
       "data_csv_files": 8
     },
-    "runtime_source": "2a200c349ffdf0df3899e1ac38dea83e32031bbe",
-    "runtime_contract": "ace0d2d14d2f72a1a8edea8fe5dddea1ac266aec804117f8b0a95cf26fdf1a7a",
-    "image_digest": "sha256:c7e76a2d4abfeb8c8ab5962d566e2669b73e9dfe33fe497ad02299850fee2b3a",
-    "image_version": "0.13.1155",
-    "data_revision": "909e86b156af479a0e93c5775a002811444b0c27",
+    "runtime_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
+    "image_digest": "sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924",
+    "image_version": "0.13.1157",
+    "data_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
     "data_contract": "f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b",
     "native_actors": {
       "ordinary-go": {
-        "started_at_utc": "2026-11-02T12:42:44.753735538Z",
+        "started_at_utc": "2026-11-02T13:59:59.488265603Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -65,7 +65,7 @@
         "authorized_scaled_budgets_match": true
       },
       "lease-reaper": {
-        "started_at_utc": "2026-11-02T12:42:44.756809746Z",
+        "started_at_utc": "2026-11-02T13:59:59.487166064Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -73,7 +73,7 @@
         "native_command": true
       },
       "exporter": {
-        "started_at_utc": "2026-11-02T12:42:44.755440071Z",
+        "started_at_utc": "2026-11-02T13:59:59.485811411Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -81,7 +81,7 @@
         "native_command": true
       },
       "drain": {
-        "started_at_utc": "2026-11-02T12:42:44.752375688Z",
+        "started_at_utc": "2026-11-02T13:59:59.482985318Z",
         "restarts": 0,
         "running": true,
         "oom": false,
@@ -94,25 +94,25 @@
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T12:42:44.753735538Z"
+        "started_at_utc": "2026-11-02T13:59:59.488265603Z"
       },
       "lease-reaper": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T12:42:44.756809746Z"
+        "started_at_utc": "2026-11-02T13:59:59.487166064Z"
       },
       "exporter": {
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T12:42:44.755440071Z"
+        "started_at_utc": "2026-11-02T13:59:59.485811411Z"
       },
       "drain": {
         "running": true,
         "oom": false,
         "docker_health": "healthy",
-        "started_at_utc": "2026-11-02T12:42:44.752375688Z"
+        "started_at_utc": "2026-11-02T13:59:59.482985318Z"
       },
       "redis": {
         "running": true,
@@ -124,7 +124,7 @@
         "running": true,
         "oom": false,
         "docker_health": "not_configured",
-        "started_at_utc": "2026-11-02T10:12:43.872209936Z"
+        "started_at_utc": "2026-11-02T14:00:02.534425967Z"
       }
     },
     "legacy_running": 0,
@@ -138,26 +138,26 @@
       "schema": "0042",
       "active_migration_plans": 0
     },
-    "scope": "Protected read-only ADR006 post-capacity-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
+    "scope": "Protected read-only ADR006 post-retirement1157-rollout attestation: actual active pointer, env/success/manifest, immutable image/VERSION, running/healthy core services and selected canonical counts. No writes, restarts, sync, repair, hold changes or forced work."
   },
   "monitor_conservation": {
     "multiple_representations": 0,
     "other_lane_representations": 0,
     "missing": 0,
     "inflight_token_missing": 0,
-    "inflight_token_present": 27,
+    "inflight_token_present": 30,
     "represented": 8288,
     "expired_inflight_only": 0,
     "missing_cache": 0,
-    "valid_inflight": 27,
+    "valid_inflight": 30,
     "canonical_eligible": 8288,
     "canonical_enabled": 8288,
     "deadletter_only": 0,
     "cache_lane_mismatch": 0,
-    "queued": 8261,
+    "queued": 8258,
     "cache_domain_mismatch": 0
   },
-  "monitor_observed_at_utc": "2026-11-02T12:44:13.453921+00:00",
+  "monitor_observed_at_utc": "2026-11-02T14:02:17.949894+00:00",
   "board_key_sha256": "cf779b72dfdc13892912baef1103914bb7aac59be2255c587dd8e50921abaa52",
   "monitor_ids_sha256": "14f8ff623ca996855464a4844f445ab0eef1229350d3c35a693d4810964275c3",
   "pre_retirement_full_monitor_identity": {
@@ -178,8 +178,10 @@
     "merged_source": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
     "version": "0.13.1156",
     "source_deletions_merged": true,
-    "installed_qualified": false,
-    "scope": "Eleven superseded Python daemon modules and Python runtime image targets removed. Useful offline projection/workspace tooling remains. Runtime CLI aliases exec Go, and historical Python comparison source is separately frozen rather than retained as a current daemon implementation."
+    "installed_qualified": true,
+    "scope": "Eleven superseded Python daemon modules and Python runtime image targets removed. Useful offline projection/workspace tooling remains. Runtime CLI aliases exec Go, and historical Python comparison source is separately frozen rather than retained as a current daemon implementation.",
+    "qualified_version": "0.13.1157",
+    "qualified_source": "a32864661b902b5786139e1fdbb69716e53da3b4"
   },
   "failed_1156_rollout": {
     "run_id": 41440630577,
@@ -207,24 +209,6 @@
     "v1_refused_before_runtime_mutation": true,
     "active_session": false,
     "scope": "Finite independently reviewed full-release restore under the documented maintenance lock, provenance and budget, followed by independent installed and atomic queue qualification."
-  },
-  "pending_corrective_release": {
-    "pr": 11490,
-    "head": "cc369d37d0cf850b81c3a97feecbfddc581740ac",
-    "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
-    "version": "0.13.1157",
-    "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
-    "merged": true,
-    "installed": false,
-    "state": "Normal expected-head merge completed after Required CI/Crawler Deploy Gate and actual Docker proof succeeded. Supported full1157 rollout41455879195 was building at13:48UTC; production qualification remains pending.",
-    "source_change": "Authenticated previous-release inspection and rollback sync use standalone native maintenance instead of Compose one-offs. Helpers preserve the host root/env used by ERR/EXIT traps. Existing repair authority and post-quiescence ordering remain. Mandatory CI checks real Compose rendering and Docker create/inspect without starting the fixture containers.",
-    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
-    "merged_tree": "f071b5ab55d6b2700724f07a365536b395a095b4",
-    "merged_tree_equals_reviewed_tested_tree": true,
-    "supported_rollout_run": 41455879195,
-    "required_CI": "success",
-    "crawler_deploy_gate": "success",
-    "mandatory_actual_Docker_proof": "success"
   },
   "supported_lightpanda_rollout": {
     "run_id": 41399782403,
@@ -442,8 +426,21 @@
     "previous_1155_stop_completion_to_worker_start_seconds": 203.9650274,
     "baseline_run": 41424740467,
     "baseline_excludes": "Earlier graceful drain and final readiness/promotion.",
-    "corrective1157_elapsed_saving_qualified": false,
-    "recovery_seconds_are_not_maintenance_savings": true
+    "corrective1157_elapsed_saving_qualified": true,
+    "recovery_seconds_are_not_maintenance_savings": true,
+    "corrective1157": {
+      "source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+      "run": 41455879195,
+      "deploy_job": 125315226894,
+      "four_writer_stop_output_at_utc": "2026-11-02T13:57:38.5081895Z",
+      "ordinary_worker_started_at_utc": "2026-11-02T13:59:59.7732643Z",
+      "post_stop_to_worker_start_seconds": 141.265075,
+      "prior1155_same_marker_seconds": 203.9650274,
+      "difference_seconds": 62.6999524,
+      "schedule_reports": [],
+      "limits": "Same observable post-stop to worker-start markers only; excludes preceding graceful drain and final readiness/promotion. One rollout comparison, not guaranteed future SLA. No opaque IDs or raw joblogs retained."
+    },
+    "scope": "Same observable post-stop-to-worker-start markers:141.265075s versus203.9650274s,62.6999524s shorter. Excludes preceding graceful drain and final readiness/promotion; one rollout comparison, not whole maintenance pause or future SLA."
   },
   "acceptance_audit": [
     {
@@ -483,14 +480,14 @@
     {
       "milestone": 6,
       "requirement": "Retire superseded Python runtime implementations and assets",
-      "status": "processing_image_native; source_deletions_merged; corrected_release_pending",
-      "limits": "Useful offline/control Python remains permitted. The current processing image lacks Python/uv/Playwright/Chromium, but final retirement-source deployment is not yet qualified."
+      "status": "processing_image_native; source_deletions_installed_in1157",
+      "limits": "Eleven superseded Python daemon modules and Python runtime image targets are removed in qualified1157. Useful offline/control Python remains permitted. No Python/uv/Playwright/Chromium runtime commands are present. Separate manual renderer acceptance consumer remains source-only."
     },
     {
       "milestone": 7,
       "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
-      "status": "corrective_head_controls_and_dated_cold_reversal_qualified; installed_corrective_release_and_manual_consumer_pending",
-      "limits": "All24 corrective comparison arms have parity and cleanup. The1137 cold Go-to-Go reversal is dated evidence, not a fresh1157 exercise. Recovery of1155 is separately reported. No demand-cleared or universal freshness assertion."
+      "status": "corrective_release_installed; controlled_efficiency_and_dated_cold_reversal_qualified; manual_consumer_pending",
+      "limits": "All24 corrective comparison arms have parity and cleanup.1157 installed source/image/data, all8288 identities and atomic queue conservation are qualified. Native PG SELECT1/Typesense health passed. Post-stop-to-start is62.7s shorter for one rollout, excluding drain/readiness. The1137 cold Go-to-Go reversal remains dated, not a fresh1157 exercise. No demand-cleared or universal freshness assertion."
     }
   ],
   "ADF_current_controls": {
@@ -523,7 +520,7 @@
     "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
     "state": "Source prepared and independently reviewed; no VERSION, PR, rollout or host acceptance execution yet.",
     "source_only": true,
-    "sequence": "After coordinated company successors, at the actual next main VERSION. Do not delay corrective1157 or company work for it.",
+    "sequence": "After coordinated company successors, at the actual next main VERSION. Do not delay company work for it.",
     "no_public_render_restart_reboot_execution_authorized": true
   },
   "previous_qualified_cases": {
@@ -541,10 +538,54 @@
   "capacity_limits": "Worker4CPU/2GiB, GOMEMLIMIT1GiB,120 runners/30 monitor cap; renderer1CPU/1GiB/four shared slots. More scaling is unqualified: SQL/Redis admission, per-origin policy and lookup serialization can dominate. Measure eligible successful unique detail throughput with all downstream pressures before allocating more.",
   "limits": [
     "Current monitor identity and schedule conservation do not prove posting freshness or backlog completion. Expensive detail-demand SQL was deliberately omitted.",
-    "No new causal production speedup, invoiced-cost saving or four-host natural-traffic window is claimed.",
+    "No new causal natural-traffic throughput speedup, invoiced-cost saving or four-host natural-traffic window is claimed. The measured maintenance marker reduction is separately bounded.",
     "The official13:00 release check verifies latest available Lightpanda binary identity; the separate installed/runtime/resource observations remain dated.",
     "Justup reservations remain0.5CPU/1GiB plus its already allocated2GiB filesystem and8GiB root-free floor. No new API/stage window, functional-render proof, quota increase or activation follows.",
     "Use normal exact-head Required CI/Crawler Deploy Gate, immutable full-release workflows, mutation locks, full writer quiescence and complete rollback. No rsync, mutable deployment, partial writer restart or hold bypass.",
     "Remove owned closed temporary assets and caches. Preserve shared dependencies, active regression inputs, supported rollback assets, other contributors changes and original dump.rdb."
-  ]
+  ],
+  "qualified_corrective_release": {
+    "pr": 11490,
+    "head": "cc369d37d0cf850b81c3a97feecbfddc581740ac",
+    "base": "0cacb5d74341c2f93ed478c5cc6f99f9e8743827",
+    "version": "0.13.1157",
+    "runtime_contract": "cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee",
+    "merged": true,
+    "installed": true,
+    "state": "Supported full1157 rollout succeeded at14:01:12UTC. Independent installed14:06 and atomic queue14:02 receipts qualify the immutable source/image/data, four native actors, all8288 monitor identities and conservation. Source/image-bound native private path verification passed at14:38UTC.",
+    "source_change": "Authenticated previous-release inspection and rollback sync use standalone native maintenance instead of Compose one-offs. Helpers preserve the host root/env used by ERR/EXIT traps. Existing repair authority and post-quiescence ordering remain. Mandatory CI checks real Compose rendering and Docker create/inspect without starting the fixture containers.",
+    "merged_source": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "merged_tree": "f071b5ab55d6b2700724f07a365536b395a095b4",
+    "merged_tree_equals_reviewed_tested_tree": true,
+    "supported_rollout_run": 41455879195,
+    "required_CI": "success",
+    "crawler_deploy_gate": "success",
+    "mandatory_actual_Docker_proof": "success"
+  },
+  "pending_successor_release": {
+    "version": "0.13.1158",
+    "merged_source": "42140b870f459e5aada974025757c190e162c6ee",
+    "supported_rollout_run": 41487771596,
+    "state": "In progress at the operator update used for this checkpoint. Not installed-qualified;1157 remains the latest independently qualified snapshot."
+  },
+  "native_private_paths": {
+    "status": "pass",
+    "duration_seconds": 0.717,
+    "scope": "PG SELECT1 and Typesense GET/health only, exact source/image bound under maintenance lock; no role, Redis, Timescale, ingress installer, Justup or provider qualification",
+    "observed_at_utc": "2026-11-02T14:38:00Z",
+    "observed_time_precision": "minute",
+    "source_revision": "a32864661b902b5786139e1fdbb69716e53da3b4",
+    "image_digest": "sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924",
+    "verifier_returncode": 0,
+    "source_image_and_exporter_readiness_unchanged_under_maintenance_lock": true,
+    "exporter_readiness": "not_configured"
+  },
+  "qualification_receipts_sha256": {
+    "native1157-installed-current.json": "f8ac58173b79285bda655956815d896b84d623ea789a6307c5f70ab61717ded6",
+    "native1157-queue-current.json": "960a2f7d7df77a64d314d55934fd5106b57ece6887755ab6e6c0104da482cbce",
+    "native1157-crawler-current.json": "ba1f41dbca2fd0d6d258bb2b8577381e7f17ad01d6726677dbdf1b36b8e72ba5",
+    "native1157-private-paths-v2-current.jsonl": "8543874c69d5266a6eb9a3ad17a2b045954501484240fce380a825524a1c8493",
+    "native1157-maintenance-timing-current.json": "65715d36f23039ddfbfd1986f6c09b4cc1187588b48bb5a412a0e0fb49998bab",
+    "native1157-comparison-current.json": "fbaa96e025aebe6ce599b31dd6ed88132a1a8a73891734c284dc13d8c2cf9f95"
+  }
 }

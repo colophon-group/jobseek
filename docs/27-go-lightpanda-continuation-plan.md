@@ -1,15 +1,18 @@
 # Go and Lightpanda migration continuation plan
 
-Current qualified checkpoint: **2026-11-02 13:48 UTC / 14:48 CET**.
-Production is the fully restored **0.13.1155** Go release. Python daemon source
-retirement is merged in [PR #11488](https://github.com/colophon-group/jobseek/pull/11488),
-but its 1156 deployment failed. Corrective [PR #11490](https://github.com/colophon-group/jobseek/pull/11490)
-is merged as `a32864661b902b5786139e1fdbb69716e53da3b4`; its supported
+Current checkpoint: **2026-11-02 17:11 UTC / 18:11 CET**.
+The latest independently qualified production snapshot is **0.13.1157**:
+corrective [PR #11490](https://github.com/colophon-group/jobseek/pull/11490)
+is installed, including the Python daemon source retirement merged in
+[PR #11488](https://github.com/colophon-group/jobseek/pull/11488). The supported
 [1157 rollout](https://github.com/colophon-group/jobseek/actions/runs/41455879195)
-was building at this checkpoint and **is not qualified installed**. Full migration remains active.
-Oracle ADF is a separate compatibility follow-up, not a global delivery gate.
-The [current qualification](evidence/go-native-installed-current.json) records
-installed identities, conservation, the incident/recovery and explicit limits.
+succeeded at **14:01:12 UTC**. Company successor **1158**, merged as
+`42140b870f459e5aada974025757c190e162c6ee`, has an
+[in-progress supported rollout](https://github.com/colophon-group/jobseek/actions/runs/41487771596)
+at the operator update used here; it is **not installed-qualified** in this checkpoint.
+Full migration remains active. Oracle ADF is a separate compatibility follow-up,
+not a global delivery gate. The [current qualification](evidence/go-native-installed-current.json)
+records installed identities, conservation, the incident/recovery and explicit limits.
 
 ## Objective and language boundary
 
@@ -27,20 +30,18 @@ Rollback uses the previous verified immutable Go release. Delete superseded
 Python runtime implementations and images; preserve every enabled board,
 publisher policy, fences/leases, canonical output and the demo reserve.
 
-## Qualified installed state and recovered release
+## Qualified installed state
 
-The [normal 1155 rollout](https://github.com/colophon-group/jobseek/actions/runs/41424740467)
-succeeded at **10:14:08 UTC**. After the failed retirement rollout, a separately
-reviewed full-release recovery restored this same runtime. Independent
-**12:43:35 UTC** readback verifies:
+The supported 1157 rollout succeeded after the corrective source passed normal
+exact-head CI and merge. Independent **14:06:06 UTC** readback verifies:
 
 | Installed crawler identity | Value |
 | --- | --- |
-| Version | `0.13.1155` |
-| Runtime source | `2a200c349ffdf0df3899e1ac38dea83e32031bbe` |
-| Runtime contract | `ace0d2d14d2f72a1a8edea8fe5dddea1ac266aec804117f8b0a95cf26fdf1a7a` |
-| Immutable image | `sha256:c7e76a2d4abfeb8c8ab5962d566e2669b73e9dfe33fe497ad02299850fee2b3a` |
-| Data source | `909e86b156af479a0e93c5775a002811444b0c27` |
+| Version | `0.13.1157` |
+| Runtime source | `a32864661b902b5786139e1fdbb69716e53da3b4` |
+| Runtime contract | `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee` |
+| Immutable image | `sha256:e589e4fd508de8604af19acb5f9af389d1e2f059ece3f6c8993bd1b901a05924` |
+| Data source | `a32864661b902b5786139e1fdbb69716e53da3b4` |
 | Data contract | `f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b` |
 
 All four native actors and six core services run, with healthy checks where
@@ -49,11 +50,14 @@ the documented `COMPOSE_FILE`, success/manifest and all eight CSV hashes match.
 No legacy processor runs; the image exposes no Python, uv, Playwright or
 Chromium command. Epoch **404**, schema **0042** and zero active migration plans remain.
 
-Independent **12:44:13 UTC** atomic observation finds all **8,288** enabled
-monitors represented: **8,261 queued + 27 valid leases**, with zero unexplained
+Independent **14:02:17 UTC** atomic observation finds all **8,288** enabled
+monitors represented: **8,258 queued + 30 valid leases**, with zero unexplained
 gaps, duplicates, wrong lanes, cache/domain mismatches or lease-token-presence
 gaps. Every pre-retirement key and UUID matches the full 8,288-board baseline.
-Token checks use `HEXISTS`, never token values. These are dated monitor/schedule
+Token checks use `HEXISTS`, never token values. A separately locked, source/image-bound
+native private-path verification passed at **14:38 UTC** in **0.717 seconds**:
+PostgreSQL `SELECT 1` and Typesense `GET /health` only. It grants no provider,
+Justup, Redis/Timescale, role or ingress-installation qualification. These are dated monitor/schedule
 facts, not universal posting-freshness or backlog-completion results.
 
 [Incident #11489](https://github.com/colophon-group/jobseek/issues/11489)
@@ -67,8 +71,10 @@ The protected, independently reviewed `restore-native-1155-v2` operation restore
 the complete previous Go release in **23.244 seconds**, with no forced termination
 or restoration failures. Independent installed and queue checks followed. No
 migration, sync, epoch or direct schedule write ran. The first recovery packet
-refused before runtime mutation. The recovery is complete; company publication
-and Justup stages await the corrective release's qualification.
+refused before runtime mutation. The recovery and subsequent corrective 1157
+installation are qualified. The closed incident drivers remain in reviewed Git history rather than current source.
+The 23.244-second recovery is separate from normal deployment timing; no new
+Justup stage or API authority follows from the corrective release.
 
 ## Latest Lightpanda and capacity
 
@@ -125,8 +131,8 @@ counters separately. Sampled peaks are lower bounds, modeled cost is not invoice
 cost, and the equal-fixture TLS exception is not production
 TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero.
 Fixture budgets differ from production. Exact-head Required CI, Crawler Deploy
-Gate and the real Docker maintenance proof passed; installed-state qualification
-remains pending. Measured, startup and lifetime CPU remain separate in the report.
+Gate and the real Docker maintenance proof passed; independent installed-state
+qualification followed. Measured, startup and lifetime CPU remain separate in the report.
 
 The complete original acceptance scope remains:
 
@@ -137,8 +143,8 @@ The complete original acceptance scope remains:
 | Lightpanda executor and ownership | Native image/claims/fences/failure/schedule/crash contracts and latest binary installed; earlier interruption causes remain unproven. |
 | Ordinary processing/export/drain | Four native actors installed; canonical/search/R2 output evidence remains sampled and dated. Old backlog and one inactive-description metadata discrepancy remain explicit. |
 | Enabled profiles and original title case | All current 8,288 monitor identities preserved. Prior named/title/provider witnesses remain dated; ADF stays enabled and separate. |
-| Python implementation retirement | Source deletions merged; useful control/offline tooling retained. Final corrected release remains unqualified. |
-| Efficiency/cutover/reversal/completion | Dated whole-lane controls and supported Go-to-Go cold reversal retained. Corrective rollout, manual-consumer follow-up and final portable reconciliation remain. |
+| Python implementation retirement | Eleven superseded daemon modules and Python image targets removed in qualified 1157; useful control/offline tooling retained. Manual renderer acceptance follow-up remains source-only. |
+| Efficiency/cutover/reversal/completion | Corrective rollout/source/image/data/queue and native private-path checks qualified; measured maintenance marker shortened. Dated whole-lane controls and Go-to-Go cold reversal retained. Manual consumer and final portable reconciliation remain. |
 
 The [52-minute normal-traffic qualification](evidence/go-native1149-steady-2026-11-01.json)
 showed headroom after scaling but retained substantial pre-existing detail backlog.
@@ -147,27 +153,27 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
 
 ## Next delivery steps
 
-1. **Qualify the supported corrective 1157 rollout.** PR #11490 head
-   `cc369d37d0cf850b81c3a97feecbfddc581740ac` passed Required CI, Crawler Deploy
-   Gate, real Compose rendering/Docker create-inspect proof and all four
-   comparisons. The normal head-bound merge produced
-   `a32864661b902b5786139e1fdbb69716e53da3b4`, tree
-   `f071b5ab55d6b2700724f07a365536b395a095b4`, matching reviewed/tested source.
-   Runtime contract is `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`.
-   Full rollout **41455879195** is in progress; **1157 is not yet qualified
-   installed**. Finish that supported immutable workflow and independently
-   verify installed image/data, board identities, queue conservation and timing.
+1. **Qualify the company successor before advancing this snapshot.** The installed
+   1157 source is `a32864661b902b5786139e1fdbb69716e53da3b4`, tree
+   `f071b5ab55d6b2700724f07a365536b395a095b4`, matching reviewed/tested PR #11490
+   head `cc369d37d0cf850b81c3a97feecbfddc581740ac`. Runtime contract is
+   `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`.
+   Source/image/data, all 8,288 identities and queue conservation are qualified.
+   The 1158 company rollout is in progress; independently read back its installed
+   source/image/data and enabled identities before declaring it qualified.
 
-2. **Verify the shortened writer pause.** Inspect with the authenticated previous
-   Go image, required credentials and read-only data while workers serve.
-   Corrective source uses standalone native Docker maintenance, avoiding Compose
-   one-off links and root/env shadowing in ERR/EXIT traps. Repair remains after
-   quiescence, sync and epoch attestation, with a fresh snapshot, ownership checks
-   each page and atomic per-schedule CAS. Earlier inspection grants no write
-   authority. The previous normal 1155 stop-completion-to-worker-start interval
-   was about **204 seconds**, excluding graceful drain and final readiness.
-   Corrective rollout savings are not yet measured; the 23-second recovery is a
-   different operation. Preserve preflight, lock, complete rollback and readiness.
+2. **Preserve the shortened maintenance path and its authority checks.**
+   Authenticated previous-Go-image inspection runs with required credentials and
+   read-only data while workers serve. Standalone native maintenance avoids
+   Compose one-off links and root/env shadowing in ERR/EXIT traps. Repair remains
+   after quiescence, sync and epoch attestation, with a fresh snapshot, ownership
+   checks each page and atomic per-schedule CAS. Earlier inspection grants no
+   write authority. The same observable stop-completion-to-worker-start markers
+   measured **203.965 seconds for 1155 versus 141.265 seconds for 1157**, a
+   **62.700-second reduction**. This excludes preceding graceful drain and final
+   readiness/promotion, covers one rollout and is neither the whole writer pause
+   nor a future SLA. The 23-second recovery is a different operation. Preserve
+   preflight, lock, complete rollback and readiness.
 
 3. **Ship the separate manual renderer consumer.** Reviewed native acceptance
    source `32fb5e606d3478f8a4ca57e889bf0368e54ab894` is prepared on merged 1156.
@@ -179,8 +185,8 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
    board, canonical output, publisher policy, fences/leases and downstream
    publication. Reconcile original salary/enrichment, profile, ownership,
    efficiency and dated natural-effects/reversal evidence. Update this report
-   with the qualified final source/image/queue/timing; do not claim universal
-   posting freshness or cleared demand.
+   when the final source is qualified; retain the 1157 source/image/queue/timing
+   proof; do not claim universal posting freshness or cleared demand.
 
 ## Separate ADF compatibility follow-up
 
