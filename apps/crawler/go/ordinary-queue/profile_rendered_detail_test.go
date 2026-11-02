@@ -19,6 +19,39 @@ func renderedDetailConfig(scraper string) map[string]string {
 	return c
 }
 
+func TestRenderedDOMDetailWarmupAdmission(t *testing.T) {
+	config := renderedDetailConfig("dom")
+	var metadata map[string]any
+	if err := json.Unmarshal([]byte(config["metadata"]), &metadata); err != nil {
+		t.Fatal(err)
+	}
+	options := metadata["scraper_config"].(map[string]any)
+	set := func(warmup string) {
+		options["warmup_url"] = warmup
+		body, _ := json.Marshal(metadata)
+		config["metadata"] = string(body)
+	}
+	set("https://jobs.example.net/careers")
+	profile, err := InspectRenderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser)
+	if err != nil || profile.DOMConfig["warmup_url"] != "https://jobs.example.net/careers" {
+		t.Fatal("same-origin warmup lost native detail admission", err)
+	}
+	for _, unsafe := range []string{"https://other.example.net/careers", "http://jobs.example.net/careers", "https://user:pass@jobs.example.net/careers", "https://jobs.example.net/careers#fragment"} {
+		set(unsafe)
+		if _, err := InspectRenderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser); !errors.Is(err, ErrUnsupportedProfile) {
+			t.Fatalf("unsafe warmup admitted: %q: %v", unsafe, err)
+		}
+	}
+	config = renderedDetailConfig("json-ld")
+	metadata = map[string]any{}
+	_ = json.Unmarshal([]byte(config["metadata"]), &metadata)
+	options = metadata["scraper_config"].(map[string]any)
+	set("https://jobs.example.net/careers")
+	if _, err := InspectRenderedDetail(jsonldBoardID, config, "https://jobs.example.net/42", Browser); !errors.Is(err, ErrUnsupportedProfile) {
+		t.Fatal("non-DOM detail adopted warmup")
+	}
+}
+
 func TestRenderedDetailBindsOriginalConfigurationAndBrowserWorker(t *testing.T) {
 	for _, scraper := range []string{"dom", "json-ld"} {
 		t.Run(scraper, func(t *testing.T) {

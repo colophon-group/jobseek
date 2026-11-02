@@ -81,6 +81,7 @@ type Task struct {
 	proxyBridge       *pinnedBrowserProxyBridge
 	URL               string
 	LargeDocument     bool
+	DocumentWarmupURL string
 	Actions           []actions.Action
 	InlineCards       *actions.InlineCards
 	Evaluation        *TaskEvaluation
@@ -322,6 +323,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.DocumentWarmupURL != "" && (!task.LargeDocument || task.InlineCards != nil || !actions.SameOriginWarmup(task.URL, task.DocumentWarmupURL)) {
+		return actions.ErrActions
+	}
 	if task.LargeDocument && (task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
 		return actions.ErrActions
 	}
@@ -1020,6 +1024,8 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 		warmup = task.Feed.request.WarmupURL
 	} else if task.APIReplay != nil {
 		warmup = task.APIReplay.options.WarmupURL
+	} else {
+		warmup = task.DocumentWarmupURL
 	}
 	if warmup != "" {
 		// Bind the CDP connection to the whole conversation before the warmup's
@@ -1027,7 +1033,7 @@ func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, tas
 		if err := chromedp.Run(targetCtx); err != nil {
 			return Result{}, errSessionWarmup
 		}
-		if err := executeSessionWarmup(ctx, targetCtx, warmup); err != nil {
+		if err := executeSessionWarmup(ctx, targetCtx, warmup, task.DocumentWarmupURL != ""); err != nil {
 			return Result{}, err
 		}
 	}
