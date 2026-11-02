@@ -1,189 +1,205 @@
 # Go and Lightpanda migration continuation plan
 
-Current checkpoint: **2026-11-02 06:36 UTC / 07:36 CET**. The performance-sensitive
-migration is installed. **Retiring the superseded Python implementations and
-shortening deployment quiescence are the current delivery work.** Oracle ADF
-pagination/freshness is a separately tracked compatibility issue; the operator
-explicitly removed it as a blocker to continuing the migration. Start from the
-installed identities and canonical registry, rather than saved counts. The
-[current qualification](evidence/go-native-installed-current.json) binds the
-installed releases, schedule conservation, controlled comparisons and remaining limits.
+Current qualified checkpoint: **2026-11-02 13:15 UTC / 14:15 CET**.
+Production is the fully restored **0.13.1155** Go release. Python daemon source
+retirement is merged in [PR #11488](https://github.com/colophon-group/jobseek/pull/11488),
+but its 1156 deployment failed. Corrective [PR #11490](https://github.com/colophon-group/jobseek/pull/11490)
+is in exact-head CI and **is not installed**. Full migration remains active.
+Oracle ADF is a separate compatibility follow-up, not a global delivery gate.
+The [current qualification](evidence/go-native-installed-current.json) records
+installed identities, conservation, the incident/recovery and explicit limits.
 
-## Scope and installed checkpoint
+## Objective and language boundary
 
-Only performance-sensitive paths require Go: crawler execution,
-extraction/enrichment, scheduling/queue/persistence, export and description drain.
-Low-frequency control, provisioning/security, workspace/labeller/offline tools
-may remain. Rollback targets the previous verified immutable Go release.
-Production transports stay
-**Go HTTP/API or latest self-hosted Lightpanda; no Chromium fallback**.
+Preserve the full scope of the [original plan #10185](https://github.com/colophon-group/jobseek/pull/10185)
+and [salary migration #10177](https://github.com/colophon-group/jobseek/pull/10177):
+finish native extraction/enrichment, monitor/detail/browser execution,
+scheduling, canonical persistence, downstream publication, enabled-profile
+coverage, runtime maintenance/deployment consumers and retirement. Keep
+comparable whole-lane efficiency and supported cutover/reversal evidence.
 
-The [normal 0.13.1153 deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41384055528/attempts/2)
-completed at **06:19:57 UTC**. Independent **06:20:31–33 UTC** readback verifies:
+Only performance-sensitive paths require Go. Useful low-frequency control,
+provisioning/security, workspace/labeller and offline Python may remain.
+Production transports stay **Go HTTP/API or latest self-hosted Lightpanda**.
+Rollback uses the previous verified immutable Go release. Delete superseded
+Python runtime implementations and images; preserve every enabled board,
+publisher policy, fences/leases, canonical output and the demo reserve.
+
+## Qualified installed state and recovered release
+
+The [normal 1155 rollout](https://github.com/colophon-group/jobseek/actions/runs/41424740467)
+succeeded at **10:14:08 UTC**. After the failed retirement rollout, a separately
+reviewed full-release recovery restored this same runtime. Independent
+**12:43:35 UTC** readback verifies:
 
 | Installed crawler identity | Value |
 | --- | --- |
-| Version | `0.13.1153` |
-| Runtime/data source | `9b5397482e57052eb3f53eac7f731d0d74f5dafe` |
-| Runtime contract | `7e5f1621c592260cab8ef46ef86a8fcc834e82b2e6440c4f11e1e44f135c23b3` |
-| Immutable image | `sha256:65050831eea4d9ac081fee0f962328cecd8d968a5429dce2306d225ad7a11064` |
-| Data contract | `388889b6039f9b5aacf661a690b75f3c738bc5bc26819091d61523c5717ef6ad` |
+| Version | `0.13.1155` |
+| Runtime source | `2a200c349ffdf0df3899e1ac38dea83e32031bbe` |
+| Runtime contract | `ace0d2d14d2f72a1a8edea8fe5dddea1ac266aec804117f8b0a95cf26fdf1a7a` |
+| Immutable image | `sha256:c7e76a2d4abfeb8c8ab5962d566e2669b73e9dfe33fe497ad02299850fee2b3a` |
+| Data source | `909e86b156af479a0e93c5775a002811444b0c27` |
+| Data contract | `f345cd4096083e7b1ee5880acf6a4a1ae289079a5b11d1255dbce1721154690b` |
 
-All four native actors and six core services pass their installed checks, with
-zero actor restarts/OOM. Active format-v3 release, complete environment except
-the documented `COMPOSE_FILE`, success/manifest evidence and all eight CSV hashes
-match. No legacy processor runs; the processing image exposes no Python, uv,
-Playwright or Chromium command. Epoch **404**, schema **0042** and zero active
-migration plans remain.
+All four native actors and six core services run, with healthy checks where
+configured and zero actor restarts/OOM. Format-v3 release, environment except
+the documented `COMPOSE_FILE`, success/manifest and all eight CSV hashes match.
+No legacy processor runs; the image exposes no Python, uv, Playwright or
+Chromium command. Epoch **404**, schema **0042** and zero active migration plans remain.
 
-All **8,273** enabled monitors are represented atomically: **8,244 queued plus
-29 valid leases**, zero gaps/duplicates/wrong lanes/cache/domain/deadletter or
-lease-token-presence gaps. Every original pre-capacity **8,270** key/UUID remains,
-plus three additions; hashes are retained in the qualification. Token existence
-uses `HEXISTS`; token values are never read. Refresh the registry and installed
-identity after any publication rather than freezing these totals in tests.
+Independent **12:44:13 UTC** atomic observation finds all **8,288** enabled
+monitors represented: **8,261 queued + 27 valid leases**, with zero unexplained
+gaps, duplicates, wrong lanes, cache/domain mismatches or lease-token-presence
+gaps. Every pre-retirement key and UUID matches the full 8,288-board baseline.
+Token checks use `HEXISTS`, never token values. These are dated monitor/schedule
+facts, not universal posting-freshness or backlog-completion results.
 
-The failed first 1153 attempt stopped at the backup guard before replacing
-workloads. One supported backup retry recovered health; the normal preflight
-then accepted attempt 2. [Incident #11478](https://github.com/colophon-group/jobseek/issues/11478)
-is closed. The historical repository-lock cause remains unproven; no guard,
-lock/timer/timeout override or permanent source fix is claimed.
+[Incident #11489](https://github.com/colophon-group/jobseek/issues/11489)
+tracks the [failed 1156 deployment](https://github.com/colophon-group/jobseek/actions/runs/41440630577).
+Previous-release inspection failed before intended schema/sync cutover when
+Docker rejected host networking with links. Rollback then failed a release-pointer
+parent check. The precise link/trap context is not claimed established.
+The failed release must not be blindly rerun.
 
-## Latest Lightpanda and demo reserve
+The protected, independently reviewed `restore-native-1155-v2` operation restored
+the complete previous Go release in **23.244 seconds**, with no forced termination
+or restoration failures. Independent installed and queue checks followed. No
+migration, sync, epoch or direct schedule write ran. The first recovery packet
+refused before runtime mutation. The recovery is complete; company publication
+and Justup stages await the corrective release's qualification.
 
-The [normal renderer workflow](https://github.com/colophon-group/jobseek/actions/runs/41399782403)
-completed at **06:27:51 UTC**. Independent **06:30:12 UTC** readback verifies:
+## Latest Lightpanda and capacity
+
+The [normal renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41399782403)
+and independent binary/image/containment checks remain qualified:
 
 | Installed renderer identity | Value |
 | --- | --- |
 | Lightpanda version | `1.1.0-nightly.11500+721618eeb` |
 | Wrapper source | `a06edb6b088662c85c19d854c7c6d1a8d55ab3e0` |
-| Immutable wrapper image | `sha256:287a174a1a180cc58c027076284baeb03b10fcbfb6f69886bb3b6729bfd1790d` |
+| Wrapper image | `sha256:287a174a1a180cc58c027076284baeb03b10fcbfb6f69886bb3b6729bfd1790d` |
 | Upstream source | `721618eebb6fb4b83d7cda0030a438f6c76be6c9` |
 | Actual ARM64 binary SHA-256 | `4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756` |
 
-All three official executable assets and both immutable Linux OCI binary layers
-were independently matched. [PR #11480](https://github.com/colophon-group/jobseek/pull/11480)
-passed both physical architectures, all four complete comparisons, ARM B0,
-Required CI and Crawler Deploy Gate. Its tested tree equals the merged tree.
-The installed command, binary, image/source labels, private cgroup, readonly root,
-capability limits, no-new-privileges and mTLS flags pass independent checks.
+The [official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly)
+was rechecked at **13:00:23 UTC**: its latest ARM executable still matches the
+installed binary; no newer rollout was needed. Runtime/resource observations
+remain separately dated. No new forced browser/provider work was performed.
 
-Worker limits remain **4 CPU / 2 GiB**, **1 GiB Go memory target**, **120 discovery /
-30 monitor slots**. Renderer limits remain **1 CPU / 1 GiB / four slots**, zero swap
-and 64 PIDs. Justup owners coordinated the rollout and retained their separate
-**0.5 CPU / 1 GiB**, already allocated **2 GiB filesystem** and **8 GiB root free
-floor**. Postrollout available RAM is **3.214 GiB**, root free **9.645 GiB**; do not
-subtract the filesystem twice. The new renderer has zero restarts/OOM/memory events.
-Generation changed as intended; no lifetime counter delta is claimed across it.
-There is no Docker health check or new forced functional-render/provider probe.
+Worker allocation remains **4 CPU / 2 GiB**, **1 GiB Go memory target**,
+**120 runners / 30 monitor slots**. Renderer allocation remains
+**1 CPU / 1 GiB / four shared slots**, zero swap and 64 PIDs. The dated
+**11:45 UTC** renderer baseline shows unchanged allocation, zero restart/OOM
+and memory-event deltas, **3.150 GiB RAM available / 9.635 GiB root free**.
+Justup retains **0.5 CPU / 1 GiB**, its already allocated **2 GiB filesystem**
+and **8 GiB root-free floor**; do not subtract the filesystem twice.
 
-The renderer mutation window is released. Justup owners received the new immutable
-image/generation and refrozen direct observer. Their future stage/API authority,
-fresh baseline, outer deadline and feed-reader security gates remain separate.
-No Justup API activation or P060 improvement follows from this proof.
+There is no active Justup host grant or new owner probe. A resource snapshot
+or released metadata-only window grants no API/stage activation, functional
+render/restart/reboot acceptance or quota increase. More crawler scaling needs
+eligible successful unique-detail throughput and SQL/Redis, origin-policy,
+search and renderer pressure together. CPU usage alone does not identify the
+bottleneck. Preserve the demo reserve and publisher limits.
 
-## Current controlled comparison
+## Dated controlled comparison and acceptance audit
 
-The [latest complete-lane comparison](https://github.com/colophon-group/jobseek/actions/runs/41387202469)
-uses six alternating arms per scenario, three per lane, nine actors per arm and
-identical canonical output. Generated fixtures contain 536 postings; captured
-fixtures 72. Values below are means, **native / legacy**:
+The [retirement-source comparison](https://github.com/colophon-group/jobseek/actions/runs/41435115068)
+is bound to **`87e6c9452a7dcd086c28101f7612e9e4fa2803c1`**, rather than the
+pending 1157 head. All **24 arms** have canonical parity and successful cleanup:
+four physical AMD64/ARM64 generated/captured scenarios, six alternating arms
+per scenario, three per lane and nine actors per arm. Generated fixtures contain
+536 postings; captured fixtures 72. Values below are means, **native / legacy**:
 
 | Scenario | Elapsed seconds | CPU seconds | Sampled peak MiB |
 | --- | --- | --- | --- |
-| AMD64 generated | 20.066 /35.831 | 15.100 /28.110 | 460.59 /947.11 |
-| AMD64 captured | 35.719 /66.533 | 14.928 /19.752 | 426.27 /816.45 |
-| ARM64 generated | 19.272 /30.854 | 10.030 /18.856 | 463.87 /944.16 |
-| ARM64 captured | 34.087 /65.720 | 11.713 /14.926 | 424.76 /817.55 |
+| AMD64 generated | 19.820 / 35.752 | 14.853 / 27.350 | 450.00 / 917.16 |
+| AMD64 captured | 35.721 / 67.558 | 17.734 / 21.785 | 424.42 / 817.11 |
+| ARM64 generated | 19.445 / 32.054 | 9.822 / 18.531 | 462.99 / 926.76 |
+| ARM64 captured | 33.928 / 65.812 | 11.317 / 14.526 | 427.31 / 823.54 |
 
-All arms report successful cleanup; per-arm exit codes are unavailable rather
-than assumed zero. Startup/lifecycle CPU is included. Sampled peaks are lower
-bounds, modeled cost is not invoiced cost, and the equal-fixture TLS exception is
-not production TLS CPU accounting. Fixture budgets differ from the scaled worker.
-These controls do not establish universal production freshness or a causal
-mixed-workload speedup.
+The table uses reported measured CPU; the full CI report records startup/lifetime
+counters separately. Sampled peaks are lower bounds, modeled cost is not invoiced
+cost, and the equal-fixture TLS exception is not production
+TLS CPU accounting. Per-arm exit codes are unavailable, not assumed zero.
+Fixture budgets differ from production. New corrective-head CI is still pending.
 
-The [previous 52-minute normal-traffic qualification](evidence/go-native1149-steady-2026-11-01.json)
-showed headroom after scaling, but substantial pre-existing detail backlog
-remained. The 1153 observer deliberately omits expensive detail-demand SQL.
-Before another scale-up, measure successful unique eligible detail throughput,
-per-host scheduling/throttling and PostgreSQL/search/renderer pressure together.
-Do not infer demand is met from skips, posting touches, Redis entry totals or a
-single CPU/memory snapshot; preserve the demo reserve and publisher limits.
+The complete original acceptance scope remains:
 
-## Remaining delivery work
+| Area | Qualified scope and remaining limit |
+| --- | --- |
+| Salary extraction/conversion | Native historical effects: 3,502 operations, 394 fresh rows, 76 boards/14 locales, five fields and zero drift. Component changes since that witness require current conformance; no byte-identity claim. |
+| Location/CPU stages | 80,641 historical native resolutions and 140 browser-cohort rows; the old browser caller was Python. Current native caller ownership is verified separately. |
+| Lightpanda executor and ownership | Native image/claims/fences/failure/schedule/crash contracts and latest binary installed; earlier interruption causes remain unproven. |
+| Ordinary processing/export/drain | Four native actors installed; canonical/search/R2 output evidence remains sampled and dated. Old backlog and one inactive-description metadata discrepancy remain explicit. |
+| Enabled profiles and original title case | All current 8,288 monitor identities preserved. Prior named/title/provider witnesses remain dated; ADF stays enabled and separate. |
+| Python implementation retirement | Source deletions merged; useful control/offline tooling retained. Final corrected release remains unqualified. |
+| Efficiency/cutover/reversal/completion | Dated whole-lane controls and supported Go-to-Go cold reversal retained. Corrective rollout, manual-consumer follow-up and final portable reconciliation remain. |
 
-1. **Retire superseded Python runtime source and images.** The current source
-   removes the ordinary worker pipeline, Python R2 drain and polling exporter,
-   and Python Lightpanda claimant/executor daemons. Existing worker/export/drain
-   CLI aliases exec the Go binaries before Python metrics, pools or clients open.
-   Offline Typesense projection and workspace extraction remain useful tools.
-   Docker's explicit `tools` target is offline-only; `slim`, `full` and browser
-   runtime targets are retired. Performance CI builds its historical comparator
-   from a fixed Git revision rather than keeping a second runtime implementation
-   in current source. Production and rollback use immutable Go images.
+The [52-minute normal-traffic qualification](evidence/go-native1149-steady-2026-11-01.json)
+showed headroom after scaling but retained substantial pre-existing detail backlog.
+Current observation deliberately omits expensive detail-demand SQL. Skips,
+posting touches, Redis totals and a single resource snapshot do not prove demand is met.
 
-2. **Shorten the writer pause without weakening schedule authority.** Run the
-   existing read-only full-fleet missing-schedule inspection while the previous
-   Go stack serves, using that previous image so the inspection does not depend
-   on schema migrations that have not run. Keep repair after quiescence, sync and routing-epoch
-   attestation; it opens a fresh SQL snapshot, checks ownership each page and
-   retains the existing per-schedule atomic CAS. The earlier inspection grants
-   no repair authority. The 1154 deployment scanned 1,801,619 rows in each pass;
-   moving inspection removes one complete scan from the pause. Actual elapsed
-   savings require the next supported deployment's measurements. Preserve
-   preflight, mutation lock, exact release/data publication, complete writer
-   quiescence, readiness and fail-closed rollback.
+## Next delivery steps
 
-3. **Close the original acceptance audit on the changed source.** Preserve every
-   enabled board, canonical output, publisher policy, fences/leases/schedules,
-   downstream publication and demo reserve. Use a monotonic runtime VERSION,
-   exact-head Required CI/Crawler Deploy Gate, a normal full quiesced rollout
-   and independent installed/schedule/output verification. Observe throughput
-   against eligible demand before claiming the detail backlog is met.
+1. **Complete corrective 1157.** PR #11490 head
+   `cc369d37d0cf850b81c3a97feecbfddc581740ac`, runtime contract
+   `cac6e8bfa0d3d073dbf4fd3b2c6cce741a630f2e5af65124e16496939ed6c3ee`,
+   is not installed. Finish exact-head Required CI and Crawler Deploy Gate,
+   including real Compose rendering and Docker create/inspect maintenance proof.
+   Re-read head/base/main/draft/reviews/holds immediately before a normal
+   head-bound merge. Use the supported full immutable rollout and independent
+   installed image/data, board identity and queue qualification.
 
-## Open ADF compatibility issue
+2. **Verify the shortened writer pause.** Inspect with the authenticated previous
+   Go image, required credentials and read-only data while workers serve.
+   Corrective source uses standalone native Docker maintenance, avoiding Compose
+   one-off links and root/env shadowing in ERR/EXIT traps. Repair remains after
+   quiescence, sync and epoch attestation, with a fresh snapshot, ownership checks
+   each page and atomic per-schedule CAS. Earlier inspection grants no write
+   authority. The previous normal 1155 stop-completion-to-worker-start interval
+   was about **204 seconds**, excluding graceful drain and final readiness.
+   Corrective rollout savings are not yet measured; the 23-second recovery is a
+   different operation. Preserve preflight, lock, complete rollback and readiness.
 
-The original Oracle ADF board remains enabled and tracked; its failure does not
-block unrelated retirement, performance or deployment work.
+3. **Ship the separate manual renderer consumer.** Reviewed native acceptance
+   source `32fb5e606d3478f8a4ca57e889bf0368e54ab894` is prepared on merged 1156.
+   Publish after the coordinated company successors at the actual next VERSION.
+   Do not delay their work for this follow-up. It has no PR/rollout yet, and no
+   public render, restart or host reboot workflow execution is authorized.
 
-**Original ADF outcome.** It remains enabled, unreserved and
-   quarantined after the normal November 1 **17:37:14 UTC** attempt failed with
-   pagination HTTP 302; failures 12. Its unchanged next retry is November 2
-   **17:37:17 UTC /18:37:17 CET**. Do not force work or reset counters/backoff.
-   Dated native 1102 evidence records 52 jobs/zero failures on October27 at 15:27 UTC;
-   last-success October28 alone does not establish which runtime owned that attempt.
-   Current source/caller reconciliation finds no ADF request-logic regression
-   through quarantine, but does not reconstruct historical image/environment/egress.
+4. **Close the full acceptance audit on the final source.** Preserve every enabled
+   board, canonical output, publisher policy, fences/leases and downstream
+   publication. Reconcile original salary/enrichment, profile, ownership,
+   efficiency and dated natural-effects/reversal evidence. Update this report
+   with the qualified final source/image/queue/timing; do not claim universal
+   posting freshness or cleared demand.
 
-   The operator-authorized latest local Lightpanda native More control made
-   **58 requests / zero details**. The separately authorized local Chrome 156
-   control made **110 requests / one More click / zero details** in a fresh
-   temporary profile. Both retained **25 rows, fetch index 24 and More**, with
-   two pagination redirects, XHR status 0/empty body/no response URL. Chrome's URL
-   and form window IDs matched; Lightpanda's did not. Since both still failed,
-   that difference is not a sufficient explanation. This does not isolate the
-   failure to Lightpanda, prove a universal publisher outage or identify a CORS/
-   session root cause. Neither result qualifies a complete inventory.
+## Separate ADF compatibility follow-up
 
-   The advertised form-action patch, full publisher request/cookies, standard
-   AJAX headers and framework window controls still have no verified complete
-   Go result. Do not ship them speculatively, accept a partial 25-row inventory,
-   blindly follow redirects or repeat guessed header/form/window variants.
-   [Existing follow-up](https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945)
-   carries the current evidence. Re-enter with a changed natural result,
-   publisher-supported complete source, working environment/session witness or
-   relevant upstream correction. Local verification remains bounded to 500 jobs /
-   5,000 detail checks; the Chrome exception is consumed and never authorizes a
-   production fallback. Its profile, executable and build cache were removed.
+The original Oracle ADF board remains enabled, unreserved and quarantined after
+its normal November 1 pagination HTTP 302 failure; failures **12**. Its unchanged
+next retry is **November 2 17:37:17 UTC / 18:37:17 CET**. Do not force work or reset
+publisher policy, schedules, counters or backoff. Native 1102 evidence records
+52 jobs/zero failures on October 27; last-success October 28 alone does not
+establish runtime ownership of that attempt.
 
-The [supported cold-reversal exercise](https://github.com/colophon-group/jobseek/actions/runs/41213487268)
-is dated 1137 evidence, not a new exercise of the retirement change. Preserve
-the prior verified immutable Go release and its exact data/spec evidence for
-normal rollback; retire Python runtime recovery paths and obsolete assets.
-Follow [ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md);
-no live rsync, mutable image deployment, partial writer restart or hold bypass.
-Keep one current checkpoint, active regression inputs and supported rollback
-assets. Remove owned temporary binaries/caches/raw history; preserve shared
-dependencies, active corpus, other contributors' files and `dump.rdb`.
+The authorized local Lightpanda More control made **58 requests / zero details**;
+the separately authorized fresh Chrome control made **110 requests / one More
+click / zero details**. Both retained **25 rows, index 24 and More**, with two
+pagination redirects and empty status-zero XHR results. This establishes neither
+a complete inventory nor a Lightpanda-specific, universal publisher or CORS/session
+cause. No speculative form/header/window patch is qualified. The Chrome exception
+is consumed and temporary artifacts were removed; production stays Go/Lightpanda.
+[Existing follow-up #10790](https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945)
+holds the evidence. Re-enter on a changed natural result, supported complete source,
+working session/environment witness or relevant upstream correction. Any authorized
+local verification remains bounded to 500 jobs / 5,000 detail checks.
+
+The [supported Go-to-Go cold reversal](https://github.com/colophon-group/jobseek/actions/runs/41213487268)
+is dated 1137 evidence, not a new retirement/corrective exercise. Keep the previous
+verified immutable Go release and exact data/spec rollback evidence. Follow
+[ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md) and normal holds/locks;
+no rsync, mutable deployment or partial writer restart. Keep one current checkpoint,
+active regressions and supported rollback assets. Remove owned closed temporary
+assets/caches; preserve shared dependencies, contributors' files and `dump.rdb`.
