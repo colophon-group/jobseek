@@ -21,6 +21,7 @@ BASE_DIR="${JOBSEEK_POSTGRES_RESTORE_DRILL_DIR:-/var/lib/jobseek-backup/postgres
 KEEP_FAILED="${JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED:-false}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)${RANDOM}"
 CONTAINER="jobseek-postgresql-restore-${RUN_ID}"
+RESTORE_CONTAINER="jobseek-postgresql-restore-load-${RUN_ID}"
 DATA_DIR="$BASE_DIR/$RUN_ID"
 SPOOL_DIR="$BASE_DIR/${RUN_ID}-spool"
 
@@ -37,10 +38,16 @@ cleanup() {
       exit "$rc"
     fi
   fi
+  docker rm -f "$RESTORE_CONTAINER" >/dev/null 2>&1 || true
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  if docker container inspect "$RESTORE_CONTAINER" >/dev/null 2>&1 || \
+    docker container inspect "$CONTAINER" >/dev/null 2>&1; then
+    rc=1
+  fi
   [[ "$DATA_DIR" == "$BASE_DIR"/* ]]
   [[ "$SPOOL_DIR" == "$BASE_DIR"/*-spool ]]
-  rm -rf "$DATA_DIR" "$SPOOL_DIR"
+  rm -rf "$DATA_DIR" "$SPOOL_DIR" || rc=1
+  [[ ! -e "$DATA_DIR" && ! -e "$SPOOL_DIR" ]] || rc=1
   exit "$rc"
 }
 trap cleanup EXIT
@@ -54,9 +61,14 @@ docker container inspect "$CONTAINER" >/dev/null 2>&1 && {
   echo "Restore drill container already exists: $CONTAINER" >&2
   exit 1
 }
+docker container inspect "$RESTORE_CONTAINER" >/dev/null 2>&1 && {
+  echo "Restore drill load container already exists: $RESTORE_CONTAINER" >&2
+  exit 1
+}
 install -d -o 70 -g 70 -m 0700 "$DATA_DIR" "$SPOOL_DIR"
 
 docker run --rm \
+  --name "$RESTORE_CONTAINER" \
   --network none \
   --user 70:70 \
   --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \

@@ -224,28 +224,43 @@ def test_stage_verifier_requires_exact_digest_checked_payloads(tmp_path: Path) -
     stage = tmp_path / "stage"
     installer = stage / "deploy/networking/justup-feed-readonly-role.py"
     conformance = stage / "scripts/jobseek-ingress-conformance.py"
-    for directory in (stage, installer.parent.parent, installer.parent, conformance.parent):
+    drill = stage / "deploy/backups/postgresql/restore-drill.sh"
+    for directory in (
+        stage,
+        installer.parent.parent,
+        installer.parent,
+        conformance.parent,
+        drill.parent.parent,
+        drill.parent,
+    ):
         directory.mkdir(exist_ok=True, mode=0o700)
     installer.write_bytes(b"fixed installer")
     conformance.write_bytes(b"fixed ingress audit")
+    drill.write_bytes(b"fixed restore drill")
     installer.chmod(0o600)
     conformance.chmod(0o600)
+    drill.chmod(0o600)
     installer_hash = hashlib.sha256(installer.read_bytes()).hexdigest()
     conformance_hash = hashlib.sha256(conformance.read_bytes()).hexdigest()
-    role.verify_stage(stage, installer_hash, conformance_hash, uid=os.getuid())
+    drill_hash = hashlib.sha256(drill.read_bytes()).hexdigest()
+    role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
 
     conformance.write_bytes(b"tampered")
     with pytest.raises(role.RoleError, match="digest"):
-        role.verify_stage(stage, installer_hash, conformance_hash, uid=os.getuid())
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
     conformance.write_bytes(b"fixed ingress audit")
+    drill.write_bytes(b"tampered restore drill")
+    with pytest.raises(role.RoleError, match="digest"):
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+    drill.write_bytes(b"fixed restore drill")
     extra = stage / "extra"
     extra.write_bytes(b"unexpected")
     with pytest.raises(role.RoleError, match="missing or extra"):
-        role.verify_stage(stage, installer_hash, conformance_hash, uid=os.getuid())
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
     extra.unlink()
     conformance.unlink()
     with pytest.raises(role.RoleError, match="missing or extra"):
-        role.verify_stage(stage, installer_hash, conformance_hash, uid=os.getuid())
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
 
 
 def test_install_requires_no_pending_ingress_rollback(tmp_path: Path, monkeypatch) -> None:
@@ -444,7 +459,7 @@ def test_attest_restore_binds_real_drill_to_current_backup(tmp_path: Path, monke
     backup, restore = backup_restore_status(tmp_path, now)
     drill = tmp_path / "restore-drill"
     drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    drill.chmod(0o700)
+    drill.chmod(0o600)
     observed: list[object] = []
 
     def run(path: Path, label: str, lock_fd: int) -> None:
@@ -458,6 +473,7 @@ def test_attest_restore_binds_real_drill_to_current_backup(tmp_path: Path, monke
         backup_path=backup,
         restore_path=restore,
         drill_path=drill,
+        drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
         lock_path=tmp_path / "backup.lock",
         uid=os.getuid(),
     )
@@ -483,7 +499,7 @@ def test_failed_drill_invalidates_old_restore_proof(tmp_path: Path, monkeypatch)
     backup, restore = backup_restore_status(tmp_path, now)
     drill = tmp_path / "restore-drill"
     drill.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    drill.chmod(0o700)
+    drill.chmod(0o600)
     monkeypatch.setattr(role.time, "time", lambda: now)
 
     def fail(_path: Path, _label: str, _lock_fd: int) -> None:
@@ -495,6 +511,7 @@ def test_failed_drill_invalidates_old_restore_proof(tmp_path: Path, monkeypatch)
             backup_path=backup,
             restore_path=restore,
             drill_path=drill,
+            drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
             lock_path=tmp_path / "backup.lock",
             uid=os.getuid(),
         )
@@ -505,16 +522,40 @@ def test_failed_drill_invalidates_old_restore_proof(tmp_path: Path, monkeypatch)
         )
 
 
+def test_attest_restore_rejects_unpinned_staged_drill(tmp_path: Path, monkeypatch) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    drill = tmp_path / "restore-drill"
+    drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    drill.chmod(0o600)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+    monkeypatch.setattr(role, "run_restore_drill", lambda *_args: pytest.fail("drill ran"))
+    with pytest.raises(role.RoleError, match="digest"):
+        role.attest_restore(
+            backup_path=backup,
+            restore_path=restore,
+            drill_path=drill,
+            drill_sha256="0" * 64,
+            lock_path=tmp_path / "backup.lock",
+            uid=os.getuid(),
+        )
+    assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+
+
 def test_remote_install_attests_after_dispatch_before_ddl() -> None:
     source = (ROOT / "deploy/networking/run-remote.sh").read_text(encoding="utf-8")
     install = source.split('if [[ "$MODE" == install-feed-role ]]; then', 1)[1].split(
         'if [[ "$MODE" == audit ]]; then', 1
     )[0]
     attestation = install.index("jobseek-justup-feed-role attest-restore")
-    conformance = install.index('python3 "$conformance" --role postgresql', attestation)
+    source_recheck = install.index("git ls-remote origin refs/heads/main", attestation)
+    conformance = install.index('python3 "$conformance" --role postgresql', source_recheck)
     ddl = install.index("jobseek-justup-feed-role install", conformance)
-    assert attestation < conformance < ddl
+    assert attestation < source_recheck < conformance < ddl
     assert "remote 5h" in install
+    assert 'tar --create --file - "$installer" "$conformance" "$drill"' in install
+    assert '--restore-drill-sha256 "$drill_sha"' in install
+    assert '--drill-path "$drill" --drill-sha256 "$drill_sha"' in install
 
 
 def test_restore_attestation_rejects_backup_rotated_during_drill(
@@ -524,7 +565,7 @@ def test_restore_attestation_rejects_backup_rotated_during_drill(
     backup, restore = backup_restore_status(tmp_path, now)
     drill = tmp_path / "restore-drill"
     drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    drill.chmod(0o700)
+    drill.chmod(0o600)
     monkeypatch.setattr(role.time, "time", lambda: now)
 
     def rotate(_path: Path, _label: str, _lock_fd: int) -> None:
@@ -538,6 +579,7 @@ def test_restore_attestation_rejects_backup_rotated_during_drill(
             backup_path=backup,
             restore_path=restore,
             drill_path=drill,
+            drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
             lock_path=tmp_path / "backup.lock",
             uid=os.getuid(),
         )
@@ -559,6 +601,7 @@ def test_attest_restore_rejects_concurrent_backup_before_drill(tmp_path: Path, m
                 backup_path=backup,
                 restore_path=restore,
                 drill_path=tmp_path / "unused",
+                drill_sha256="0" * 64,
                 lock_path=lock_path,
                 uid=os.getuid(),
             )
@@ -580,7 +623,7 @@ def test_restore_timeout_stops_process_group(monkeypatch) -> None:
     stopped: list[tuple[int, int]] = []
 
     def spawn(args, **kwargs):
-        assert args == ("/protected/restore", "20261102-010000F")
+        assert args == ("/bin/bash", "/protected/restore", "20261102-010000F")
         assert kwargs["pass_fds"] == (3,)
         assert kwargs["start_new_session"] is True
         return process
@@ -591,6 +634,29 @@ def test_restore_timeout_stops_process_group(monkeypatch) -> None:
         role.run_restore_drill(Path("/protected/restore"), "20261102-010000F", 3)
     assert stopped == [(process.pid, role.signal.SIGTERM)]
     assert process.waits == 2
+
+
+def test_restore_interruption_at_spawn_boundary_stops_process_group(monkeypatch) -> None:
+    class SpawnedProcess:
+        pid = 43211
+
+        def wait(self, *, timeout: int) -> int:
+            assert timeout == role.RESTORE_STOP_GRACE_SECONDS
+            return 124
+
+    stopped: list[tuple[int, int]] = []
+    monkeypatch.setattr(role.subprocess, "Popen", lambda *_args, **_kwargs: SpawnedProcess())
+    monkeypatch.setattr(role.os, "killpg", lambda pid, signum: stopped.append((pid, signum)))
+
+    def interrupted_on_unmask(how, _mask):
+        if how == role.signal.SIG_SETMASK:
+            raise role.RoleError("PostgreSQL restore drill was interrupted.")
+        return set()
+
+    monkeypatch.setattr(role.signal, "pthread_sigmask", interrupted_on_unmask)
+    with pytest.raises(role.RoleError, match="without proof"):
+        role.run_restore_drill(Path("/protected/restore"), "20261102-010000F", 3)
+    assert stopped == [(SpawnedProcess.pid, role.signal.SIGTERM)]
 
 
 def test_isolated_restore_drill_selects_exact_backup_set(tmp_path: Path) -> None:
@@ -661,6 +727,7 @@ exit 0
     )
     assert exact.returncode == 0, exact.stderr
     assert f"--set={label}" in trace.read_text(encoding="utf-8")
+    assert "--name jobseek-postgresql-restore-load-" in trace.read_text(encoding="utf-8")
     assert "restore and relation integrity drill passed" in exact.stdout
 
     trace.unlink()
@@ -716,7 +783,7 @@ exit 0
             pytest.fail("restore fixture never reached the container step")
         os.killpg(stopped.pid, signal.SIGTERM)
         assert stopped.wait(timeout=5) != 0
-        assert "rm -f" in trace.read_text(encoding="utf-8")
+        assert "rm -f jobseek-postgresql-restore-load-" in trace.read_text(encoding="utf-8")
     finally:
         if stopped.poll() is None:
             os.killpg(stopped.pid, signal.SIGKILL)

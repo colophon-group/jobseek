@@ -45,11 +45,13 @@ jobs:
           bash -n deploy/networking/harden-postgresql.sh
           bash -n deploy/networking/verify-private-paths.sh
           bash -n deploy/networking/run-remote.sh
+          bash -n deploy/backups/postgresql/restore-drill.sh
           shellcheck \
             deploy/networking/install-host.sh \
             deploy/networking/harden-postgresql.sh \
             deploy/networking/verify-private-paths.sh \
-            deploy/networking/run-remote.sh
+            deploy/networking/run-remote.sh \
+            deploy/backups/postgresql/restore-drill.sh
           python3 -m py_compile \
             scripts/jobseek-ingress-conformance.py \
             scripts/manage-hetzner-ingress.py \

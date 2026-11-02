@@ -41,7 +41,6 @@ ROLLBACK_UNITS = (
 )
 BACKUP_STATUS = Path("/var/lib/jobseek-backup/status/postgresql.json")
 RESTORE_STATUS = Path("/var/lib/jobseek-backup/status/postgresql-restore-drill.json")
-RESTORE_DRILL = Path("/usr/local/sbin/jobseek-postgresql-restore-drill")
 BACKUP_LOCK = Path("/run/jobseek-data-backup-postgresql.lock")
 BACKUP_MAX_AGE_SECONDS = 36 * 60 * 60
 RESTORE_MAX_AGE_SECONDS = 30 * 60
@@ -402,49 +401,61 @@ def run_restore_drill(drill_path: Path, label: str, lock_fd: int) -> None:
 
     old_term = signal.signal(signal.SIGTERM, interrupted)
     old_int = signal.signal(signal.SIGINT, interrupted)
+    old_hup = signal.signal(signal.SIGHUP, interrupted)
+    process: subprocess.Popen[bytes] | None = None
     try:
         try:
-            process = subprocess.Popen(
-                (str(drill_path), label),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-                pass_fds=(lock_fd,),
+            prior_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK, {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}
             )
+            try:
+                process = subprocess.Popen(
+                    ("/bin/bash", str(drill_path), label),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                    pass_fds=(lock_fd,),
+                )
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+            code = process.wait(timeout=RESTORE_DRILL_TIMEOUT_SECONDS)
         except OSError as exc:
             raise RoleError("PostgreSQL restore drill could not start.") from exc
-        try:
-            code = process.wait(timeout=RESTORE_DRILL_TIMEOUT_SECONDS)
         except (subprocess.TimeoutExpired, RoleError) as exc:
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            with suppress(ProcessLookupError):
-                os.killpg(process.pid, signal.SIGTERM)
-            try:
-                process.wait(timeout=RESTORE_STOP_GRACE_SECONDS)
-            except subprocess.TimeoutExpired:
+            signal.signal(signal.SIGHUP, signal.SIG_IGN)
+            if process is not None:
                 with suppress(ProcessLookupError):
-                    os.killpg(process.pid, signal.SIGKILL)
-                with suppress(subprocess.TimeoutExpired):
-                    process.wait(timeout=10)
+                    os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=RESTORE_STOP_GRACE_SECONDS)
+                except subprocess.TimeoutExpired:
+                    # The child inherited the backup lock. Leave it held while
+                    # the host operator reconciles a drill that did not stop.
+                    raise RoleError(
+                        "PostgreSQL restore drill remains active under backup lock."
+                    ) from exc
             raise RoleError("PostgreSQL restore drill stopped without proof.") from exc
     finally:
         signal.signal(signal.SIGTERM, old_term)
         signal.signal(signal.SIGINT, old_int)
+        signal.signal(signal.SIGHUP, old_hup)
     if code != 0:
         raise RoleError("PostgreSQL restore drill failed; no feed role was installed.")
 
 
 def attest_restore(
     *,
+    drill_path: Path,
+    drill_sha256: str,
     backup_path: Path = BACKUP_STATUS,
     restore_path: Path = RESTORE_STATUS,
-    drill_path: Path = RESTORE_DRILL,
     lock_path: Path = BACKUP_LOCK,
     uid: int = 0,
 ) -> dict[str, object]:
-    """Run the installed isolated drill and bind success to the latest backup."""
+    """Run the exact staged isolated drill and bind success to the latest backup."""
     with backup_operation_lock(lock_path, uid=uid) as lock_fd:
         first_backup, first_label, first_stop = fresh_backup_identity(
             protected_status(backup_path, uid=uid), time.time()
@@ -473,10 +484,13 @@ def attest_restore(
             or not stat.S_ISREG(drill.st_mode)
             or drill.st_uid != uid
             or drill.st_nlink != 1
-            or stat.S_IMODE(drill.st_mode) & 0o022
-            or not stat.S_IMODE(drill.st_mode) & 0o100
+            or stat.S_IMODE(drill.st_mode) != 0o600
         ):
             raise RoleError("PostgreSQL restore drill is not protected.")
+        if re.fullmatch(r"[0-9a-f]{64}", drill_sha256) is None or (
+            hashlib.sha256(drill_path.read_bytes()).hexdigest() != drill_sha256
+        ):
+            raise RoleError("PostgreSQL restore drill digest does not match staged source.")
         run_restore_drill(drill_path, first_label, lock_fd)
         last_identity = fresh_backup_identity(protected_status(backup_path, uid=uid), time.time())
         if last_identity != (first_backup, first_label, first_stop):
@@ -529,13 +543,22 @@ def read_password(path: Path) -> str:
     return password
 
 
-def verify_stage(stage: Path, installer_sha256: str, conformance_sha256: str, uid: int = 0) -> None:
+def verify_stage(
+    stage: Path,
+    installer_sha256: str,
+    conformance_sha256: str,
+    restore_sha256: str,
+    uid: int = 0,
+) -> None:
     if not stage.is_absolute() or stage.is_symlink() or not stage.is_dir():
         raise RoleError("Feed role stage is not a protected directory.")
     expected = {
         Path("deploy"),
+        Path("deploy/backups"),
+        Path("deploy/backups/postgresql"),
         Path("deploy/networking"),
         Path("scripts"),
+        Path("deploy/backups/postgresql/restore-drill.sh"),
         Path("deploy/networking/justup-feed-readonly-role.py"),
         Path("scripts/jobseek-ingress-conformance.py"),
     }
@@ -553,6 +576,7 @@ def verify_stage(stage: Path, installer_sha256: str, conformance_sha256: str, ui
     for relative, expected_sha256 in (
         (Path("deploy/networking/justup-feed-readonly-role.py"), installer_sha256),
         (Path("scripts/jobseek-ingress-conformance.py"), conformance_sha256),
+        (Path("deploy/backups/postgresql/restore-drill.sh"), restore_sha256),
     ):
         if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
             raise RoleError("Feed role stage digest is invalid.")
@@ -1039,23 +1063,43 @@ def main() -> int:
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--installer-sha256")
     parser.add_argument("--conformance-sha256")
+    parser.add_argument("--restore-drill-sha256")
+    parser.add_argument("--drill-path", type=Path)
+    parser.add_argument("--drill-sha256")
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise RoleError("This command requires the protected root operator.")
     if args.action == "verify-stage":
-        if args.password_file is not None or args.stage is None:
+        if (
+            args.password_file is not None
+            or args.stage is None
+            or args.drill_path is not None
+            or args.drill_sha256 is not None
+        ):
             raise RoleError("Stage verification needs the protected stage only.")
-        verify_stage(args.stage, args.installer_sha256 or "", args.conformance_sha256 or "")
+        verify_stage(
+            args.stage,
+            args.installer_sha256 or "",
+            args.conformance_sha256 or "",
+            args.restore_drill_sha256 or "",
+        )
         print('{"verified":true}')
         return 0
-    if args.stage is not None or args.installer_sha256 or args.conformance_sha256:
+    if (
+        args.stage is not None
+        or args.installer_sha256
+        or args.conformance_sha256
+        or args.restore_drill_sha256
+    ):
         raise RoleError("Role operations do not accept stage verification inputs.")
     if args.action == "attest-restore":
-        if args.password_file is not None:
-            raise RoleError("Restore attestation never reads a password file.")
-        result = attest_restore()
+        if args.password_file is not None or args.drill_path is None or args.drill_sha256 is None:
+            raise RoleError("Restore attestation needs only the staged drill and its digest.")
+        result = attest_restore(drill_path=args.drill_path, drill_sha256=args.drill_sha256)
         print(json.dumps(result, separators=(",", ":"), sort_keys=True))
         return 0
+    if args.drill_path is not None or args.drill_sha256 is not None:
+        raise RoleError("Role operations do not accept restore drill inputs.")
     if args.action == "install":
         if args.password_file is None:
             raise RoleError("Install requires a protected password file.")
