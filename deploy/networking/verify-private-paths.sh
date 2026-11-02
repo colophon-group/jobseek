@@ -11,12 +11,19 @@ for value in "$POSTGRES_PRIVATE_IP" "$TYPESENSE_PRIVATE_IP"; do
   }
 done
 
-mapfile -t exporters < <(
+if ! exporter_rows="$(
   docker ps \
     --filter label=com.docker.compose.service=exporter \
-    --format '{{.ID}}'
-)
-[[ "${#exporters[@]}" -eq 1 ]] || {
+    --format '{{.ID}}' 2>/dev/null
+)"; then
+  echo "Cannot select the live exporter container" >&2
+  exit 1
+fi
+exporters=()
+if [[ -n "$exporter_rows" ]]; then
+  mapfile -t exporters <<<"$exporter_rows"
+fi
+[[ "${#exporters[@]}" -eq 1 && "${exporters[0]}" =~ ^[0-9a-f]{12,64}$ ]] || {
   echo "Expected exactly one live exporter container" >&2
   exit 1
 }
@@ -25,50 +32,4 @@ docker exec \
   -e JOBSEEK_EXPECTED_POSTGRES_PRIVATE_IP="$POSTGRES_PRIVATE_IP" \
   -e JOBSEEK_EXPECTED_TYPESENSE_PRIVATE_IP="$TYPESENSE_PRIVATE_IP" \
   "${exporters[0]}" \
-  uv run --no-sync python -c '
-import asyncio
-import json
-import os
-import urllib.parse
-import urllib.request
-
-import asyncpg
-
-from src.config import settings
-
-
-async def verify_postgresql():
-    expected = os.environ["JOBSEEK_EXPECTED_POSTGRES_PRIVATE_IP"]
-    parsed = urllib.parse.urlsplit(settings.local_database_url)
-    if parsed.hostname != expected:
-        raise SystemExit("crawler PostgreSQL DSN does not use the expected private host")
-    connection = await asyncpg.connect(
-        settings.local_database_url,
-        timeout=10,
-        command_timeout=30,
-        statement_cache_size=0,
-        server_settings={
-            "application_name": "jobseek:ingress:private-path-verifier",
-            "idle_in_transaction_session_timeout": "60s",
-        },
-    )
-    try:
-        if await connection.fetchval("select 1") != 1:
-            raise SystemExit("PostgreSQL private-path query returned an unexpected value")
-    finally:
-        await connection.close()
-
-
-asyncio.run(verify_postgresql())
-
-expected_typesense = os.environ["JOBSEEK_EXPECTED_TYPESENSE_PRIVATE_IP"]
-if settings.typesense_host != expected_typesense or settings.typesense_protocol != "http":
-    raise SystemExit("crawler Typesense configuration does not use the expected private host")
-url = f"http://{settings.typesense_host}:{settings.typesense_port}/health"
-with urllib.request.urlopen(url, timeout=10) as response:
-    payload = json.load(response)
-if payload.get("ok") is not True:
-    raise SystemExit("Typesense private-path health check failed")
-'
-
-echo "Crawler private PostgreSQL query and Typesense health checks passed"
+  /usr/local/bin/go-typesense-exporter --verify-private-paths
