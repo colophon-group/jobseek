@@ -6,7 +6,7 @@ import importlib
 from unittest.mock import MagicMock
 
 from src.export_cursor_fence import CDC_WRITER_BARRIER_ID
-from src.exporter import PostingSchema
+from src.typesense_projection import PostingSchema
 
 
 def _migration_module():

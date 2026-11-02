@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 
@@ -16,12 +14,9 @@ from src.shared.avature import (
     avature_board_from_metadata,
     avature_board_from_url,
     avature_pagination_url,
-    avature_request_host,
     parse_avature_page,
 )
 from src.shared.tdm import TDMReservedError
-from src.sync import _compute_throttle_key
-from src.workers.pipeline import _configured_egress_host
 from src.workspace._compat import auto_scraper_type
 
 
@@ -119,25 +114,6 @@ def test_custom_host_requires_explicit_opt_in_or_metadata():
     assert avature_board_from_metadata({"listing_url": url}) == AvatureBoard(
         host="jobs.example.com",
         prefix="/en_US/careers",
-    )
-
-
-def test_configured_listing_controls_scheduler_and_circuit_hosts():
-    board_url = "https://www.example.com/careers"
-    listing_url = "https://jobs.example.com/en_US/careers/SearchJobs"
-    metadata = {"listing_url": listing_url}
-
-    assert avature_request_host(board_url, metadata) == "jobs.example.com"
-    assert _compute_throttle_key("avature", board_url, metadata) == "jobs.example.com"
-    assert (
-        _configured_egress_host(
-            {
-                "crawler_type": "avature",
-                "board_url": board_url,
-                "metadata": json.dumps(metadata),
-            }
-        )
-        == "jobs.example.com"
     )
 
 

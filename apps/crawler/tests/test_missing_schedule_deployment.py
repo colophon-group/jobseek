@@ -35,7 +35,8 @@ def test_missing_schedule_repair_preserves_authority_and_stops_on_failure(
             'if [[ "$*" == *--apply* ]]; then return "$APPLY_STATUS"; '
             'else return "$INSPECT_STATUS"; fi; }',
             function,
-            "if repair_default_missing_schedules; then status=0; else status=$?; fi",
+            "if repair_default_missing_schedules inspect && "
+            "repair_default_missing_schedules apply; then status=0; else status=$?; fi",
             """printf 'status=%s\\n' "$status" >>"$TEST_LOG" """,
         )
     )
@@ -70,6 +71,89 @@ def test_missing_schedule_repair_runs_quiesced_after_epoch_before_restart() -> N
     quiesce = source.index("\nstop_crawler_services 60 worker-1")
     sync = source.index("go-typesense-exporter --sync-registry", quiesce)
     epoch = source.index("\nprepare_default_go_epoch\n", sync)
-    repair = source.index("\nrepair_default_missing_schedules\n", epoch)
+    repair = source.index("\nrepair_default_missing_schedules apply\n", epoch)
     restart = source.index('docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"', repair)
-    assert quiesce < sync < epoch < repair < restart
+    inspect = source.index("\ninspect_default_missing_schedules\n")
+    assert inspect < quiesce < sync < epoch < repair < restart
+    assert "requires a verified native Go rollback image" in source[:inspect]
+
+
+@pytest.mark.parametrize("verification_status", [0, 23])
+def test_missing_schedule_inspect_binds_previous_compose_environment_and_data(
+    tmp_path: Path, verification_status: int
+) -> None:
+    import json
+
+    source = DEPLOY_SH.read_text()
+
+    def function(name):
+        start = source.index(name + "() {")
+        return source[start : source.index("\n}\n", start) + 3]
+
+    previous = tmp_path / "previous"
+    previous.mkdir()
+    (previous / "environment.env").write_text("LOCAL_DATABASE_URL=previous-only\n")
+    (previous / "docker-compose.yml").write_text("services: {}\n")
+    (previous / "data").mkdir()
+    log = tmp_path / "calls"
+    docker = tmp_path / "docker"
+    docker.write_text(
+        "#!/usr/bin/env python3\nimport json, os, pathlib, sys\n"
+        "keys = ['LOCAL_DATABASE_URL','REDIS_URL','COMPOSE_FILE','WEB_DATABASE_URL']\n"
+        "payload = {'args':sys.argv[1:], 'leaked_keys':[k for k in keys if k in os.environ]}\n"
+        f"pathlib.Path({str(log)!r}).write_text(json.dumps(payload))\n"
+    )
+    docker.chmod(0o700)
+    verifier = tmp_path / "verifier"
+    verifier.write_text(
+        "#!/usr/bin/env python3\nimport sys\n"
+        f"assert sys.argv[1:] == ['release-bridge', {str(previous)!r}, 'colophon-group']\n"
+        f"raise SystemExit({verification_status})\n"
+    )
+    verifier.chmod(0o700)
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            "\n".join(
+                (
+                    "set -eu",
+                    "CRAWLER_RUNTIME_BACKEND=go",
+                    "MAINTENANCE_PROVENANCE_LABELS=(--label provenance=qualified)",
+                    "COMPOSE_PROJECT_NAME=fixture",
+                    "ROLLBACK_ACTIVE_IMAGE_OVERRIDE=",
+                    function("rollback_compose"),
+                    function("inspect_default_missing_schedules"),
+                    "inspect_default_missing_schedules",
+                )
+            ),
+        ],
+        env={
+            **os.environ,
+            "PATH": str(tmp_path) + ":" + os.environ["PATH"],
+            "ROLLBACK_ACTIVE_RELEASE_TARGET": str(previous),
+            "NATIVE_DEPLOY_TOOLS": str(verifier),
+            "OWNER": "colophon-group",
+            "LOCAL_DATABASE_URL": "incoming-must-not-leak",
+            "REDIS_URL": "incoming-must-not-leak",
+            "COMPOSE_FILE": "incoming-must-not-leak",
+            "WEB_DATABASE_URL": "must-not-leak",
+        },
+        capture_output=True,
+        text=True,
+    )
+    if verification_status:
+        assert result.returncode != 0
+        assert not log.exists()
+        return
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads(log.read_text())
+    args = receipt["args"]
+    assert receipt["leaked_keys"] == []
+    assert args[args.index("--env-file") + 1] == str(previous / "environment.env")
+    assert args[args.index("-f") + 1] == str(previous / "docker-compose.yml")
+    assert str(previous / "data") + ":/app/data:ro" in args
+    assert args[-5:] == ["worker-1", "--redis-capacity", "repair-missing", "--limit", "50000"]
+    assert "--apply" not in args
+    assert "/usr/local/bin/go-typesense-exporter" in args
+    assert "incoming-must-not-leak" not in result.stdout + result.stderr + log.read_text()

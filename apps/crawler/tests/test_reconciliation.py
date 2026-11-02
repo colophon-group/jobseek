@@ -18,7 +18,6 @@ import pytest
 import structlog
 
 from src.cli import parse_args
-from src.exporter import TaxonomyMaps
 from src.reconciliation import (
     _PARTITION_TYPESENSE_SQL,
     _TYPESENSE_POSTINGS_BY_ID_SQL,
@@ -45,6 +44,7 @@ from src.reconciliation import (
     run_reconciliation,
 )
 from src.typesense_candidate_order import candidate_order_key
+from src.typesense_projection import TaxonomyMaps
 
 
 def _id(prefix: int, suffix: int) -> uuid.UUID:

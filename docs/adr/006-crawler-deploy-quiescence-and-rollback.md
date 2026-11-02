@@ -24,6 +24,13 @@ readiness gates, not as an atomic swap.
 
 The deploy script must:
 
+- use the native Go processing and maintenance image for forward deployment and
+  rollback; current retirement removes Python daemon/build fallbacks. Historical
+  release evidence may still be verified without executing a Python runtime;
+- perform the read-only missing-schedule fleet inspection before writer
+  quiescence using the previous immutable Go image and its pre-migration schema.
+  The later repair must reopen its own snapshot and revalidate
+  ownership and schedule lifecycle; the inspection result is not write authority;
 - validate required environment before stopping processors;
 - preserve a rollback copy of the env file;
 - pull images and run non-mutating preflights before quiescing processors;

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from prometheus_client import REGISTRY
 
 
@@ -116,80 +115,6 @@ def test_monitor_failed_per_board_total_increments_on_failure() -> None:
 
 
 # ─── pipeline integration: failure path emits the new metric ─────────
-
-
-@pytest.mark.asyncio
-async def test_process_monitor_work_failure_emits_per_board_counter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Drive ``_process_monitor_work`` against a stub board + inject a
-    failure inside ``_process_one_board_streaming``. The outer
-    ``except Exception`` block must increment the per-board counter
-    BEFORE the reschedule attempt (so a Redis hiccup in the reschedule
-    path doesn't hide the original failure).
-    """
-    from src.workers import pipeline
-
-    failed_board_id = "44444444-4444-4444-4444-444444444444"
-    base = _value_for("crawler_monitor_failed_per_board", board_id=failed_board_id)
-
-    # Stub everything the function reaches into.
-    class _StubConn:
-        async def fetchval(self, *args: Any) -> str:
-            # Return 'active' so the disabled short-circuit doesn't run.
-            return "active"
-
-    class _StubPool:
-        def acquire(self) -> Any:
-            class _Ctx:
-                async def __aenter__(self) -> _StubConn:
-                    return _StubConn()
-
-                async def __aexit__(self, *args: Any) -> None:
-                    pass
-
-            return _Ctx()
-
-    # Force the streaming processor to raise — triggers the outer
-    # except. Patch into the lazy import inside the function.
-    import src.processing.board as board_mod
-
-    async def _boom(*args: Any, **kwargs: Any) -> Any:
-        raise RuntimeError("synthetic monitor failure")
-
-    monkeypatch.setattr(board_mod, "_process_one_board_streaming", _boom)
-
-    # reschedule should be called but we don't want it to actually hit
-    # Redis. Make it a no-op.
-    async def _noop_reschedule(*args: Any, **kwargs: Any) -> None:
-        return None
-
-    monkeypatch.setattr(pipeline, "reschedule_task", _noop_reschedule)
-
-    # Likewise enqueue / monitor_needs_browser shouldn't matter since
-    # we're a browser worker — pass browser=True so the rerouting block
-    # is bypassed.
-    work = pipeline.BoardWork(
-        board_id=failed_board_id,
-        domain="example.com",
-        config={"crawler_type": "greenhouse"},
-    )
-    import structlog
-
-    log = structlog.get_logger("test")
-
-    # Run — the function swallows the exception in its outer except.
-    await pipeline._process_monitor_work(
-        log,
-        work,
-        local_pool=_StubPool(),  # type: ignore[arg-type]
-        http=None,  # type: ignore[arg-type]
-        browser=True,
-        pw=None,
-    )
-
-    # The per-board failure counter incremented exactly once.
-    assert _value_for("crawler_monitor_failed_per_board", board_id=failed_board_id) == base + 1
 
 
 # ─── cardinality guard ──────────────────────────────────────────────

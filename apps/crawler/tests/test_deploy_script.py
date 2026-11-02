@@ -17,7 +17,6 @@ DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
 DEPLOY_HELPERS_SH = Path(__file__).resolve().parent.parent / "deploy_helpers.sh"
 DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
 DOCKERIGNORE = Path(__file__).resolve().parent.parent / ".dockerignore"
-XVFB_ENTRYPOINT = Path(__file__).resolve().parent.parent / "scripts" / "with-xvfb.sh"
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 ROLLBACK_POOL_OVERRIDE = (
     Path(__file__).resolve().parent.parent / "rollback-pool-budget.override.yml"
@@ -365,7 +364,7 @@ def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     assert "forward_sync_command+=(--require-native)" in script
     assert "uv run --no-sync crawler sync\n" not in forward
     assert "command_args=(go-typesense-exporter --sync-registry)" in sync_host
-    assert "command_args=(uv run --no-sync crawler sync)" in sync_host
+    assert "uv run --no-sync crawler sync" not in sync_host
     assert "--legacy-mirror" not in script
     assert "--legacy-mirror" not in sync_workflow
     assert "--legacy-mirror" not in sync_host
@@ -771,7 +770,7 @@ def _install_csv_host_docker(binary_dir: Path) -> None:
         "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
-        "    print('')\n"
+        "    print('v1' if 'native-maintenance' in args[3] else '')\n"
         "elif args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = {}\n"
@@ -951,15 +950,12 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
         bridged / "data"
     )
     sync_environment = Path(env["TEST_CSV_SYNC_ENV_LOG"]).read_text(encoding="utf-8")
-    assert sync_environment.count("WEB_DATABASE_URL=postgresql://web\n") == 1
+    assert "WEB_DATABASE_URL=" not in sync_environment
     assert "postgresql://web" not in first.stdout
     assert "postgresql://web" not in first.stderr
-    assert Path(env["TEST_CSV_SYNC_ARGS_LOG"]).read_text().splitlines()[-5:] == [
-        "uv",
-        "run",
-        "--no-sync",
-        "crawler",
-        "sync",
+    assert Path(env["TEST_CSV_SYNC_ARGS_LOG"]).read_text().splitlines()[-2:] == [
+        "go-typesense-exporter",
+        "--sync-registry",
     ]
     assert not (candidates / candidate_id).exists()
 
@@ -1045,7 +1041,7 @@ def test_interrupted_csv_publication_scopes_retained_web_credential_to_recovery(
     assert not journal.exists()
     assert active.resolve() == (target if action == "promote-target" else previous)
     sync_environment = sync_environment_log.read_text(encoding="utf-8")
-    assert sync_environment.count(f"WEB_DATABASE_URL={credential}\n") == 1
+    assert "WEB_DATABASE_URL=" not in sync_environment
     assert credential not in result.stdout
     assert credential not in result.stderr
 
@@ -2190,7 +2186,7 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "    print('a' * 64 + ' browser-1'); sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
-        "    print('')\n"
+        "    print('v1' if 'native-maintenance' in args[3] else '')\n"
         "elif args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = {}\n"
@@ -2516,8 +2512,8 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
         )
     ]
     assert 'read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF' in rollback_sync
-    assert "uv run --no-sync crawler sync" in rollback_sync
-    assert '"$park_umantis_monitors" "$maintenance_backend"' in rollback_sync
+    assert "go-typesense-exporter --sync-registry --require-native" in rollback_sync
+    assert "0 native &&" in rollback_sync
     assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
         '"${forward_sync_command[@]}"', script.index("FORWARD_SYNC_STARTED=1")
@@ -2540,10 +2536,12 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     ("maintenance_backend", "runtime_backend"),
     [("native", "go"), ("native", "legacy"), ("legacy", "legacy")],
 )
-def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
+@pytest.mark.parametrize("image_owner", ["colophon-group", "other-owner"])
+def test_previous_config_restore_requires_go_and_never_passes_legacy_web_secret(
     tmp_path: Path,
     maintenance_backend: str,
     runtime_backend: str,
+    image_owner: str,
 ) -> None:
     script = DEPLOY_SH.read_text()
     read_exact = script[
@@ -2595,107 +2593,57 @@ def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_prese
         )
     )
 
-    image_line = f"CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}\n"
-    for legacy_web_database_url in ("postgresql://rollback-only", ""):
-        env_file.write_text(
-            image_line
-            + (f"WEB_DATABASE_URL={legacy_web_database_url}\n" if legacy_web_database_url else ""),
-            encoding="utf-8",
-        )
-        for reap_status, compose_status, repair_status, expected_status in (
-            (0, 0, 0, 0),
-            (0, 9, 0, 9),
-            (0, 0, 7, 7),
-            (23, 0, 0, 23),
-        ):
-            log.write_text("", encoding="utf-8")
-            result = subprocess.run(
-                [bash, "-c", harness],
-                check=False,
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "COMPOSE_STATUS": str(compose_status),
-                    "REAP_STATUS": str(reap_status),
-                    "TEST_BACKEND": maintenance_backend,
-                    "TEST_RUNTIME_BACKEND": runtime_backend,
-                    "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url
-                    if maintenance_backend == "legacy"
-                    else "",
-                    "REPAIR_STATUS": str(repair_status),
-                    "TEST_ENV_FILE": str(env_file),
-                    "TEST_LOG": str(log),
-                    "TEST_DATA_SNAPSHOT": str(data_snapshot),
-                    "TEST_DATA_MANIFEST": str(tmp_path / "data-files.sha256"),
-                },
-            )
-            assert result.returncode == 0, result.stderr
-            calls = log.read_text(encoding="utf-8").splitlines()
-            if reap_status:
-                assert calls == [f"status={reap_status}"]
-                continue
-            expected_web_arg = (
-                "-e WEB_DATABASE_URL "
-                if legacy_web_database_url and maintenance_backend == "legacy"
-                else ""
-            )
-            sync_command = (
-                "go-typesense-exporter --sync-registry"
-                if maintenance_backend == "native"
-                else "uv run --no-sync crawler sync"
-            )
-            if runtime_backend == "go":
-                sync_command += " --require-native"
-            assert calls[0] == (
-                f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
-                f"{expected_web_arg}-e CRAWLER_DB_ROLE=rollback-sync "
-                "-e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_MAX=4 "
-                f"worker-1 {sync_command}"
-            )
-            if compose_status == 0:
-                park = 0 if runtime_backend == "go" else 1
-                assert calls[1] == (
-                    f"rollback-umantis-identity-cutover {park} {maintenance_backend}"
-                )
-                assert calls[2] == f"status={expected_status}"
-            else:
-                assert calls[1] == f"status={compose_status}"
-            assert "postgresql://rollback-only" not in result.stdout
-            assert "postgresql://rollback-only" not in result.stderr
-
-    for malformed_web_lines, expected_error in (
-        (
-            "WEB_DATABASE_URL=postgresql://one\nWEB_DATABASE_URL=postgresql://two\n",
-            "restored web database credential is duplicated",
-        ),
-        ("WEB_DATABASE_URL=\n", "restored web database credential is empty"),
+    image_line = f"CRAWLER_IMAGE_REF=ghcr.io/{image_owner}/jobseek-crawler@sha256:{'a' * 64}\n"
+    env_file.write_text(image_line + "WEB_DATABASE_URL=postgresql://must-not-forward\n")
+    for reap_status, compose_status, repair_status, expected_status in (
+        (0, 0, 0, 0),
+        (0, 9, 0, 9),
+        (0, 0, 7, 7),
+        (23, 0, 0, 23),
     ):
-        env_file.write_text(image_line + malformed_web_lines, encoding="utf-8")
-        log.write_text("", encoding="utf-8")
+        log.write_text("")
         result = subprocess.run(
             [bash, "-c", harness],
-            check=False,
             capture_output=True,
             text=True,
             env={
                 **os.environ,
-                "COMPOSE_STATUS": "0",
+                "COMPOSE_STATUS": str(compose_status),
                 "TEST_BACKEND": maintenance_backend,
                 "TEST_RUNTIME_BACKEND": runtime_backend,
+                "REPAIR_STATUS": str(repair_status),
                 "EXPECTED_WEB_DATABASE_URL": "",
-                "REPAIR_STATUS": "0",
+                "REAP_STATUS": str(reap_status),
                 "TEST_ENV_FILE": str(env_file),
                 "TEST_LOG": str(log),
                 "TEST_DATA_SNAPSHOT": str(data_snapshot),
                 "TEST_DATA_MANIFEST": str(tmp_path / "data-files.sha256"),
             },
         )
-        assert result.returncode == 0
-        assert log.read_text(encoding="utf-8").splitlines() == ["status=1"]
-        assert expected_error in result.stderr
-        assert "postgresql://one" not in result.stderr
-        assert "postgresql://two" not in result.stderr
+        assert result.returncode == 0, result.stderr
+        calls = log.read_text().splitlines()
+        if image_owner != "colophon-group":
+            assert calls == ["status=1"]
+            assert "image identity is invalid" in result.stderr
+            continue
+        if maintenance_backend != "native" or runtime_backend != "go":
+            assert calls == ["status=1"]
+            assert "immutable native Go release" in result.stderr
+            continue
+        if reap_status:
+            assert calls == [f"status={reap_status}"]
+            continue
+        assert calls[0] == (
+            f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
+            "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
+            "-e CRAWLER_DB_POOL_MAX=4 worker-1 "
+            "go-typesense-exporter --sync-registry --require-native"
+        )
+        if compose_status == 0:
+            assert calls[1] == "rollback-umantis-identity-cutover 0 native"
+        assert calls[-1] == f"status={expected_status}"
+        assert "WEB_DATABASE_URL" not in " ".join(calls)
+        assert "postgresql://must-not-forward" not in result.stdout + result.stderr
 
 
 def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
@@ -3318,7 +3266,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         "    sys.exit(0)\n"
         "if args[:2] == ['image', 'inspect']:\n"
         "    assert args[-1].startswith('ghcr.io/colophon-group/jobseek-crawler@sha256:')\n"
-        "    print(''); sys.exit(0)\n"
+        "    print('v1' if 'native-maintenance' in args[3] else ''); sys.exit(0)\n"
         "def env_value(key):\n"
         "    env_file = Path(args[args.index('--env-file') + 1])\n"
         "    values = [line.split('=', 1)[1] for line in env_file.read_text().splitlines() "
@@ -3412,7 +3360,8 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
     )
 
-    assert result.returncode == 23, result.stderr
+    assert result.returncode == 1, result.stderr
+    assert "immutable native Go release" in result.stderr
     assert active_pointer.resolve() == old_release.resolve()
     assert old_identity["data_contract"] != new_identity["data_contract"]
     active_manifest = (active_pointer.resolve() / "release.manifest").read_text(encoding="utf-8")
@@ -3431,9 +3380,6 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     assert log.read_text(encoding="utf-8").splitlines() == [
         "verify:d",
         "stop",
-        "verify:b",
-        "sync:b:B",
-        "up:b",
         "verify:b",
     ]
 
@@ -3915,22 +3861,6 @@ def test_deploy_disk_preflight_prunes_only_safe_reclaimable_docker_state() -> No
     assert script.rstrip().splitlines()[-2] == "docker image prune -f || true"
 
 
-def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
-    dockerfile = DOCKERFILE.read_text()
-    dockerignore = DOCKERIGNORE.read_text().splitlines()
-
-    assert "FROM docker.io/library/python:3.13.15-slim-trixie@sha256:" in dockerfile
-    assert "python:3.14" not in dockerfile
-    assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in dockerfile
-    assert "ghcr.io/astral-sh/uv:latest" not in dockerfile
-    assert "COPY scripts/with-xvfb.sh /usr/local/bin/with-xvfb" in dockerfile
-    assert 'ENTRYPOINT ["/usr/local/bin/with-xvfb"]' in dockerfile
-    assert "scripts/*" in dockerignore
-    assert "!scripts/with-xvfb.sh" in dockerignore
-    assert "scripts/" not in dockerignore
-    assert XVFB_ENTRYPOINT.is_file()
-
-
 def _write_executable(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
@@ -3960,85 +3890,6 @@ def _install_release_verifier_tools(binary_dir: Path) -> None:
         "assert sys.argv[1:3] == ['-c', '%a'], sys.argv\n"
         "print(f'{stat.S_IMODE(os.lstat(sys.argv[3]).st_mode):o}')\n",
     )
-
-
-def test_xvfb_entrypoint_cleans_stale_display_artifacts_on_restart(tmp_path: Path) -> None:
-    runtime = tmp_path / "runtime"
-    socket_dir = runtime / ".X11-unix"
-    socket_dir.mkdir(parents=True)
-    # Docker gives the restarted container a fresh PID namespace, so a stale
-    # Xvfb PID can be reused by an unrelated live process. That must not make
-    # the stale lock permanent.
-    (runtime / ".X99-lock").write_text(f"{os.getpid()}\n", encoding="utf-8")
-    (socket_dir / "X99").write_text("stale", encoding="utf-8")
-
-    binaries = tmp_path / "bin"
-    binaries.mkdir()
-    _write_executable(
-        binaries / "xdpyinfo",
-        '#!/bin/sh\ntest -f "$XVFB_RUNTIME_DIR/.display-ready"\n',
-    )
-    _write_executable(
-        binaries / "Xvfb",
-        '#!/bin/sh\ntouch "$XVFB_RUNTIME_DIR/.display-ready"\nsleep 0.5\n',
-    )
-    target = tmp_path / "target"
-    _write_executable(
-        target,
-        "#!/bin/sh\n"
-        'test ! -e "$XVFB_RUNTIME_DIR/.X99-lock"\n'
-        'test ! -e "$XVFB_RUNTIME_DIR/.X11-unix/X99"\n'
-        'test "$DISPLAY" = :99\n'
-        "echo target-started\n",
-    )
-
-    result = subprocess.run(
-        ["/bin/sh", str(XVFB_ENTRYPOINT), str(target)],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=5,
-        env={
-            **os.environ,
-            "PATH": f"{binaries}:{os.environ['PATH']}",
-            "XVFB_RUNTIME_DIR": str(runtime),
-        },
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "target-started"
-
-
-def test_xvfb_entrypoint_keeps_artifacts_when_display_is_live(tmp_path: Path) -> None:
-    runtime = tmp_path / "runtime"
-    socket_dir = runtime / ".X11-unix"
-    socket_dir.mkdir(parents=True)
-    lock = runtime / ".X99-lock"
-    socket = socket_dir / "X99"
-    lock.write_text(f"{os.getpid()}\n", encoding="utf-8")
-    socket.write_text("live", encoding="utf-8")
-
-    binaries = tmp_path / "bin"
-    binaries.mkdir()
-    _write_executable(binaries / "xdpyinfo", "#!/bin/sh\nexit 0\n")
-
-    result = subprocess.run(
-        ["/bin/sh", str(XVFB_ENTRYPOINT), "/bin/true"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=5,
-        env={
-            **os.environ,
-            "PATH": f"{binaries}:{os.environ['PATH']}",
-            "XVFB_RUNTIME_DIR": str(runtime),
-        },
-    )
-
-    assert result.returncode != 0
-    assert "display 99 is already active" in result.stderr
-    assert lock.exists()
-    assert socket.exists()
 
 
 def test_alloy_uses_explicit_persistent_storage_path() -> None:
@@ -4152,3 +4003,15 @@ def test_csv_native_artifacts_bind_trusted_runner_not_requested_data_revision() 
     ):
         assert f"scripts/{name}" in copied
     assert "JOBSEEK_CSV_TOOL_REVISION" in steps["Run sync via SSH"]["with"]["envs"].split(",")
+
+
+def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
+    dockerfile = DOCKERFILE.read_text()
+    dockerignore = DOCKERIGNORE.read_text().splitlines()
+
+    assert "FROM docker.io/library/python:3.13.15-slim-trixie@sha256:" in dockerfile
+    assert "python:3.14" not in dockerfile
+    assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in dockerfile
+    assert "ghcr.io/astral-sh/uv:latest" not in dockerfile
+    assert "scripts/*" in dockerignore
+    assert "scripts/" not in dockerignore

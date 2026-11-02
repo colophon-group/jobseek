@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify installed crawler build-info wiring without external side effects."""
+"""Verify offline package identity and native CLI delegation without side effects."""
 
 from __future__ import annotations
 
@@ -13,77 +13,49 @@ from unittest.mock import patch
 from src import cli, metrics
 
 
-class _StopAfterMetrics(Exception):
-    """Stop a role before it can initialize a database or HTTP client."""
+class _StopAfterExec(Exception):
+    """Stop before replacing the control CLI with its native executable."""
 
 
 ROLES = (
-    ("worker-1", "run", 9095),
-    ("worker-2", "run", 9096),
-    ("worker-3", "run", 9097),
-    ("browser-1", "run-browser", 9098),
-    ("exporter", "export", 9093),
-    ("drain", "drain", 9094),
+    ("run", "go-ordinary-worker", ["go-ordinary-worker"]),
+    ("run-browser", "go-ordinary-worker", ["go-ordinary-worker"]),
+    ("export", "go-typesense-exporter", ["go-typesense-exporter", "--run"]),
+    ("drain", "go-r2-drain", ["go-r2-drain"]),
 )
 
 
 async def _forbid_database() -> None:
-    raise AssertionError("role reached database initialization before the release probe stopped it")
+    raise AssertionError("native alias initialized a Python database pool")
 
 
-async def _close_no_pools() -> None:
-    """Replace global pool cleanup after the intentionally interrupted role."""
+def _forbid_python_runtime(*_args, **_kwargs) -> None:
+    raise AssertionError("native alias initialized the retired Python runtime")
 
 
-def _forbid_http() -> None:
-    raise AssertionError("role reached HTTP initialization before the release probe stopped it")
+def _verify_role(command: str, binary: str, argv: list[str]) -> None:
+    calls = []
 
+    def exec_and_stop(actual_binary: str, actual_argv: list[str]) -> None:
+        calls.append((actual_binary, actual_argv))
+        raise _StopAfterExec
 
-def _assert_build_info(expected_version: str) -> None:
-    samples = list(metrics.build_info.collect())[0].samples
-    exact = [
-        sample
-        for sample in samples
-        if sample.labels == {"version": expected_version} and sample.value == 1.0
-    ]
-    assert len(exact) == 1, (
-        f"expected one crawler_build_info sample for {expected_version!r}, got {samples!r}"
-    )
-    assert all(sample.labels.get("version") != "unknown" for sample in samples), samples
-
-
-def _verify_role(role: str, command: str, port: int, expected_version: str) -> None:
-    metrics.build_info.clear()
-    starts = 0
-
-    def start_and_stop(actual_port: int) -> None:
-        nonlocal starts
-        starts += 1
-        assert actual_port == port, (role, actual_port, port)
-        metrics.start_metrics_server(actual_port)
-        _assert_build_info(expected_version)
-        raise _StopAfterMetrics
-
-    args = argparse.Namespace(command=command)
+    args = argparse.Namespace(command=command, batch_size=2000, interval=1)
     with (
         patch.object(cli, "parse_args", return_value=args),
-        patch.object(cli, "setup_logging"),
-        patch.object(cli, "start_metrics_server", new=start_and_stop),
+        patch.object(cli.os, "execvp", side_effect=exec_and_stop),
+        patch.object(cli, "setup_logging", side_effect=_forbid_python_runtime),
+        patch.object(cli, "start_metrics_server", side_effect=_forbid_python_runtime),
         patch.object(cli, "create_local_pool", new=_forbid_database),
-        patch.object(cli, "close_all_pools", new=_close_no_pools),
-        patch.object(cli, "create_http_client", new=_forbid_http),
-        patch.object(cli.settings, "metrics_port", port),
-        patch.object(metrics, "_start_process_tree_sampler"),
-        patch.object(metrics, "_start_metrics_http_server"),
+        patch.object(cli, "create_http_client", side_effect=_forbid_python_runtime),
     ):
         try:
             asyncio.run(cli.run())
-        except _StopAfterMetrics:
+        except _StopAfterExec:
             pass
         else:
-            raise AssertionError(f"{role} did not initialize crawler build info")
-
-    assert starts == 1, (role, starts)
+            raise AssertionError(f"{command} did not exec its native implementation")
+    assert calls == [(binary, argv)]
 
 
 def main() -> None:
@@ -114,10 +86,10 @@ def main() -> None:
         )
         assert metrics.is_source_checkout()
 
-    for role, command, port in ROLES:
-        _verify_role(role, command, port, expected_version)
+    for command, binary, argv in ROLES:
+        _verify_role(command, binary, argv)
 
-    print(f"verified crawler_build_info={expected_version} for {len(ROLES)} installed roles")
+    print(f"verified offline package={expected_version} and {len(ROLES)} native aliases")
 
 
 if __name__ == "__main__":

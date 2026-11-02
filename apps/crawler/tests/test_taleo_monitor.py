@@ -22,8 +22,6 @@ from src.shared.taleo import (
     taleo_safe_redirect,
     taleo_total_from_html,
 )
-from src.sync import _compute_throttle_key
-from src.workers.pipeline import _configured_egress_host
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 from src.workspace.career_discover import _scan_ats_urls_in_html
 from src.workspace.commands.crawl import _MONITOR_CONFIG_HINTS
@@ -195,20 +193,6 @@ class TestIdentity:
                 DISPATCHER_URL.replace("org=ACME", "org=OTHER", 1),
             )
             is None
-        )
-
-    def test_resolved_identity_controls_scheduler_and_circuit_hosts(self):
-        metadata = _config(FINAL_BOARD)
-        assert _compute_throttle_key("taleo", LISTING_URL, metadata) == FINAL_BOARD.host
-        assert (
-            _configured_egress_host(
-                {
-                    "crawler_type": "taleo",
-                    "board_url": LISTING_URL,
-                    "metadata": json.dumps(metadata),
-                }
-            )
-            == FINAL_BOARD.host
         )
 
     def test_validates_cursor_links_and_inactive_dispatcher(self):

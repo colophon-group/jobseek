@@ -1,9 +1,11 @@
 # Go and Lightpanda migration continuation plan
 
 Current checkpoint: **2026-11-02 06:36 UTC / 07:36 CET**. The performance-sensitive
-migration is implemented and installed, but **full delivery remains blocked on
-Oracle ADF pagination/freshness**. Start from the current installed identities and
-canonical registry, rather than saved counts. The
+migration is installed. **Retiring the superseded Python implementations and
+shortening deployment quiescence are the current delivery work.** Oracle ADF
+pagination/freshness is a separately tracked compatibility issue; the operator
+explicitly removed it as a blocker to continuing the migration. Start from the
+installed identities and canonical registry, rather than saved counts. The
 [current qualification](evidence/go-native-installed-current.json) binds the
 installed releases, schedule conservation, controlled comparisons and remaining limits.
 
@@ -12,7 +14,8 @@ installed releases, schedule conservation, controlled comparisons and remaining 
 Only performance-sensitive paths require Go: crawler execution,
 extraction/enrichment, scheduling/queue/persistence, export and description drain.
 Low-frequency control, provisioning/security, workspace/labeller/offline tools
-and required cold-reversal Python may remain. Production transports stay
+may remain. Rollback targets the previous verified immutable Go release.
+Production transports stay
 **Go HTTP/API or latest self-hosted Lightpanda; no Chromium fallback**.
 
 The [normal 0.13.1153 deployment and promotion](https://github.com/colophon-group/jobseek/actions/runs/41384055528/attempts/2)
@@ -111,7 +114,41 @@ single CPU/memory snapshot; preserve the demo reserve and publisher limits.
 
 ## Remaining delivery work
 
-1. **Resolve the original Oracle ADF board.** It remains enabled, unreserved and
+1. **Retire superseded Python runtime source and images.** The current source
+   removes the ordinary worker pipeline, Python R2 drain and polling exporter,
+   and Python Lightpanda claimant/executor daemons. Existing worker/export/drain
+   CLI aliases exec the Go binaries before Python metrics, pools or clients open.
+   Offline Typesense projection and workspace extraction remain useful tools.
+   Docker's explicit `tools` target is offline-only; `slim`, `full` and browser
+   runtime targets are retired. Performance CI builds its historical comparator
+   from a fixed Git revision rather than keeping a second runtime implementation
+   in current source. Production and rollback use immutable Go images.
+
+2. **Shorten the writer pause without weakening schedule authority.** Run the
+   existing read-only full-fleet missing-schedule inspection while the previous
+   Go stack serves, using that previous image so the inspection does not depend
+   on schema migrations that have not run. Keep repair after quiescence, sync and routing-epoch
+   attestation; it opens a fresh SQL snapshot, checks ownership each page and
+   retains the existing per-schedule atomic CAS. The earlier inspection grants
+   no repair authority. The 1154 deployment scanned 1,801,619 rows in each pass;
+   moving inspection removes one complete scan from the pause. Actual elapsed
+   savings require the next supported deployment's measurements. Preserve
+   preflight, mutation lock, exact release/data publication, complete writer
+   quiescence, readiness and fail-closed rollback.
+
+3. **Close the original acceptance audit on the changed source.** Preserve every
+   enabled board, canonical output, publisher policy, fences/leases/schedules,
+   downstream publication and demo reserve. Use a monotonic runtime VERSION,
+   exact-head Required CI/Crawler Deploy Gate, a normal full quiesced rollout
+   and independent installed/schedule/output verification. Observe throughput
+   against eligible demand before claiming the detail backlog is met.
+
+## Open ADF compatibility issue
+
+The original Oracle ADF board remains enabled and tracked; its failure does not
+block unrelated retirement, performance or deployment work.
+
+**Original ADF outcome.** It remains enabled, unreserved and
    quarantined after the normal November 1 **17:37:14 UTC** attempt failed with
    pagination HTTP 302; failures 12. Its unchanged next retry is November 2
    **17:37:17 UTC /18:37:17 CET**. Do not force work or reset counters/backoff.
@@ -141,21 +178,11 @@ single CPU/memory snapshot; preserve the demo reserve and publisher limits.
    5,000 detail checks; the Chrome exception is consumed and never authorizes a
    production fallback. Its profile, executable and build cache were removed.
 
-2. **Close the original acceptance audit after that outcome.** Preserve every
-   enabled board, canonical title/description/location/enrichment output,
-   publisher policy, fences/leases/schedules and downstream publishing. Existing
-   dated qualifications cover the five former deadletters and the original
-   required-title native BambooHR/API route; the current receipt keeps their
-   limits, existing backlog and historical inactive-description metadata gap
-   explicit. Batch related performance-path fixes when new evidence supports
-   them; do not expand into rewriting approved Python control/offline tools.
-   Use a runtime VERSION bump, exact-head Required CI/Gate, normal full quiesced
-   rollout and independent installed/schedule/output verification for a fix.
-
 The [supported cold-reversal exercise](https://github.com/colophon-group/jobseek/actions/runs/41213487268)
-is dated 1137 evidence, not a new 1153/11500 exercise. Preserve supported rollback
-assets through affected normal schedule observation and retire them through
-supported GC. Follow [ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md);
+is dated 1137 evidence, not a new exercise of the retirement change. Preserve
+the prior verified immutable Go release and its exact data/spec evidence for
+normal rollback; retire Python runtime recovery paths and obsolete assets.
+Follow [ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md);
 no live rsync, mutable image deployment, partial writer restart or hold bypass.
 Keep one current checkpoint, active regression inputs and supported rollback
 assets. Remove owned temporary binaries/caches/raw history; preserve shared

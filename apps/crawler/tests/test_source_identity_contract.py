@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 
-from src.exporter import PostingSchema
 from src.queries.monitor import (
     _DIFF_BATCH_DURABLE,
     _INSERT_RICH_JOB_DURABLE,
@@ -12,6 +11,7 @@ from src.queries.monitor import (
     _INSERT_URL_ONLY_JOBS_DURABLE,
     _VALIDATE_DURABLE_DISCOVERIES,
 )
+from src.typesense_projection import PostingSchema
 
 
 def test_durable_sql_matches_identity_but_updates_outbound_url() -> None:

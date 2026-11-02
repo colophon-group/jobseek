@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import contextlib
 import io
+import os
 import socket
 import socketserver
 import struct
@@ -262,31 +263,44 @@ print(generate_latest().decode())
 
 
 @pytest.mark.parametrize("command", ["run", "run-browser", "export", "drain"])
-def test_invalid_installed_version_stops_roles_before_external_clients(command: str) -> None:
+def test_native_roles_exec_before_python_metrics_or_external_clients(command: str) -> None:
     from src import cli
 
-    create_pool = AsyncMock()
-    create_http = MagicMock()
-    close_pools = AsyncMock()
-    installed_distribution = MagicMock()
-    installed_distribution.version = "unknown"
-    installed_distribution.read_text.return_value = None
+    create_pool, close_pools = AsyncMock(), AsyncMock()
+    create_http, metrics_server = MagicMock(), MagicMock()
+    native = {
+        "run": ["go-ordinary-worker"],
+        "run-browser": ["go-ordinary-worker"],
+        "export": ["go-typesense-exporter", "--run"],
+        "drain": ["go-r2-drain"],
+    }[command]
     with (
-        patch.object(cli, "parse_args", return_value=argparse.Namespace(command=command)),
-        patch.object(cli, "setup_logging"),
-        patch.object(cli, "log"),
+        patch.dict(os.environ),
+        patch.object(
+            cli,
+            "parse_args",
+            return_value=argparse.Namespace(
+                command=command,
+                batch_size=20,
+                interval=3,
+            ),
+        ),
+        patch.object(cli.os, "execvp", side_effect=RuntimeError("exec stopped")) as execute,
         patch.object(cli, "create_local_pool", new=create_pool),
         patch.object(cli, "create_http_client", new=create_http),
         patch.object(cli, "close_all_pools", new=close_pools),
-        patch("src.metrics.is_source_checkout", return_value=False),
-        patch("src.metrics.get_distribution", return_value=installed_distribution),
-        pytest.raises(RuntimeError, match="distribution version is invalid"),
+        patch.object(cli, "start_metrics_server", new=metrics_server),
     ):
-        asyncio.run(cli.run())
-
+        with pytest.raises(RuntimeError, match="exec stopped"):
+            asyncio.run(cli.run())
+        execute.assert_called_once_with(native[0], native)
+        if command == "export":
+            assert os.environ["EXPORT_BATCH_LIMIT"] == "20"
+            assert os.environ["EXPORT_INTERVAL"] == "3"
     create_pool.assert_not_awaited()
     create_http.assert_not_called()
-    close_pools.assert_awaited_once_with()
+    close_pools.assert_not_awaited()
+    metrics_server.assert_not_called()
 
 
 def test_metrics_module_import_does_not_require_runtime_cost_package() -> None:
