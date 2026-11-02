@@ -262,7 +262,14 @@ def fresh_backup_identity(backup: dict[str, object], checked_at: float) -> tuple
         raise RoleError("PostgreSQL backup timestamp is invalid.")
     if attempt > last_success or not 0 <= checked_at - last_success <= BACKUP_MAX_AGE_SECONDS:
         raise RoleError("PostgreSQL backup evidence is stale.")
-    details = backup.get("last_success_details")
+    # The installed legacy writer recorded the successful backup identity at
+    # the top level. A present nested identity is always authoritative.
+    if "last_success_details" in backup:
+        details = backup["last_success_details"]
+    elif "backup_label" in backup and "repository_latest_stop_unix" in backup:
+        details = backup
+    else:
+        raise RoleError("PostgreSQL backup identity is missing.")
     if not isinstance(details, dict):
         raise RoleError("PostgreSQL backup identity is missing.")
     label = details.get("backup_label")

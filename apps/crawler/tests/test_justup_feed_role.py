@@ -10,6 +10,7 @@ import os
 import signal
 import subprocess
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -298,27 +299,44 @@ def test_install_requires_no_pending_ingress_rollback(tmp_path: Path, monkeypatc
         role.assert_ingress_stable()
 
 
-def backup_restore_status(tmp_path: Path, now: int) -> tuple[Path, Path]:
+def backup_restore_status(
+    tmp_path: Path, now: int, *, producer: str = "current"
+) -> tuple[Path, Path]:
     status_dir = tmp_path / "status"
     status_dir.mkdir(mode=0o700)
     backup_path = status_dir / "postgresql.json"
     restore_path = status_dir / "postgresql-restore-drill.json"
     backup_success = now - 90
+    label = "20261102-010000F"
+    stop = now - 95
+    # The installed legacy writer emits operation details at the top level.
+    # The current writer additionally stores those details under this key.
+    details = {
+        "backup_type": "full",
+        "backup_label": label,
+        "backup_database_bytes": 123,
+        "backup_repository_bytes": 100,
+        "repository_backup_count": 1,
+        "repository_latest_stop_unix": stop,
+    }
+    backup_record = {
+        "schema_version": 1,
+        "service": "postgresql",
+        "success": True,
+        "attempt_at": datetime.fromtimestamp(now - 100, UTC).isoformat(),
+        "attempt_unix": now - 100,
+        "finished_at": datetime.fromtimestamp(backup_success, UTC).isoformat(),
+        "duration_seconds": 10.0,
+        "last_success_at": datetime.fromtimestamp(backup_success, UTC).isoformat(),
+        "last_success_unix": backup_success,
+        **details,
+    }
+    if producer == "current":
+        backup_record["last_success_details"] = details.copy()
+    else:
+        assert producer == "legacy"
     for path, value in (
-        (
-            backup_path,
-            {
-                "schema_version": 1,
-                "service": "postgresql",
-                "success": True,
-                "attempt_unix": now - 100,
-                "last_success_unix": backup_success,
-                "last_success_details": {
-                    "backup_label": "20261102-010000F",
-                    "repository_latest_stop_unix": now - 95,
-                },
-            },
-        ),
+        (backup_path, backup_record),
         (
             restore_path,
             {
@@ -329,14 +347,122 @@ def backup_restore_status(tmp_path: Path, now: int) -> tuple[Path, Path]:
                 "started_unix": now - 45,
                 "completed_unix": now - 30,
                 "backup_last_success_unix": backup_success,
-                "backup_label": "20261102-010000F",
-                "backup_stop_unix": now - 95,
+                "backup_label": label,
+                "backup_stop_unix": stop,
             },
         ),
     ):
         path.write_text(json.dumps(value), encoding="utf-8")
         path.chmod(0o600)
     return backup_path, restore_path
+
+
+@pytest.mark.parametrize("producer", ["legacy", "current"])
+@pytest.mark.parametrize(
+    ("restore_field", "replacement"),
+    [("backup_label", "another-backup"), ("backup_stop_unix", 1)],
+)
+def test_backup_gate_accepts_bound_producer_status(
+    tmp_path: Path, producer: str, restore_field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer=producer)
+    role.assert_backup_restore_fresh(
+        backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+    )
+
+    receipt = json.loads(restore.read_text(encoding="utf-8"))
+    receipt[restore_field] = replacement
+    restore.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="mismatched"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("backup_label", None),
+        ("backup_label", "invalid label"),
+        ("repository_latest_stop_unix", None),
+        ("repository_latest_stop_unix", True),
+        ("repository_latest_stop_unix", 2_000_000_000),
+    ],
+)
+def test_legacy_backup_identity_must_be_valid(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record[field] = replacement
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="identity is invalid"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize("field", ["backup_label", "repository_latest_stop_unix"])
+def test_legacy_backup_identity_must_be_complete(tmp_path: Path, field: str) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    del record[field]
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="identity is missing"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("nested", "failure"),
+    [
+        (None, "identity"),
+        ([], "identity"),
+        ({}, "identity"),
+        ({"backup_label": "wrong-label", "repository_latest_stop_unix": 1}, "mismatched"),
+    ],
+)
+def test_present_nested_identity_never_falls_back_to_legacy(
+    tmp_path: Path, nested: object, failure: str
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record["last_success_details"] = nested
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match=failure):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("schema_version", 2),
+        ("service", "typesense"),
+        ("success", False),
+        ("attempt_unix", True),
+        ("attempt_unix", 2_000_000_000),
+        ("last_success_unix", 1),
+    ],
+)
+def test_legacy_identity_keeps_status_and_time_gates(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record[field] = replacement
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
 
 
 def test_install_backup_gate_requires_fresh_bound_restore(tmp_path: Path) -> None:
