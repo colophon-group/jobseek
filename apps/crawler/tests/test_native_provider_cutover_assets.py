@@ -71,8 +71,22 @@ def test_worker_route_cutover_uses_current_image_after_forward_and_rollback_sync
     rollback = script.split("rollback_sync_previous_config() {", 1)[1].split(
         "rollback_compose_service_ready() {", 1
     )[0]
+    maintenance = script.split("previous_native_maintenance() {", 1)[1].split("\n}\n", 1)[0]
+    sync_operation = maintenance.split("    sync)\n", 1)[1].split(";;", 1)[0]
+    assert 'local maintenance_release="$1" maintenance_operation="$2"' in maintenance
+    assert "maintenance_command=(--sync-registry --require-native)" in sync_operation
+    assert 'maintenance_env="$maintenance_release/environment.env"' in maintenance
+    assert 'release-bridge "$maintenance_release" "$OWNER"' in maintenance
+    assert 'read_exact_release_value "$maintenance_env" CRAWLER_IMAGE_REF' in maintenance
+    assert (
+        maintenance.index("release-bridge")
+        < maintenance.index("maintenance_image=")
+        < maintenance.index("docker run --rm")
+    )
+    assert "--entrypoint /usr/local/bin/go-typesense-exporter" in maintenance
+    assert '"$maintenance_image" "${maintenance_command[@]}"' in maintenance
     assert rollback.index(
-        "go-typesense-exporter --sync-registry --require-native"
+        'previous_native_maintenance "$ROLLBACK_ACTIVE_RELEASE_TARGET" sync &&'
     ) < rollback.index("repair_worker_route_cutover rollback-worker-route-cutover")
     normalized_rollback = " ".join(rollback.replace("\\\n", " ").split())
     assert (
