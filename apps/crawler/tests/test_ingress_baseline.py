@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import re
@@ -451,7 +452,15 @@ def postgresql_hba() -> list[dict]:
 
 
 @pytest.fixture
-def postgresql_state(monkeypatch, postgresql_hba):
+def postgresql_hba_source() -> bytes:
+    hardener = (ROOT / "deploy/networking/harden-postgresql.sh").read_text(encoding="utf-8")
+    write_hba = hardener.split("\nwrite_hba() {\n", 1)[1]
+    source = write_hba.split('cat >"$temporary" <<EOF\n', 1)[1].split("\nEOF\n", 1)[0] + "\n"
+    return source.replace("${CRAWLER_PRIVATE_IP}", "10.0.0.3").encode("utf-8")
+
+
+@pytest.fixture
+def postgresql_state(monkeypatch, postgresql_hba, postgresql_hba_source):
     class NetworkConfig:
         @staticmethod
         def read_text(*, encoding: str) -> str:
@@ -464,7 +473,15 @@ def postgresql_state(monkeypatch, postgresql_hba):
 
     monkeypatch.setattr(conformance, "POSTGRES_NETWORK_CONFIG", NetworkConfig())
 
-    def state(*, hba_stdout=None, hba_returncode=0, shm_bytes=1073741824, bounded_log=True):
+    def state(
+        *,
+        hba_stdout=None,
+        hba_returncode=0,
+        hba_source=None,
+        proof_override=None,
+        shm_bytes=1073741824,
+        bounded_log=True,
+    ):
         def run(command):
             if command[:4] == [
                 "docker",
@@ -504,14 +521,25 @@ def postgresql_state(monkeypatch, postgresql_hba):
             ]
             # Include expansion can reuse file-local line numbers. The query must
             # preserve full arrays, errors and options in PostgreSQL's effective order.
+            # Source proof must inspect only the fixed canonical path, with a bound.
             assert command[-1] == (
-                "select coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
-                "'[]'::json) from (select rule_number,type,address,netmask,database,user_name,"
+                "select json_build_object('source_path_exact',current_setting('hba_file')="
+                "'/var/lib/postgresql/data/pg_hba.conf','source_sha256',encode(sha256("
+                "pg_read_binary_file('/var/lib/postgresql/data/pg_hba.conf',0,4096)),'hex'),"
+                "'rules',coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
+                "'[]'::json)) from (select rule_number,type,address,netmask,database,user_name,"
                 "auth_method,options,error from pg_hba_file_rules) rules"
             )
+            source = postgresql_hba_source if hba_source is None else hba_source
+            proof = {
+                "source_path_exact": True,
+                "source_sha256": hashlib.sha256(source[:4096]).hexdigest(),
+                "rules": postgresql_hba,
+                **(proof_override or {}),
+            }
             return conformance.CommandResult(
                 hba_returncode,
-                json.dumps(postgresql_hba) if hba_stdout is None else hba_stdout,
+                json.dumps(proof) if hba_stdout is None else hba_stdout,
             )
 
         monkeypatch.setattr(conformance, "_run", run)
@@ -525,6 +553,65 @@ def test_postgresql_conformance_accepts_only_complete_ordered_policy(postgresql_
     assert state["hba_exact"] is True
     assert state["compliant"] is True
     assert "10.0.0." not in json.dumps(state)
+
+
+def test_postgresql_hba_source_contract_matches_hardener_below_read_bound(postgresql_hba_source):
+    assert (
+        conformance.POSTGRES_HBA_SOURCE.format(crawler_ip="10.0.0.3").encode("utf-8")
+        == postgresql_hba_source
+    )
+    assert len(conformance.POSTGRES_HBA_SOURCE.format(crawler_ip="192.168.255.255").encode()) < 4096
+
+
+@pytest.mark.parametrize(
+    "first_rule",
+    [
+        b'local "all" justup_feed_readonly reject',
+        b'local all "justup_feed_readonly" reject',
+        b"include 'reader-local.conf'",
+    ],
+)
+def test_postgresql_conformance_rejects_changed_source_despite_identical_parsed_rules(
+    postgresql_state, postgresql_hba_source, first_rule
+) -> None:
+    assert postgresql_state()["hba_exact"] is True
+    changed = postgresql_hba_source.replace(b"local all justup_feed_readonly reject", first_rule, 1)
+    # pg_hba_file_rules drops token quoting and expands includes. Keep its entire
+    # projection identical here so only the raw-source proof can refuse the change.
+    state = postgresql_state(hba_source=changed)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+@pytest.mark.parametrize("suffix", [b"\n", b"\ninclude 'extra.conf'\n", b"x" * 8192])
+def test_postgresql_conformance_rejects_appended_hba_source(
+    postgresql_state, postgresql_hba_source, suffix
+) -> None:
+    assert not postgresql_state(hba_source=postgresql_hba_source + suffix)["hba_exact"]
+
+
+@pytest.mark.parametrize(
+    "proof",
+    [
+        {"source_path_exact": False},
+        {"source_path_exact": None},
+        {"source_path_exact": 1},
+        {"source_sha256": None},
+        {"source_sha256": ""},
+        {"source_sha256": "0" * 64},
+    ],
+)
+def test_postgresql_conformance_rejects_unavailable_or_mismatched_source_proof(
+    postgresql_state, proof
+) -> None:
+    state = postgresql_state(proof_override=proof)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_rejects_missing_source_proof(postgresql_state, postgresql_hba):
+    # A successful legacy view-only query is no longer sufficient evidence.
+    assert not postgresql_state(hba_stdout=json.dumps(postgresql_hba))["hba_exact"]
 
 
 @pytest.mark.parametrize("row", [0, 1, 2, 3, 4, 5, 6, 7, 8])

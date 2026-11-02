@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import socket
@@ -38,6 +39,21 @@ WEB_POSTGRES_CONFIG = Path("/etc/jobseek-web-postgresql/postgresql.conf")
 POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
 POSTGRES_LOG_DRIVER = "json-file"
 POSTGRES_LOG_OPTIONS = {"max-size": "50m", "max-file": "3"}
+POSTGRES_HBA_SOURCE = """# Managed by colophon-group/jobseek deploy/networking/harden-postgresql.sh.
+# The Hetzner private path is isolated and source-restricted. TLS is not
+# required by the current policy; SCRAM remains mandatory for every TCP path.
+local all justup_feed_readonly reject
+local all all trust
+host crawler crawler 127.0.0.1/32 scram-sha-256
+host crawler jobseek_labeller_readonly 127.0.0.1/32 scram-sha-256
+host crawler crawler ::1/128 scram-sha-256
+host crawler jobseek_labeller_readonly ::1/128 scram-sha-256
+host crawler crawler {crawler_ip}/32 scram-sha-256
+host crawler jobseek_labeller_readonly {crawler_ip}/32 scram-sha-256
+# The Justup feed reader can connect only from the crawler host. It has no
+# loopback or other host path and receives table grants separately.
+host crawler justup_feed_readonly {crawler_ip}/32 scram-sha-256
+"""
 
 
 class ConformanceError(RuntimeError):
@@ -93,9 +109,12 @@ def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address
     if result.returncode != 0:
         return False
     try:
-        actual = json.loads(result.stdout)
+        inspected = json.loads(result.stdout)
     except json.JSONDecodeError:
         return False
+    if not isinstance(inspected, dict) or inspected.get("source_path_exact") is not True:
+        return False
+    actual = inspected.get("rules")
     if not isinstance(actual, list) or any(
         not isinstance(rule, dict) or type(rule.get("rule_number")) is not int for rule in actual
     ):
@@ -140,7 +159,15 @@ def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address
             policy, 1
         )
     ]
-    return actual == expected
+    # pg_hba_file_rules discards quoting, so parsed equality alone cannot prove
+    # that the first database token is the wildcard all rather than literal "all".
+    # Require the exact canonical source too; this excludes includes/substitutions.
+    source = POSTGRES_HBA_SOURCE.format(crawler_ip=crawler_ip).encode("utf-8")
+    return inspected == {
+        "source_path_exact": True,
+        "source_sha256": hashlib.sha256(source).hexdigest(),
+        "rules": expected,
+    }
 
 
 def _listener_scopes(output: str) -> dict[int, set[str]]:
@@ -421,8 +448,13 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             "-c",
             (
                 # rule_number is the effective order, including rules from included files.
-                "select coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
-                "'[]'::json) from (select rule_number,type,address,netmask,database,user_name,"
+                # The fixed source is shorter than the read bound: any additional
+                # bytes, quotes or includes change its digest. Never read a supplied path.
+                "select json_build_object('source_path_exact',current_setting('hba_file')="
+                "'/var/lib/postgresql/data/pg_hba.conf','source_sha256',encode(sha256("
+                "pg_read_binary_file('/var/lib/postgresql/data/pg_hba.conf',0,4096)),'hex'),"
+                "'rules',coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
+                "'[]'::json)) from (select rule_number,type,address,netmask,database,user_name,"
                 "auth_method,options,error from pg_hba_file_rules) rules"
             ),
         ]
