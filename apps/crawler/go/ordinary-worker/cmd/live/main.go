@@ -43,6 +43,8 @@ func run() error {
 		return json.NewEncoder(os.Stdout).Encode(value)
 	}
 	switch command {
+	case "--renderer-acceptance":
+		return encode(rendererAcceptance(ctx, sourceRevision))
 	case "--proxy-preflight":
 		message, err := worker.ProxyPreflight(os.Getenv)
 		if err != nil {

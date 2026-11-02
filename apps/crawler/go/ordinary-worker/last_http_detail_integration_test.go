@@ -33,7 +33,11 @@ func TestRealLastHTTPPairedDetailSettlement(t *testing.T) {
 			c.Source = o.PeopleSoftJobURL(c.ExpectedID)
 			c.Exchanges = []lastHTTPExchange{{Method: "GET", URL: o.Origin + "/psp/site/EMPLOYEE/HRMS/?cmd=logout", Body: "<html>Anonymous context</html>"}, {Method: "GET", URL: c.Source, Body: body}}
 		}
-		for _, mode := range []string{"complete", "failed", "reserved", "invalid-document"} {
+		modes := []string{"complete", "failed", "reserved", "invalid-document"}
+		if provider == "peoplesoft" {
+			modes = append(modes, "publisher-redirect")
+		}
+		for _, mode := range modes {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				metadata := `{"scraper_type":"` + provider + `","scraper_config":{}}`
 				f, owned := independentDetailOwnedSetup(t, metadata, c.Source, queue.Simple, c.Board)
@@ -76,6 +80,11 @@ func TestRealLastHTTPPairedDetailSettlement(t *testing.T) {
 						fmt.Fprint(w, "<html>Missing required fields</html>")
 						return
 					}
+					if mode == "publisher-redirect" && used == len(c.Exchanges) {
+						w.Header().Set("Location", "https://outside.example/unsolicited")
+						w.WriteHeader(http.StatusFound)
+						return
+					}
 					fmt.Fprint(w, x.Body)
 				}))}
 				circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
@@ -101,12 +110,15 @@ func TestRealLastHTTPPairedDetailSettlement(t *testing.T) {
 					if title != "Original" || description != "" || !active {
 						t.Fatal("unproved paired detail wrote content or absence")
 					}
+					if mode == "publisher-redirect" && (reserved || failures != 1 || due == nil || result.Cycle.Status != "failed") {
+						t.Fatal("publisher redirect did not settle as a retryable failed claim")
+					}
 					if mode == "reserved" && (!reserved || result.Cycle.Status != "publisher_reserved") {
 						t.Fatal("paired publisher outcome changed")
 					}
 				}
 				want := 1
-				if mode == "complete" || mode == "invalid-document" {
+				if mode == "complete" || mode == "invalid-document" || mode == "publisher-redirect" {
 					want = len(c.Exchanges)
 				}
 				if used != want || f.r.ZCard(ctx, "inflight:simple").Val() != 0 || f.r.HLen(ctx, "inflight_tokens:simple").Val() != 0 {
