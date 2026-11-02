@@ -11,15 +11,19 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import fcntl
 import hashlib
 import hmac
 import json
 import os
 import re
 import secrets
+import signal
 import stat
 import subprocess
 import sys
+import time
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 ROLE = "justup_feed_readonly"
@@ -35,6 +39,13 @@ ROLLBACK_UNITS = (
     "jobseek-postgresql-network-rollback.timer",
     "jobseek-postgresql-network-rollback.service",
 )
+BACKUP_STATUS = Path("/var/lib/jobseek-backup/status/postgresql.json")
+RESTORE_STATUS = Path("/var/lib/jobseek-backup/status/postgresql-restore-drill.json")
+BACKUP_LOCK = Path("/run/jobseek-data-backup-postgresql.lock")
+BACKUP_MAX_AGE_SECONDS = 36 * 60 * 60
+RESTORE_MAX_AGE_SECONDS = 30 * 60
+RESTORE_DRILL_TIMEOUT_SECONDS = 4 * 60 * 60
+RESTORE_STOP_GRACE_SECONDS = 60
 CORE_COLUMNS = {
     "company": {"id", "name", "slug", "website"},
     "job_posting": {
@@ -194,6 +205,302 @@ class RoleError(Exception):
     """Safe operator-facing failure without credential or SQL content."""
 
 
+def protected_status(path: Path, *, uid: int = 0) -> dict[str, object]:
+    """Read one root-owned, bounded status file without following links."""
+    if not path.is_absolute() or path.name in ("", ".", ".."):
+        raise RoleError("Backup evidence path is invalid.")
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            parent = os.fstat(parent_fd)
+            if parent.st_uid != uid or stat.S_IMODE(parent.st_mode) & 0o022:
+                raise RoleError("Backup evidence directory is not protected.")
+            fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd)
+            try:
+                info = os.fstat(fd)
+                if (
+                    not stat.S_ISREG(info.st_mode)
+                    or info.st_uid != uid
+                    or info.st_nlink != 1
+                    or stat.S_IMODE(info.st_mode) != 0o600
+                    or info.st_size > 8192
+                ):
+                    raise RoleError("Backup evidence file is not protected.")
+                raw = os.read(fd, 8193)
+                if len(raw) != info.st_size:
+                    raise RoleError("Backup evidence changed while being read.")
+            finally:
+                os.close(fd)
+        finally:
+            os.close(parent_fd)
+    except OSError as exc:
+        raise RoleError("Backup evidence cannot be read.") from exc
+    if len(raw) > 8192:
+        raise RoleError("Backup evidence is too large.")
+    try:
+        value = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RoleError("Backup evidence is invalid JSON.") from exc
+    if not isinstance(value, dict):
+        raise RoleError("Backup evidence is invalid.")
+    return value
+
+
+def fresh_backup_identity(backup: dict[str, object], checked_at: float) -> tuple[int, str, int]:
+    if (
+        backup.get("schema_version") != 1
+        or backup.get("service") != "postgresql"
+        or backup.get("success") is not True
+    ):
+        raise RoleError("PostgreSQL backup evidence is not successful.")
+    last_success = backup.get("last_success_unix")
+    attempt = backup.get("attempt_unix")
+    if any(
+        not isinstance(value, int) or isinstance(value, bool) or value <= 0
+        for value in (last_success, attempt)
+    ):
+        raise RoleError("PostgreSQL backup timestamp is invalid.")
+    if attempt > last_success or not 0 <= checked_at - last_success <= BACKUP_MAX_AGE_SECONDS:
+        raise RoleError("PostgreSQL backup evidence is stale.")
+    details = backup.get("last_success_details")
+    if not isinstance(details, dict):
+        raise RoleError("PostgreSQL backup identity is missing.")
+    label = details.get("backup_label")
+    stop = details.get("repository_latest_stop_unix")
+    if (
+        not isinstance(label, str)
+        or re.fullmatch(r"[A-Za-z0-9_-]{4,128}", label) is None
+        or not isinstance(stop, int)
+        or isinstance(stop, bool)
+        or not 0 < stop <= last_success
+    ):
+        raise RoleError("PostgreSQL backup identity is invalid.")
+    return last_success, label, stop
+
+
+def assert_backup_restore_fresh(
+    *,
+    backup_path: Path = BACKUP_STATUS,
+    restore_path: Path = RESTORE_STATUS,
+    now: float | None = None,
+    uid: int = 0,
+) -> None:
+    """Fail closed on stale or unbound backup and completed restore proof."""
+    checked_at = time.time() if now is None else now
+    backup = protected_status(backup_path, uid=uid)
+    restore = protected_status(restore_path, uid=uid)
+    last_success, label, stop = fresh_backup_identity(backup, checked_at)
+    if (
+        restore.get("schema_version") != 1
+        or restore.get("service") != "postgresql"
+        or restore.get("success") is not True
+        or restore.get("source") != "jobseek-postgresql-restore-drill"
+    ):
+        raise RoleError("Backup or restore evidence is not successful.")
+    restored_at = restore.get("completed_unix")
+    started_at = restore.get("started_unix")
+    restored_backup = restore.get("backup_last_success_unix")
+    restored_label = restore.get("backup_label")
+    restored_stop = restore.get("backup_stop_unix")
+    if any(
+        not isinstance(value, int) or isinstance(value, bool) or value <= 0
+        for value in (started_at, restored_at, restored_backup, restored_stop)
+    ):
+        raise RoleError("Backup or restore timestamp is invalid.")
+    if (
+        restored_backup != last_success
+        or restored_label != label
+        or restored_stop != stop
+        or not last_success <= started_at <= restored_at
+        or not 0 <= checked_at - restored_at <= RESTORE_MAX_AGE_SECONDS
+    ):
+        raise RoleError("Backup or restore evidence is stale or mismatched.")
+
+
+def write_restore_status(path: Path, value: dict[str, object], *, uid: int = 0) -> None:
+    """Atomically replace the root-only drill result, including a failed attempt."""
+    payload = (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    if len(payload) > 8192:
+        raise RoleError("Restore evidence is too large.")
+    temporary = f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+    try:
+        parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            parent = os.fstat(parent_fd)
+            if parent.st_uid != uid or stat.S_IMODE(parent.st_mode) & 0o022:
+                raise RoleError("Backup evidence directory is not protected.")
+            fd = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=parent_fd,
+            )
+            try:
+                remaining = memoryview(payload)
+                while remaining:
+                    written = os.write(fd, remaining)
+                    if written <= 0:
+                        raise RoleError("Restore evidence write was incomplete.")
+                    remaining = remaining[written:]
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            try:
+                existing = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                existing = None
+            if existing is not None and (
+                not stat.S_ISREG(existing.st_mode)
+                or existing.st_uid != uid
+                or existing.st_nlink != 1
+                or stat.S_IMODE(existing.st_mode) != 0o600
+            ):
+                raise RoleError("Prior restore evidence is not protected.")
+            os.replace(temporary, path.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            os.fsync(parent_fd)
+        finally:
+            with suppress(FileNotFoundError):
+                os.unlink(temporary, dir_fd=parent_fd)
+            os.close(parent_fd)
+    except OSError as exc:
+        raise RoleError("Restore evidence cannot be written.") from exc
+
+
+@contextmanager
+def backup_operation_lock(path: Path = BACKUP_LOCK, *, uid: int = 0):
+    """Serialize a drill with the installed backup and retention routine."""
+    if not path.is_absolute():
+        raise RoleError("PostgreSQL backup lock path is invalid.")
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        try:
+            info = os.fstat(fd)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != uid
+                or info.st_nlink != 1
+                or stat.S_IMODE(info.st_mode) & 0o022
+            ):
+                raise RoleError("PostgreSQL backup lock is not protected.")
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise RoleError("PostgreSQL backup operation is already running.") from exc
+            yield fd
+        finally:
+            os.close(fd)
+    except OSError as exc:
+        raise RoleError("PostgreSQL backup lock cannot be acquired.") from exc
+
+
+def run_restore_drill(drill_path: Path, label: str, lock_fd: int) -> None:
+    """Stop the whole drill process group gracefully on timeout or interruption."""
+
+    def interrupted(_signum, _frame):
+        raise RoleError("PostgreSQL restore drill was interrupted.")
+
+    old_term = signal.signal(signal.SIGTERM, interrupted)
+    old_int = signal.signal(signal.SIGINT, interrupted)
+    old_hup = signal.signal(signal.SIGHUP, interrupted)
+    process: subprocess.Popen[bytes] | None = None
+    try:
+        try:
+            prior_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK, {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}
+            )
+            try:
+                process = subprocess.Popen(
+                    ("/bin/bash", str(drill_path), label),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                    pass_fds=(lock_fd,),
+                    env={**os.environ, "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false"},
+                )
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+            code = process.wait(timeout=RESTORE_DRILL_TIMEOUT_SECONDS)
+        except OSError as exc:
+            raise RoleError("PostgreSQL restore drill could not start.") from exc
+        except (subprocess.TimeoutExpired, RoleError) as exc:
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            signal.signal(signal.SIGHUP, signal.SIG_IGN)
+            if process is not None:
+                with suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=RESTORE_STOP_GRACE_SECONDS)
+                except subprocess.TimeoutExpired:
+                    # The child inherited the backup lock. Leave it held while
+                    # the host operator reconciles a drill that did not stop.
+                    raise RoleError(
+                        "PostgreSQL restore drill remains active under backup lock."
+                    ) from exc
+            raise RoleError("PostgreSQL restore drill stopped without proof.") from exc
+    finally:
+        signal.signal(signal.SIGTERM, old_term)
+        signal.signal(signal.SIGINT, old_int)
+        signal.signal(signal.SIGHUP, old_hup)
+    if code != 0:
+        raise RoleError("PostgreSQL restore drill failed; no feed role was installed.")
+
+
+def attest_restore(
+    *,
+    drill_path: Path,
+    drill_sha256: str,
+    backup_path: Path = BACKUP_STATUS,
+    restore_path: Path = RESTORE_STATUS,
+    lock_path: Path = BACKUP_LOCK,
+    uid: int = 0,
+) -> dict[str, object]:
+    """Run the exact staged isolated drill and bind success to the latest backup."""
+    with backup_operation_lock(lock_path, uid=uid) as lock_fd:
+        first_backup, first_label, first_stop = fresh_backup_identity(
+            protected_status(backup_path, uid=uid), time.time()
+        )
+        receipt: dict[str, object] = {
+            "schema_version": 1,
+            "service": "postgresql",
+            "source": "jobseek-postgresql-restore-drill",
+            "success": False,
+            "backup_last_success_unix": first_backup,
+            "backup_label": first_label,
+            "backup_stop_unix": first_stop,
+            "started_unix": int(time.time()),
+        }
+        write_restore_status(restore_path, receipt, uid=uid)
+        try:
+            drill = drill_path.lstat()
+            drill_parent = drill_path.parent.lstat()
+        except OSError as exc:
+            raise RoleError("PostgreSQL restore drill is unavailable.") from exc
+        if (
+            not drill_path.is_absolute()
+            or not stat.S_ISDIR(drill_parent.st_mode)
+            or drill_parent.st_uid != uid
+            or stat.S_IMODE(drill_parent.st_mode) & 0o022
+            or not stat.S_ISREG(drill.st_mode)
+            or drill.st_uid != uid
+            or drill.st_nlink != 1
+            or stat.S_IMODE(drill.st_mode) != 0o600
+        ):
+            raise RoleError("PostgreSQL restore drill is not protected.")
+        if re.fullmatch(r"[0-9a-f]{64}", drill_sha256) is None or (
+            hashlib.sha256(drill_path.read_bytes()).hexdigest() != drill_sha256
+        ):
+            raise RoleError("PostgreSQL restore drill digest does not match staged source.")
+        run_restore_drill(drill_path, first_label, lock_fd)
+        last_identity = fresh_backup_identity(protected_status(backup_path, uid=uid), time.time())
+        if last_identity != (first_backup, first_label, first_stop):
+            raise RoleError("PostgreSQL backup changed during the restore drill.")
+        receipt.update(success=True, completed_unix=int(time.time()))
+        write_restore_status(restore_path, receipt, uid=uid)
+        return receipt
+
+
 def read_password(path: Path) -> str:
     if not path.is_absolute() or path.is_symlink() or path.parent.is_symlink():
         raise RoleError("Password file must be an absolute regular path.")
@@ -237,13 +544,22 @@ def read_password(path: Path) -> str:
     return password
 
 
-def verify_stage(stage: Path, installer_sha256: str, conformance_sha256: str, uid: int = 0) -> None:
+def verify_stage(
+    stage: Path,
+    installer_sha256: str,
+    conformance_sha256: str,
+    restore_sha256: str,
+    uid: int = 0,
+) -> None:
     if not stage.is_absolute() or stage.is_symlink() or not stage.is_dir():
         raise RoleError("Feed role stage is not a protected directory.")
     expected = {
         Path("deploy"),
+        Path("deploy/backups"),
+        Path("deploy/backups/postgresql"),
         Path("deploy/networking"),
         Path("scripts"),
+        Path("deploy/backups/postgresql/restore-drill.sh"),
         Path("deploy/networking/justup-feed-readonly-role.py"),
         Path("scripts/jobseek-ingress-conformance.py"),
     }
@@ -261,6 +577,7 @@ def verify_stage(stage: Path, installer_sha256: str, conformance_sha256: str, ui
     for relative, expected_sha256 in (
         (Path("deploy/networking/justup-feed-readonly-role.py"), installer_sha256),
         (Path("scripts/jobseek-ingress-conformance.py"), conformance_sha256),
+        (Path("deploy/backups/postgresql/restore-drill.sh"), restore_sha256),
     ):
         if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
             raise RoleError("Feed role stage digest is invalid.")
@@ -725,12 +1042,14 @@ def install(password_file: Path) -> dict[str, object]:
             psql(f"ALTER ROLE {ROLE} NOLOGIN;")
             raise
     if state == "":
+        assert_backup_restore_fresh()
         psql(install_sql(password))
     _result, role_raw, boundary_raw = audit(login=False)
     verifier = psql(f"SELECT rolpassword FROM pg_authid WHERE rolname = '{ROLE}';")
     if not password_matches_scram(password, verifier):
         raise RoleError("Protected feed credential does not match the staged login.")
     try:
+        assert_backup_restore_fresh()
         psql(activate_sql(role_raw, boundary_raw))
         return audit()[0]
     except RoleError:
@@ -740,22 +1059,48 @@ def install(password_file: Path) -> dict[str, object]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("install", "audit", "verify-stage"))
+    parser.add_argument("action", choices=("install", "audit", "attest-restore", "verify-stage"))
     parser.add_argument("--password-file", type=Path)
     parser.add_argument("--stage", type=Path)
     parser.add_argument("--installer-sha256")
     parser.add_argument("--conformance-sha256")
+    parser.add_argument("--restore-drill-sha256")
+    parser.add_argument("--drill-path", type=Path)
+    parser.add_argument("--drill-sha256")
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise RoleError("This command requires the protected root operator.")
     if args.action == "verify-stage":
-        if args.password_file is not None or args.stage is None:
+        if (
+            args.password_file is not None
+            or args.stage is None
+            or args.drill_path is not None
+            or args.drill_sha256 is not None
+        ):
             raise RoleError("Stage verification needs the protected stage only.")
-        verify_stage(args.stage, args.installer_sha256 or "", args.conformance_sha256 or "")
+        verify_stage(
+            args.stage,
+            args.installer_sha256 or "",
+            args.conformance_sha256 or "",
+            args.restore_drill_sha256 or "",
+        )
         print('{"verified":true}')
         return 0
-    if args.stage is not None or args.installer_sha256 or args.conformance_sha256:
+    if (
+        args.stage is not None
+        or args.installer_sha256
+        or args.conformance_sha256
+        or args.restore_drill_sha256
+    ):
         raise RoleError("Role operations do not accept stage verification inputs.")
+    if args.action == "attest-restore":
+        if args.password_file is not None or args.drill_path is None or args.drill_sha256 is None:
+            raise RoleError("Restore attestation needs only the staged drill and its digest.")
+        result = attest_restore(drill_path=args.drill_path, drill_sha256=args.drill_sha256)
+        print(json.dumps(result, separators=(",", ":"), sort_keys=True))
+        return 0
+    if args.drill_path is not None or args.drill_sha256 is not None:
+        raise RoleError("Role operations do not accept restore drill inputs.")
     if args.action == "install":
         if args.password_file is None:
             raise RoleError("Install requires a protected password file.")

@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
-# Restore the latest production backup into a disposable, network-isolated
-# PostgreSQL container and validate every heap and B-tree relation.
+# Restore the latest production backup, or one supplied backup label, into a
+# disposable, network-isolated PostgreSQL container and check every relation.
 set -euo pipefail
+
+[[ $# -le 1 ]] || { echo "Expected at most one backup label" >&2; exit 2; }
+restore_set_args=()
+if [[ $# -eq 1 ]]; then
+  BACKUP_LABEL="$1"
+  [[ "$BACKUP_LABEL" =~ ^[A-Za-z0-9_-]{4,128}$ ]] || {
+    echo "Invalid backup label" >&2
+    exit 2
+  }
+  restore_set_args=(--set="$BACKUP_LABEL")
+fi
 
 IMAGE="${JOBSEEK_POSTGRES_BACKUP_IMAGE:-jobseek-postgres:16-pgbackrest}"
 CONFIG_DIR="${JOBSEEK_POSTGRES_BACKUP_CONFIG:-/etc/jobseek-backup/postgresql}"
@@ -10,6 +21,7 @@ BASE_DIR="${JOBSEEK_POSTGRES_RESTORE_DRILL_DIR:-/var/lib/jobseek-backup/postgres
 KEEP_FAILED="${JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED:-false}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)${RANDOM}"
 CONTAINER="jobseek-postgresql-restore-${RUN_ID}"
+RESTORE_CONTAINER="jobseek-postgresql-restore-load-${RUN_ID}"
 DATA_DIR="$BASE_DIR/$RUN_ID"
 SPOOL_DIR="$BASE_DIR/${RUN_ID}-spool"
 
@@ -17,22 +29,44 @@ cleanup() {
   local rc=$?
   trap - EXIT
   if [[ "$rc" -ne 0 ]]; then
+    docker inspect "$RESTORE_CONTAINER" --format \
+      'restore_load_container status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} error={{.State.Error}}' \
+      2>/dev/null || true
     docker inspect "$CONTAINER" --format \
       'restore_container status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} error={{.State.Error}}' \
       2>/dev/null || true
+    docker logs --tail 100 "$RESTORE_CONTAINER" 2>/dev/null || true
     docker logs --tail 100 "$CONTAINER" 2>/dev/null || true
-    if [[ "$KEEP_FAILED" == true ]]; then
-      echo "Retained failed restore drill data for diagnosis: $DATA_DIR" >&2
-      exit "$rc"
-    fi
   fi
+  docker rm -f "$RESTORE_CONTAINER" >/dev/null 2>&1 || true
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  local remaining_containers
+  if ! remaining_containers="$(docker container ls --all --format '{{.Names}}')"; then
+    echo "Restore drill container removal could not be verified" >&2
+    exit 1
+  fi
+  if [[ $'\n'"$remaining_containers"$'\n' == *$'\n'"$RESTORE_CONTAINER"$'\n'* || \
+    $'\n'"$remaining_containers"$'\n' == *$'\n'"$CONTAINER"$'\n'* ]]; then
+    echo "Restore drill container remains; retain data for operator recovery" >&2
+    exit 1
+  fi
   [[ "$DATA_DIR" == "$BASE_DIR"/* ]]
   [[ "$SPOOL_DIR" == "$BASE_DIR"/*-spool ]]
-  rm -rf "$DATA_DIR" "$SPOOL_DIR"
+  if [[ "$rc" -ne 0 && "$KEEP_FAILED" == true ]]; then
+    rm -rf "$SPOOL_DIR" || rc=1
+    [[ ! -e "$SPOOL_DIR" ]] || rc=1
+    echo "Retained failed restore drill data for diagnosis: $DATA_DIR" >&2
+    exit "$rc"
+  fi
+  rm -rf "$DATA_DIR" "$SPOOL_DIR" || rc=1
+  [[ ! -e "$DATA_DIR" && ! -e "$SPOOL_DIR" ]] || rc=1
+  if [[ "$rc" -eq 0 ]]; then
+    echo "PostgreSQL production backup restore and relation integrity drill passed"
+  fi
   exit "$rc"
 }
 trap cleanup EXIT
+trap 'exit 124' TERM INT
 
 test -s "$CONFIG_DIR/pgbackrest.conf"
 mountpoint -q "$REPOSITORY_DIR"
@@ -42,9 +76,14 @@ docker container inspect "$CONTAINER" >/dev/null 2>&1 && {
   echo "Restore drill container already exists: $CONTAINER" >&2
   exit 1
 }
+docker container inspect "$RESTORE_CONTAINER" >/dev/null 2>&1 && {
+  echo "Restore drill load container already exists: $RESTORE_CONTAINER" >&2
+  exit 1
+}
 install -d -o 70 -g 70 -m 0700 "$DATA_DIR" "$SPOOL_DIR"
 
 docker run --rm \
+  --name "$RESTORE_CONTAINER" \
   --network none \
   --user 70:70 \
   --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
@@ -53,7 +92,7 @@ docker run --rm \
   --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
   --volume "$DATA_DIR:/restore" \
   "$IMAGE" \
-  pgbackrest --stanza=jobseek --pg1-path=/restore restore
+  pgbackrest --stanza=jobseek --pg1-path=/restore "${restore_set_args[@]}" restore
 
 docker run --detach \
   --name "$CONTAINER" \
@@ -108,5 +147,3 @@ docker exec "$CONTAINER" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
    select 'active_job_postings=' || count(*) from job_posting where is_active;
    select 'invalid_job_postings=' || count(*) from job_posting
      where id is null or company_id is null or board_id is null or source_url is null;"
-
-echo "PostgreSQL production backup restore and relation integrity drill passed"

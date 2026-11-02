@@ -546,6 +546,14 @@ require SCRAM-SHA-256. After the applied HBA passes audit, role grants are
 installed and audited by the fixed
 [`justup-feed-readonly-role.py`](../deploy/networking/justup-feed-readonly-role.py)
 helper through the protected ingress workflow's `install-feed-role` action.
+That action serializes with PostgreSQL backups, checks the latest successful
+backup, and runs the exact staged restore-drill source for that backup label on
+the PostgreSQL host. It records a root-only restore result, checks that `main`
+still names the dispatched source and that the applied HBA is unchanged, then
+rechecks the backup and restore evidence immediately before creating
+the disabled role and before enabling its login. A missing, failed, stale or
+mismatched result stops installation. Reserve a maintenance window for the
+restore drill; a source merge does not authorize the host operation.
 The reader gets selected public posting columns, an uploaded-description view,
 and a fixed cutoff function; the privileged statistics membership stays with a
 non-login function owner. An HBA entry alone does not create the login or

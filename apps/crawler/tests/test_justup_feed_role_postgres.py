@@ -193,6 +193,9 @@ def setup_schema(cli: list[str], data: Path, *, taxonomy: bool) -> None:
 def install_reader(cli: list[str], monkeypatch: pytest.MonkeyPatch) -> None:
     role.PSQL = tuple(cli)
     monkeypatch.setattr(role, "read_password", lambda _path: PASSWORD)
+    # This disposable database proves the SQL boundary; protected backup and
+    # restore evidence is exercised separately by the host-gate tests.
+    monkeypatch.setattr(role, "assert_backup_restore_fresh", lambda: None)
     installed = role.install(Path("/protected/synthetic-password"))
     assert installed["role"] == role.ROLE
     assert role.install(Path("/protected/synthetic-password")) == installed
