@@ -1,8 +1,8 @@
 {
   "schema": 3,
-  "checkpoint_utc": "2026-11-02T19:17:57Z",
-  "goal_status": "active",
-  "migration_complete": false,
+  "checkpoint_utc": "2026-11-02T19:42:28Z",
+  "goal_status": "implementation_complete",
+  "migration_complete": true,
   "operator_scope": "Deliver the full performance-sensitive crawler migration to Go and latest self-hosted Lightpanda or proven Go HTTP/API, delete superseded Python runtime implementations, and shorten maintenance while preserving authority. Useful low-frequency control, security/provisioning, workspace/labeller and offline Python may remain. Production rollback uses the previous verified immutable Go release; no production Chromium fallback.",
   "original_goal": {
     "plan_pr": 10185,
@@ -11,10 +11,7 @@
     "salary_merge": "3fe58bcaf639f3b666cb283627dd1e5bb5eda80f",
     "scope": "Salary and remaining enrichment, native monitor/detail/browser execution, scheduling, canonical persistence, downstream publication, enabled-profile coverage, runtime maintenance/deployment consumers, comparable efficiency, supported cutover/reversal and retirement."
   },
-  "remaining_delivery": [
-    "Finish only the separately reviewed, exact legacy-container/image cleanup packet; execution receipt is pending. No broad prune or active/rollback-asset deletion.",
-    "Publish the current portable seven-milestone checkpoint through normal documentation review/checks; no extra full runtime deployment is required for these docs."
-  ],
+  "remaining_delivery": [],
   "supported_crawler_rollout": {
     "run_id": 41504447601,
     "attempt": 1,
@@ -265,24 +262,25 @@
     "automatic_ARM_B0_run": 41387202492
   },
   "latest_official_lightpanda_check": {
-    "checked_at_utc": "2026-11-02T18:54:34.618180+00:00",
+    "checked_at_utc": "2026-11-02T19:35:59.322262+00:00",
     "official_URL": "https://api.github.com/repos/lightpanda-io/browser/releases/tags/nightly",
     "release_updated_at": "2026-11-02T02:41:35Z",
     "installed_ARM_binary_SHA256": "4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756",
     "latest_ARM_binary_matches_installed": true,
     "new_Lightpanda_rollout_needed": false,
     "stable_release_check": {
-      "checked_at_utc": "2026-11-02T19:02:25.878355+00:00",
+      "checked_at_utc": "2026-11-02T19:35:59.322262+00:00",
       "official_api": "https://api.github.com/repos/lightpanda-io/browser/releases/latest",
       "tag_name": "1.0.2",
       "published_at": "2026-10-23T09:01:02Z",
-      "prerelease": false,
-      "draft": false,
-      "interpretation": "Stable1.0.2 from October23 is older than installed latest nightly11500; installed ARM nightly digest still matches current official asset."
-    }
+      "interpretation": "Stable1.0.2 from October23 is older than installed latest nightly11500; no new runtime rollout is needed."
+    },
+    "nightly_asset_updated_at_utc": "2026-11-02T02:41:33Z",
+    "closeout_receipt_sha256": "65764eff2eacb303bb32ad4a60b540c8624e956bdd2edb2092d47fde06041202",
+    "nightly_tag_date_note": "Nightly is a rotating tag with an original2024 publication date; current asset update/digest establishes its2026 identity."
   },
   "renderer_and_demo": {
-    "observed_at_utc": "2026-11-02T17:12:36.015422+00:00",
+    "observed_at_utc": "2026-11-02T19:10:51.186301+00:00",
     "generation_sha256": "b3981c6ac531496c390bff85ba7e20d7480e46d11551ab4af99c19a426e8d02e",
     "generation_unchanged": true,
     "expected_image_digest": "sha256:287a174a1a180cc58c027076284baeb03b10fcbfb6f69886bb3b6729bfd1790d",
@@ -301,8 +299,8 @@
       "oom_kill": 0,
       "oom_group_kill": 0
     },
-    "available_RAM_GiB": 3.2195777893066406,
-    "root_free_GiB": 9.625762939453125,
+    "available_RAM_GiB": 3.1216888427734375,
+    "root_free_GiB": 9.62520980834961,
     "reservation": {
       "cpu_cores": 0.5,
       "memory_bytes": 1073741824,
@@ -313,7 +311,7 @@
     "health": "not_configured",
     "provider_calls": 0,
     "callback_exercised": false,
-    "scope": "Dated17:12 unchanged read-only renderer resource baseline. Allocation and demo reservation unchanged; no functional-render/provider/claim/restart/role or stage operation. Stage authority belongs the designated operator."
+    "scope": "Dated19:10:51 unchanged read-only renderer resource baseline. Allocation and demo reservation unchanged; no functional-render/provider/claim/restart/role or stage operation. Stage authority belongs the designated operator."
   },
   "controlled_comparisons": {
     "source_revision": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
@@ -522,8 +520,8 @@
     {
       "milestone": 7,
       "requirement": "Comparable efficiency, current coverage, supported cutover/reversal and portable completion audit",
-      "status": "qualified1159_installed_controls_natural_effects_and_native_consumer; cleanup_and_portable_publication_pending",
-      "limits": "Current final24 AMD/ARM generated/captured arms have parity and cleanup, with measured/startup/lifetimeCPU separate. Native1159 source/image/data/8298conservation/8290+8288floors and bounded natural DB effects are qualified.1157 poststop-to-start savings remain dated;1137Go-to-Go cold reversal remains supported dated proof. Captured same-workload comparisons plus natural effects satisfy bounded evidence; no paired-production/globalcausalSLA/backlogzero gate is added."
+      "status": "qualified1159_delivery_controls_natural_effects_native_consumer_and_stopped_container_retirement_complete",
+      "limits": "Final24 AMD/ARM generated/captured arms have parity and cleanup with measured/startup/lifetimeCPU separate.1159 source/image/data/8298conservation/8290+8288floors, bounded natural DB effects and native manual acceptance implementation qualify. Five stopped legacy containers were retired without writer changes.1157 poststop-to-start savings and1137Go-to-Go reversal remain dated proof. Two old images are separate deferred housekeeping. No paired-production/globalcausalSLA/backlogzero/extra-soak gate."
     }
   ],
   "ADF_current_controls": {
@@ -532,8 +530,8 @@
     "followup": "https://github.com/colophon-group/jobseek/issues/10790#issuecomment-6563361945",
     "enabled": true,
     "status": "quarantined",
-    "consecutive_failures": 12,
-    "next_natural_retry_utc": "2026-11-02T17:37:17.889837Z",
+    "consecutive_failures": 13,
+    "next_natural_retry_utc": "2026-11-03T19:19:01.429197+00:00",
     "latest_local_controls": {
       "Lightpanda_version": "1.1.0-nightly.11500+721618eeb",
       "Lightpanda_requests": 58,
@@ -549,22 +547,13 @@
       "both_XHR_body_bytes": 0
     },
     "conclusion": "Both authorized local controls failed to advance the listing; no complete inventory, Lightpanda-specific cause, universal publisher outage or CORS/session root cause is established. The Chrome exception is consumed and its temporary artifacts removed.",
-    "constraints": "At19:07 readback the original enabled/unreserved/quarantined state and scheduled17:37timestamp remained unchanged; no successful retry is inferred. Preserve publisher policy, quarantine/backoff/counters and schedules; no forced work or production Chromium.",
-    "last_natural_state_observed_at_utc": "2026-11-02T19:07:40.729212+00:00",
-    "next_natural_retry_utc_is_dated_snapshot": true
-  },
-  "manual_renderer_acceptance_followup": {
-    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
-    "base": "42140b870f459e5aada974025757c190e162c6ee",
-    "state": "Combined1159 PR11494 merged as78962559; native Go acceptance consumer and Python-client deletion installed and qualified. No host manual-render/restart/reboot workflow execution was granted or claimed.",
-    "source_only": false,
-    "sequence": "Delivered together with contained publisher redirect classification and exactly eight Michel boards in one1159 full release.",
-    "no_public_render_restart_reboot_execution_authorized": true,
-    "prepared_component_head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
-    "PR": 11494,
-    "url": "https://github.com/colophon-group/jobseek/pull/11494",
-    "installed_qualified": true,
-    "merged_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f"
+    "constraints": "The natural November2 retry checked at19:18:54 failed;13failures and nextNovember3 19:19:01 are publisher backoff facts, with no causal classification. Preserve enabled/unreserved state, policy, quarantine/backoff/counters and schedules. No forced work, speculative variants or production Chromium.",
+    "last_natural_state_observed_at_utc": "2026-11-02T19:22:17.120375+00:00",
+    "next_natural_retry_utc_is_dated_snapshot": true,
+    "last_checked_at_utc": "2026-11-02T19:18:54.613351+00:00",
+    "last_success_at_utc": "2026-10-28T13:37:57.808563+00:00",
+    "tdm_reserved": false,
+    "latest_natural_receipt_sha256": "5845995b34b89dd62a8e0d646933838dec8238dcc918038a339ee460b5d86fde"
   },
   "previous_qualified_cases": {
     "five_former_deadletters": "Accenture, Beisen, both API-sniffer routes and Amazon naturally succeeded under1139. Dated evidence; this checkpoint does not re-exercise those providers.",
@@ -582,7 +571,7 @@
   "limits": [
     "Current monitor identity and schedule conservation do not prove posting freshness or backlog completion. Expensive detail-demand SQL was deliberately omitted.",
     "No new causal natural-traffic throughput speedup, invoiced-cost saving or four-host natural-traffic window is claimed. The measured maintenance marker reduction is separately bounded.",
-    "Officialnightly18:54 and stable19:02 release checks verify installed latest ARM nightly identity; resource observations remain dated.",
+    "OfficialGitHub release recheck at19:35:59 verifies installed latest ARM nightly digest4021; stable1.0.2 remains older. Rotating nightly tag publication date is not the current binary asset date. Renderer resources remain the separate19:10:51 read-only baseline.",
     "Justup reservations remain0.5CPU/1GiB plus its already allocated2GiB filesystem and8GiB root-free floor. No new API/stage window, functional-render proof, quota increase or activation follows.",
     "Use normal exact-head Required CI/Crawler Deploy Gate, immutable full-release workflows, mutation locks, full writer quiescence and complete rollback. No rsync, mutable deployment, partial writer restart or hold bypass.",
     "Remove owned closed temporary assets and caches. Preserve shared dependencies, active regression inputs, supported rollback assets, other contributors changes and original dump.rdb."
@@ -653,48 +642,6 @@
     "No historical agreed Python rollback-observation duration receipt is claimed. The latest explicit human instruction to delete superseded implementation supersedes a pending local Python observation-window agreement; preserve verified immutable native Go rollback. This is not a new waiting requirement.",
     "Captured same-workload comparisons and bounded natural canonical/downstream effects remain faithful acceptance evidence. No paired-production, global causal SLA or backlog-zero gate is required or claimed; unpaired observations do not establish universal causal freshness effects."
   ],
-  "legacy_cleanup_pending": {
-    "status": "Separate exact maintenance packet reviewed and root preparing its execution window; result receipt is pending. No deletion is claimed yet.",
-    "source_revision": "42140b870f459e5aada974025757c190e162c6ee",
-    "identity_scope": "Source-bound observations only, not a coherent locked runtime/data/deletion authorization.",
-    "container_observed_at_utc": "2026-11-02T17:49:27.746946+00:00",
-    "retained_metadata_observed_at_utc": "2026-11-02T17:57:05.139883+00:00",
-    "stopped_legacy_services": [
-      "worker-1",
-      "worker-2",
-      "worker-3",
-      "browser-1",
-      "lightpanda-claimant"
-    ],
-    "all_five_stopped_since": "2026-10-29",
-    "retained_generation_directories": 70,
-    "release_metadata_files": 282,
-    "unique_protected_digest_pins": 18,
-    "resolved_local_image_configs": 18,
-    "unresolved_pins_count": 0,
-    "old_legacy_images": [
-      {
-        "image_id": "sha256:4b3f150d0c29e2598facca6cb57b797dac5d5346c5a841c86127d09d184b9265",
-        "size_bytes": 398160927,
-        "matches_resolved_release_image": false,
-        "matches_any_retained_digest_pin": false,
-        "repository_digests_count": 1
-      },
-      {
-        "image_id": "sha256:0db54d7bf6388b7cb24ee6ab7fb507c348340ffb3e50509c705ce762485efe82",
-        "size_bytes": 814145891,
-        "matches_resolved_release_image": false,
-        "matches_any_retained_digest_pin": false,
-        "repository_digests_count": 1
-      }
-    ],
-    "old_images_match_any_retained_pin_or_resolved_release_image": false,
-    "receipts_sha256": {
-      "native1158-legacy-asset-inventory-current.json": "293d117357104bce4de49ed0b4f729729de9b3a1b0d2b07655c75c172b2321c0",
-      "native1158-retained-image-closure-current.json": "3ff48b5a1330c121db3d104ceae54b9d85614bbaecf7f7847ec20634dd80bd54"
-    },
-    "next_action": "Root executes only the separately reviewed exact packet and provides the outcome receipt. Recheck coherent protected assets under maintenance lock. No broad prune, active asset deletion or required rollback-asset deletion."
-  },
   "pre_1159_full_monitor_identity": {
     "count": 8290,
     "keys_SHA256": "acbd720c5314d8e3be56e15c143a9e8e9328633f1f0ae2a6cd3808156c6280f9",
@@ -781,5 +728,73 @@
     "interpretation": "Locale/title counts need not match: BuildLocales independently appends detected description languages; absent language/description can preserve empty locales under COALESCE. Independent cutoff-window shape observation437rows:11extra-content-locales,4empty-locales/4missinghashes,0emptytitles; no new translated titles synthesized. This is not the same420-row query snapshot. See docs08language/enrich semantics and native prepare.go/content.go, unchanged by1159.",
     "not_the_same420_record_snapshot": true,
     "repair_or_new_gate_required": false
+  },
+  "publication": "Completed delivery record prepared for the normal documentation PR/check/merge workflow. No self-referential documentation merge identity is claimed; no extra runtime rollout is needed.",
+  "operating_followups": [
+    "Oracle ADF remains enabled and explicitly nonblocking; its latest natural retry failed and publisher backoff remains untouched. No forced work or production Chromium.",
+    "Two unused legacy images remain intentionally retained as separate image-retention housekeeping. Current GC can refuse unified native browser/crawler aliases when an exact repository alias is not locally pulled; no automatic retirement promise, broad prune or image-policy change.",
+    "Retain normal native Go rollback, publisher limits, demo reserve, quiescence/maintenance authority and bounded operational monitoring. No new soak quota or universal freshness/backlog gate."
+  ],
+  "legacy_container_retirement": {
+    "status": "completed",
+    "state": "EXACT_STOPPED_LEGACY_CONTAINERS_RETIRED",
+    "source_revision": "78962559e4411ae0178fcf6e7680ce9f19765d0f",
+    "removed_containers": 5,
+    "removed_services": [
+      "worker-1",
+      "worker-2",
+      "worker-3",
+      "browser-1",
+      "lightpanda-claimant"
+    ],
+    "images_deleted": 0,
+    "images_explicitly_deferred": true,
+    "duration_seconds": 19.701,
+    "maintenance_returncode": 0,
+    "forced_termination": false,
+    "restoration_failures": 0,
+    "native_actors_unchanged": true,
+    "protected_metadata_unchanged": true,
+    "required_existing_image_leases_preserved": true,
+    "image_lease_proof": "legacy-image-ids-disjoint-from-complete-required-closure",
+    "writer_stops_restarts_syncs_queue_changes_provider_work": 0,
+    "receipt_sha256": "0b14ab04dba57620bddc941ee5f8f3a8cf279107e35e8d592570959bd56a579b",
+    "reviewed_child_sha256": "9c978ed97dcad45242eb771e10a364655e5352480584105b78681533decb969e",
+    "qualified_pins_sha256": "abb2b5e12cb6dae77449487a3a3d3a26f6a3bccf1fdcca9e763127144f4545bb",
+    "automatic_retry": false,
+    "scope": "Exactly five stopped legacy containers retired under reviewed standard maintenance. Both old images remain; complete required image closure was disjoint from their IDs and existing image leases were preserved. No image-policy change or expectation that current routine GC will retire them automatically.",
+    "deferred_image_housekeeping": {
+      "old_images": [
+        {
+          "image_id": "sha256:4b3f150d0c29e2598facca6cb57b797dac5d5346c5a841c86127d09d184b9265",
+          "size_bytes": 398160927,
+          "matches_resolved_release_image": false,
+          "matches_any_retained_digest_pin": false,
+          "repository_digests_count": 1
+        },
+        {
+          "image_id": "sha256:0db54d7bf6388b7cb24ee6ab7fb507c348340ffb3e50509c705ce762485efe82",
+          "size_bytes": 814145891,
+          "matches_resolved_release_image": false,
+          "matches_any_retained_digest_pin": false,
+          "repository_digests_count": 1
+        }
+      ],
+      "inventory_observed_at_utc": "2026-11-02T17:57:05.139883+00:00",
+      "reason": "Intentionally outside stopped-container retirement. Exact alias-aware GC may refuse an unpulled browser/crawler repository alias even when the same immutable image digest is present. No broad prune or current image deletion authorized."
+    }
+  },
+  "manual_renderer_acceptance": {
+    "head": "0a9b34254f506a5bb57a44895bbbf04f574390e1",
+    "base": "42140b870f459e5aada974025757c190e162c6ee",
+    "state": "Combined1159 PR11494 installed and qualified; Go client replaces the deleted Python client. No host manual-render/restart/reboot workflow execution was granted or claimed.",
+    "source_only": false,
+    "sequence": "Delivered together with contained publisher redirect classification and exactly eight Michel boards in one1159 full release.",
+    "no_public_render_restart_reboot_execution_authorized": true,
+    "prepared_component_head": "0a6698ea4d4fbaaff919c2e83e6620f3f08a4066",
+    "PR": 11494,
+    "url": "https://github.com/colophon-group/jobseek/pull/11494",
+    "installed_qualified": true,
+    "merged_source": "78962559e4411ae0178fcf6e7680ce9f19765d0f"
   }
 }

@@ -2,7 +2,7 @@
 
 Jobseek monitors career pages with Go workers, Go HTTP/API routes and self-hosted
 Lightpanda, and serves jobs through a Next.js frontend. Python remains for useful
-offline company setup, labelling, research and compatibility tooling. Keep this
+offline company setup, labelling, research, control tooling and test oracles. Keep this
 startup file concise; load linked references for specific work.
 
 ## Safety and Git
@@ -34,8 +34,9 @@ startup file concise; load linked references for specific work.
 
 ## Layout and development
 
-- `apps/crawler/`: Go production workers and maintenance, CSV registry, Redis
-  queues, local Postgres truth, Typesense export, and Python 3.13 offline tooling.
+- `apps/crawler/`: Go production monitor/detail execution, claims, persistence,
+  enrichment, Typesense export, description drain and maintenance; CSV registry,
+  Redis queues, local Postgres truth and Python 3.13 offline/control tooling.
   Read its [AGENTS.md](apps/crawler/AGENTS.md) and the
   [Go/Lightpanda checkpoint](docs/27-go-lightpanda-continuation-plan.md).
 - `apps/web/`: Next.js, TypeScript, Drizzle, Lingui. Read its

@@ -1,18 +1,19 @@
 # Go and Lightpanda migration continuation plan
 
-Current qualified checkpoint: **2026-11-02 19:17 UTC / 20:17 CET**.
+Completed delivery checkpoint: **2026-11-02 19:42 UTC / 20:42 CET**.
 Production **0.13.1159** is installed and independently qualified. The
-[supported full rollout](https://github.com/colophon-group/jobseek/actions/runs/ 41504447601)
+[supported full rollout](https://github.com/colophon-group/jobseek/actions/runs/41504447601)
 succeeded at **19:06:11 UTC**, installing the contained redirect error fix, native
 Go renderer acceptance client, remaining Python-client deletion and exactly eight
 Michel boards in [PR #11494](https://github.com/colophon-group/jobseek/pull/11494).
 All **8,298** enabled monitors are represented; all prior **8,290 / 8,288** board
 keys and UUIDs are preserved. Runtime actors, natural canonical output and all
 24 final controlled comparison arms qualify within the limits below.
-The remaining delivery work is the reviewed stopped-asset cleanup and publication
-of this portable checkpoint. Oracle ADF remains a separate compatibility follow-up,
-not a global gate. The [portable receipt](evidence/go-native-installed-current.json)
-records exact identities, the full seven-milestone audit and pending cleanup.
+The requested implementation and stopped-container retirement are complete.
+Five stopped legacy containers were removed through reviewed maintenance; the
+two old images remain separate deferred housekeeping. Oracle ADF is an enabled,
+nonblocking compatibility follow-up. The [portable receipt](evidence/go-native-installed-current.json)
+records exact identities, all seven milestones and the completed cleanup outcome.
 
 ## Objective and language boundary
 
@@ -79,7 +80,7 @@ The dated 1157 source/image-bound private-path check passed at **14:38 UTC** in
 It grants no provider, Justup, Redis/Timescale, role or ingress-installation authority.
 
 [Incident #11489](https://github.com/colophon-group/jobseek/issues/11489)
-tracks the [failed 1156 deployment](https://github.com/colophon-group/jobseek/actions/runs/ 41440630577).
+tracks the [failed 1156 deployment](https://github.com/colophon-group/jobseek/actions/runs/41440630577).
 Previous-release inspection failed before intended schema/sync cutover when
 Docker rejected host networking with links. Rollback then failed a release-pointer
 parent check. The precise link/trap context is not claimed established.
@@ -97,7 +98,7 @@ Justup stage or API authority follows from the corrective release.
 
 ## Latest Lightpanda and capacity
 
-The [normal renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/ 41399782403)
+The [normal renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/41399782403)
 and independent binary/image/containment checks remain qualified:
 
 | Installed renderer identity | Value |
@@ -109,17 +110,19 @@ and independent binary/image/containment checks remain qualified:
 | Actual ARM64 binary SHA-256 | `4021e26730b2955154b24770812d50476b3259d9b0850f4da88e38519917f756` |
 
 The [official nightly release](https://github.com/lightpanda-io/browser/releases/tag/nightly)
-was rechecked at **18:54:34 UTC**: its latest ARM executable still matches the
-installed binary; no newer nightly rollout was needed. The official stable API
-was also checked at **19:02:25 UTC**: stable 1.0.2 was published October 23, older
-than installed nightly 11500. Runtime/resource observations remain separately dated.
+was rechecked at **19:35:59 UTC**: the latest ARM asset, updated
+**November 2 02:41:33 UTC**, still matches the installed binary. The same official
+check confirms stable **1.0.2**, published **October 23**, remains older than the
+installed nightly 11500. The nightly tag has an original 2024 publication date; its
+current asset update and digest identify the rotating build. No new runtime rollout
+is needed. Runtime/resource observations remain separately dated.
 No new forced browser/provider work was performed.
 
 Worker allocation remains **4 CPU / 2 GiB**, **1 GiB Go memory target**,
 **120 runners / 30 monitor slots**. Renderer allocation remains
 **1 CPU / 1 GiB / four shared slots**, zero swap and 64 PIDs. The dated
-**17:12 UTC** renderer baseline shows unchanged allocation, zero restart/OOM
-and memory-event deltas, **3.220 GiB RAM available / 9.626 GiB root free**.
+**19:10:51 UTC** renderer baseline shows unchanged allocation, zero restart/OOM
+and memory-event deltas, **3.122 GiB RAM available / 9.625 GiB root free**.
 Justup retains **0.5 CPU / 1 GiB**, its already allocated **2 GiB filesystem**
 and **8 GiB root-free floor**; do not subtract the filesystem twice.
 
@@ -169,16 +172,16 @@ The complete original acceptance scope remains:
 | Ordinary processing/export/drain | Four native 1159 actors, zero restarts/OOM; 420 bounded fresh natural canonical records and 415 current hash/upload matches. Old backlog and one dated inactive-description metadata discrepancy remain explicit. |
 | Enabled profiles and original title case | All current 8,298 monitor identities represented; previous 8,290/8,288 floors preserved. Prior named/title/provider witnesses remain dated; ADF stays enabled and separate. |
 | Python implementation retirement | Superseded daemon modules/image targets removed through 11488/1157; 1159 installs native manual acceptance and deletes its Python client. Useful control/offline Python remains permitted. |
-| Efficiency/cutover/reversal/completion | Final 24 same-workload controls, native 1159 installation and bounded natural effects qualified. Dated 1157 private-path/timing and Go-to-Go cold reversal retained. Reviewed cleanup and portable publication remain. |
+| Efficiency/cutover/reversal/completion | Final 24 same-workload controls, native 1159 installation and bounded natural effects qualified. Dated 1157 private-path/timing and Go-to-Go cold reversal retained. Five stopped containers retired with protected state unchanged; two old images remain separate housekeeping. |
 
 The [52-minute normal-traffic qualification](evidence/go-native1149-steady-2026-11-01.json)
 showed headroom after scaling but retained substantial pre-existing detail backlog.
 Current observation deliberately omits expensive detail-demand SQL. Skips,
 posting touches, Redis totals and a single resource snapshot do not prove demand is met.
 
-## Next delivery steps
+## Delivered implementation and operating follow-ups
 
-1. **Publish the qualified combined release checkpoint.** PR #11494 delivered
+1. **Qualified combined 1159 delivery.** PR #11494 delivered
    the redirect response-error classification, native Go acceptance/Python-client
    deletion and exactly **eight Michel boards / one company / one description**.
    Candidate head `0a9b34254f506a5bb57a44895bbbf04f574390e1` and merged source
@@ -202,19 +205,20 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
    nor a future SLA. The 23-second recovery is a different operation. Preserve
    preflight, lock, complete rollback and readiness.
 
-3. **Remove closed legacy assets through the separate reviewed maintenance packet.**
-   The **17:49 UTC** source-bound inventory found five stopped legacy services:
-   `worker-1`, `worker-2`, `worker-3`, `browser-1` and `lightpanda-claimant`, stopped
-   since October 29. The **17:57 UTC** retained-image inventory covered all **70**
-   retained generation directories and **282** release metadata files. All **18**
-   unique immutable SHA pins resolve; neither of the **two old legacy images**
-   matches a retained pin or resolved release image. This is read-only inventory,
-   **not coherent locked deletion clearance**. Root is preparing a separate
-   independently reviewed exact maintenance packet; 1159 is now qualified, but
-   the cleanup execution receipt is still pending. The packet must
-   recheck exact stopped identities and coherent active/rollback/spec/retained
-   image protection under the maintenance lock. No broad prune, active asset
-   deletion or required rollback-asset deletion is authorized by this checkpoint.
+3. **Completed exact stopped-container retirement; images deferred.** Reviewed
+   standard maintenance removed exactly `worker-1`, `worker-2`, `worker-3`,
+   `browser-1` and `lightpanda-claimant`, all stopped since October 29. The operation
+   completed in **19.701 seconds**, with no forced termination or restoration
+   failures. Native actors, protected metadata and required existing image leases
+   remained unchanged; **zero writer stops/restarts, syncs, queue changes or
+   provider work** occurred. The complete protected image closure was disjoint
+   from both legacy image IDs. **No images were deleted.** The two unused old
+   images remain deferred image-retention housekeeping, separate from completed
+   Python execution/source retirement. Current GC can refuse a unified native
+   browser/crawler image when an exact repository alias is not locally pulled,
+   even if the same immutable digest is present. Do not promise automatic removal.
+   No broad prune, active/rollback-asset deletion or image-policy change is part
+   of this delivery.
 
 4. **Keep the original requirements reconciliation faithful.** Preserve all seven
    milestones, salary/enrichment, named/profile cases, ownership, downstream effects,
@@ -228,13 +232,15 @@ posting touches, Redis totals and a single resource snapshot do not prove demand
 
 ## Separate ADF compatibility follow-up
 
-The **19:07 UTC** snapshot still records the original Oracle ADF board enabled,
-unreserved and quarantined after its normal November 1 pagination HTTP 302 failure;
-failures **12**, with the scheduled natural retry **November 2 17:37:17 UTC /
-18:37:17 CET** timestamp. No successful retry is inferred from that unchanged state. Do not force work or reset
-publisher policy, schedules, counters or backoff. Native 1102 evidence records
-52 jobs/zero failures on October 27; last-success October 28 alone does not
-establish runtime ownership of that attempt.
+The **19:22:17 UTC** readback records the original Oracle ADF board enabled,
+unreserved and quarantined after its latest natural retry checked at
+**November 2 19:18:54 UTC**; failures **13**. Last success remains October 28;
+the next natural check is **November 3 19:19:01 UTC / 20:19:01 CET**. This is a
+natural backoff update, with no forced work or new causal classification. Preserve
+publisher policy, schedules, counters and backoff. Native 1102 evidence records
+52 jobs/zero failures on October 27; last-success October 28 alone does not establish
+runtime ownership of that attempt. This compatibility follow-up remains explicitly
+separate and nonblocking.
 
 The authorized local Lightpanda More control made **58 requests / zero details**;
 the separately authorized fresh Chrome control made **110 requests / one More
@@ -248,7 +254,7 @@ holds the evidence. Re-enter on a changed natural result, supported complete sou
 working session/environment witness or relevant upstream correction. Any authorized
 local verification remains bounded to 500 jobs / 5,000 detail checks.
 
-The [supported Go-to-Go cold reversal](https://github.com/colophon-group/jobseek/actions/runs/ 41213487268)
+The [supported Go-to-Go cold reversal](https://github.com/colophon-group/jobseek/actions/runs/41213487268)
 is dated 1137 evidence, not a new retirement/corrective exercise. Keep the previous
 verified immutable Go release and exact data/spec rollback evidence. Follow
 [ADR-006](adr/006-crawler-deploy-quiescence-and-rollback.md) and normal holds/locks;
