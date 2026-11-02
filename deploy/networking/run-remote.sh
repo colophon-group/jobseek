@@ -131,7 +131,7 @@ REMOTE_FEED_PREPARE
     remote 5m \
       "umask 077; tar --extract --file - --directory '/var/lib/jobseek-ingress/feed-role-staging/$stage_id' --no-same-owner --no-same-permissions --keep-old-files"
 
-  remote 10m \
+  remote 5h \
     "bash -s -- '$stage_id' '$crawler_private_ip' '$installer_sha' '$conformance_sha'" \
     <<'REMOTE_FEED_INSTALL'
 set -euo pipefail
@@ -156,6 +156,9 @@ python3 "$conformance" --role postgresql \
   --crawler-private-ip "$crawler_private_ip" --require-enforced
 install -o root -g root -m 0700 "$installer" /usr/local/sbin/jobseek-justup-feed-role
 [[ "$(sha256sum /usr/local/sbin/jobseek-justup-feed-role | awk '{print $1}')" == "$installer_sha" ]]
+python3 /usr/local/sbin/jobseek-justup-feed-role attest-restore
+python3 "$conformance" --role postgresql \
+  --crawler-private-ip "$crawler_private_ip" --require-enforced
 python3 /usr/local/sbin/jobseek-justup-feed-role install \
   --password-file /etc/jobseek-feed/reader-password
 python3 /usr/local/sbin/jobseek-justup-feed-role audit
