@@ -120,3 +120,48 @@ func TestRichLeverDiscoveryPaginationFailureAndReservationNeverReturnsPartialInv
 		t.Fatal("cancellation lost", err)
 	}
 }
+
+func TestRichLeverExactBlankPostingExclusionPreservesOtherJobs(t *testing.T) {
+	const blankID = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
+	p := richProfileFixture(t, "lever")
+	p.LeverExcludeBlankPostingIDs = blankID
+	client := &http.Client{Transport: richRoundTrip(func(r *http.Request) (*http.Response, error) {
+		return richHTTPResponse(r, 200, `[
+			{"id":"`+blankID+`","hostedUrl":"https://jobs.lever.co/fixture/`+blankID+`","text":"Prep Cook","description":"","categories":{"location":"Winter Park, Florida"}},
+			{"id":"ff34692c-d3a5-4d41-a0be-49b06d695ea8","hostedUrl":"https://jobs.lever.co/fixture/ff34692c-d3a5-4d41-a0be-49b06d695ea8","text":"Other Cook","description":"<p>Real duties</p>","categories":{"location":"Miami, Florida"}}
+		]`, false), nil
+	})}
+	got, err := DiscoverRichMonitor(context.Background(), client, p)
+	if err != nil || len(got.Jobs) != 1 || got.Jobs[0].Title == nil || *got.Jobs[0].Title != "Other Cook" || got.Jobs[0].Description == nil || len(got.Jobs[0].Locations) != 1 {
+		t.Fatalf("exact blank Lever exclusion damaged retained job: %+v err=%v", got, err)
+	}
+}
+
+func TestRichLeverBlankExclusionKeepsRawPaginationCount(t *testing.T) {
+	const blankID = "e0b53a9a-da36-4b09-a336-afb73d9ccffb"
+	p := richProfileFixture(t, "lever")
+	p.LeverExcludeBlankPostingIDs = blankID
+	first := make([]map[string]any, 100)
+	for i := range first {
+		id := fmt.Sprintf("%d", i)
+		first[i] = map[string]any{"id": id, "hostedUrl": "https://jobs.lever.co/fixture/" + id, "text": "Cook", "description": "<p>Duties</p>", "categories": map[string]any{"location": "Miami, Florida"}}
+	}
+	first[0]["id"], first[0]["description"] = blankID, ""
+	first[0]["hostedUrl"] = "https://jobs.lever.co/fixture/" + blankID
+	firstBody, _ := json.Marshal(first)
+	pageCount := 0
+	client := &http.Client{Transport: richRoundTrip(func(r *http.Request) (*http.Response, error) {
+		pageCount++
+		if r.URL.Query().Get("skip") == "0" {
+			return richHTTPResponse(r, 200, string(firstBody), false), nil
+		}
+		if r.URL.Query().Get("skip") != "100" {
+			t.Fatalf("excluded posting changed page offset: %s", r.URL.String())
+		}
+		return richHTTPResponse(r, 200, `[{"id":"last","hostedUrl":"https://jobs.lever.co/fixture/last","text":"Last Cook","description":"<p>Duties</p>","categories":{"location":"Miami, Florida"}}]`, false), nil
+	})}
+	got, err := DiscoverRichMonitor(context.Background(), client, p)
+	if err != nil || pageCount != 2 || len(got.Jobs) != 100 || got.Jobs[len(got.Jobs)-1].Title == nil || *got.Jobs[len(got.Jobs)-1].Title != "Last Cook" {
+		t.Fatalf("excluded posting truncated complete inventory: pages=%d jobs=%d err=%v", pageCount, len(got.Jobs), err)
+	}
+}

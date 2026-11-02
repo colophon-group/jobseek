@@ -206,7 +206,7 @@ func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, pr
 	if err != nil {
 		return nil, err
 	}
-	return r.executeDocumentNavigation(ctx, input, options, profile.EffectiveConfigSHA256, pipeline)
+	return r.executeDocumentNavigation(ctx, input, options, profile.EffectiveConfigSHA256, pipeline, "")
 }
 
 func (r *NativeRenderedDetails) FetchNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, endpoint string) nextdataPage {

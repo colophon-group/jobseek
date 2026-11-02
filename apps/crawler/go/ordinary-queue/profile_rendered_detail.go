@@ -76,6 +76,17 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 		}
 	}
 	qualifiedControls := scraper == "dom" && qualifiedRenderedDOMControls(boardID, config, metadata, source, options)
+	if warmup, present := options["warmup_url"]; present && !qualifiedControls {
+		endpoint, ok := warmup.(string)
+		if scraper != "dom" || !ok {
+			return fail()
+		}
+		fetchURL, err := dom.AlternateFetchURL(source, options["fetch_url_transform"])
+		if err != nil || !actions.SameOriginWarmup(fetchURL, endpoint) {
+			return fail()
+		}
+		delete(navigation, "warmup_url")
+	}
 	if qualifiedControls {
 		for _, key := range []string{"stealth", "skip_ssl", "warmup_url"} {
 			delete(navigation, key)
@@ -106,6 +117,9 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy", "proxy", "transport_attempts"} {
 		delete(parser, key)
 	}
+	if scraper == "dom" {
+		delete(parser, "warmup_url")
+	}
 	if qualifiedControls {
 		for _, key := range []string{"stealth", "skip_ssl", "warmup_url"} {
 			delete(parser, key)
@@ -135,6 +149,11 @@ func inspectRenderedDetail(boardID string, config map[string]string, source stri
 	}
 	copyConfig := cloneConfig(config)
 	copyConfig["scraper_needs_browser"], copyConfig["metadata"] = "0", string(metadataBody)
+	// Legacy qualified controls intentionally ignored their warmup value. Keep
+	// that behavior while the new path is reserved for validated DOM details.
+	if qualifiedControls {
+		delete(options, "warmup_url")
+	}
 	var profile WorkdayDetailProfile
 	if scraper == "dom" {
 		profile, err = InspectDOMDetail(boardID, copyConfig, source, Simple)

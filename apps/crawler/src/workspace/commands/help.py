@@ -834,11 +834,17 @@ lever — Lever Postings API
 
   Config:
     {"token": "cloudflare"}
+    {"token": "rivieradininggroup",
+     "exclude_blank_posting_ids": ["e0b53a9a-da36-4b09-a336-afb73d9ccffb"]}
 
     token    Company slug. Auto-filled by ws probe from:
              1. Direct URL (jobs.lever.co/{token})
              2. Inline JS scan for Lever API references
              3. Slug-based API probe
+    exclude_blank_posting_ids  Exact Lever UUIDs to omit only while their
+             official API description is blank. When the publisher fills a
+             description, the job appears automatically. Use only after
+             verifying the hosted page has no role content to recover.
 
   Detection:  ws probe shows "Lever API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""

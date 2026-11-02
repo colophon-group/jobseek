@@ -31,6 +31,7 @@ type GreenhouseMonitorProfile struct {
 	RSSCountryFallbacks                         map[string]string
 	BoardID, CompanyID, Domain, Token, Endpoint string
 	Provider, Region, Profile                   string
+	LeverExcludeBlankPostingIDs                 string
 	Language                                    string
 	BackfillLanguages                           []string
 	CheckInterval, ScrapeInterval               time.Duration

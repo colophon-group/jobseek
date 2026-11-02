@@ -13,10 +13,109 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestLightpandaDocumentWarmupSharesOnlyItsDetailTarget(t *testing.T) {
+	binary := integrationBinary(t)
+	for _, mode := range []string{"success", "blocked"} {
+		t.Run(mode, func(t *testing.T) {
+			var warmups, details atomic.Int64
+			certificate, ca := dayforceOriginTLS(t)
+			origin := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/html")
+				if r.URL.Path == "/warmup" {
+					warmups.Add(1)
+					if mode == "blocked" {
+						w.WriteHeader(503)
+					}
+					http.SetCookie(w, &http.Cookie{Name: "warmup-session", Value: "held", Path: "/", Secure: true, HttpOnly: true})
+					_, _ = io.WriteString(w, `<html><body>Warmup decoy</body></html>`)
+					return
+				}
+				if r.URL.Path != "/detail" {
+					http.NotFound(w, r)
+					return
+				}
+				details.Add(1)
+				cookie, err := r.Cookie("warmup-session")
+				if err != nil || cookie.Value != "held" {
+					w.WriteHeader(403)
+					return
+				}
+				_, _ = io.WriteString(w, `<html><body><article>Actual detail</article></body></html>`)
+			}))
+			address := "127.0.0.2"
+			if runtime.GOOS == "darwin" {
+				address = "127.0.0.1"
+			}
+			listener, err := net.Listen("tcp4", address+":0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			origin.Listener = listener
+			origin.TLS = &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS12}
+			origin.StartTLS()
+			defer origin.Close()
+			proxy := dayforceConnectProxyAt(t, origin, address)
+			fixture := newServiceTLSFixture(t)
+			run := func(ctx context.Context, c Config, task Task) (Result, error) {
+				c.Binary, c.EgressPolicy = binary, defaultEgressPolicy()
+				return runTaskWithDependencies(ctx, c, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: proxy.URL, ca: ca, fixtureLoopback: address}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, task)
+			}
+			execution, err := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary, EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy}, run)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, serviceAddress, stop := startRuntimeV1ServiceTest(t, fixture, execution)
+			defer stop()
+			client := dayforceClientFixture(t, fixture, serviceAddress)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			input, err := lp.NavigationInput(lp.Navigation{URL: "https://jobs.dayforcehcm.com/detail", RoutingRevision: "warmup-fixture", OriginRequestID: "warmup-detail", Wait: "domcontentloaded", TimeoutMS: 5000})
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload, err := proto.Marshal(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := actions.Request{Protocol: actions.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Input: payload, LargeDocument: true, WarmupURL: "https://jobs.dayforcehcm.com/warmup"}
+			held, err := client.Reserve(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := held.DocumentActions(ctx, request)
+			held.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := new(runtimev1.BrowserResult)
+			if proto.Unmarshal(response.Result, result) != nil {
+				t.Fatal("invalid result")
+			}
+			if mode == "success" && (result.GetSuccess() == nil || result.GetSuccess().Html == nil) || mode == "blocked" && result.GetSuccess() != nil {
+				t.Fatal("warmup outcome differed", result.GetError())
+			}
+			if mode == "success" {
+				var html strings.Builder
+				for _, chunk := range result.GetSuccess().Html.Chunks {
+					html.Write(chunk.GetInlineBody())
+				}
+				if !strings.Contains(html.String(), "Actual detail") || strings.Contains(html.String(), "Warmup decoy") {
+					t.Fatal("warmup content entered the detail result")
+				}
+			}
+			if warmups.Load() != 1 || details.Load() != map[string]int64{"success": 1, "blocked": 0}[mode] {
+				t.Fatal("warmup navigation count differed", warmups.Load(), details.Load())
+			}
+		})
+	}
+}
 
 func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 	binary := integrationBinary(t)

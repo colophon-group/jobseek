@@ -15,12 +15,13 @@ import (
 // adapter to the existing one-shot Lightpanda lifecycle. It owns no service,
 // queue, retry, fallback, persistence, or production-routing behavior.
 type runtimeV1Runner struct {
-	config           Config
-	run              taskRunner
-	documentActions  []actions.Action
-	inlineCards      *actions.InlineCards
-	inlineIdentities *[]string
-	largeDocument    bool
+	config            Config
+	run               taskRunner
+	documentActions   []actions.Action
+	inlineCards       *actions.InlineCards
+	inlineIdentities  *[]string
+	largeDocument     bool
+	documentWarmupURL string
 }
 
 var _ lightpandaadapter.Runner = runtimeV1Runner{}
@@ -38,7 +39,7 @@ func (runner runtimeV1Runner) Run(
 		return internalRunnerFailure(bound)
 	}
 
-	task := Task{URL: input.Plan.TargetUrl, InlineCards: runner.inlineCards, LargeDocument: runner.largeDocument}
+	task := Task{URL: input.Plan.TargetUrl, InlineCards: runner.inlineCards, LargeDocument: runner.largeDocument, DocumentWarmupURL: runner.documentWarmupURL}
 	if len(runner.documentActions) > 0 {
 		task.Actions = append([]actions.Action(nil), runner.documentActions...)
 	}
@@ -81,6 +82,9 @@ func (runner runtimeV1Runner) Run(
 	}
 	config.TaskTimeout = lightpandaadapter.NavigationExecutionBudget(navigation)
 	config.TaskTimeout += actions.Budget(task.Actions) + inlineCardBudget(task.InlineCards)
+	if task.DocumentWarmupURL != "" {
+		config.TaskTimeout += 30 * time.Second
+	}
 	run := runner.run
 	if run == nil {
 		run = runTask

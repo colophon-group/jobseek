@@ -228,6 +228,105 @@ func TestLastHTTPOriginalMonitorFieldsThroughVerifiedSessions(t *testing.T) {
 	}
 }
 
+func TestPeopleSoftFrenchFallbackRedirectKeepsAnonymousCookie(t *testing.T) {
+	board := "https://fixture.example/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL"
+	o, err := api.LastHTTPOptionsFromMetadata("peoplesoft", board, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrap, redirects, listing := 0, 0, 0
+	client := verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/psp/") {
+			bootstrap++
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if r.URL.Query().Get("Page") != "HRS_APP_SCHJOB_FL" {
+			t.Errorf("unexpected PeopleSoft path: %s", r.URL)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if !strings.Contains(r.Header.Get("Cookie"), "PSJSESSIONID=abc") {
+			redirects++
+			w.Header().Set("Set-Cookie", "PSJSESSIONID=abc; Path=/; Secure")
+			w.Header().Set("Location", o.ListingURL()+"&")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		listing++
+		fmt.Fprint(w, `<div id="HRS_AGNT_RSLT_I"><b>1</b> emplois trouvés.<li id="HRS_AGNT_RSLT_I$0_row_0"><span id="SCH_JOB_TITLE$0">Chef de rang</span><span id="HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0">115978</span><span id="LOCATION$0">Monaco</span></li></div>`)
+	}))
+	profile := queue.GreenhouseMonitorProfile{Provider: "peoplesoft", Endpoint: o.ListingURL(), Profile: o.Profile()}
+	config := map[string]string{"board_url": board, "crawler_type": "peoplesoft", "monitor_needs_browser": "0", "metadata": "{}"}
+	out, err := FetchLastHTTPProviders(context.Background(), client, profile, config, func(context.Context, time.Duration) error { return nil })
+	if err != nil || len(out.Jobs) != 1 || bootstrap != 3 || redirects != 1 || listing != 1 {
+		t.Fatalf("PeopleSoft fallback lost inventory or bounded cookie flow: jobs=%d bootstrap=%d redirects=%d listing=%d err=%v", len(out.Jobs), bootstrap, redirects, listing, err)
+	}
+}
+
+func TestPeopleSoftDetailBootstrapFallbackKeepsAnonymousCookie(t *testing.T) {
+	board := "https://fixture.example/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL"
+	base, err := api.LastHTTPOptionsFromMetadata("peoplesoft", board, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		status int
+	}{
+		{name: "503-anonymous-redirect", status: http.StatusServiceUnavailable},
+		{name: "403-stops-before-detail", status: http.StatusForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := base.PeopleSoftJobURL("115978")
+			o, err := api.LastHTTPDetailOptionsFromConfig("peoplesoft", board, source, "{}")
+			if err != nil {
+				t.Fatal(err)
+			}
+			bootstrap, redirects, details := 0, 0, 0
+			client := verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/psp/") {
+					bootstrap++
+					w.WriteHeader(tc.status)
+					return
+				}
+				if r.URL.Path != "/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL" || r.URL.Query().Get("Page") != "HRS_APP_JBPST_FL" || r.URL.Query().Get("JobOpeningId") != "115978" {
+					t.Errorf("unexpected PeopleSoft detail URL: %s", r.URL)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if !strings.Contains(r.Header.Get("Cookie"), "PSJSESSIONID=abc") {
+					redirects++
+					w.Header().Set("Set-Cookie", "PSJSESSIONID=abc; Path=/; Secure")
+					w.Header().Set("Location", o.Endpoint+"&")
+					w.WriteHeader(http.StatusFound)
+					return
+				}
+				details++
+				fmt.Fprint(w, `<span id="HRS_SCH_WRK2_POSTING_TITLE">Chef de rang</span><span id="HRS_SCH_WRK2_HRS_JOB_OPENING_ID">115978</span><span id="HRS_SCH_WRK_HRS_DESCRLONG">Monaco</span><div id="win0divHRS_SCH_PSTDSC_row$0"><h2><span class="ps-text">Missions</span></h2><span id="HRS_SCH_PSTDSC_DESCRLONG$0"><p>Accueillir les clients.</p></span></div>`)
+			}))
+			fetch, err := lastHTTPFetcher(client, base, o, func(context.Context, time.Duration) error { return nil }, &lastHTTPObservation{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			plain := func(ctx context.Context, r api.Request) ([]byte, error) {
+				body, _, err := fetch(ctx, r)
+				return body, err
+			}
+			out, err := api.FetchPeopleSoftDetail(context.Background(), o, plain, func(s string) any { return s }, func(s string) any { return s }, func(s string) (any, error) { return s, nil })
+			if tc.status != http.StatusServiceUnavailable {
+				if err == nil || redirects != 0 || details != 0 {
+					t.Fatalf("non-503 bootstrap did not stop: err=%v redirects=%d details=%d", err, redirects, details)
+				}
+				return
+			}
+			if err != nil || out["title"] != "Chef de rang" || !reflect.DeepEqual(out["locations"], []string{"Monaco"}) || !strings.Contains(fmt.Sprint(out["description"]), "Accueillir les clients.") || bootstrap != 3 || redirects != 1 || details != 1 {
+				t.Fatalf("detail fallback lost parsed fields or bounded cookie flow: out=%v bootstrap=%d redirects=%d details=%d err=%v", out, bootstrap, redirects, details, err)
+			}
+		})
+	}
+}
+
 func TestLastHTTPPairedOriginalFieldsThroughVerifiedSessions(t *testing.T) {
 	cases := []lastHTTPDetailCase{}
 	for _, provider := range []string{"infor", "peoplesoft"} {

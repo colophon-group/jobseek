@@ -333,3 +333,30 @@ func TestOriginalPeopleSoftSessionContinuationAndFields(t *testing.T) {
 		})
 	}
 }
+
+type peopleSoftUnavailable struct{}
+
+func (peopleSoftUnavailable) Error() string       { return "bootstrap unavailable" }
+func (peopleSoftUnavailable) HTTPStatusCode() int { return http.StatusServiceUnavailable }
+
+func TestPeopleSoftFrenchGatewayBootstrapFallback(t *testing.T) {
+	o, err := LastHTTPOptionsFromMetadata("peoplesoft", "https://jobs.example.com/psc/applicant/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL", "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listing := `<div id="HRS_AGNT_RSLT_I"><b>1</b> emplois trouvés.<li id="HRS_AGNT_RSLT_I$0_row_0"><span id="SCH_JOB_TITLE$0">Chef de rang</span><span id="HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0">115978</span><span id="LOCATION$0">Monaco</span></li></div>`
+	called := 0
+	jobs, err := DiscoverPeopleSoft(context.Background(), o, func(_ context.Context, r Request) ([]byte, error) {
+		called++
+		if r.URL == o.Origin+"/psp/"+o.Site+"/"+o.Portal+"/HRMS/?cmd=logout" {
+			return nil, peopleSoftUnavailable{}
+		}
+		if r.URL != o.ListingURL() {
+			t.Fatalf("unexpected fallback URL: %s", r.URL)
+		}
+		return []byte(listing), nil
+	})
+	if err != nil || len(jobs) != 1 || jobs[0].Title != "Chef de rang" || called != 2 {
+		t.Fatalf("French fallback inventory: jobs=%v calls=%d error=%v", jobs, called, err)
+	}
+}

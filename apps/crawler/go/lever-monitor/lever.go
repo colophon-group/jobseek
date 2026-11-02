@@ -220,6 +220,13 @@ func parseJob(raw map[string]any) (Job, bool, error) {
 }
 
 func ParsePage(body []byte) ([]Job, int, error) {
+	return ParsePageWithBlankExclusions(body, nil)
+}
+
+// ParsePageWithBlankExclusions retains the authoritative raw page count for
+// pagination while omitting only configured IDs whose publisher description is
+// still empty. A posting reappears automatically if its description is filled.
+func ParsePageWithBlankExclusions(body []byte, excludedBlankIDs map[string]bool) ([]Job, int, error) {
 	var root any
 	if err := json.Unmarshal(body, &root); err != nil {
 		return nil, 0, err
@@ -239,6 +246,9 @@ func ParsePage(body []byte) ([]Job, int, error) {
 			return nil, 0, fmt.Errorf("Lever item %d: %w", index, err)
 		}
 		if included {
+			if id, ok := item["id"].(string); ok && excludedBlankIDs[id] && (job.Description == nil || strings.TrimSpace(*job.Description) == "") {
+				continue
+			}
 			jobs = append(jobs, job)
 		}
 	}

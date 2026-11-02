@@ -52,6 +52,33 @@ func TestLargeDocumentServicePreservesCompleteHTMLWithoutSyntheticActions(t *tes
 	}
 }
 
+func TestDocumentWarmupBindsNativeRunnerAndRejectsForeignOrigin(t *testing.T) {
+	input, err := lp.NavigationInput(lp.Navigation{URL: "https://www.caterer.com/job/role/l-oscar-london-job123", RoutingRevision: "warmup-test", OriginRequestID: "warmup-source", Wait: "domcontentloaded", TimeoutMS: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, _ := proto.Marshal(input)
+	request := actions.Request{Protocol: actions.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), Input: payload, LargeDocument: true, WarmupURL: "https://www.caterer.com/jobs/loscar-london"}
+	calls := 0
+	execution, err := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary}, func(_ context.Context, c Config, task Task) (Result, error) {
+		calls++
+		if task.DocumentWarmupURL != request.WarmupURL || validateTask(task) != nil || c.TaskTimeout != 31*time.Second {
+			t.Fatal("warmup route or 30-second budget lost")
+		}
+		return Result{Status: 200, FinalURL: task.URL, HTML: "<html><body>Role</body></html>", HTMLPresent: true}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response, err := execution.executeDocumentActions(context.Background(), request); err != nil || !response.Valid() || calls != 1 {
+		t.Fatal("same-origin warmup did not reach native runner", err)
+	}
+	request.WarmupURL = "https://other.example/jobs"
+	if _, err := execution.executeDocumentActions(context.Background(), request); err == nil || calls != 1 {
+		t.Fatal("foreign warmup reached native runner")
+	}
+}
+
 func TestDocumentActionsServicePreflightCleanupAndBinding(t *testing.T) {
 	for _, mode := range []string{"success", "large-document", "oversized-document", "cleanup", "evaluation", "malformed"} {
 		t.Run(mode, func(t *testing.T) {

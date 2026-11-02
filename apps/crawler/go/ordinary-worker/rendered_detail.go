@@ -103,7 +103,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	}
 	parserOptions := make(map[string]any, len(options))
 	for key, value := range options {
-		if key != "proxy" && key != "transport_attempts" {
+		if key != "proxy" && key != "transport_attempts" && key != "warmup_url" {
 			parserOptions[key] = value
 		}
 	}
@@ -164,7 +164,11 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if err != nil {
 			return nil, nil, err
 		}
-		result, err := r.executeDocumentNavigation(ctx, input, options, profile.EffectiveBoardSHA256, pipeline)
+		warmup, _ := options["warmup_url"].(string)
+		if scraper != "dom" {
+			warmup = ""
+		}
+		result, err := r.executeDocumentNavigation(ctx, input, options, profile.EffectiveBoardSHA256, pipeline, warmup)
 		if err != nil {
 			return nil, nil, err
 		}
