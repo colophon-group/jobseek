@@ -1622,7 +1622,7 @@ jobs:
           go-version-file: apps/crawler/go/jsonld-detail/go.mod
           cache-dependency-path: apps/crawler/go/jsonld-detail/go.sum
 
-      - run: uv sync --group dev --extra enrich
+      - run: uv sync --frozen --group dev
         working-directory: apps/crawler
 
       - name: Test native host deployment tools
