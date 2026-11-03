@@ -6,6 +6,8 @@ import ast
 import importlib.util
 import re
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -258,3 +260,160 @@ def test_maintenance_consumers_select_actual_committed_runtime(name, capability,
             for part in ["--expect-service", service]
         ]
     assert '"${maintenance_expectations[@]}" \\' in script
+
+
+SWAP_SPEC = importlib.util.spec_from_file_location(
+    "renderer_swap_repair", Path(__file__).with_name("repair-swap.py")
+)
+assert SWAP_SPEC and SWAP_SPEC.loader
+swap_repair = importlib.util.module_from_spec(SWAP_SPEC)
+sys.modules[SWAP_SPEC.name] = swap_repair
+SWAP_SPEC.loader.exec_module(swap_repair)
+
+
+def test_zero_swap_repair_requires_exact_target_inputs():
+    valid = [
+        "a" * 40,
+        "b" * 64,
+        "sha-" + "c" * 40 + "-r123a1",
+        "sha256:" + "d" * 64,
+        "e" * 64,
+        "2417",
+        "f" * 64,
+        "1" * 64,
+        "2" * 64,
+    ]
+    assert swap_repair.parse_expected(valid)["release_id"] == valid[2]
+    for index, replacement in ((2, "../../other"), (4, "e" * 63), (5, "0")):
+        changed = valid.copy()
+        changed[index] = replacement
+        with pytest.raises(swap_repair.RepairRefused):
+            swap_repair.parse_expected(changed)
+
+
+def test_zero_swap_repair_accepts_only_exact_docker_cgroup_leaf(monkeypatch):
+    container_id = "a" * 64
+    text = f"0::/system.slice/docker-{container_id}.scope\n"
+    mountinfo = "37 25 0:32 / /sys/fs/cgroup rw - cgroup2 cgroup rw\n"
+
+    def read_text(path, **_kwargs):
+        if str(path) == "/proc/self/mountinfo":
+            return mountinfo
+        return text
+
+    monkeypatch.setattr(swap_repair.Path, "read_text", read_text)
+    assert swap_repair.cgroup_relative_path(2417, container_id) == text[3:].strip()
+    text = f"0::/system.slice/docker-{container_id}.scope/other\n"
+    with pytest.raises(swap_repair.RepairRefused, match="cgroup_leaf_identity_drift"):
+        swap_repair.cgroup_relative_path(2417, container_id)
+    mountinfo = "37 25 0:32 /other /sys/fs/cgroup rw - cgroup2 cgroup rw\n"
+    with pytest.raises(swap_repair.RepairRefused, match="cgroup_v2_mount_required"):
+        swap_repair.cgroup_relative_path(2417, container_id)
+
+
+def test_zero_swap_repair_rejects_image_reference_drift_before_leaf(monkeypatch):
+    expected = {
+        "machine_sha": swap_repair.sha256(b"machine-id\n"),
+        "release_id": "sha-" + "a" * 40 + "-r123a1",
+        "container_id": "c" * 64,
+        "image_id": "sha256:" + "d" * 64,
+        "pid": "2417",
+        "cgroup_sha": swap_repair.sha256(b"/system.slice/docker-c.scope"),
+    }
+    image_ref = "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:" + "e" * 64
+    monkeypatch.setattr(swap_repair, "read_exact_file", lambda *_args, **_kwargs: b"machine-id\n")
+    monkeypatch.setattr(swap_repair, "release_identity", lambda *_args: image_ref)
+    monkeypatch.setattr(
+        swap_repair,
+        "docker_identity",
+        lambda: {
+            "id": expected["container_id"],
+            "image": expected["image_id"],
+            "pid": 2417,
+            "running": True,
+            "memory": 1073741824,
+            "memory_swap": 1073741824,
+            "cgroupns": "private",
+            "config_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:" + "f" * 64,
+            "labels": {},
+        },
+    )
+    monkeypatch.setattr(
+        swap_repair,
+        "cgroup_relative_path",
+        lambda *_args: pytest.fail("cgroup leaf must not be reached after image drift"),
+    )
+    with pytest.raises(swap_repair.RepairRefused, match="container_identity_drift"):
+        swap_repair.check_identity(expected, 1000, 1000)
+
+
+@pytest.mark.parametrize(
+    ("before_memory", "before_swap", "current_identity", "expected_writes"),
+    [
+        ("1073741824", "max", ("/changed", "12"), 0),
+        ("1073741824", "0", ("/docker", "12"), 0),
+        ("max", "max", ("/docker", "12"), 0),
+        ("1073741824", "max", ("/docker", "12"), 1),
+    ],
+)
+def test_zero_swap_repair_has_one_guarded_write(
+    monkeypatch, before_memory, before_swap, current_identity, expected_writes
+):
+    values = {11: before_memory, 12: before_swap}
+    writes = []
+    monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_args: None)
+    monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
+    monkeypatch.setattr(swap_repair.os, "lseek", lambda *_args: 0)
+
+    def write(fd, data):
+        writes.append((fd, data))
+        values[fd] = "0"
+        return len(data)
+
+    monkeypatch.setattr(swap_repair.os, "write", write)
+    receipt = {"writeAttempted": False}
+    if expected_writes:
+        assert swap_repair.write_leaf_once(
+            10, 11, 12, ("/docker", "12"), lambda: current_identity, receipt
+        ) == ("1073741824", "0")
+        assert receipt["writeCompleted"] is True
+        assert receipt["hostSwapMax"] == "0"
+    else:
+        with pytest.raises(swap_repair.RepairRefused):
+            swap_repair.write_leaf_once(
+                10, 11, 12, ("/docker", "12"), lambda: current_identity, receipt
+            )
+        assert receipt["writeAttempted"] is False
+    assert writes == ([(12, b"0\n")] if expected_writes else [])
+
+
+def test_zero_swap_repair_never_retries_an_uncertain_write(monkeypatch):
+    values = {11: "1073741824", 12: "max"}
+    attempts = []
+    monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_args: None)
+    monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
+    monkeypatch.setattr(swap_repair.os, "lseek", lambda *_args: 0)
+
+    def failed_write(fd, data):
+        attempts.append((fd, data))
+        raise OSError("uncertain kernel write")
+
+    monkeypatch.setattr(swap_repair.os, "write", failed_write)
+    receipt = {"writeAttempted": False}
+    with pytest.raises(OSError):
+        swap_repair.write_leaf_once(
+            10, 11, 12, ("/docker", "12"), lambda: ("/docker", "12"), receipt
+        )
+    assert attempts == [(12, b"0\n")]
+    assert receipt["writeAttempted"] is True
+    assert "writeCompleted" not in receipt
+
+
+def test_zero_swap_repair_bounds_subprocess_output_and_timeout():
+    command = [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'A' * 10000)"]
+    with pytest.raises(swap_repair.RepairRefused, match="command_output_overflow"):
+        swap_repair.run_bounded(command, timeout=5, cap=8192)
+    start = time.monotonic()
+    with pytest.raises(swap_repair.RepairRefused, match="command_timeout"):
+        swap_repair.run_bounded([sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.1)
+    assert time.monotonic() - start < 2
