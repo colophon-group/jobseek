@@ -2720,6 +2720,28 @@ expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/sear
 expeditors,expeditors-careers,https://careers.smartrecruiters.com/expeditors,smartrecruiters,,smartrecruiters,
 experimental,experimental-europe,https://careers.experimentalgroup.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.experimentalgroup.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.experimentalgroup\\.com/jobs/[0-9]+""}",json-ld,"{""description_selector"": ""section.company-links div.prose""}"
 experimental,experimental-uk,https://harri.com/egw-careers,dom,"{""render"": true, ""url_filter"": ""^https://harri\\.com/[^/]+/job/[0-9]+"", ""url_transform"": {""find"": ""\\?.*$"", ""replace"": """"}, ""resource_policy"": ""auto"", ""bot_protection"": false}",json-ld,"{""render"": true}"
+expleo,expleo-careers,https://expleo-jobs-fr-fr.icims.com/,icims,,json-ld,
+expleo,expleo-careers-ae,https://expleo-jobs-ae-en.icims.com/,icims,"{""host"": ""expleo-jobs-ae-en.icims.com""}",json-ld,
+expleo,expleo-careers-africa,https://expleo-jobs-af.icims.com/,icims,"{""host"": ""expleo-jobs-af.icims.com"", ""job_hosts"": [""expleo-jobs-eg-en.icims.com"", ""expleo-jobs-ma-fr.icims.com"", ""expleo-jobs-za-en.icims.com""], ""dedupe_job_ids_from_hosts"": [""expleo-jobs-ro-en.icims.com""]}",json-ld,
+expleo,expleo-careers-at,https://expleo-jobs-at-de.icims.com/,icims,"{""host"": ""expleo-jobs-at-de.icims.com""}",json-ld,
+expleo,expleo-careers-be,https://expleo-jobs-be-en.icims.com/,icims,"{""host"": ""expleo-jobs-be-en.icims.com""}",json-ld,"{""ignore_address_region"": true}"
+expleo,expleo-careers-ca,https://expleo-jobs-ca-fr.icims.com/,icims,"{""host"": ""expleo-jobs-ca-fr.icims.com""}",json-ld,
+expleo,expleo-careers-ch,https://expleo-jobs-ch-en.icims.com/,icims,"{""host"": ""expleo-jobs-ch-en.icims.com""}",json-ld,
+expleo,expleo-careers-de,https://expleo-jobs-de-de.icims.com/,icims,"{""host"": ""expleo-jobs-de-de.icims.com""}",json-ld,
+expleo,expleo-careers-es,https://expleo-jobs-es-en.icims.com/,icims,"{""host"": ""expleo-jobs-es-en.icims.com"", ""dedupe_job_ids_from_hosts"": [""expleo-jobs-ro-en.icims.com""]}",json-ld,
+expleo,expleo-careers-ie,https://expleo-jobs-ie-en.icims.com/,icims,"{""host"": ""expleo-jobs-ie-en.icims.com""}",json-ld,
+expleo,expleo-careers-in,https://expleo-jobs-in-en.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""expleo-jobs-in-en.icims.com""}",json-ld,
+expleo,expleo-careers-mx,https://expleo-jobs-mx-en.icims.com/,icims,"{""host"": ""expleo-jobs-mx-en.icims.com""}",json-ld,
+expleo,expleo-careers-my,https://expleo-jobs-my-en.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""expleo-jobs-my-en.icims.com""}",json-ld,
+expleo,expleo-careers-ni,https://expleo-jobs-ni-en.icims.com/,icims,"{""host"": ""expleo-jobs-ni-en.icims.com"", ""dedupe_job_ids_from_hosts"": [""expleo-jobs-gb-en.icims.com""]}",json-ld,
+expleo,expleo-careers-nl,https://expleo-jobs-nl-en.icims.com/,icims,"{""host"": ""expleo-jobs-nl-en.icims.com""}",json-ld,
+expleo,expleo-careers-no,https://careers-expleo-jobs.icims.com/,icims,"{""host"": ""careers-expleo-jobs.icims.com""}",json-ld,
+expleo,expleo-careers-ph,https://expleo-jobs-ph-en.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""expleo-jobs-ph-en.icims.com""}",json-ld,
+expleo,expleo-careers-pt,https://expleo-jobs-pt-en.icims.com/,icims,"{""host"": ""expleo-jobs-pt-en.icims.com""}",json-ld,
+expleo,expleo-careers-ro,https://expleo-jobs-ro-en.icims.com/,icims,"{""host"": ""expleo-jobs-ro-en.icims.com""}",json-ld,
+expleo,expleo-careers-se,https://expleo-jobs-se-en.icims.com/,icims,"{""host"": ""expleo-jobs-se-en.icims.com""}",json-ld,
+expleo,expleo-careers-uk,https://expleo-jobs-gb-en.icims.com/,icims,"{""host"": ""expleo-jobs-gb-en.icims.com""}",json-ld,
+expleo,expleo-careers-us,https://expleo-jobs-us-en.icims.com/,icims,"{""host"": ""expleo-jobs-us-en.icims.com""}",json-ld,
 explorium,explorium-careers,https://www.explorium.ai/careers/,sitemap,"{""sitemap_url"": ""https://www.explorium.ai/sitemap.xml"", ""url_filter"": ""/blog/position/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""from"": 0, ""field"": ""description"", ""stop"": ""SHARE"", ""html"": true}]}"
 express,express-careers,https://jobs-express.icims.com/,icims,"{""host"": ""jobs-express.icims.com"", ""dedupe_job_ids_from_hosts"": [""careers-express.icims.com""]}",json-ld,
 express,express-corporate,https://careers-express.icims.com/,icims,"{""host"": ""careers-express.icims.com""}",json-ld,
