@@ -5130,6 +5130,7 @@ nec-laboratories,nec-laboratories-careers,https://jobs.neclab.eu/jobs/,dom,"{""u
 neighbor,neighbor-careers,https://api.lever.co/v0/postings/neighbor?mode=json,lever,"{""token"": ""neighbor""}",skip,
 neighbors-bank,neighbors-bank-greenhouse,https://job-boards.greenhouse.io/neighborsbank,greenhouse,"{""token"": ""neighborsbank""}",skip,
 neko-health,neko-health-careers,https://jobs.ashbyhq.com/neko-health,ashby,"{""token"": ""neko-health""}",skip,
+nemours,nemours-careers,https://epyz.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 neo4j,neo4j-greenhouse,https://job-boards.greenhouse.io/neo4j,greenhouse,"{""token"": ""neo4j""}",skip,
 neon,neon-ashby,https://jobs.ashbyhq.com/neon,ashby,"{""token"": ""neon""}",skip,
 neon-health,neon-health-ashby,https://jobs.ashbyhq.com/neon-health,ashby,"{""token"": ""neon-health""}",skip,
