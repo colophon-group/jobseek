@@ -265,6 +265,38 @@ def test_listener_scope_parser_distinguishes_public_wildcard_private_and_loopbac
     }
 
 
+def test_crawler_audit_reports_only_fixed_metrics_scope_categories(monkeypatch) -> None:
+    listeners = (
+        "LISTEN 0 128 127.0.0.1:9093 0.0.0.0:*\n"
+        "LISTEN 0 128 0.0.0.0:9094 0.0.0.0:*\n"
+        "LISTEN 0 128 10.0.0.8:9095 0.0.0.0:*\n"
+        "LISTEN 0 128 8.8.8.8:9097 0.0.0.0:*\n"
+        "LISTEN 0 128 127.0.0.1:9098 0.0.0.0:*\n"
+        "LISTEN 0 128 0.0.0.0:9098 0.0.0.0:*\n"
+    )
+
+    def run(command):
+        return conformance.CommandResult(0, listeners if command == ["ss", "-H", "-lnt"] else "")
+
+    monkeypatch.setattr(conformance, "_run", run)
+    monkeypatch.setattr(conformance, "_ufw_state", lambda *_args, **_kwargs: {"compliant": True})
+    monkeypatch.setattr(conformance, "_sshd_state", lambda _output: {"compliant": True})
+    state = conformance.audit("crawler", "10.0.0.2")
+
+    assert state["required_listener_scope"] is False
+    assert state["compliant"] is False
+    assert state["metrics_listener_diagnostics"] == {
+        "9093": "loopback_only",
+        "9094": "includes_non_loopback",
+        "9095": "includes_non_loopback",
+        "9096": "missing",
+        "9097": "includes_non_loopback",
+        "9098": "includes_non_loopback",
+    }
+    assert "10.0.0." not in json.dumps(state)
+    assert "8.8.8.8" not in json.dumps(state)
+
+
 def test_sshd_parser_requires_key_only_root_and_an_explicit_user_allowlist() -> None:
     state = conformance._sshd_state(
         "authenticationmethods publickey\n"
@@ -481,6 +513,7 @@ def postgresql_state(monkeypatch, postgresql_hba, postgresql_hba_source):
         proof_override=None,
         shm_bytes=1073741824,
         bounded_log=True,
+        socket_outcome="reject_observed",
     ):
         def run(command):
             if command[:4] == [
@@ -506,6 +539,18 @@ def postgresql_state(monkeypatch, postgresql_hba, postgresql_hba_source):
                     0,
                     "listen_addresses|127.0.0.1,10.0.0.4\n"
                     "password_encryption|scram-sha-256\nssl|off\n",
+                )
+            if "pg_conf_load_time()" in command[-1]:
+                assert "pg_read_file('/var/lib/postgresql/data/pg_hba.conf',0,4096)" in command[-1]
+                return conformance.CommandResult(
+                    0,
+                    json.dumps(
+                        {
+                            "source_within_4096_bytes": True,
+                            "first_active_source_line_reject": True,
+                            "file_mtime_at_or_before_config_load": True,
+                        }
+                    ),
                 )
             assert command[:10] == [
                 "docker",
@@ -543,6 +588,9 @@ def postgresql_state(monkeypatch, postgresql_hba, postgresql_hba_source):
             )
 
         monkeypatch.setattr(conformance, "_run", run)
+        monkeypatch.setattr(
+            conformance, "_feed_local_socket_outcome", lambda _container: socket_outcome
+        )
         return conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
 
     return state
@@ -552,7 +600,89 @@ def test_postgresql_conformance_accepts_only_complete_ordered_policy(postgresql_
     state = postgresql_state()
     assert state["hba_exact"] is True
     assert state["compliant"] is True
+    assert state["feed_hba_diagnostics"] == {
+        "source_exact": True,
+        "parsed_first_local_reject": True,
+        "parsed_second_local_trust": True,
+        "parsed_feed_local_rule_count": "one",
+        "parsed_feed_host_rule_count": "one",
+        "parsed_feed_host_rule_at_nine": True,
+        "parsed_errors_absent": True,
+        "source_within_4096_bytes": True,
+        "first_active_source_line_reject": True,
+        "file_mtime_at_or_before_config_load": True,
+        "effective_local_socket": "reject_observed",
+        "effective_feed_host_rule": "unproved",
+    }
     assert "10.0.0." not in json.dumps(state)
+
+
+def test_full_hba_mismatch_does_not_claim_feed_rule_is_missing(
+    postgresql_state, postgresql_hba_source
+) -> None:
+    state = postgresql_state(hba_source=postgresql_hba_source + b"# unrelated edit\n")
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+    assert state["feed_hba_diagnostics"]["source_exact"] is False
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_at_nine"] is True
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "one"
+    assert state["feed_hba_diagnostics"]["effective_feed_host_rule"] == "unproved"
+
+
+def test_socket_diagnostic_does_not_change_existing_hba_conformance(postgresql_state) -> None:
+    state = postgresql_state(socket_outcome="accepted_unsafe")
+    assert state["hba_exact"] is True
+    assert state["compliant"] is True
+    assert state["feed_hba_diagnostics"]["effective_local_socket"] == "accepted_unsafe"
+
+
+def test_feed_file_diagnostics_fail_closed_without_raw_output(monkeypatch) -> None:
+    monkeypatch.setattr(
+        conformance, "_run", lambda _command: conformance.CommandResult(1, "raw HBA or error")
+    )
+    assert set(conformance._feed_hba_file_diagnostics("postgres").values()) == {None}
+
+    def fail(_command):
+        raise conformance.ConformanceError("raw error")
+
+    monkeypatch.setattr(conformance, "_run", fail)
+    assert set(conformance._feed_hba_file_diagnostics("postgres").values()) == {None}
+
+
+def test_feed_socket_probe_reports_only_categorical_outcomes(monkeypatch) -> None:
+    def reject(command, **kwargs):
+        assert command[:7] == [
+            "docker",
+            "exec",
+            "-e",
+            "PGPASSWORD=",
+            "-e",
+            "PGPASSFILE=/dev/null",
+            "postgres",
+        ]
+        assert kwargs["timeout"] == 8
+        return SimpleNamespace(
+            returncode=1,
+            stdout=b"",
+            stderr=b"pg_hba.conf rejects connection for private address 10.0.0.3",
+        )
+
+    monkeypatch.setattr(conformance.subprocess, "run", reject)
+    assert conformance._feed_local_socket_outcome("postgres") == "reject_observed"
+    monkeypatch.setattr(
+        conformance.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout=b"1\n", stderr=b""),
+    )
+    assert conformance._feed_local_socket_outcome("postgres") == "accepted_unsafe"
+    monkeypatch.setattr(
+        conformance.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=1, stdout=b"", stderr=b"role does not exist: private row"
+        ),
+    )
+    assert conformance._feed_local_socket_outcome("postgres") == "unproved"
 
 
 def test_postgresql_hba_source_contract_matches_hardener_below_read_bound(postgresql_hba_source):
@@ -665,14 +795,22 @@ def test_postgresql_conformance_rejects_missing_feed_rules(
     postgresql_state, postgresql_hba, row
 ) -> None:
     postgresql_hba.pop(row)
-    assert not postgresql_state()["hba_exact"]
+    state = postgresql_state()
+    assert not state["hba_exact"]
+    if row == 0:
+        assert state["feed_hba_diagnostics"]["parsed_feed_local_rule_count"] == "none"
+    else:
+        assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "none"
+        assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_at_nine"] is False
 
 
 def test_postgresql_conformance_rejects_extra_feed_loopback(
     postgresql_state, postgresql_hba
 ) -> None:
     postgresql_hba.append({**postgresql_hba[8], "rule_number": 10, "address": "127.0.0.1"})
-    assert not postgresql_state()["hba_exact"]
+    state = postgresql_state()
+    assert not state["hba_exact"]
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "multiple"
 
 
 @pytest.mark.parametrize("duplicate", ["extra", "replacement"])
