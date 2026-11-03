@@ -39,6 +39,8 @@ startup file concise; load linked references for specific work.
   Redis queues, local Postgres truth and Python 3.13 offline/control tooling.
   Read its [AGENTS.md](apps/crawler/AGENTS.md) and the
   [Go/Lightpanda checkpoint](docs/27-go-lightpanda-continuation-plan.md).
+- `apps/lightpanda/`: production Go renderer, pinned upstream binary, serving
+  and integration contracts. Read its [README](apps/lightpanda/README.md).
 - `apps/web/`: Next.js, TypeScript, Drizzle, Lingui. Read its
   [AGENTS.md](apps/web/AGENTS.md). From that directory: `pnpm dev`, `pnpm build`,
   `pnpm extract`, `pnpm compile`. Read [cache components](apps/web/docs/cache-components.md)

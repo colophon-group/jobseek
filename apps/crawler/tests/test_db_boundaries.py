@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src import cli, db
-
-BOOTSTRAP = Path(__file__).resolve().parent.parent / "src/bootstrap.py"
 
 
 async def test_crawler_mirror_pool_requires_database_url(monkeypatch) -> None:
@@ -62,7 +59,6 @@ async def test_reconcile_command_execs_go_without_opening_python_pools(monkeypat
     with (
         patch("src.cli.os.execvp", side_effect=SystemExit(0)) as execute,
         patch("src.db.create_pool", new_callable=AsyncMock) as mirror_pool,
-        patch("src.reconciliation.run_reconciliation", new_callable=AsyncMock) as python_run,
         pytest.raises(SystemExit),
     ):
         await cli.run()
@@ -73,7 +69,6 @@ async def test_reconcile_command_execs_go_without_opening_python_pools(monkeypat
     assert command[command.index("--target") + 1] == "typesense"
     local_pool.assert_not_awaited()
     mirror_pool.assert_not_awaited()
-    python_run.assert_not_awaited()
 
 
 async def test_failed_go_reconcile_exec_cannot_issue_python_receipt(monkeypatch) -> None:
@@ -96,25 +91,14 @@ async def test_failed_go_reconcile_exec_cannot_issue_python_receipt(monkeypatch)
     monkeypatch.setattr(cli, "create_local_pool", local_pool)
     with (
         patch("src.cli.os.execvp", side_effect=FileNotFoundError("missing Go executable")),
-        patch(
-            "src.reconciliation.issue_candidate_order_readiness_receipt", new_callable=AsyncMock
-        ) as receipt,
         pytest.raises(FileNotFoundError),
     ):
         await cli.run()
 
     local_pool.assert_not_awaited()
-    receipt.assert_not_awaited()
 
 
 def test_relisted_supabase_repair_is_not_a_crawler_command(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["crawler", "repair-relisted-cdc", "--dry-run"])
     with pytest.raises(SystemExit):
         cli.parse_args()
-
-
-def test_transitional_bootstrap_has_no_executable_entrypoint() -> None:
-    source = BOOTSTRAP.read_text(encoding="utf-8")
-
-    assert 'if __name__ == "__main__"' not in source
-    assert "async def main(" not in source

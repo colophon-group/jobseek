@@ -4,15 +4,9 @@ import base64
 import json
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
 
 import pytest
 
-from src.reconciliation import (
-    ReconciliationError,
-    RunSummary,
-    issue_candidate_order_readiness_receipt,
-)
 from src.typesense_candidate_order import (
     build_candidate_order_readiness_receipt,
     candidate_order_fields,
@@ -125,63 +119,4 @@ def test_readiness_receipt_rejects_incomplete_or_unreviewed_evidence(
             partitions=partitions,
             unresolved=unresolved,
             benchmark_sha256=benchmark_sha256,
-        )
-
-
-async def test_receipt_issuer_rereads_the_successful_durable_ledger_row() -> None:
-    run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-    summary = RunSummary(
-        run_id=run_id,
-        mode="repair",
-        target_scope="typesense",
-        partitions_completed=256,
-        checked_local=123_456,
-        unresolved=0,
-    )
-    pool = AsyncMock()
-    pool.fetchrow.return_value = {
-        "completed_at": datetime(2026, 9, 11, 10, 0, tzinfo=UTC),
-        "status": "success",
-        "mode": "repair",
-        "target_scope": "typesense",
-        "partitions_completed": 256,
-        "checked_local": 123_456,
-        "unresolved": 0,
-    }
-
-    receipt = await issue_candidate_order_readiness_receipt(
-        pool,
-        summary,
-        benchmark_sha256="b" * 64,
-    )
-
-    assert _decode_receipt(receipt)["reconciliationRunId"] == str(run_id)
-    pool.fetchrow.assert_awaited_once()
-
-
-async def test_receipt_issuer_rejects_a_non_success_ledger_row() -> None:
-    summary = RunSummary(
-        run_id=uuid.uuid4(),
-        mode="repair",
-        target_scope="typesense",
-        partitions_completed=256,
-        checked_local=10,
-        unresolved=0,
-    )
-    pool = AsyncMock()
-    pool.fetchrow.return_value = {
-        "completed_at": datetime.now(UTC),
-        "status": "interrupted",
-        "mode": "repair",
-        "target_scope": "typesense",
-        "partitions_completed": 256,
-        "checked_local": 10,
-        "unresolved": 0,
-    }
-
-    with pytest.raises(ReconciliationError, match="does not prove readiness"):
-        await issue_candidate_order_readiness_receipt(
-            pool,
-            summary,
-            benchmark_sha256="b" * 64,
         )

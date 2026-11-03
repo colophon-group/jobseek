@@ -30,10 +30,8 @@ async def test_schema_setup_execs_go_without_database_pools(monkeypatch, force: 
     monkeypatch.setattr(cli, "create_local_pool", pool)
     with (
         patch("src.cli.os.execvp", side_effect=SystemExit(0)) as execute,
-        patch("src.typesense_schema.run_setup") as python_setup,
         pytest.raises(SystemExit),
     ):
         await cli.run()
     execute.assert_called_once_with(command[0], command)
     pool.assert_not_awaited()
-    python_setup.assert_not_called()

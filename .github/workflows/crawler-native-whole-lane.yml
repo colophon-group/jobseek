@@ -10,7 +10,7 @@ on:
       - apps/crawler/Dockerfile
       - apps/crawler/VERSION
       - apps/crawler/docker-compose.yml
-      - pilots/go-lightpanda/**
+      - apps/lightpanda/**
       - .github/workflows/crawler-native-whole-lane.yml
   workflow_dispatch:
 
@@ -79,7 +79,7 @@ jobs:
             --build-context publisher-policy=apps/crawler/go/publisher-policy \
             --build-arg "SOURCE_COMMIT=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
-            --target service --tag "native-lane-renderer:${source_sha}" pilots/go-lightpanda
+            --target service --tag "native-lane-renderer:${source_sha}" apps/lightpanda
       - name: Compare identical complete work and resource use
         id: measurement
         working-directory: apps/crawler

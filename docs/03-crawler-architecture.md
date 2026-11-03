@@ -407,7 +407,7 @@ posting data. Its only accepted CLI target is `typesense`.
 
 Healthy CDC cursors prove only that new changes after each cursor were
 processed. They cannot prove that historic rows before a cursor still agree.
-The deploy-independent reconciler in `src/reconciliation.py` therefore checks
+The deploy-independent reconciler in `go/typesense-exporter/reconcile_run.go` therefore checks
 the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;

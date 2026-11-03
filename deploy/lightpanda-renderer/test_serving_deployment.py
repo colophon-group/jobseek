@@ -27,7 +27,7 @@ COMMAND = [
 ]
 BASELINE = re.search(
     r'const baselineBlockedCIDRs = "([^"]+)"',
-    (ROOT / "pilots/go-lightpanda/egress_policy.go").read_text(),
+    (ROOT / "apps/lightpanda/egress_policy.go").read_text(),
 )[1]
 
 

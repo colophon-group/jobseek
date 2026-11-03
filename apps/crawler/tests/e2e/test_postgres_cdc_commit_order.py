@@ -19,7 +19,6 @@ from src.export_cursor_fence import (
     capture_cdc_snapshot_cutoff,
 )
 from src.justup_feed import __main__ as justup_feed
-from src.reconciliation import reconcile_partition
 
 ROLE_HELPER = Path(__file__).resolve().parents[4] / "deploy/networking/justup-feed-readonly-role.py"
 ROLE_SPEC = importlib.util.spec_from_file_location("justup_feed_role_e2e", ROLE_HELPER)
@@ -261,114 +260,6 @@ async def test_still_held_session_writer_marker_fails_closed() -> None:
         )
         await holder.close()
         await pool.close()
-
-
-async def test_bidirectional_supabase_drift_is_repaired_from_locked_local_truth() -> None:
-    """The real COPY/upsert path repairs both directions and verifies state."""
-
-    dsn = os.environ["LOCAL_DATABASE_URL"]
-    local_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
-    control = await asyncpg.connect(dsn)
-    schema = f"reconciliation_e2e_{uuid.uuid4().hex}"
-    remote_pool: asyncpg.Pool | None = None
-    company_id = uuid.uuid4()
-    board_id = uuid.uuid4()
-    prefix = 0xAB
-    posting_ids = [uuid.UUID(hex=f"{prefix:02x}{suffix:030x}") for suffix in range(1, 6)]
-    shared, mismatch, missing, remote_active, remote_inactive = posting_ids
-
-    try:
-        await control.execute(f'CREATE SCHEMA "{schema}"')
-        await control.execute(
-            f'CREATE TABLE "{schema}".job_posting (LIKE public.job_posting INCLUDING ALL)'
-        )
-        # Durable identity is authoritative-local matching state. The remote
-        # projection intentionally receives mutable source_url through
-        # PostingSchema without storing the private identity key.
-        await control.execute(f'ALTER TABLE "{schema}".job_posting DROP COLUMN source_identity')
-        remote_columns = await control.fetchval(
-            """
-            SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
-            FROM pg_attribute
-            WHERE attrelid = 'public.job_posting'::regclass
-              AND attnum > 0
-              AND NOT attisdropped
-              AND attname <> 'source_identity'
-            """
-        )
-        assert isinstance(remote_columns, str)
-        remote_pool = await asyncpg.create_pool(
-            dsn,
-            min_size=1,
-            max_size=2,
-            server_settings={"search_path": f"{schema},public"},
-        )
-        await control.execute(
-            "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
-            board_id,
-            company_id,
-            f"reconciliation-e2e-{board_id}",
-            f"https://reconciliation-e2e.invalid/{board_id}",
-        )
-        for posting_id in posting_ids:
-            await control.execute(
-                "INSERT INTO job_posting (id, company_id, board_id, source_url) "
-                "VALUES ($1, $2, $3, $4)",
-                posting_id,
-                company_id,
-                board_id,
-                f"https://reconciliation-e2e.invalid/posting/{posting_id}",
-            )
-
-        await control.execute(
-            "UPDATE job_posting SET is_active = false WHERE id = $1",
-            mismatch,
-        )
-        await control.execute(
-            f'INSERT INTO "{schema}".job_posting ({remote_columns}) '
-            f"SELECT {remote_columns} FROM public.job_posting WHERE id = ANY($1::uuid[])",
-            [shared, mismatch, remote_active, remote_inactive],
-        )
-        await control.execute(
-            f'UPDATE "{schema}".job_posting SET is_active = true WHERE id = $1',
-            mismatch,
-        )
-        await control.execute(
-            f'UPDATE "{schema}".job_posting SET is_active = false WHERE id = $1',
-            remote_inactive,
-        )
-        await control.execute(
-            "DELETE FROM public.job_posting WHERE id = ANY($1::uuid[])",
-            [remote_active, remote_inactive],
-        )
-
-        result = await reconcile_partition(
-            local_pool,
-            remote_pool,
-            target="supabase",
-            partition=prefix,
-            repair=True,
-        )
-
-        assert result.detected == 3
-        assert result.repaired == 3
-        assert result.unresolved == 0
-        rows = await remote_pool.fetch("SELECT id, is_active FROM job_posting ORDER BY id")
-        assert {row["id"]: row["is_active"] for row in rows} == {
-            shared: True,
-            mismatch: False,
-            missing: True,
-            remote_active: False,
-            remote_inactive: False,
-        }
-    finally:
-        if remote_pool is not None:
-            await remote_pool.close()
-        await control.execute("DELETE FROM public.job_posting WHERE board_id = $1", board_id)
-        await control.execute("DELETE FROM public.job_board WHERE id = $1", board_id)
-        await control.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        await control.close()
-        await local_pool.close()
 
 
 async def test_justup_feed_handles_absent_and_complete_taxonomy_tables(tmp_path) -> None:
