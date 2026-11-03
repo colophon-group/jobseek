@@ -2205,6 +2205,8 @@ dept,dept-greenhouse,https://job-boards.greenhouse.io/dept,greenhouse,"{""token"
 descript,descript-greenhouse,https://job-boards.greenhouse.io/descript,greenhouse,"{""token"": ""descript""}",skip,
 designed-conveyor-systems,designed-conveyor-systems-greenhouse,https://job-boards.greenhouse.io/designedconveyorsystems,greenhouse,"{""token"": ""designedconveyorsystems""}",skip,
 desmos,desmos-pinpoint,https://desmos.pinpointhq.com,pinpoint,"{""slug"": ""desmos""}",skip,
+destination-knot,destination-knot-careers,https://jobs.lever.co/destinationknot,lever,"{""token"": ""destinationknot"", ""exclude_blank_posting_ids"": [""8c0a241f-2a4a-4467-a386-b9744a944e06""]}",skip,
+destination-knot,destination-knot-careers-manatal,https://www.careers-page.com/destination-knot,manatal,"{""slug"": ""destination-knot""}",skip,
 destinus,destinus-careers,https://apply.workable.com/destinusgroup/,workable,"{""token"": ""destinusgroup""}",workable,
 detroit-lions,detroit-lions-greenhouse,https://job-boards.greenhouse.io/detroitlions,greenhouse,"{""token"": ""detroitlions""}",skip,
 deutsche-bank,deutsche-bank-dws,https://db.wd3.myworkdayjobs.com/en-US/DWSWebsite,workday,"{""company"": ""db"", ""wd_instance"": ""wd3"", ""site"": ""DWSWebsite"", ""all_sites"": false}",workday,
