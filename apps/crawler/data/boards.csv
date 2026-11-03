@@ -453,6 +453,7 @@ amd,amd-careers,https://careers.amd.com/careers-home/jobs,sitemap,"{""sitemap_ur
 amend-consulting,amend-consulting-greenhouse,https://job-boards.greenhouse.io/amendconsulting,greenhouse,"{""token"": ""amendconsulting""}",skip,
 amenitiz,amenitiz-greenhouse,https://job-boards.greenhouse.io/amenitiz,greenhouse,"{""token"": ""amenitiz""}",skip,
 american-college-of-obstetricians-and-gynecologists,american-college-of-obstetricians-and-gynecologists-greenhouse,https://job-boards.greenhouse.io/acog,greenhouse,"{""token"": ""acog""}",skip,
+american-express,american-express-careers,https://egug.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 american-express,american-express-eightfold,https://aexp.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housing,ashby,"{""token"": ""american-housing""}",skip,
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
