@@ -7,8 +7,6 @@ import asyncpg
 from src.config import settings
 from src.metrics import postgresql_pool_connections, postgresql_pool_limit
 
-_pool: asyncpg.Pool | None = None
-_web_pool: asyncpg.Pool | None = None
 _local_pool: asyncpg.Pool | None = None
 
 
@@ -71,34 +69,6 @@ async def _create_pool(
     return pool
 
 
-async def create_pool() -> asyncpg.Pool:
-    """Create the optional crawler-mirror pool used by legacy sync/export paths."""
-    global _pool
-    if not settings.database_url:
-        raise RuntimeError("DATABASE_URL is not configured for the crawler mirror")
-    if _pool is None:
-        _pool = await _create_pool(
-            settings.database_url,
-            pool_name="mirror",
-            statement_timeout="5min",
-        )
-    return _pool
-
-
-async def create_web_pool() -> asyncpg.Pool:
-    """Create the provider-neutral pool for web-owned records such as watchlists."""
-    global _web_pool
-    if not settings.web_database_url:
-        raise RuntimeError("WEB_DATABASE_URL is not configured for web-owned data")
-    if _web_pool is None:
-        _web_pool = await _create_pool(
-            settings.web_database_url,
-            pool_name="web",
-            statement_timeout="5min",
-        )
-    return _web_pool
-
-
 async def create_local_pool() -> asyncpg.Pool:
     """Create the local Postgres pool (same machine, used by workers)."""
     global _local_pool
@@ -109,26 +79,6 @@ async def create_local_pool() -> asyncpg.Pool:
             statement_timeout="30s",
         )
     return _local_pool
-
-
-async def close_pool() -> None:
-    global _pool
-    if _pool is not None:
-        try:
-            await asyncio.wait_for(_pool.close(), timeout=5.0)
-        except TimeoutError:
-            _pool.terminate()
-        _pool = None
-
-
-async def close_web_pool() -> None:
-    global _web_pool
-    if _web_pool is not None:
-        try:
-            await asyncio.wait_for(_web_pool.close(), timeout=5.0)
-        except TimeoutError:
-            _web_pool.terminate()
-        _web_pool = None
 
 
 async def close_local_pool() -> None:
@@ -142,6 +92,4 @@ async def close_local_pool() -> None:
 
 
 async def close_all_pools() -> None:
-    await close_pool()
-    await close_web_pool()
     await close_local_pool()

@@ -714,16 +714,18 @@ and scheduled Typesense maintenance receive neither `WEB_DATABASE_URL` nor
 `DATABASE_URL`. A rollback to a retained legacy release may temporarily reuse
 the web credential stored in that legacy release's protected environment.
 
-### Deferred mirror-code cleanup
+### Retired relational mirror
 
-The runtime cutover intentionally leaves rollback-compatible library code for
-the former Supabase posting mirror: exporter COPY helpers, sync mirror helpers,
-Supabase reconciliation internals/state, `repair_relisted_cdc.py`,
-`bootstrap.py`, the optional `database_url` setting/pool, and their direct unit
-tests. None is reachable from a deployed normal `crawler` command, operational
-workflow, Compose service, or host timer. Remove these artifacts and obsolete
-cursor/metric/state definitions after the rollback window and schema-contract
-work complete; they must not be re-exposed as a production CLI selector.
+The former Supabase posting-mirror daemons, repair/bootstrap helpers, optional
+Python mirror/web pools and library write path are removed. Installed maintenance
+and rollback use native Go releases. The retained Python sync path is local-only;
+local commit still precedes Redis and Typesense publication. The legacy
+`DATABASE_URL` setting remains solely to deny its infrastructure host in the
+SSRF guard, without a Python connection pool.
+
+Posting-schema/CDC snapshots used by current native parity, historical migrations
+and persisted web-data schema remain. Removing stored schema or data is a separate
+migration decision; do not reintroduce a production mirror selector.
 
 ## Performance
 

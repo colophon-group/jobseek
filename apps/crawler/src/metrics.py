@@ -283,7 +283,7 @@ export_errors_total = Counter(
     # constraint; it now falls back to per-row upserts and drops the
     # offenders so the cursor advances. ``table`` is the local Postgres
     # table being exported (currently always ``job_posting``); ``phase``
-    # is ``supabase`` or ``typesense``. Bounded cardinality (<10).
+    # is ``typesense``. Bounded cardinality (<10).
     "Rows dropped by the exporter's per-row fallback path",
     ["table", "phase"],
 )
@@ -347,8 +347,6 @@ r2_pending_gauge = Gauge(
 local_db_pool_size = Gauge("crawler_local_db_pool_size", "Local Postgres pool total connections")
 local_db_pool_idle = Gauge("crawler_local_db_pool_idle", "Local Postgres pool idle connections")
 
-supa_db_pool_size = Gauge("crawler_supa_db_pool_size", "Supabase pool total connections")
-supa_db_pool_idle = Gauge("crawler_supa_db_pool_idle", "Supabase pool idle connections")
 
 postgresql_pool_connections = Gauge(
     "crawler_postgresql_pool_connections",

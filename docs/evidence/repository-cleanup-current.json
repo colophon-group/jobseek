@@ -25,7 +25,9 @@
     "Unreferenced frontend announcement/upgrade banners and old company OG wrapper; active renderer and icon security tests remain.",
     "Historical JEV experiment scripts/results; two actively consumed gold fixtures moved alongside search tests and production policy retained byte-for-byte.",
     "Broken MCP HTTP script targeting nonexistent dist/http.js; supported stdio and hosted handler remain.",
-    "Sixteen superseded checkpoint bodies consolidated into pointers to current guidance and immutable Git history."
+    "Sixteen superseded checkpoint bodies consolidated into pointers to current guidance and immutable Git history.",
+    "Unused Supabase mirror write helpers, their optional Python mirror/web pools and obsolete tests. Local sync and real native parity remain; legacy DATABASE_URL is retained only for the SSRF host-deny contract.",
+    "Unused Supabase pool gauges and obsolete batch/mirror activation documentation; current overview points to native ownership."
   ],
   "production_renderer": {
     "path": "apps/lightpanda",
@@ -73,13 +75,17 @@
     {
       "candidate": "Retired enrichment SQL table and historical renderer mode labels",
       "decision": "Retained as persisted-schema/release compatibility contracts; removal needs a separately verified database/rollback migration."
+    },
+    {
+      "candidate": "PostingSchema and legacy DATABASE_URL field",
+      "decision": "Retained: current native live parity and CDC tests consume the schema snapshot; the SSRF guard consumes the legacy URL as a host-deny input. No mirror writer/pool remains."
     }
   ],
   "local_validation": {
     "ci_workflow_contracts": "98 passed",
     "python_focused": "257 passed, 24 skipped",
-    "agent_required": "596 passed",
-    "python_collection": "14086 collected without errors",
+    "agent_required": "600 passed including export-contract checks",
+    "python_collection": "14069 collected without errors",
     "web_focused": "46 passed in seven files",
     "web_typecheck": "passed",
     "renderer_go_race": "passed",
@@ -91,7 +97,8 @@
     "docs_index": "passed",
     "i18n": "passed; zero missing de/fr/it",
     "ruff": "passed",
-    "pyright": "passed with shared interpreter"
+    "pyright": "passed with shared interpreter",
+    "local_sync_projection_pool_ssrf": "285 focused tests passed after mirror retirement"
   },
   "delivery": "PR and installed release evidence will be recorded after required checks and supported deployment; this file alone is not production acceptance."
 }

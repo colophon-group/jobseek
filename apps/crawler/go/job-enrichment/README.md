@@ -9,11 +9,11 @@ the location index directly in process.
 
 The production native image runs no Python enrichment bridge. The retained
 legacy/offline bridge selects Go with `JOB_ENRICHMENT_ENGINE=go`; outside that
-configuration its default remains Python. Explicit legacy cold reversal is
-separate from production processing; there is no same-task Python fallback.
+configuration its default remains Python. The Python route is for offline comparison and workspace use; production cold
+reversal uses the previous immutable Go release, without a same-task Python fallback.
 Unknown engine names fail. See the
 [current delivery checkpoint](../../../../docs/27-go-lightpanda-continuation-plan.md)
-for deployed ownership and remaining whole-lane acceptance.
+for completed deployed ownership and whole-lane acceptance.
 
 When using the retained Python bridge, each process creates one child on first use. A lock serializes
 newline JSON requests; forked processes discard inherited pipe descriptors

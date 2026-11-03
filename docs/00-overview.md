@@ -7,7 +7,7 @@ Jobseek monitors company career pages for new job postings. The system is built 
 1. **Coding agents** add companies by creating PRs with CSV config changes
 2. **CSV files** are the source of truth for what to monitor
 3. **Redis-orchestrated workers** process boards and scrape jobs on Hetzner,
-   exporting searchable results to Typesense and, temporarily, a legacy mirror
+   exporting searchable results to Typesense through native Go processing
 
 ## System Flow
 
@@ -18,59 +18,27 @@ User request
   -> PR adds rows to data/companies.csv + data/boards.csv
   -> PR merges (auto or human review)
   -> crawler sync: CSVs -> Local Postgres -> Redis queues + Typesense
-     (explicit legacy mirror during transition)
   -> Workers claim from Redis, monitor boards, scrape jobs
   -> Results written to Local Postgres
-  -> Exporter CDC: Local Postgres -> Typesense (+ optional legacy mirror)
+  -> Go exporter CDC: Local Postgres -> Typesense
   -> R2 Drain: descriptions -> Cloudflare R2
   -> Job postings served to users via Typesense; web-owned data stays in Postgres
 ```
 
 ## Component Map
 
-```
-/
-├── AGENTS.md                    # Agent instructions (provider-agnostic)
-├── CLAUDE.md                    # @AGENTS.md import for Claude-compatible agents
-├── data/
-│   ├── companies.csv            # Company registry (slug, name, website, logos)
-│   └── boards.csv               # Board configs (monitor type + scraper type per board)
-├── docs/                        # This documentation
-├── apps/
-│   ├── web/                     # Next.js frontend + Drizzle schema
-│   └── crawler/                 # Python crawler (asyncpg, httpx, structlog, redis)
-│       └── src/
-│           ├── core/            # Pure business logic
-│           │   ├── monitors/    # Monitor implementations (35+ types)
-│           │   ├── scrapers/    # Scraper implementations
-│           │   ├── monitor.py   # monitor_one() dispatcher
-│           │   └── scrape.py    # scrape_one() dispatcher
-│           ├── workers/
-│           │   ├── pipeline.py  # Discovery coroutines, claim from Redis, dispatch
-│           │   └── r2_drain.py  # Producer-consumer: descriptions -> R2
-│           ├── processing/
-│           │   ├── board.py     # Streaming monitor processing, timestamp gone detection
-│           │   ├── scrape.py    # Single-job scraping, fallback chain
-│           │   ├── cpu.py       # CPU-bound processing (salary, location, etc.)
-│           │   └── r2_stage.py  # Stage descriptions for R2 upload
-│           ├── queries/
-│           │   ├── monitor.py   # SQL: DIFF_BATCH, MARK_GONE, record success/fail
-│           │   ├── scrape.py    # SQL: UPDATE_JOB_CONTENT, RECORD_SCRAPE_*
-│           │   └── lookups.py   # Cached lookup table loaders
-│           ├── redis_queue.py   # Lua-backed claim/enqueue/reschedule
-│           ├── lua/             # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-│           ├── exporter.py      # CDC: local Postgres -> Typesense + optional mirror
-│           ├── sync.py          # Local-first CSV sync -> Redis + Typesense
-│           ├── bootstrap.py     # One-time: Supabase -> local Postgres copy
-│           ├── cli.py           # Entry point: crawler run/run-browser/export/drain/sync/board
-│           ├── config.py        # Settings
-│           └── metrics.py       # Prometheus metrics
-└── .github/workflows/
-    ├── ci.yml                        # Tests, lint, and repository checks
-    ├── maybe-auto-merge.yml          # Auto-merge low-risk config PRs
-    ├── close-linked-issues.yml       # Close company-request issues after merge
-    └── deploy-crawler-browser.yml    # Build + deploy to Hetzner
-```
+- `apps/web/`: Next.js frontend, web-owned data and product services.
+- `apps/crawler/go/`: native production workers, queues, enrichment, export,
+  description drain and maintenance.
+- `apps/lightpanda/`: independently deployed production renderer.
+- `apps/crawler/data/`: company/board registry and shared taxonomies.
+- `apps/crawler/src/`: retained Python workspace, labeller, control tooling and
+  native parity oracles; retired processing daemons and mirror writes are removed.
+- `deploy/`, `.github/workflows/` and `scripts/`: protected deployment and
+  operator workflows.
+
+See the [crawler reference](reference/crawler.md) and
+[production architecture](03-crawler-architecture.md) for maintained interfaces.
 
 ## Two Pipelines
 

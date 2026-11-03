@@ -27,9 +27,9 @@ Current design of all major subsystems across the crawler and web apps.
 
 | Component        | Service                 | Notes                                      |
 |------------------|-------------------------|--------------------------------------------|
-| Web app          | Vercel (Next.js 15)     | Serverless, edge-compatible                |
-| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy; native ATS monitors run without upstream scraper dependencies |
-| Local Postgres   | Hetzner Dedicated (178.104.102.63) | Postgres 16, 20GB XFS volume; crawler source of truth |
+| Web app | Vercel (Next.js) | Frontend and product services |
+| Crawler workers | Hetzner, native Go | Monitor/detail processing, exporter, drain and Redis |
+| Local Postgres | Hetzner PostgreSQL | Crawler source of truth; identities follow the reviewed host inventory |
 | Web-owned Postgres | Managed Postgres      | Retained user/auth/watchlist data only      |
 | Redis            | Local (Hetzner)         | Tiered ready queues, domain throttling, task config |
 | Object Storage   | Cloudflare R2           | Job description HTML storage               |
@@ -58,11 +58,6 @@ WEBSHARE_API_KEY                # Local operator audit/config only; never deploy
 WEBSHARE_EXPECTED_CLIENT_IPS    # JSON production-egress allowlist for local audit
 WORKER_ID_PREFIX                # Container identity prefix (e.g. hetzner)
 METRICS_PORT                    # Prometheus metrics port (9091-9094)
-
-# Enrichment
-ENRICH_PROVIDER                 # empty disables; prefer openai for new smokes; anthropic/gemini supported
-ENRICH_MODEL                    # Provider model ID
-ENRICH_API_KEY                  # Provider API key
 
 # Web only
 BETTER_AUTH_SECRET               # Session signing secret

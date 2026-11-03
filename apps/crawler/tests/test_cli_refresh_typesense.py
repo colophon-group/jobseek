@@ -61,7 +61,7 @@ async def test_retired_watchlist_purge_uses_no_database_pool() -> None:
         ),
         patch("src.cli.setup_logging"),
         patch("src.cli.create_local_pool", new=AsyncMock()) as create_local_pool,
-        patch("src.db.create_web_pool", new=AsyncMock()) as create_web_pool,
+        patch("src.db._create_pool", new=AsyncMock()) as unexpected_pool,
         patch("src.cli.close_all_pools", new=AsyncMock()) as close_pools,
         patch("src.typesense_client.get_typesense_client", return_value=client),
         patch("src.sync.purge_retired_watchlist_index", return_value=3) as purge,
@@ -70,7 +70,7 @@ async def test_retired_watchlist_purge_uses_no_database_pool() -> None:
 
     purge.assert_called_once_with(client)
     create_local_pool.assert_not_awaited()
-    create_web_pool.assert_not_awaited()
+    unexpected_pool.assert_not_awaited()
     close_pools.assert_awaited_once()
 
 
@@ -112,7 +112,7 @@ async def test_rejected_count_import_records_failed_cron_without_opening_web_dat
         patch("src.cli.parse_args", return_value=Namespace(command="refresh-typesense")),
         patch("src.cli.setup_logging"),
         patch("src.cli.create_local_pool", new=AsyncMock(return_value=_Pool(local_conn))),
-        patch("src.db.create_web_pool", new=AsyncMock()) as create_web_pool,
+        patch("src.db._create_pool", new=AsyncMock()) as unexpected_pool,
         patch("src.cli.close_all_pools", new=AsyncMock()) as close_pools,
         patch("src.typesense_client.get_typesense_client", return_value=client),
         patch("src.sync._fetch_facet_counts", side_effect=_facet_counts),
@@ -127,7 +127,7 @@ async def test_rejected_count_import_records_failed_cron_without_opening_web_dat
     ):
         await cli.run()
 
-    create_web_pool.assert_not_awaited()
+    unexpected_pool.assert_not_awaited()
     close_pools.assert_awaited_once()
     assert len(captured_registries) == 1
     status_samples = [
