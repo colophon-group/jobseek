@@ -39,6 +39,7 @@ WEB_POSTGRES_CONFIG = Path("/etc/jobseek-web-postgresql/postgresql.conf")
 POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
 POSTGRES_LOG_DRIVER = "json-file"
 POSTGRES_LOG_OPTIONS = {"max-size": "50m", "max-file": "3"}
+POSTGRES_HBA_PATH = "/var/lib/postgresql/data/pg_hba.conf"
 POSTGRES_HBA_SOURCE = """# Managed by colophon-group/jobseek deploy/networking/harden-postgresql.sh.
 # The Hetzner private path is isolated and source-restricted. TLS is not
 # required by the current policy; SCRAM remains mandatory for every TCP path.
@@ -105,21 +106,7 @@ def _address_scope(value: str) -> str:
     return "public"
 
 
-def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address) -> bool:
-    if result.returncode != 0:
-        return False
-    try:
-        inspected = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return False
-    if not isinstance(inspected, dict) or inspected.get("source_path_exact") is not True:
-        return False
-    actual = inspected.get("rules")
-    if not isinstance(actual, list) or any(
-        not isinstance(rule, dict) or type(rule.get("rule_number")) is not int for rule in actual
-    ):
-        return False
-
+def _expected_postgres_hba_rules(crawler_ip: ipaddress.IPv4Address) -> list[dict[str, Any]]:
     # Match write_hba's complete policy, including precedence and singleton arrays.
     # Errors and authentication options must remain NULL; no parsed row is ignored.
     policy = [
@@ -143,7 +130,7 @@ def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address
             "scram-sha-256",
         ),
     ]
-    expected = [
+    return [
         {
             "rule_number": number,
             "type": connection_type,
@@ -159,6 +146,24 @@ def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address
             policy, 1
         )
     ]
+
+
+def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address) -> bool:
+    if result.returncode != 0:
+        return False
+    try:
+        inspected = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(inspected, dict) or inspected.get("source_path_exact") is not True:
+        return False
+    actual = inspected.get("rules")
+    if not isinstance(actual, list) or any(
+        not isinstance(rule, dict) or type(rule.get("rule_number")) is not int for rule in actual
+    ):
+        return False
+
+    expected = _expected_postgres_hba_rules(crawler_ip)
     # pg_hba_file_rules discards quoting, so parsed equality alone cannot prove
     # that the first database token is the wildcard all rather than literal "all".
     # Require the exact canonical source too; this excludes includes/substitutions.
@@ -168,6 +173,189 @@ def _postgres_hba_exact(result: CommandResult, crawler_ip: ipaddress.IPv4Address
         "source_sha256": hashlib.sha256(source).hexdigest(),
         "rules": expected,
     }
+
+
+def _feed_hba_rule_diagnostics(
+    result: CommandResult, crawler_ip: ipaddress.IPv4Address
+) -> dict[str, Any]:
+    """Classify the current file projection without exposing rows or addresses.
+
+    pg_hba_file_rules describes the file on disk, not necessarily the policy
+    last loaded by PostgreSQL. The local-socket probe below supplies separate
+    evidence for the effective reject rule.
+    """
+    unknown: dict[str, Any] = {
+        "source_exact": None,
+        "parsed_first_local_reject": None,
+        "parsed_second_local_trust": None,
+        "parsed_feed_local_rule_count": "unproved",
+        "parsed_feed_host_rule_count": "unproved",
+        "parsed_feed_host_rule_at_nine": None,
+        "parsed_errors_absent": None,
+    }
+    if result.returncode != 0 or len(result.stdout) > 65536:
+        return unknown
+    try:
+        inspected = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return unknown
+    if not isinstance(inspected, dict) or set(inspected) != {
+        "source_path_exact",
+        "source_sha256",
+        "rules",
+    }:
+        return unknown
+    rules = inspected["rules"]
+    fields = {
+        "rule_number",
+        "type",
+        "address",
+        "netmask",
+        "database",
+        "user_name",
+        "auth_method",
+        "options",
+        "error",
+    }
+    if (
+        not isinstance(rules, list)
+        or len(rules) > 1000
+        or any(
+            not isinstance(row, dict)
+            or set(row) != fields
+            or type(row["rule_number"]) is not int
+            or not isinstance(row["user_name"], list)
+            or not all(isinstance(user, str) for user in row["user_name"])
+            for row in rules
+        )
+    ):
+        return unknown
+    source = POSTGRES_HBA_SOURCE.format(crawler_ip=crawler_ip).encode("utf-8")
+    first, second, *_, feed_host = _expected_postgres_hba_rules(crawler_ip)
+
+    def count_category(count: int) -> str:
+        return "none" if count == 0 else "one" if count == 1 else "multiple"
+
+    return {
+        "source_exact": inspected["source_path_exact"] is True
+        and inspected["source_sha256"] == hashlib.sha256(source).hexdigest(),
+        "parsed_first_local_reject": any(row == first for row in rules),
+        "parsed_second_local_trust": any(row == second for row in rules),
+        "parsed_feed_local_rule_count": count_category(
+            sum(
+                row["type"] == "local" and "justup_feed_readonly" in row["user_name"]
+                for row in rules
+            )
+        ),
+        "parsed_feed_host_rule_count": count_category(
+            sum(
+                isinstance(row["type"], str)
+                and row["type"].startswith("host")
+                and "justup_feed_readonly" in row["user_name"]
+                for row in rules
+            )
+        ),
+        "parsed_feed_host_rule_at_nine": any(row == feed_host for row in rules),
+        "parsed_errors_absent": all(row["error"] is None for row in rules),
+    }
+
+
+def _feed_hba_file_diagnostics(container: str) -> dict[str, bool | None]:
+    """Read only fixed-path file/load categories; never return source text."""
+    unknown = {
+        "source_within_4096_bytes": None,
+        "first_active_source_line_reject": None,
+        "file_mtime_at_or_before_config_load": None,
+    }
+    query = (
+        "select json_build_object("
+        "'source_within_4096_bytes',(pg_stat_file('" + POSTGRES_HBA_PATH + "')).size<=4096,"
+        "'first_active_source_line_reject',coalesce((select line="
+        "'local all justup_feed_readonly reject' from regexp_split_to_table("
+        "pg_read_file('"
+        + POSTGRES_HBA_PATH
+        + "',0,4096),E'\\n') with ordinality as lines(line,ordinal) "
+        "where btrim(line)<>'' and left(ltrim(line),1)<>'#' "
+        "order by ordinal limit 1),false),"
+        "'file_mtime_at_or_before_config_load',coalesce((pg_stat_file('"
+        + POSTGRES_HBA_PATH
+        + "')).modification<=pg_conf_load_time(),false))"
+    )
+    try:
+        inspected = _run(
+            [
+                "docker",
+                "exec",
+                container,
+                "psql",
+                "-U",
+                "crawler",
+                "-d",
+                "crawler",
+                "-X",
+                "-w",
+                "-At",
+                "-v",
+                "ON_ERROR_STOP=1",
+                "-c",
+                query,
+            ]
+        )
+    except ConformanceError:
+        return unknown
+    if inspected.returncode != 0 or len(inspected.stdout) > 1024:
+        return unknown
+    try:
+        values = json.loads(inspected.stdout)
+    except json.JSONDecodeError:
+        return unknown
+    if (
+        not isinstance(values, dict)
+        or set(values) != set(unknown)
+        or any(type(value) is not bool for value in values.values())
+    ):
+        return unknown
+    return values
+
+
+def _feed_local_socket_outcome(container: str) -> str:
+    """Classify a passwordless local reject probe; discard all raw output."""
+    try:
+        probe = subprocess.run(
+            [
+                "docker",
+                "exec",
+                "-e",
+                "PGPASSWORD=",
+                "-e",
+                "PGPASSFILE=/dev/null",
+                container,
+                "psql",
+                "-h",
+                "/var/run/postgresql",
+                "-U",
+                "justup_feed_readonly",
+                "-d",
+                "crawler",
+                "-X",
+                "-w",
+                "-qAt",
+                "-c",
+                "SELECT 1",
+            ],
+            capture_output=True,
+            timeout=8,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "unproved"
+    if len(probe.stdout) > 1024 or len(probe.stderr) > 1024:
+        return "unproved"
+    if probe.returncode == 0:
+        return "accepted_unsafe"
+    if b"pg_hba.conf rejects connection" in probe.stderr and not probe.stdout:
+        return "reject_observed"
+    return "unproved"
 
 
 def _listener_scopes(output: str) -> dict[int, set[str]]:
@@ -184,6 +372,20 @@ def _listener_scopes(output: str) -> dict[int, set[str]]:
             continue
         result.setdefault(port, set()).add(_address_scope(address))
     return result
+
+
+def _metrics_listener_diagnostics(listener_map: dict[int, set[str]]) -> dict[str, str]:
+    """Report only fixed port/scope categories, never listener addresses."""
+    return {
+        str(port): (
+            "missing"
+            if not listener_map.get(port)
+            else "loopback_only"
+            if listener_map[port] <= {"loopback"}
+            else "includes_non_loopback"
+        )
+        for port in sorted(CRAWLER_METRICS_PORTS)
+    }
 
 
 def _sshd_state(output: str) -> dict[str, Any]:
@@ -460,6 +662,13 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         ]
     )
     rules_match = _postgres_hba_exact(hba, crawler_ip)
+    feed_diagnostics = {
+        **_feed_hba_rule_diagnostics(hba, crawler_ip),
+        **_feed_hba_file_diagnostics(container),
+        "effective_local_socket": _feed_local_socket_outcome(container),
+        # A current file view and its mtime do not prove the TCP rule was loaded.
+        "effective_feed_host_rule": "unproved",
+    }
     return {
         "readable": True,
         "shared_memory_bytes": shared_memory_bytes,
@@ -471,6 +680,7 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         "scram_password_encryption": encryption_match,
         "tls_required_by_policy": False,
         "hba_exact": rules_match,
+        "feed_hba_diagnostics": feed_diagnostics,
         "compliant": (
             shared_memory_match
             and bounded_log_match
@@ -530,6 +740,8 @@ def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dic
         "required_listener_scope": listener_policy,
         "root_password_locked": root_locked if role == "postgresql" else None,
     }
+    if role == "crawler" and listeners is not None:
+        result["metrics_listener_diagnostics"] = _metrics_listener_diagnostics(listener_map)
     if role == "postgresql" and not host_only:
         container = _postgres_container()
         result["postgresql"] = (
