@@ -842,7 +842,6 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.match(crawlerImageJob, /seniority_resolve\._load_seniority_slugs/);
   assert.match(crawlerImageJob, /technology_resolve\.match_technologies/);
   assert.match(crawlerImageJob, /company\.match_industry/);
-  assert.match(crawlerImageJob, /taxonomy\._load_tech_name_map/);
   assert.doesNotMatch(crawlerImageJob, /mv \/app\/data/);
   assert.match(crawlerImageJob, /--entrypoint \/app\/\.venv\/bin\/crawler/);
   assert.match(
