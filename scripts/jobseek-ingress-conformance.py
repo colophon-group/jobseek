@@ -30,10 +30,18 @@ KNOWN_PORTS = {
     9096,
     9097,
     9098,
+    9101,
+    9104,
     12346,
     12347,
 }
-CRAWLER_METRICS_PORTS = {9093, 9094, 9095, 9096, 9097, 9098}
+# Required production actors: exporter, drain and ordinary-go. Retired Python
+# ports and the dark claimant may be absent, but must stay loopback if present.
+CRAWLER_METRICS_PORTS = {9093, 9094, 9104}
+CRAWLER_OPTIONAL_METRICS_PORTS = {9095, 9096, 9097, 9098, 9101}
+# Preserve the existing diagnostic field; the additive runtime field below
+# distinguishes the current required and optional contracts.
+LEGACY_METRICS_DIAGNOSTIC_PORTS = {9093, 9094, 9095, 9096, 9097, 9098}
 POSTGRES_NETWORK_CONFIG = Path("/etc/jobseek-ingress/postgresql-network.env")
 WEB_POSTGRES_CONFIG = Path("/etc/jobseek-web-postgresql/postgresql.conf")
 POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
@@ -374,7 +382,9 @@ def _listener_scopes(output: str) -> dict[int, set[str]]:
     return result
 
 
-def _metrics_listener_diagnostics(listener_map: dict[int, set[str]]) -> dict[str, str]:
+def _metrics_listener_diagnostics(
+    listener_map: dict[int, set[str]], ports: set[int] | None = None
+) -> dict[str, str]:
     """Report only fixed port/scope categories, never listener addresses."""
     return {
         str(port): (
@@ -384,7 +394,7 @@ def _metrics_listener_diagnostics(listener_map: dict[int, set[str]]) -> dict[str
             if listener_map[port] <= {"loopback"}
             else "includes_non_loopback"
         )
-        for port in sorted(CRAWLER_METRICS_PORTS)
+        for port in sorted(LEGACY_METRICS_DIAGNOSTIC_PORTS if ports is None else ports)
     }
 
 
@@ -713,6 +723,9 @@ def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dic
             listener_policy = all(
                 bool(listener_map.get(port)) and listener_map[port] <= {"loopback"}
                 for port in CRAWLER_METRICS_PORTS
+            ) and all(
+                not listener_map.get(port) or listener_map[port] <= {"loopback"}
+                for port in CRAWLER_OPTIONAL_METRICS_PORTS
             )
         elif role == "postgresql":
             listener_policy = bool(listener_map.get(5432)) and listener_map[5432] <= {
@@ -742,6 +755,10 @@ def audit(role: str, crawler_private_ip: str, *, host_only: bool = False) -> dic
     }
     if role == "crawler" and listeners is not None:
         result["metrics_listener_diagnostics"] = _metrics_listener_diagnostics(listener_map)
+        result["runtime_metrics_listener_diagnostics"] = {
+            "required": _metrics_listener_diagnostics(listener_map, CRAWLER_METRICS_PORTS),
+            "optional": _metrics_listener_diagnostics(listener_map, CRAWLER_OPTIONAL_METRICS_PORTS),
+        }
     if role == "postgresql" and not host_only:
         container = _postgres_container()
         result["postgresql"] = (
