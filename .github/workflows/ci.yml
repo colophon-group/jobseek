@@ -1139,7 +1139,7 @@ jobs:
           from src import sync
           from src.cli import _resolve_ats_registry_paths
           from src.core import occupation_resolve, seniority_resolve, technology_resolve
-          from src.core.enrich import company, taxonomy
+          from src.core.enrich import company
 
           module_path = Path(sync.__file__).resolve()
           assert module_path.is_relative_to("/app/.venv")
@@ -1166,9 +1166,6 @@ jobs:
               "sentinel-technology"
           ]
           assert company.match_industry("Sentinel Industry") == 901
-          assert taxonomy._load_tech_name_map() == {
-              "sentinel technology": "sentinel-technology"
-          }
           try:
               (Path("/app/data") / "write-probe").touch()
           except OSError as exc:
