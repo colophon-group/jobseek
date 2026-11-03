@@ -242,7 +242,7 @@ jobs:
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
           test "$remote_main" = "$EXPECTED_SOURCE_COMMIT"
 
-      - name: Deploy one dormant controlled-egress renderer
+      - name: Deploy production controlled-egress renderer
         env:
           TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -264,7 +264,7 @@ jobs:
           image_ref="$IMAGE_REPOSITORY@$IMAGE_DIGEST"
           bash deploy/lightpanda-renderer/deploy-remote.sh "$SOURCE_COMMIT" "$image_ref"
 
-      - name: Record sanitized dormant release identity
+      - name: Record sanitized renderer release identity
         env:
           SOURCE_COMMIT: ${{ needs.publish.outputs.source_commit }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.image_digest }}
