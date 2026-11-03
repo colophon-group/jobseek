@@ -362,6 +362,7 @@ def test_zero_swap_repair_has_one_guarded_write(
     values = {11: before_memory, 12: before_swap}
     writes = []
     monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_args: None)
+    monkeypatch.setattr(swap_repair, "require_pidfd_alive", lambda *_args: None)
     monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
     monkeypatch.setattr(swap_repair.os, "lseek", lambda *_args: 0)
 
@@ -374,14 +375,14 @@ def test_zero_swap_repair_has_one_guarded_write(
     receipt = {"writeAttempted": False}
     if expected_writes:
         assert swap_repair.write_leaf_once(
-            10, 11, 12, ("/docker", "12"), lambda: current_identity, receipt
+            10, 11, 12, 13, ("/docker", "12"), lambda: current_identity, receipt
         ) == ("1073741824", "0")
         assert receipt["writeCompleted"] is True
         assert receipt["hostSwapMax"] == "0"
     else:
         with pytest.raises(swap_repair.RepairRefused):
             swap_repair.write_leaf_once(
-                10, 11, 12, ("/docker", "12"), lambda: current_identity, receipt
+                10, 11, 12, 13, ("/docker", "12"), lambda: current_identity, receipt
             )
         assert receipt["writeAttempted"] is False
     assert writes == ([(12, b"0\n")] if expected_writes else [])
@@ -391,6 +392,7 @@ def test_zero_swap_repair_never_retries_an_uncertain_write(monkeypatch):
     values = {11: "1073741824", 12: "max"}
     attempts = []
     monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_args: None)
+    monkeypatch.setattr(swap_repair, "require_pidfd_alive", lambda *_args: None)
     monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
     monkeypatch.setattr(swap_repair.os, "lseek", lambda *_args: 0)
 
@@ -402,11 +404,76 @@ def test_zero_swap_repair_never_retries_an_uncertain_write(monkeypatch):
     receipt = {"writeAttempted": False}
     with pytest.raises(OSError):
         swap_repair.write_leaf_once(
-            10, 11, 12, ("/docker", "12"), lambda: ("/docker", "12"), receipt
+            10, 11, 12, 13, ("/docker", "12"), lambda: ("/docker", "12"), receipt
         )
     assert attempts == [(12, b"0\n")]
     assert receipt["writeAttempted"] is True
     assert "writeCompleted" not in receipt
+
+
+@pytest.mark.parametrize("drift", ["identity", "pidfd", "none"])
+def test_zero_swap_repair_guards_final_write_boundary(monkeypatch, drift):
+    events = []
+    values = {11: "1073741824", 12: "max"}
+    monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_args: events.append("leaf"))
+    monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
+    monkeypatch.setattr(swap_repair.os, "lseek", lambda *_args: events.append("seek"))
+
+    def current_identity():
+        events.append("identity")
+        return ("/changed", "12") if drift == "identity" else ("/docker", "12")
+
+    def pidfd_alive(_fd):
+        events.append("pidfd")
+        if drift == "pidfd":
+            raise swap_repair.RepairRefused("renderer_pid_exited")
+
+    monkeypatch.setattr(swap_repair, "require_pidfd_alive", pidfd_alive)
+
+    def write(_fd, _data):
+        events.append("write")
+        values[12] = "0"
+        return 2
+
+    monkeypatch.setattr(swap_repair.os, "write", write)
+    receipt = {"writeAttempted": False}
+    if drift == "none":
+        assert swap_repair.write_leaf_once(
+            10, 11, 12, 13, ("/docker", "12"), current_identity, receipt
+        ) == ("1073741824", "0")
+        assert events[events.index("identity") : events.index("write") + 1] == [
+            "identity",
+            "leaf",
+            "pidfd",
+            "write",
+        ]
+        assert receipt["writeAttempted"] is True
+    else:
+        with pytest.raises(swap_repair.RepairRefused):
+            swap_repair.write_leaf_once(
+                10, 11, 12, 13, ("/docker", "12"), current_identity, receipt
+            )
+        assert "write" not in events
+        assert receipt["writeAttempted"] is False
+    assert events.index("seek") < events.index("identity")
+
+
+@pytest.mark.parametrize("poll_events", [[], [(13, 1)]])
+def test_zero_swap_repair_pidfd_liveness_guard(monkeypatch, poll_events):
+    class Poller:
+        def register(self, _fd, _events):
+            pass
+
+        def poll(self, timeout):
+            assert timeout == 0
+            return poll_events
+
+    monkeypatch.setattr(swap_repair.select, "poll", Poller)
+    if poll_events:
+        with pytest.raises(swap_repair.RepairRefused, match="renderer_pid_exited"):
+            swap_repair.require_pidfd_alive(13)
+    else:
+        swap_repair.require_pidfd_alive(13)
 
 
 def test_zero_swap_repair_bounds_subprocess_output_and_timeout():

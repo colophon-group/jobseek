@@ -15,6 +15,7 @@ import json
 import os
 import pwd
 import re
+import select
 import selectors
 import signal
 import stat
@@ -273,10 +274,17 @@ def read_scalar(fd: int) -> str:
     return data.decode("ascii").strip()
 
 
+def require_pidfd_alive(pid_fd: int) -> None:
+    poller = select.poll()
+    poller.register(pid_fd, select.POLLIN | select.POLLERR | select.POLLHUP)
+    require(not poller.poll(0), "renderer_pid_exited")
+
+
 def write_leaf_once(
     directory_fd: int,
     memory_fd: int,
     swap_fd: int,
+    pid_fd: int,
     identity: tuple[str, str],
     current_identity: Callable[[], tuple[str, str]],
     receipt: dict[str, Any],
@@ -284,16 +292,19 @@ def write_leaf_once(
     assert_leaf_identity(directory_fd, memory_fd, swap_fd)
     require(read_scalar(memory_fd) == MEMORY_MAX, "memory_limit_drift")
     require(read_scalar(swap_fd) == "max", "swap_leaf_not_max")
-    # No other operation may occur between the last identity/readback guard
-    # and the single cgroup write. A failed or short write is never retried.
+    os.lseek(swap_fd, 0, os.SEEK_SET)
+    print("renderer-zero-swap write boundary reached", file=sys.stderr, flush=True)
+    # All prewrite reads, seeks, and logging precede these final live guards.
     require(current_identity() == identity, "identity_changed_before_write")
     assert_leaf_identity(directory_fd, memory_fd, swap_fd)
-    require(read_scalar(memory_fd) == MEMORY_MAX, "memory_limit_drift")
-    require(read_scalar(swap_fd) == "max", "swap_leaf_not_max")
-    os.lseek(swap_fd, 0, os.SEEK_SET)
-    receipt["writeAttempted"] = True
-    print("renderer-zero-swap exact leaf write attempted", file=sys.stderr, flush=True)
-    require(os.write(swap_fd, b"0\n") == 2, "short_swap_write")
+    require_pidfd_alive(pid_fd)
+    # The only host write follows the final pidfd poll; failed/short writes are
+    # reported as attempted and never retried.
+    try:
+        written = os.write(swap_fd, b"0\n")
+    finally:
+        receipt["writeAttempted"] = True
+    require(written == 2, "short_swap_write")
     receipt["writeCompleted"] = True
     host_memory = read_scalar(memory_fd)
     host_swap = read_scalar(swap_fd)
@@ -438,6 +449,7 @@ def repair(expected: dict[str, str], receipt: dict[str, Any]) -> dict[str, Any]:
                         directory_fd,
                         memory_fd,
                         swap_fd,
+                        pid_fd,
                         (relative, start),
                         lambda: check_identity(expected, deploy.pw_uid, deploy.pw_gid),
                         receipt,
