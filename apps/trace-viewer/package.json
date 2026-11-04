@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "dompurify": "^3.4.15",
+    "dompurify": "^3.4.16",
     "entities": "^8.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
