@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated_at_utc": "2026-11-03T21:56:38.990282+00:00",
+  "updated_at_utc": "2026-11-04T02:51:08.284871+00:00",
   "status": "Prepared for PR validation; not installed",
   "audit_base": "ac28bba88bc9518bb5b8f5e974ce3928752dad76",
   "scope": {
@@ -32,10 +32,10 @@
   "production_renderer": {
     "path": "apps/lightpanda",
     "workflow": ".github/workflows/lightpanda-renderer.yml",
-    "version": "1.1.0-nightly.11582+592b76832",
-    "upstream_source": "592b768329d0acd1428c050e012934e257427234",
-    "oci_index": "sha256:ed80bcf2f771b0c7da1b2937bd6c6e75e1a0199c31453cf5fa00ef4e0be88e57",
-    "verification": "Official release asset digests, OCI manifests/layers and executable bytes match; both native Linux architecture integration suites are required before deployment.",
+    "version": "1.1.0-nightly.11647+b8e234a77",
+    "upstream_source": "b8e234a77259283ff2653d5cc5900249d1d2cea9",
+    "oci_index": "sha256:160ba2b479384f723ee4cd189b1989d0aab50a4b98b62d85f528aea9a17750da",
+    "verification": "Official Nov4 Linux release asset digests, OCI manifests/layers and executable bytes match; local pin contract passes. Both native Linux architecture integration and whole-lane suites must qualify the updated pin before deployment.",
     "installed": false
   },
   "preserved_contracts": [
