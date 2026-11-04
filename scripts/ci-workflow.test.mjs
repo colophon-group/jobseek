@@ -1955,14 +1955,10 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
     ensureCompanyOgPrewarmScript,
     /TARGET_REVISION[\s\S]*handoff_token=\$\(openssl rand -hex 16\)[\s\S]*-f target_revision="\$TARGET_REVISION"[\s\S]*-f handoff_token="\$handoff_token"[\s\S]*gh api/,
   );
-  assert.match(
-    deployCrawlerWorkflow,
-    /company-og:[\s\S]*actions: write[\s\S]*name: Ensure exact-revision company OG coverage[\s\S]*TARGET_REVISION: \$\{\{ github\.sha \}\}[\s\S]*ensure-company-og-prewarm\.sh/,
-  );
-  assert.match(
-    deployCrawlerWorkflow,
-    /deploy:\n\s+needs: \[preflight, company-og, build\]/,
-  );
+  // Share-image availability is a web concern, independent of native runtime
+  // activation. CSV publication above keeps its existing OG attestation.
+  assert.doesNotMatch(deployCrawlerWorkflow, /company-og:|ensure-company-og-prewarm/);
+  assert.match(deployCrawlerWorkflow, /deploy:\n\s+needs: \[preflight, build\]/);
   assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });
 
