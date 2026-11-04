@@ -27,16 +27,13 @@ from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
 
 
-@pytest.mark.parametrize("service", ["legacy-simple", "legacy-browser", "b0-control"])
+@pytest.mark.parametrize("service", ["legacy-simple", "legacy-browser"])
 def test_retained_comparator_selects_python_extraction_and_enrichment(monkeypatch, service):
     from src.runtime import dom_go_http, dom_go_parse, job_enrichment_go, jsonld_go_detail
 
     root = Path(__file__).resolve().parent
     path = root / "compose.yml"
     key = service
-    if service == "b0-control":
-        path = root.parent / "lightpanda_b0/compose.yml"
-        key = "control"
     environment = yaml.safe_load(path.read_text())["services"][key]["environment"]
     for name in (
         "JSONLD_GO_DETAIL_PERCENT",

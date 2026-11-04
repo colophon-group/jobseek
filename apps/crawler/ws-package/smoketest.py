@@ -66,16 +66,8 @@ SKIP_MODULES: frozenset[str] = frozenset(
         # Disposable whole-lane benchmark driver uses the full crawler's
         # Redis queue runtime, which is outside the slim workspace wheel.
         "src.lightpanda.admission",
-        # enrich providers — optional LLM SDKs imported lazily inside funcs
         "src.core.enrich",
-        "src.core.enrich.batch",
         "src.core.enrich.company",
-        "src.core.enrich.job",
-        "src.core.enrich.taxonomy",
-        "src.core.enrich.providers",
-        "src.core.enrich.providers.openai",
-        "src.core.enrich.providers.anthropic",
-        "src.core.enrich.providers.gemini",
     }
 )
 

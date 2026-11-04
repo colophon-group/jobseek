@@ -4,8 +4,8 @@ Reads data/companies.csv and data/boards.csv, upserts rows into the database.
 The DB is derived state — CSVs are the source of truth.
 
 Local Postgres is the only allocator and transactional authority. The normal
-CLI publishes Redis board queues and Typesense collections after commit. The
-legacy relational-mirror helpers remain library-only during rollback cleanup.
+CLI delegates installed sync to Go. This retained local-only oracle publishes
+Redis board queues and Typesense collections after commit.
 
 Usage:
     uv run python -m src.sync              # sync both CSVs
@@ -40,7 +40,7 @@ from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
-from src.db import close_all_pools, create_local_pool, create_pool
+from src.db import close_all_pools, create_local_pool
 from src.redis_queue import (
     MonitorSchedule,
     close_redis,
@@ -253,32 +253,6 @@ SELECT * FROM unnest($1::text[])
 ON CONFLICT (slug) DO NOTHING
 """
 
-_MIRROR_OCCUPATION_DOMAINS = """
-INSERT INTO occupation_domain (id, slug)
-SELECT * FROM unnest($1::int[], $2::text[])
-ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
-"""
-
-_MIRROR_OCCUPATIONS = """
-INSERT INTO occupation (id, slug)
-SELECT * FROM unnest($1::int[], $2::text[])
-ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
-"""
-
-_MIRROR_SENIORITY = """
-INSERT INTO seniority (id, slug)
-SELECT * FROM unnest($1::int[], $2::text[])
-ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
-"""
-
-_MIRROR_TECHNOLOGIES = """
-INSERT INTO technology (id, slug, name, category)
-SELECT * FROM unnest($1::int[], $2::text[], $3::text[], $4::text[])
-ON CONFLICT (slug) DO UPDATE SET
-  id = EXCLUDED.id,
-  name = COALESCE(EXCLUDED.name, technology.name),
-  category = COALESCE(EXCLUDED.category, technology.category)
-"""
 
 _UPSERT_OCCUPATION_DOMAIN_NAMES = """
 INSERT INTO occupation_domain_name (domain_id, locale, name, is_display)
@@ -727,29 +701,6 @@ RETURNING id::text AS board_id, company_id::text AS company_id, board_url,
           metadata, next_check_at, board_status
 """
 
-_MIRROR_BOARDS_SUPA = """
-INSERT INTO job_board (id, company_id, board_slug, board_url, crawler_type, metadata)
-SELECT * FROM unnest(
-    $1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[], $6::jsonb[]
-)
-ON CONFLICT (id) DO UPDATE SET
-    company_id = EXCLUDED.company_id,
-    board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
-    board_url = EXCLUDED.board_url,
-    crawler_type = EXCLUDED.crawler_type,
-    metadata = EXCLUDED.metadata,
-    is_enabled = true,
-    updated_at = now()
-"""
-
-_DISABLE_REMOVED_BOARDS = """
-UPDATE job_board
-SET is_enabled = false,
-    board_status = 'disabled',
-    updated_at = now()
-WHERE board_url NOT IN (SELECT unnest($1::text[]))
-  AND is_enabled = true
-"""
 
 _DISABLE_REMOVED_BOARDS_LOCAL = """
 UPDATE job_board
@@ -800,13 +751,6 @@ FROM rehomes
 ORDER BY board_id
 """
 
-_REALIGN_BOARD_POSTING_COMPANIES_SUPA = """
-UPDATE job_posting jp
-SET company_id = rehome.company_id
-FROM unnest($1::uuid[], $2::uuid[]) AS rehome(board_id, company_id)
-WHERE jp.board_id = rehome.board_id
-  AND jp.company_id IS DISTINCT FROM rehome.company_id
-"""
 
 _REALIGN_BOARD_POSTING_COMPANIES_LOCAL = """
 UPDATE job_posting jp
@@ -1338,52 +1282,6 @@ async def sync_company_descriptions(
     log.info("sync.company_descriptions.upserted", count=len(slugs))
 
 
-async def _mirror_companies_to_supabase(
-    local_conn: asyncpg.Connection,
-    supa_conn: asyncpg.Connection,
-) -> None:
-    """Push all companies from local Postgres to Supabase.
-
-    Identity alignment is preflighted before this function. It never deletes
-    or renumbers a row: an unexpected conflict aborts the mirror transaction.
-    """
-    rows = await local_conn.fetch(
-        "SELECT id, slug, name, website, logo, icon, logo_type, "
-        "industry, employee_count_range, founded_year, extras "
-        "FROM company"
-    )
-    if not rows:
-        return
-
-    await supa_conn.execute(
-        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
-        "industry, employee_count_range, founded_year, extras) "
-        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
-        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
-        "$10::smallint[], $11::jsonb[]) "
-        "ON CONFLICT (id) DO UPDATE SET "
-        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
-        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
-        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
-        "industry = EXCLUDED.industry, "
-        "employee_count_range = EXCLUDED.employee_count_range, "
-        "founded_year = EXCLUDED.founded_year, "
-        "extras = EXCLUDED.extras, updated_at = now()",
-        [r["id"] for r in rows],
-        [r["slug"] for r in rows],
-        [r["name"] for r in rows],
-        [r.get("website") for r in rows],
-        [r.get("logo") for r in rows],
-        [r.get("icon") for r in rows],
-        [r.get("logo_type") for r in rows],
-        [r.get("industry") for r in rows],
-        [r.get("employee_count_range") for r in rows],
-        [r.get("founded_year") for r in rows],
-        [r.get("extras") for r in rows],
-    )
-    log.info("sync.companies.mirrored_to_supabase", count=len(rows))
-
-
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
@@ -1698,27 +1596,6 @@ async def _apply_board_redis_effects_python_reference(effects: BoardSyncEffects)
     )
 
 
-async def _mirror_table(
-    target_conn: asyncpg.Connection,
-    table: str,
-    mirror_sql: str,
-    ids: list[int],
-    slugs: list[str],
-) -> None:
-    """Copy authoritative IDs into a preflighted legacy mirror table."""
-    if table not in {"occupation_domain", "occupation", "seniority"}:
-        raise ValueError(f"unsupported legacy mirror table: {table}")
-    await target_conn.execute(mirror_sql, ids, slugs)
-    # Advance to the highest identity that actually exists in the mirror. A
-    # stale mirror-only row may legitimately be above every local id; setting
-    # the sequence to max(ids) would move it backwards and create a future
-    # primary-key collision.
-    await target_conn.execute(
-        f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
-        f"(SELECT MAX(id) FROM {table}), true)"
-    )
-
-
 async def sync_lookup_tables_local(
     local_conn: asyncpg.Connection,
     occupation_domains: pl.DataFrame,
@@ -1744,191 +1621,6 @@ async def sync_lookup_tables_local(
     await sync_technologies(local_conn, technologies, dry_run)
     await sync_industries(local_conn, industries, dry_run)
     log.info("sync.lookup_tables_local.complete")
-
-
-_LEGACY_SLUG_IDENTITY_TABLES = (
-    "company",
-    "occupation_domain",
-    "occupation",
-    "seniority",
-    "technology",
-)
-
-
-def _identity_conflicts(
-    local_rows,
-    mirror_rows,
-    key: str,
-    *,
-    check_id_key: bool = True,
-) -> list[str]:
-    """Return bounded natural-key/id conflicts without attempting repairs."""
-    local_by_key = {str(row[key]): str(row["id"]) for row in local_rows if row[key] is not None}
-    mirror_by_key = {str(row[key]): str(row["id"]) for row in mirror_rows if row[key] is not None}
-    local_by_id = {str(row["id"]): str(row[key]) for row in local_rows if row[key] is not None}
-    mirror_by_id = {str(row["id"]): str(row[key]) for row in mirror_rows if row[key] is not None}
-    conflicts = [
-        f"{key}={value}: local={local_by_key[value]} mirror={mirror_by_key[value]}"
-        for value in local_by_key.keys() & mirror_by_key.keys()
-        if local_by_key[value] != mirror_by_key[value]
-    ]
-    if check_id_key:
-        conflicts.extend(
-            f"id={row_id}: local-{key}={local_by_id[row_id]} mirror-{key}={mirror_by_id[row_id]}"
-            for row_id in local_by_id.keys() & mirror_by_id.keys()
-            if local_by_id[row_id] != mirror_by_id[row_id]
-        )
-    return conflicts[:5]
-
-
-async def _assert_legacy_identity_alignment(
-    local_conn: asyncpg.Connection,
-    mirror_conn: asyncpg.Connection,
-) -> None:
-    """Fail closed before any mirror write if existing identities diverge."""
-    conflicts: list[str] = []
-    for table in _LEGACY_SLUG_IDENTITY_TABLES:
-        local_rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
-        mirror_rows = await mirror_conn.fetch(f"SELECT id, slug FROM {table}")
-        conflicts.extend(
-            f"{table}: {item}" for item in _identity_conflicts(local_rows, mirror_rows, "slug")
-        )
-
-    local_boards = await local_conn.fetch("SELECT id, board_slug, board_url FROM job_board")
-    mirror_boards = await mirror_conn.fetch("SELECT id, board_slug, board_url FROM job_board")
-    conflicts.extend(
-        f"job_board: {item}"
-        for item in _identity_conflicts(local_boards, mirror_boards, "board_slug")
-    )
-    conflicts.extend(
-        f"job_board: {item}"
-        for item in _identity_conflicts(
-            local_boards,
-            mirror_boards,
-            "board_url",
-            check_id_key=False,
-        )
-    )
-    if conflicts:
-        raise RuntimeError(
-            "legacy mirror identity drift; refusing to renumber or delete rows: "
-            + "; ".join(conflicts[:5])
-        )
-
-
-async def _mirror_lookup_tables_to_supabase(
-    local_conn: asyncpg.Connection,
-    supa_conn: asyncpg.Connection,
-    occupation_domains: pl.DataFrame,
-    occupations: pl.DataFrame,
-    seniority_df: pl.DataFrame,
-    technologies: pl.DataFrame,
-    industries: pl.DataFrame,
-) -> None:
-    """Copy locally allocated lookup identities into the transitional mirror."""
-    for table, sql in (
-        ("occupation_domain", _MIRROR_OCCUPATION_DOMAINS),
-        ("occupation", _MIRROR_OCCUPATIONS),
-        ("seniority", _MIRROR_SENIORITY),
-    ):
-        rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
-        if rows:
-            await _mirror_table(
-                supa_conn,
-                table,
-                sql,
-                [row["id"] for row in rows],
-                [row["slug"] for row in rows],
-            )
-
-    tech_rows = await local_conn.fetch("SELECT id, slug, name, category FROM technology")
-    if tech_rows:
-        await supa_conn.execute(
-            _MIRROR_TECHNOLOGIES,
-            [row["id"] for row in tech_rows],
-            [row["slug"] for row in tech_rows],
-            [row["name"] for row in tech_rows],
-            [row["category"] for row in tech_rows],
-        )
-        await supa_conn.execute(
-            "SELECT setval(pg_get_serial_sequence('technology', 'id'), "
-            "(SELECT MAX(id) FROM technology), true)"
-        )
-
-    # Populate names and relationships only after every exact identity exists.
-    await sync_occupation_domains(supa_conn, occupation_domains, False)
-    await sync_occupations(supa_conn, occupations, False)
-    await sync_seniority(supa_conn, seniority_df, False)
-    await sync_industries(supa_conn, industries, False)
-
-
-async def _mirror_boards_to_supabase(
-    local_conn: asyncpg.Connection,
-    supa_conn: asyncpg.Connection,
-    board_urls: list[str],
-    posting_company_rehomes: tuple[tuple[str, str], ...] = (),
-) -> None:
-    rows = await local_conn.fetch(
-        "SELECT id, company_id, board_slug, board_url, crawler_type, metadata "
-        "FROM job_board WHERE board_url = ANY($1::text[])",
-        board_urls,
-    )
-    if len(rows) != len(board_urls):
-        raise RuntimeError("legacy mirror could not load every committed local board")
-    await supa_conn.execute(
-        _MIRROR_BOARDS_SUPA,
-        [row["id"] for row in rows],
-        [row["company_id"] for row in rows],
-        [row["board_slug"] for row in rows],
-        [row["board_url"] for row in rows],
-        [row["crawler_type"] for row in rows],
-        [row["metadata"] for row in rows],
-    )
-    if posting_company_rehomes:
-        await supa_conn.execute(
-            _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
-            [board_id for board_id, _company_id in posting_company_rehomes],
-            [company_id for _board_id, company_id in posting_company_rehomes],
-        )
-    await supa_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
-
-
-async def sync_legacy_mirror(
-    local_conn: asyncpg.Connection,
-    supa_conn: asyncpg.Connection,
-    *,
-    occupation_domains: pl.DataFrame,
-    occupations: pl.DataFrame,
-    seniority_df: pl.DataFrame,
-    technologies: pl.DataFrame,
-    industries: pl.DataFrame,
-    company_descs: pl.DataFrame,
-    boards: pl.DataFrame,
-    posting_company_rehomes: tuple[tuple[str, str], ...] = (),
-) -> None:
-    """Mirror a committed local snapshot, aborting atomically on any drift."""
-    async with supa_conn.transaction():
-        await supa_conn.execute("SET LOCAL lock_timeout = '30s'")
-        await _assert_legacy_identity_alignment(local_conn, supa_conn)
-        await _mirror_lookup_tables_to_supabase(
-            local_conn,
-            supa_conn,
-            occupation_domains,
-            occupations,
-            seniority_df,
-            technologies,
-            industries,
-        )
-        await _mirror_companies_to_supabase(local_conn, supa_conn)
-        await sync_company_descriptions(supa_conn, company_descs, False)
-        await _mirror_boards_to_supabase(
-            local_conn,
-            supa_conn,
-            boards["board_url"].to_list(),
-            posting_company_rehomes,
-        )
-        await resolve_pending_misses(supa_conn)
-    log.info("sync.legacy_mirror.complete")
 
 
 # ---------------------------------------------------------------------------
@@ -3493,20 +3185,10 @@ async def _sync_typesense_python_reference(
     log.info("typesense.sync.complete")
 
 
-async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> None:
-    """Retained Python oracle for the Go-owned installed sync commands.
-
-    ``legacy_mirror`` is an explicit transition mode. It is never inferred
-    from the mere presence of ``DATABASE_URL`` and refuses to start when that
-    credential is absent.
-    """
+async def run_sync(dry_run: bool = False) -> None:
+    """Retained local-only Python oracle for the Go-owned installed sync commands."""
     _require_installed_sync_data_mount()
     setup_logging(settings.log_level)
-
-    if legacy_mirror and not settings.database_url:
-        raise RuntimeError(
-            "--legacy-mirror requires DATABASE_URL; refusing a partial local-only sync"
-        )
 
     occupation_domains = _load_occupation_domains()
     occupations = _load_occupations()
@@ -3552,21 +3234,6 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                     await resolve_pending_misses(local_connection)
 
         # The local transaction is committed before every downstream write.
-        if legacy_mirror and not dry_run:
-            supa_pool = await create_pool()
-            async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
-                await sync_legacy_mirror(
-                    cast("asyncpg.Connection", local_conn),
-                    cast("asyncpg.Connection", supa_conn),
-                    occupation_domains=occupation_domains,
-                    occupations=occupations,
-                    seniority_df=seniority_df,
-                    technologies=technologies,
-                    industries=industries,
-                    company_descs=company_descs,
-                    boards=boards,
-                    posting_company_rehomes=board_effects.posting_company_rehomes,
-                )
 
         if not dry_run:
             await apply_board_redis_effects(board_effects)
@@ -3596,7 +3263,6 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
             company_descriptions=len(company_descs),
             boards=len(boards),
             dry_run=dry_run,
-            legacy_mirror=legacy_mirror,
         )
 
         # Typesense is a post-commit derived target. All collections maintained

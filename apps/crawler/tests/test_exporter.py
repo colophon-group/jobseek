@@ -4,11 +4,9 @@ import dataclasses
 import json
 import uuid
 from collections import Counter
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import asyncpg
 import pytest
 import structlog
 
@@ -19,7 +17,6 @@ from src.typesense_projection import (
     TaxonomyMaps,
     _build_typesense_docs,
     _is_typesense_acknowledgement_parse_failure,
-    _upsert_to_supabase,
     _upsert_to_typesense,
 )
 
@@ -60,15 +57,6 @@ def _make_record(data: dict) -> MagicMock:
     return rec
 
 
-@asynccontextmanager
-async def _noop_cursor_fence(_pool):
-    yield
-
-
-async def _fixed_cdc_cutoff(_pool):
-    return datetime(9999, 12, 31, tzinfo=UTC)
-
-
 # ---------------------------------------------------------------------------
 # _get_last_export_ts / _save_last_export_ts
 # ---------------------------------------------------------------------------
@@ -80,58 +68,8 @@ async def _fixed_cdc_cutoff(_pool):
 
 
 # ---------------------------------------------------------------------------
-# _upsert_to_supabase + _export_postings_dual (Supabase + Typesense)
+# Frozen posting schema and current Typesense projection
 # ---------------------------------------------------------------------------
-
-
-def _posting_row(*, posting_id, ts, company_id=None, board_id=None) -> MagicMock:
-    """Build a minimal asyncpg.Record-shaped dict covering _POSTING_COLUMNS."""
-    return _make_record(
-        {
-            "id": posting_id,
-            "company_id": company_id or uuid.uuid4(),
-            "board_id": board_id or uuid.uuid4(),
-            "source_url": f"https://example.com/job/{posting_id}",
-            "is_active": True,
-            "titles": ["Engineer"],
-            "locales": ["en"],
-            "location_ids": [1],
-            "location_types": ["office"],
-            "employment_type": "full_time",
-            "salary_min": 50000,
-            "salary_max": 80000,
-            "salary_currency": "EUR",
-            "salary_period": "year",
-            "salary_eur": 65000,
-            "experience_min": 2,
-            "experience_max": 5,
-            "occupation_id": 1,
-            "seniority_id": 2,
-            "technology_ids": [10, 20],
-            "description_r2_hash": 123456789,
-            "first_seen_at": ts,
-            "last_seen_at": ts,
-            "updated_at": ts,
-        }
-    )
-
-
-def _supa_pool_with_capture():
-    """Pool that captures conn.execute / copy_records_to_table calls."""
-    pool = _make_pool()
-    conn = AsyncMock()
-    tx_ctx = MagicMock()
-    tx_ctx.__aenter__ = AsyncMock(return_value=None)
-    tx_ctx.__aexit__ = AsyncMock(return_value=False)
-    conn.transaction = MagicMock(return_value=tx_ctx)
-    conn.execute = AsyncMock()
-    conn.copy_records_to_table = AsyncMock()
-
-    acq_ctx = MagicMock()
-    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
-    acq_ctx.__aexit__ = AsyncMock(return_value=False)
-    pool.acquire = MagicMock(return_value=acq_ctx)
-    return pool, conn
 
 
 class TestPostingSchema:
@@ -185,38 +123,6 @@ class TestPostingSchema:
         assert "ORDER BY jp.updated_at, jp.id LIMIT $3" in sql
 
 
-class TestUpsertToSupabase:
-    """Mirror TestExportChangedPostings against the dual-path upsert helper.
-
-    `_upsert_to_supabase` is the inner DB writer extracted from
-    `_export_changed_postings` so the new dual-path (`_export_postings_dual`)
-    can call it concurrently with the Typesense leg. A regression in the
-    write path here would silently corrupt the production CDC pipeline
-    even when the legacy single-path tests pass.
-    """
-
-    async def test_empty_rows_short_circuits_without_db_calls(self):
-        """Defensive: callers may pass [] when the cursor advances without
-        new rows. _upsert_to_supabase must not allocate temp tables for nil
-        work — the dual-path uses a `_noop` sibling so the gather stays
-        balanced; if `_upsert_to_supabase` itself silently issued DDL on
-        an empty list, every empty-batch poll would churn the temp table.
-        """
-        supa, conn = _supa_pool_with_capture()
-        # The current implementation does NOT short-circuit; this test
-        # documents the present behavior. If the caller path changes (e.g.
-        # _export_postings_dual stops guarding empties), the assertion below
-        # is the place to catch it.
-        await _upsert_to_supabase(supa, [])
-
-        # No COPY when rows is empty.
-        if conn.copy_records_to_table.await_count > 0:
-            # Implementation issued an empty COPY anyway; assert at least
-            # that no records were written.
-            kwargs = conn.copy_records_to_table.await_args.kwargs
-            assert kwargs["records"] == []
-
-
 # ---------------------------------------------------------------------------
 # Per-row fallback on batch failure (#3180)
 # ---------------------------------------------------------------------------
@@ -230,153 +136,6 @@ def _counter_total(counter, **labels) -> float:
     process and tests can run in any order.
     """
     return counter.labels(**labels)._value.get()
-
-
-def _make_supa_pool_batch_fails_per_row_passes(failing_row_id):
-    """Build a supa pool whose batch path raises but whose per-row path
-    succeeds for every row EXCEPT ``failing_row_id``.
-
-    The exporter's batch path issues three calls per ``async with``
-    block:  CREATE TEMP TABLE, COPY (via ``copy_records_to_table``),
-    INSERT ... ON CONFLICT. We make the *second* execute (the
-    INSERT) raise on the batch attempt so the function falls back.
-
-    The per-row path issues one execute per row inside its own
-    transaction; we route those by inspecting the SQL.
-    """
-    pool = _make_pool()
-    failing_uuid_str = str(failing_row_id)
-    batch_count = 0
-
-    async def execute(sql, *args):
-        nonlocal batch_count
-        if "CREATE TEMP TABLE" in sql:
-            return
-        if "FROM _export_postings" in sql:
-            # Batch INSERT — fail on the first attempt to trigger the
-            # fallback path.
-            batch_count += 1
-            raise asyncpg.ForeignKeyViolationError("simulated batch FK violation")
-        # Per-row INSERT branch. The first positional arg is the row id.
-        if args and str(args[0]) == failing_uuid_str:
-            raise asyncpg.ForeignKeyViolationError("simulated per-row constraint violation")
-        return
-
-    conn = AsyncMock()
-    tx_ctx = MagicMock()
-    tx_ctx.__aenter__ = AsyncMock(return_value=None)
-    tx_ctx.__aexit__ = AsyncMock(return_value=False)
-    conn.transaction = MagicMock(return_value=tx_ctx)
-    conn.execute = AsyncMock(side_effect=execute)
-    conn.copy_records_to_table = AsyncMock()
-
-    acq_ctx = MagicMock()
-    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
-    acq_ctx.__aexit__ = AsyncMock(return_value=False)
-    pool.acquire = MagicMock(return_value=acq_ctx)
-    return pool, conn
-
-
-class TestSupabasePerRowFallback:
-    """The exporter's poison-pill fix (#3180): when the batch INSERT
-    fails, fall back to per-row upserts so a single bad row no longer
-    halts CDC. Failed rows are logged + counted in
-    ``export_errors_total{phase="supabase"}`` and the cursor advances
-    past them (drop semantics; quarantine in follow-up)."""
-
-    async def test_batch_failure_runs_per_row_fallback_and_drops_one(self):
-        """Five-row batch, one bad row → 4 succeed, 1 dropped, cursor
-        advances past all five.
-
-        Mirrors the issue scenario: a single FK violation on
-        ``company_id`` (or similar) blows up the COPY transaction; the
-        fallback path commits the other 4 rows individually and drops
-        the bad one.
-        """
-        ts = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
-
-        pids = [uuid.uuid4() for _ in range(5)]
-        bad_pid = pids[2]
-        supa, conn = _make_supa_pool_batch_fails_per_row_passes(bad_pid)
-        rows = [_posting_row(posting_id=pid, ts=ts) for pid in pids]
-
-        before = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-        failed = await _upsert_to_supabase(supa, rows)
-        after = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-
-        # One row failed.
-        assert failed == {bad_pid}
-        # ``export_errors_total{phase="supabase"}`` bumped exactly once.
-        assert after - before == 1.0
-
-        # Per-row fallback ran: 5 INSERT attempts after the batch INSERT.
-        # The batch path issued 2 execute calls (CREATE TEMP + INSERT
-        # which failed), then 5 per-row INSERTs.
-        per_row_calls = [
-            c
-            for c in conn.execute.await_args_list
-            if c.args
-            and "INSERT INTO job_posting" in c.args[0]
-            and "_export_postings" not in c.args[0]
-        ]
-        assert len(per_row_calls) == 5
-
-    async def test_per_row_failure_increments_counter_exactly_once_per_row(self):
-        """The counter must bump once per failed row — not once per
-        retry, not once per batch."""
-        ts = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
-
-        pids = [uuid.uuid4() for _ in range(3)]
-
-        # Every row fails on the per-row path. Simulate a structural
-        # failure (e.g. a NOT NULL constraint on a column the source
-        # always sends NULL for after a Supabase-only schema migration).
-        async def execute(sql, *args):
-            if "CREATE TEMP TABLE" in sql:
-                return
-            raise asyncpg.NotNullViolationError("simulated NOT NULL violation")
-
-        pool, conn = _supa_pool_with_capture()
-        conn.execute = AsyncMock(side_effect=execute)
-
-        rows = [_posting_row(posting_id=pid, ts=ts) for pid in pids]
-
-        before = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-        failed = await _upsert_to_supabase(pool, rows)
-        after = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-
-        assert failed == set(pids)
-        # Exactly 3 increments — one per failed row, not per attempt.
-        assert after - before == 3.0
-
-    async def test_happy_path_does_not_trigger_fallback(self):
-        """Steady-state batch success → no per-row fallback, no
-        counter bumps, return empty failed set."""
-        ts = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
-
-        supa, conn = _supa_pool_with_capture()
-        rows = [_posting_row(posting_id=uuid.uuid4(), ts=ts) for _ in range(3)]
-
-        before = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-        failed = await _upsert_to_supabase(supa, rows)
-        after = _counter_total(export_errors_total, table="job_posting", phase="supabase")
-
-        assert failed == set()
-        assert after == before
-        # Only the batch path executed: CREATE TEMP + INSERT, no per-row
-        # INSERT calls.
-        assert conn.execute.await_count == 2
-
-    async def test_unknown_failure_is_not_misclassified_as_row_poison(self):
-        """Fail closed when an exception has no PostgreSQL SQLSTATE."""
-        ts = datetime(2026, 7, 10, 16, 56, 0, tzinfo=UTC)
-        pool, conn = _supa_pool_with_capture()
-        conn.execute = AsyncMock(side_effect=RuntimeError("unexpected driver failure"))
-
-        with pytest.raises(RuntimeError, match="unexpected driver failure"):
-            await _upsert_to_supabase(pool, [_posting_row(posting_id=uuid.uuid4(), ts=ts)])
-
-        assert conn.execute.await_count == 1
 
 
 class TestTypesensePerDocFallback:

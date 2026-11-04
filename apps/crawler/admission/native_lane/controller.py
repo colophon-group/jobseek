@@ -21,7 +21,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
-from admission.lightpanda_b0.controller import (
+from admission.native_lane.render_diagnostic import certificate_probe
+from admission.native_lane.render_diagnostic import probe as render_probe
+from admission.native_lane.resources import PRICES, allocation, sample
+from admission.native_lane.support import (
     CA_PEM,
     CA_SCALAR,
     POSTGRES_IMAGE,
@@ -35,9 +38,6 @@ from admission.lightpanda_b0.controller import (
     _memory_events,
     _write,
 )
-from admission.native_lane.render_diagnostic import certificate_probe
-from admission.native_lane.render_diagnostic import probe as render_probe
-from admission.native_lane.resources import PRICES, allocation, sample
 from admission.native_lane.workload import CAPTURED, ORIGINS, PROFILES, jobs, workload_sha256
 
 HERE = Path(__file__).resolve().parent

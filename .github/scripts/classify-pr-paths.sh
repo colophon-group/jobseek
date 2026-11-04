@@ -86,23 +86,6 @@ is_feed_reader_path() {
   return 1
 }
 
-is_go_http_pilot_path() {
-  local file="$1"
-
-  [[ "$file" == pilots/go-http-sitemap/* || \
-    "$file" == .github/workflows/crawler-go-sitemap-shadow.yml || \
-    "$file" == .github/workflows/crawler-sitemap-fleet-benchmark.yml || \
-    "$file" == apps/crawler/Dockerfile || \
-    "$file" == apps/crawler/uv.lock || \
-    "$file" == apps/crawler/src/core/__init__.py || \
-    "$file" == apps/crawler/src/core/monitor.py || \
-    "$file" == apps/crawler/src/core/monitors/raw.py || \
-    "$file" == apps/crawler/src/core/monitors/sitemap.py || \
-    "$file" == apps/crawler/src/shared/__init__.py || \
-    "$file" == apps/crawler/src/shared/ssrf.py || \
-    "$file" == apps/crawler/src/shared/tdm.py ]]
-}
-
 # Independent of `code`: company registry-only PRs still change selectable identity.
 is_company_reference_path() {
   local file="$1"
@@ -121,7 +104,6 @@ company_reference=false
 code=false
 crawler_code=false
 feed_reader=false
-go_http_pilot=false
 boards_csv=false
 
 if ! changed_files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)'); then
@@ -152,10 +134,6 @@ while IFS= read -r file; do
     company_reference=true
   fi
 
-  if is_go_http_pilot_path "$file"; then
-    go_http_pilot=true
-  fi
-
   if [[ "$file" == "apps/crawler/data/boards.csv" ]]; then
     boards_csv=true
   fi
@@ -181,7 +159,6 @@ emit "company_reference" "$company_reference"
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
 emit "feed_reader" "$feed_reader"
-emit "go_http_pilot" "$go_http_pilot"
 emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"
 emit "is_pr" "true"

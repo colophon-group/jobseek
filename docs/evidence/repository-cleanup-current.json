@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "updated_at_utc": "2026-11-03T21:56:38.990282+00:00",
+  "status": "Prepared for PR validation; not installed",
+  "audit_base": "ac28bba88bc9518bb5b8f5e974ce3928752dad76",
+  "scope": {
+    "tracked_files": 6734,
+    "source_and_configuration_files": 4668,
+    "areas": [
+      "crawler Python/Go/contracts",
+      "web",
+      "Murmur shim/pipelines/trace viewer",
+      "MCP package",
+      "deployment",
+      "scripts and workflows",
+      "dependencies",
+      "experiment artifacts"
+    ]
+  },
+  "removed": [
+    "Superseded Go HTTP sitemap pilot, Python shadow/fleet benchmark and associated CI; production native sitemap module retained.",
+    "Obsolete Lightpanda density/Chromium comparator and B0 controller; current native-lane comparison retained, resource/TLS helpers extracted unchanged.",
+    "Uncalled Python reconciliation, schema mutation/bootstrap, location repair, relisted repair, currency refresh and renderer client implementations already delegated to Go.",
+    "Unused LLM batch/provider subsystem and sixteen now-unused locked packages; active company metadata and job enrichment remain.",
+    "Unreferenced frontend announcement/upgrade banners and old company OG wrapper; active renderer and icon security tests remain.",
+    "Historical JEV experiment scripts/results; two actively consumed gold fixtures moved alongside search tests and production policy retained byte-for-byte.",
+    "Broken MCP HTTP script targeting nonexistent dist/http.js; supported stdio and hosted handler remain.",
+    "Sixteen superseded checkpoint bodies consolidated into pointers to current guidance and immutable Git history.",
+    "Unused Supabase mirror write helpers, their optional Python mirror/web pools and obsolete tests. Local sync and real native parity remain; legacy DATABASE_URL is retained only for the SSRF host-deny contract.",
+    "Unused Supabase pool gauges and obsolete batch/mirror activation documentation; current overview points to native ownership."
+  ],
+  "production_renderer": {
+    "path": "apps/lightpanda",
+    "workflow": ".github/workflows/lightpanda-renderer.yml",
+    "version": "1.1.0-nightly.11582+592b76832",
+    "upstream_source": "592b768329d0acd1428c050e012934e257427234",
+    "oci_index": "sha256:ed80bcf2f771b0c7da1b2937bd6c6e75e1a0199c31453cf5fa00ef4e0be88e57",
+    "verification": "Official release asset digests, OCI manifests/layers and executable bytes match; both native Linux architecture integration suites are required before deployment.",
+    "installed": false
+  },
+  "preserved_contracts": [
+    "All registry CSV bytes and enabled boards",
+    "SQL migrations and native rollback",
+    "Canonical/ownership/publisher/security boundaries",
+    "Current native-lane corpus and comparison",
+    "No provider jobs or production schedule/counter changes",
+    "Useful offline Python workspace, labeller and control entry points",
+    "Production search query policy"
+  ],
+  "conditional_candidates": [
+    {
+      "candidate": "Python core/provider implementations",
+      "decision": "Retained: actively called by offline workspace and Murmur; removal requires a separately designed native probe interface."
+    },
+    {
+      "candidate": "Paddle and Stripe billing",
+      "decision": "Retained: both have current lifecycle callers; removing either requires a product/data migration decision."
+    },
+    {
+      "candidate": "Two active Next.js patch versions",
+      "decision": "Retained: shim and web have independent consumers and required patches; align during a verified framework upgrade."
+    },
+    {
+      "candidate": "Embedded Lua and SQL copies",
+      "decision": "Retained: native binary embedding, immutable migration snapshots and test parity require the copies."
+    },
+    {
+      "candidate": "Ownership and first-retirement code",
+      "decision": "Retained: active fencing, cold rollback and detail projection contracts."
+    },
+    {
+      "candidate": "Security tombstone server actions",
+      "decision": "Retained: cached action IDs must continue to reject retired access paths."
+    },
+    {
+      "candidate": "Retired enrichment SQL table and historical renderer mode labels",
+      "decision": "Retained as persisted-schema/release compatibility contracts; removal needs a separately verified database/rollback migration."
+    },
+    {
+      "candidate": "PostingSchema and legacy DATABASE_URL field",
+      "decision": "Retained: current native live parity and CDC tests consume the schema snapshot; the SSRF guard consumes the legacy URL as a host-deny input. No mirror writer/pool remains."
+    }
+  ],
+  "local_validation": {
+    "ci_workflow_contracts": "98 passed",
+    "python_focused": "257 passed, 24 skipped",
+    "agent_required": "600 passed including export-contract checks",
+    "python_collection": "14069 collected without errors",
+    "web_focused": "46 passed in seven files",
+    "web_typecheck": "passed",
+    "renderer_go_race": "passed",
+    "renderer_go_vet": "passed",
+    "native_exporter_go": "passed",
+    "renderer_pin_contract": "passed",
+    "mcp_package": "passed",
+    "agent_contract_files": 45,
+    "docs_index": "passed",
+    "i18n": "passed; zero missing de/fr/it",
+    "ruff": "passed",
+    "pyright": "passed with shared interpreter",
+    "local_sync_projection_pool_ssrf": "285 focused tests passed after mirror retirement"
+  },
+  "delivery": "PR and installed release evidence will be recorded after required checks and supported deployment; this file alone is not production acceptance."
+}

@@ -12,12 +12,18 @@ Typesense:
 2. **Queue authority** (`go/ordinary-queue/`) — claims, leases, canonical persistence and scheduling.
 3. **Exporter** (`go/typesense-exporter/`) — local PostgreSQL CDC to Typesense.
 4. **R2 drain** (`go/r2-drain/`) — description upload with durable claims and retry.
-5. **Offline tools** (`src/core/`, workspace and labeller) — Python extraction, parity and control.
+5. **Renderer** (`../lightpanda/`) — independent production Lightpanda service.
+6. **Offline tools** (`src/core/`, workspace and labeller) — Python extraction, parity and control.
 
 See the [current migration checkpoint](../27-go-lightpanda-continuation-plan.md)
 for installed identities and verification scope.
 
 ## Key Files
+
+The Python tree below serves offline workspace/labeller tooling and retained
+parity fixtures. Production processing and maintenance are the Go modules above;
+the `crawler` compatibility CLI delegates supported native commands to them.
+
 
 ```
 src/
@@ -54,9 +60,6 @@ src/
 │   ├── salary_extract.py  # Heuristic salary parsing from HTML
 │   ├── monitor.py         # monitor_one, monitor_one_stream dispatchers
 │   └── scrape.py          # scrape_one dispatcher
-├── workers/
-│   ├── pipeline.py        # Discovery coroutines, claim from Redis, dispatch
-│   └── r2_drain.py        # Producer-consumer: descriptions -> R2
 ├── processing/
 │   ├── board.py           # Streaming monitor processing, timestamp gone detection
 │   ├── scrape.py          # Single-job scraping, fallback chain
@@ -68,10 +71,9 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # Commit-safe Typesense CDC
+├── typesense_projection.py # Offline canonical projection/parity helpers
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
 ├── sync.py                # CSV -> local Postgres, then Redis + Typesense
-├── bootstrap.py           # Non-executable rollback helpers for the retired mirror
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
 ├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)

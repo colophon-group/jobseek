@@ -11,11 +11,11 @@ import {
   validateJevAnswers,
 } from "./query-intent";
 
-const experimentPath = (file: string) => resolve(process.cwd(), "../../docs/experiments", file);
+const fixturePath = (file: string) => resolve(process.cwd(), "src/lib/search/testdata", file);
 
 describe("search-query Jev contract", () => {
   it("keeps the deployed prompt and catalog identical to the evaluated freeze", () => {
-    const freeze = JSON.parse(readFileSync(experimentPath("jev-routing-discard-catalog7-freeze-2026-09-24.json"), "utf8"));
+    const freeze = JSON.parse(readFileSync(fixturePath("jev-policy-freeze.json"), "utf8"));
     const hash = createHash("sha256").update(JSON.stringify({
       policy: policy.policy,
       categories: policy.categories,
@@ -28,7 +28,7 @@ describe("search-query Jev contract", () => {
   });
 
   it("records the frozen holdout scores and leaves informational queries untouched", () => {
-    const run = JSON.parse(readFileSync(experimentPath("jev-routing-discard-catalog7-holdout-2026-09-24.json"), "utf8"));
+    const run = JSON.parse(readFileSync(fixturePath("jev-policy-holdout.json"), "utf8"));
     expect(run.records).toHaveLength(16);
     expect(run.filterExact).toBe(16);
     expect(run.discardExact).toBe(16);

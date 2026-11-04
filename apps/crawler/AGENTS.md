@@ -33,6 +33,7 @@ Experiment in a disposable worktree; preserve unrelated data edits.
 - `go/ordinary-worker/`: production monitor/detail execution through Go HTTP/API
   or self-hosted Lightpanda. `go/ordinary-queue/`: claims, fencing, scheduling,
   canonical persistence and route admission. `src/lua/`: atomic Redis operations.
+- `../lightpanda/`: independently deployed production renderer.
 - `go/lightpanda-b0-executor/`: native browser execution and detail preparation.
   `go/job-enrichment/`: shared enrichment; `go/pdf-text/`: document extraction.
 - Local Postgres is authoritative. `go/typesense-exporter/` owns Typesense

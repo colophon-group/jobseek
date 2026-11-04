@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import src.bootstrap as bootstrap
 import src.indexnow as indexnow
 
 SQL_METHODS = {"execute", "executemany", "fetch", "fetchrow", "fetchval"}
@@ -52,7 +51,6 @@ def test_crawler_sql_calls_do_not_use_f_string_templates():
     violations: list[str] = []
     for path in (
         _source_root() / "typesense_projection.py",
-        _source_root() / "bootstrap.py",
         _source_root() / "indexnow.py",
     ):
         tree = ast.parse(path.read_text(), filename=str(path))
@@ -72,7 +70,6 @@ def test_sql_template_constants_do_not_use_f_strings():
     violations: list[str] = []
     for path in (
         _source_root() / "typesense_projection.py",
-        _source_root() / "bootstrap.py",
         _source_root() / "indexnow.py",
     ):
         tree = ast.parse(path.read_text(), filename=str(path))
@@ -89,28 +86,6 @@ def test_sql_template_constants_do_not_use_f_strings():
                     )
 
     assert violations == []
-
-
-def test_bootstrap_sql_templates_match_column_contracts():
-    board_columns = ", ".join(bootstrap._BOARD_COLUMNS)
-    posting_columns = ", ".join(bootstrap._POSTING_COLUMNS_SUPA)
-
-    assert "SELECT " + board_columns + " FROM job_board ORDER BY id" == bootstrap._BOARD_SELECT_SQL
-    assert "INSERT INTO job_board (" + board_columns + ")" in bootstrap._IMPORT_BOARDS_UPSERT_SQL
-    assert "SELECT " + board_columns + " FROM _import_boards" in bootstrap._IMPORT_BOARDS_UPSERT_SQL
-    assert "id = EXCLUDED.id" not in bootstrap._IMPORT_BOARDS_UPSERT_SQL
-
-    assert (
-        "SELECT " + posting_columns + " FROM job_posting ORDER BY id OFFSET $1 LIMIT $2"
-    ) == bootstrap._POSTING_SELECT_BATCH_SQL
-    assert (
-        "INSERT INTO job_posting (" + posting_columns + ")" in bootstrap._IMPORT_POSTINGS_UPSERT_SQL
-    )
-    assert (
-        "SELECT " + posting_columns + " FROM _import_postings"
-        in bootstrap._IMPORT_POSTINGS_UPSERT_SQL
-    )
-    assert "id = EXCLUDED.id" not in bootstrap._IMPORT_POSTINGS_UPSERT_SQL
 
 
 def test_indexnow_company_select_template_matches_hash_fields():

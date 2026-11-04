@@ -137,7 +137,7 @@ def _patch_local_writes(monkeypatch, events: list[str]) -> None:
     )
 
 
-async def test_default_sync_never_opens_legacy_mirror_and_commits_before_redis(
+async def test_local_sync_commits_before_redis_and_ignores_legacy_credential_env(
     monkeypatch,
 ) -> None:
     events: list[str] = []
@@ -147,36 +147,22 @@ async def test_default_sync_never_opens_legacy_mirror_and_commits_before_redis(
     monkeypatch.setattr(sync, "create_local_pool", AsyncMock(return_value=_Pool(local_conn)))
     monkeypatch.setattr(sync, "get_typesense_client", lambda: None)
 
-    async def forbidden_mirror_pool():
+    async def forbidden_external_pool():
         raise AssertionError("default sync must not open DATABASE_URL")
 
-    monkeypatch.setattr(sync, "create_pool", forbidden_mirror_pool)
+    monkeypatch.setattr("src.db._create_pool", forbidden_external_pool)
 
     async def apply_redis(_effects: sync.BoardSyncEffects) -> None:
         assert "local_commit" in events
         events.append("redis")
 
     monkeypatch.setattr(sync, "apply_board_redis_effects", apply_redis)
-    monkeypatch.setattr(sync.settings, "database_url", "postgresql://configured-but-not-opted-in")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://configured-but-not-opted-in")
 
     await sync.run_sync()
 
     assert events.index("local_commit") < events.index("redis")
     assert events[:3] == ["local_index", "local_tx_enter", "local_lookups"]
-
-
-async def test_explicit_legacy_mode_without_credential_fails_before_local_writes(
-    monkeypatch,
-) -> None:
-    _patch_inputs(monkeypatch)
-    create_local_pool = AsyncMock()
-    monkeypatch.setattr(sync, "create_local_pool", create_local_pool)
-    monkeypatch.setattr(sync.settings, "database_url", "")
-
-    with pytest.raises(RuntimeError, match="--legacy-mirror requires DATABASE_URL"):
-        await sync.run_sync(legacy_mirror=True)
-
-    create_local_pool.assert_not_awaited()
 
 
 async def test_local_failure_rolls_back_and_blocks_every_external_effect(monkeypatch) -> None:
@@ -192,10 +178,8 @@ async def test_local_failure_rolls_back_and_blocks_every_external_effect(monkeyp
         raise RuntimeError("local write failed")
 
     apply_redis = AsyncMock()
-    create_mirror_pool = AsyncMock()
     monkeypatch.setattr(sync, "sync_companies", fail_company_write)
     monkeypatch.setattr(sync, "apply_board_redis_effects", apply_redis)
-    monkeypatch.setattr(sync, "create_pool", create_mirror_pool)
 
     with pytest.raises(RuntimeError, match="local write failed"):
         await sync.run_sync()
@@ -203,7 +187,6 @@ async def test_local_failure_rolls_back_and_blocks_every_external_effect(monkeyp
     assert "local_rollback" in events
     assert "local_commit" not in events
     apply_redis.assert_not_awaited()
-    create_mirror_pool.assert_not_awaited()
 
 
 def test_crawler_sync_cli_cannot_select_legacy_mirror(monkeypatch) -> None:
@@ -222,73 +205,6 @@ def test_normal_typesense_sync_cannot_repopulate_retired_watchlist_index() -> No
     assert "sync_watchlists_typesense" not in orchestrator_source
     assert "purge_retired_watchlist_index(" not in orchestrator_source
     assert "create_web_pool" not in run_source
-
-
-async def test_legacy_mirror_failure_is_loud_and_blocks_redis(monkeypatch) -> None:
-    events: list[str] = []
-    _patch_inputs(monkeypatch)
-    _patch_local_writes(monkeypatch, events)
-    local_conn = _Connection(events, "local")
-    mirror_conn = _Connection(events, "mirror")
-    monkeypatch.setattr(sync, "create_local_pool", AsyncMock(return_value=_Pool(local_conn)))
-    monkeypatch.setattr(sync, "create_pool", AsyncMock(return_value=_Pool(mirror_conn)))
-    monkeypatch.setattr(sync, "get_typesense_client", lambda: None)
-    monkeypatch.setattr(sync.settings, "database_url", "postgresql://configured")
-
-    async def fail_mirror(*args, **kwargs) -> None:
-        del args, kwargs
-        assert "local_commit" in events
-        events.append("mirror_failed")
-        raise RuntimeError("mirror unavailable")
-
-    apply_redis = AsyncMock()
-    monkeypatch.setattr(sync, "sync_legacy_mirror", fail_mirror)
-    monkeypatch.setattr(sync, "apply_board_redis_effects", apply_redis)
-
-    with pytest.raises(RuntimeError, match="mirror unavailable"):
-        await sync.run_sync(legacy_mirror=True)
-
-    assert events.index("local_commit") < events.index("mirror_failed")
-    apply_redis.assert_not_awaited()
-
-
-async def test_legacy_board_mirror_uses_remote_schema_disable_query() -> None:
-    local_conn = AsyncMock()
-    mirror_conn = AsyncMock()
-    local_conn.fetch.return_value = [
-        {
-            "id": "00000000-0000-0000-0000-000000000001",
-            "company_id": "00000000-0000-0000-0000-000000000002",
-            "board_slug": "acme-jobs",
-            "board_url": "https://acme.test/jobs",
-            "crawler_type": "greenhouse",
-            "metadata": {},
-        }
-    ]
-
-    await sync._mirror_boards_to_supabase(
-        local_conn,
-        mirror_conn,
-        ["https://acme.test/jobs"],
-        (
-            (
-                "00000000-0000-0000-0000-000000000001",
-                "00000000-0000-0000-0000-000000000002",
-            ),
-        ),
-    )
-
-    statements = [call.args[0] for call in mirror_conn.execute.await_args_list]
-    assert statements == [
-        sync._MIRROR_BOARDS_SUPA,
-        sync._REALIGN_BOARD_POSTING_COMPANIES_SUPA,
-        sync._DISABLE_REMOVED_BOARDS,
-    ]
-    rehome_call = mirror_conn.execute.await_args_list[1]
-    assert rehome_call.args[1] == ["00000000-0000-0000-0000-000000000001"]
-    assert rehome_call.args[2] == ["00000000-0000-0000-0000-000000000002"]
-    assert "quarantined_at" not in sync._DISABLE_REMOVED_BOARDS
-    assert "quarantined_at" in sync._DISABLE_REMOVED_BOARDS_LOCAL
 
 
 async def test_typesense_local_boundary_runs_only_after_local_commit(monkeypatch) -> None:

@@ -1039,7 +1039,7 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
 
 
 def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
-    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text()
+    dockerfile = (ROOT / "apps/lightpanda/Dockerfile").read_text()
     stages = set(re.findall(r"(?m)^FROM .+ AS ([\w-]+)$", dockerfile))
     required = set(re.findall(r"COPY --from=([\w-]+)", dockerfile)) - stages
     assert required == {
@@ -1051,7 +1051,7 @@ def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
     }
     calls = 0
     for name in (
-        "go-lightpanda-pilot.yml",
+        "lightpanda-renderer.yml",
         "deploy-lightpanda-renderer.yml",
         "crawler-native-whole-lane.yml",
     ):
@@ -1065,7 +1065,7 @@ def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
             supplied = set(re.findall(r"--build-context\s+([\w-]+)=", command))
             assert required <= supplied, (name, sorted(required - supplied))
         calls += len(commands)
-    assert calls == 6
+    assert calls == 5  # The retired density image no longer has a build caller.
     publish_contexts = re.search(
         r"(?m)^          build-contexts: \|\n((?:            [^\n]+\n)+)",
         WORKFLOW.read_text(),
@@ -1387,7 +1387,7 @@ def test_renderer_library_contexts_include_embedded_assets() -> None:
     import fnmatch
     import shlex
 
-    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text()
+    dockerfile = (ROOT / "apps/lightpanda/Dockerfile").read_text()
     checked = 0
     for context in ("api-sniffer-monitor", "dom-detail", "jsonld-detail", "publisher-policy"):
         library = ROOT / "apps/crawler/go" / context
@@ -1415,7 +1415,7 @@ def test_renderer_library_contexts_include_embedded_assets() -> None:
 
 
 def test_service_builder_is_patch_and_digest_pinned() -> None:
-    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
+    dockerfile = (ROOT / "apps/lightpanda/Dockerfile").read_text(encoding="utf-8")
     assert re.search(
         r"^ARG GO_IMAGE=docker\.io/library/"
         r"golang:1\.26\.4-alpine3\.22@sha256:[0-9a-f]{64}$",
@@ -1429,11 +1429,9 @@ def test_service_builder_is_patch_and_digest_pinned() -> None:
 
 
 def test_service_child_identity_boundary_is_fixed_and_fail_closed() -> None:
-    harness = (ROOT / "pilots/go-lightpanda/harness.go").read_text(encoding="utf-8")
-    attributes = (ROOT / "pilots/go-lightpanda/process_attributes_linux.go").read_text(
-        encoding="utf-8"
-    )
-    isolation = (ROOT / "pilots/go-lightpanda/child_isolation_linux.go").read_text(encoding="utf-8")
+    harness = (ROOT / "apps/lightpanda/harness.go").read_text(encoding="utf-8")
+    attributes = (ROOT / "apps/lightpanda/process_attributes_linux.go").read_text(encoding="utf-8")
+    isolation = (ROOT / "apps/lightpanda/child_isolation_linux.go").read_text(encoding="utf-8")
     assert 'lightpandaPrivilegeTrampoline = "/usr/bin/setpriv"' in harness
     assert '"--inh-caps=-all"' in harness
     assert '"--ambient-caps=-all"' in harness
