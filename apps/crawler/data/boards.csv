@@ -4969,6 +4969,7 @@ moderna,moderna-main,https://modernatx.wd1.myworkdayjobs.com/en-US/M_tx,workday,
 modernfi,modernfi-careers,https://api.ashbyhq.com/posting-api/job-board/modernfi,ashby,"{""token"": ""modernfi""}",skip,
 modernizing-medicine-inc,modernizing-medicine-inc-workday,https://modmed.wd501.myworkdayjobs.com/ModMed12,workday,"{""company"": ""modmed"", ""wd_instance"": ""wd501"", ""site"": ""ModMed12""}",workday,
 moderntreasury,moderntreasury-ashby,https://jobs.ashbyhq.com/moderntreasury,ashby,"{""token"": ""moderntreasury""}",skip,
+modine,modine-careers,https://careers.modine.com/,rss,"{""preset"": ""successfactors""}",skip,
 modulr,modulr-greenhouse,https://job-boards.greenhouse.io/modulrfinance,greenhouse,"{""token"": ""modulrfinance""}",skip,
 modus-create,modus-create-greenhouse,https://job-boards.greenhouse.io/moduscreate,greenhouse,"{""token"": ""moduscreate""}",skip,
 moelis,moelis-careers-taleo,https://moelis-careers.tal.net/candidate/jobboard/vacancy/2/adv/,dom,"{""url_filter"": ""/opp/"", ""render"": true}",dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=section"", ""field"": ""title""}, {""text"": ""Job Description"", ""offset"": 1, ""field"": ""description"", ""html"": true}], ""render"": true}"
