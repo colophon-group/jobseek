@@ -19,6 +19,33 @@ Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented 
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.
 
+## Renderer zero-swap maintenance
+
+The [renderer host-policy workflow](../.github/workflows/bootstrap-lightpanda-renderer-host.yml)
+has a `repair-zero-swap` action for an exact running renderer whose cgroup v2
+`memory.swap.max` leaf reads `max` while its published contract requires `0`.
+This is a one-time maintenance action, not a renderer deployment. It takes the
+existing host-policy lock followed by the renderer lifecycle lock; it does not
+restart the container, update an image, or change crawler services.
+
+Before dispatch, retain a fresh read-only record in protected local storage of the host
+machine-ID digest, active release ID, immutable image ID, full container ID,
+host PID, installed `release.env` and `verify.py` digests, and the SHA-256 of
+the unified `/proc/<PID>/cgroup` path **including its leading slash**. Supply
+those exact values as the workflow's `expected_*` inputs. Review the source
+commit, current `main`, active renderer identity, host overlap, and a finite
+execution window separately. A merged PR or the presence of credentials does
+not authorize the host write.
+
+The action refuses a changed identity, a non-exact leaf, an unavailable cgroup
+or PID capability, or any initial swap value other than `max`. It writes `0`
+only once to that exact leaf, then reads the host and container values and runs
+the installed published `running --allow-active` verifier, including its
+negative TLS/client probe. The workflow retains bounded raw stdout and stderr
+as an artifact. If the write result or later verification is
+uncertain, preserve that artifact and obtain new read-only evidence and a new
+decision before any further action; do not retry or infer a rollback.
+
 ## Provider Lifecycle Baseline
 
 [`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the
