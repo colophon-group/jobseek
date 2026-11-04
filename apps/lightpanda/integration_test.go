@@ -17,11 +17,11 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
 
-const lightpandaPinnedDarwinArm64SHA256 = "39b2d861779e6b99e42108328e0838d3698bc73699cd0b09e21d7001301d058a"
+const lightpandaPinnedDarwinArm64SHA256 = "e988f663d5a6a7d9b7d02094d2cf4226731fa3850929c5f1088f3f3f4515164b"
 
 var lightpandaPinnedSHA256 = map[string]string{
-	"amd64": "71ec3bd077e29a13f14b76a97a4a19d1a0fab8153b9af9490d105db4a4ee5118",
-	"arm64": "4e1a6e0954c2843eb8ccb08e4a20766e5358bde43b4ca0e25803e4bc7acaf627",
+	"amd64": "e7ed89bddaadf3da70d2e6092b498181d66a45fcd07353302c0c2724f668e16e",
+	"arm64": "3a88766911febed49a34d620818f85e29768e0f3a766551bab2bf249ed7998fb",
 }
 
 func TestLightpandaIntegration(t *testing.T) {
