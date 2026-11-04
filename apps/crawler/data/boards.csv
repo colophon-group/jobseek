@@ -4728,6 +4728,7 @@ mb-f,mb-f-main,https://www.mbandf.com/jobs,dom,"{""render"": false, ""url_filter
 mbc,mbc-jobup,https://www.mbc.ch/jobup,dom,"{""link_selector"": ""a[href*=\""jobup.ch\""]""}",json-ld,
 mcadams,mcadams-greenhouse,https://job-boards.greenhouse.io/mcadams,greenhouse,"{""token"": ""mcadams""}",skip,
 mccullough-robertson,mccullough-robertson-greenhouse,https://job-boards.greenhouse.io/mcculloughrobertson,greenhouse,"{""token"": ""mcculloughrobertson""}",skip,
+mcdermott,mcdermott-careers,https://edsv.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 mcdonalds,mcdonalds-at,https://careers.smartrecruiters.com/McDonaldsOesterreich,smartrecruiters,"{""token"": ""McDonaldsOesterreich""}",smartrecruiters,
 mcdonalds,mcdonalds-au-restaurants,https://careers.mcdonalds.com.au/jobs,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,"{""render"":false}"
 mcdonalds,mcdonalds-be,https://www.workatmcdo.be/,sitemap,"{""url_filter"": ""/job/P8-""}",json-ld,
