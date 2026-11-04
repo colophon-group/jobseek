@@ -242,12 +242,12 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert deploy_step["env"]["GHCR_PULL_TOKEN"] == "${{ github.token }}"
     assert jobs["build"]["permissions"]["packages"] == "write"
     assert jobs["preflight"]["permissions"] == {"contents": "read"}
-    assert jobs["company-og"]["needs"] == "preflight"
+    assert "company-og" not in jobs
     assert jobs["build"]["needs"] == "preflight"
     assert jobs["deploy"]["permissions"]["packages"] == "read"
     assert "actions" not in jobs["deploy"]["permissions"]
     assert jobs["promote"]["permissions"]["packages"] == "write"
-    assert set(jobs["deploy"]["needs"]) == {"preflight", "company-og", "build"}
+    assert set(jobs["deploy"]["needs"]) == {"preflight", "build"}
     assert set(jobs["promote"]["needs"]) == {"build", "deploy"}
 
     env_start = script.index('cat > "$ENV_FILE"')

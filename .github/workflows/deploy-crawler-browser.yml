@@ -63,27 +63,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: bash .github/scripts/resolve-crawler-deploy-revisions.sh
 
-  company-og:
-    needs: preflight
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Ensure exact-revision company OG coverage
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          TARGET_REVISION: ${{ github.sha }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: bash .github/scripts/ensure-company-og-prewarm.sh
-
   build:
     needs: preflight
     runs-on: ubuntu-latest
@@ -239,7 +218,7 @@ jobs:
           done
 
   deploy:
-    needs: [preflight, company-og, build]
+    needs: [preflight, build]
     runs-on: ubuntu-latest
     environment: production
     permissions:
