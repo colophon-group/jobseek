@@ -95,7 +95,9 @@ jobs:
         run: python3 scripts/test-migrate-secrets-to-doppler.py
 
       - name: Test native crawler ingress metrics contract
-        run: python3 -m unittest discover -s scripts -p 'test_native_ingress_metrics.py'
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_native_ingress_metrics.py'
+          python3 -m unittest discover -s scripts -p 'test_ingress_stage_order.py'
 
       - name: Check dates on changed blog content
         if: github.event_name == 'pull_request'

@@ -380,6 +380,30 @@ if [[ "$role" == postgresql ]]; then
       bash --noprofile --norc "${payloads[1]}" stage
   fi
 fi
+# PostgreSQL staging can restart the exporter. Wait only for natural listener
+# recovery; the complete strict conformance check below remains mandatory.
+if [[ "$role" == crawler ]]; then
+  python3 - <<'NATIVE_LISTENER_RECOVERY'
+import socket
+import time
+
+deadline = time.monotonic() + 90
+while True:
+    ready = True
+    for port in (9093, 9094, 9104):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.25):
+                pass
+        except OSError:
+            ready = False
+    if ready:
+        break
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise SystemExit("ERROR: native crawler listeners did not recover within 90 seconds")
+    time.sleep(min(1, remaining))
+NATIVE_LISTENER_RECOVERY
+fi
 python3 "${payloads[3]}" \
   --role "$role" \
   --crawler-private-ip "$crawler_private_ip" \
