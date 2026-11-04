@@ -56,6 +56,7 @@ jobs:
             scripts/jobseek-ingress-conformance.py \
             scripts/manage-hetzner-ingress.py \
             deploy/networking/justup-feed-readonly-role.py
+          python3 -m unittest discover -s scripts -p 'test_ingress_stage_order.py'
           cd apps/crawler
           uv run --frozen pytest \
             tests/test_ingress_baseline.py \
@@ -91,10 +92,6 @@ jobs:
     environment: production
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [crawler, postgresql, typesense]
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
@@ -112,7 +109,7 @@ jobs:
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
       - name: Audit crawler without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'crawler' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
@@ -122,7 +119,7 @@ jobs:
           crawler
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
       - name: Audit PostgreSQL without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'postgresql' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -132,7 +129,7 @@ jobs:
           postgresql
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
       - name: Audit Typesense without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'typesense' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -141,21 +138,10 @@ jobs:
           audit
           typesense
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
-      - name: Stage crawler host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'crawler' }}
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
-          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
-        run: >-
-          bash deploy/networking/run-remote.sh
-          stage
-          crawler
-          "${{ github.sha }}"
-          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
-          "$JOBSEEK_CRAWLER_PRIVATE_IP"
-          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      # PostgreSQL replacement interrupts native clients. Finish data services
+      # before checking crawler listeners; the host rollback timers stay armed.
       - name: Stage PostgreSQL host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        if: ${{ inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -168,7 +154,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Stage Typesense host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'typesense' }}
+        if: ${{ inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -180,8 +166,21 @@ jobs:
           "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Stage crawler host policy
+        if: ${{ inputs.action == 'apply' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          stage
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed crawler host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'crawler' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
@@ -194,7 +193,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed PostgreSQL host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -207,7 +206,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed Typesense host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'typesense' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
