@@ -477,10 +477,209 @@ def test_zero_swap_repair_pidfd_liveness_guard(monkeypatch, poll_events):
 
 
 def test_zero_swap_repair_bounds_subprocess_output_and_timeout():
-    command = [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'A' * 10000)"]
+    command = [
+        sys.executable,
+        "-c",
+        "import sys; sys.stdout.buffer.write(b'A' * 10000)",
+    ]
     with pytest.raises(swap_repair.RepairRefused, match="command_output_overflow"):
         swap_repair.run_bounded(command, timeout=5, cap=8192)
     start = time.monotonic()
     with pytest.raises(swap_repair.RepairRefused, match="command_timeout"):
         swap_repair.run_bounded([sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.1)
     assert time.monotonic() - start < 2
+
+
+@pytest.mark.parametrize(
+    ("before", "drift_at", "readback", "passes", "writes"),
+    [
+        ("max", 0, True, True, 1),
+        ("0", 0, True, True, 0),
+        ("1", 0, True, False, 0),
+        ("max", 2, True, False, 0),
+        ("max", 3, True, False, 1),
+        ("max", 0, False, False, 1),
+    ],
+)
+def test_candidate_swap_enforcement(monkeypatch, before, drift_at, readback, passes, writes):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(swap_repair.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        swap_repair.pwd, "getpwnam", lambda _: SimpleNamespace(pw_uid=1000, pw_gid=1000)
+    )
+    monkeypatch.setattr(
+        swap_repair,
+        "docker_identity",
+        lambda: {
+            "id": "c" * 64,
+            "running": True,
+            "pid": 2417,
+            "image": "sha256:" + "d" * 64,
+        },
+    )
+    monkeypatch.setattr(swap_repair, "read_exact_file", lambda *_a, **_k: b"bound bytes")
+    monkeypatch.setattr(swap_repair, "cgroup_relative_path", lambda *_a: "/docker")
+    calls = []
+
+    def identity(*_args, **kwargs):
+        assert kwargs == {"candidate": True}
+        calls.append(True)
+        return ("/changed" if len(calls) == drift_at else "/docker", "12")
+
+    monkeypatch.setattr(swap_repair, "check_identity", identity)
+    monkeypatch.setattr(swap_repair.os, "pidfd_open", lambda _pid: 13, raising=False)
+    monkeypatch.setattr(swap_repair.os, "close", lambda _fd: None)
+    monkeypatch.setattr(swap_repair, "require_pidfd_alive", lambda _fd: None)
+    monkeypatch.setattr(swap_repair, "open_cgroup_leaf", lambda _: (10, 11, 12))
+    monkeypatch.setattr(swap_repair, "assert_leaf_identity", lambda *_a: None)
+    values = {11: "1073741824", 12: before}
+    monkeypatch.setattr(swap_repair, "read_scalar", lambda fd: values[fd])
+    monkeypatch.setattr(swap_repair.os, "lseek", lambda *_a: 0)
+    attempts = []
+
+    def write(fd, value):
+        attempts.append((fd, value))
+        values[fd] = "0"
+        return len(value)
+
+    monkeypatch.setattr(swap_repair.os, "write", write)
+
+    def command(argv, **_kwargs):
+        assert argv[:6] == ["docker", "exec", "--user", "10001:10001", "c" * 64, "cat"]
+        body = b"1073741824\n" if argv[-1].endswith("memory.max") else b"0\n"
+        return swap_repair.CommandResult(0 if readback else 1, body, b"")
+
+    monkeypatch.setattr(swap_repair, "run_bounded", command)
+    if passes:
+        result = swap_repair.enforce_candidate_zero_swap("sha-" + "a" * 40 + "-r123a1", "c" * 64)
+        assert result["status"] == "passed" and result["hostSwapMax"] == "0"
+        assert result["writeAttempted"] == bool(writes)
+    else:
+        with pytest.raises(swap_repair.RepairRefused):
+            swap_repair.enforce_candidate_zero_swap("sha-" + "a" * 40 + "-r123a1", "c" * 64)
+    assert attempts == [(12, b"0\n")] * writes
+
+
+def test_candidate_release_identity_does_not_adopt_active_generation(monkeypatch, tmp_path):
+    import os
+
+    release_id = "sha-" + "a" * 40 + "-r123a1"
+    generation = tmp_path / "releases" / release_id
+    generation.mkdir(parents=True)
+    env = generation / "release.env"
+    env.write_text(
+        f"SOURCE_COMMIT={'a' * 40}\nRELEASE_ID={release_id}\nRENDERER_RELEASE_DIR={generation}\n"
+        f"RENDERER_IMAGE_REF=ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:{'b' * 64}\n"
+    )
+    env.chmod(0o600)
+    verifier = generation / "verify.py"
+    verifier.write_text("not executed\n")
+    verifier.chmod(0o555)
+    expected = {
+        "release_id": release_id,
+        "env_sha": swap_repair.sha256(env.read_bytes()),
+        "verifier_sha": swap_repair.sha256(verifier.read_bytes()),
+    }
+    monkeypatch.setattr(swap_repair, "ROOT", tmp_path)
+    monkeypatch.setattr(swap_repair, "ACTIVE", tmp_path / "absent-active")
+    assert swap_repair.release_identity(
+        expected, os.getuid(), os.getgid(), candidate=True
+    ).endswith("b" * 64)
+    with pytest.raises(FileNotFoundError):
+        swap_repair.release_identity(expected, os.getuid(), os.getgid())
+    env.write_text(env.read_text().replace("b" * 64, "c" * 64))
+    with pytest.raises(swap_repair.RepairRefused, match="release_environment_drift"):
+        swap_repair.release_identity(expected, os.getuid(), os.getgid(), candidate=True)
+
+
+def test_installer_enforces_each_new_leaf_before_verification():
+    source = Path(__file__).with_name("install-host.sh").read_text()
+    first = source.index('sudo -n "$POLICY" enforce-candidate-zero-swap')
+    assert source.index('up --detach --no-deps "$SERVICE"') < first
+    assert first < source.index('first_verified_id="$(python3')
+    restart = source.index('docker restart --time 30 "$candidate_container_id"')
+    second = source.index('sudo -n "$POLICY" enforce-candidate-zero-swap', restart)
+    assert restart < second < source.index("sleep 20", second)
+    assert source.index("flock -w 900 7") < first
+    assert source.index('acquire_renderer_lock "$ROOT/renderer.lock"') < first
+    assert first < source.index('mv -Tf "$active_candidate" "$ACTIVE"')
+
+
+def test_candidate_policy_pins_root_owned_helper():
+    import hashlib
+
+    policy = Path(__file__).with_name("network-policy.py").read_text()
+    digest = hashlib.sha256(Path(__file__).with_name("repair-swap.py").read_bytes()).hexdigest()
+    assert f'SWAP_HELPER_SHA256 = "{digest}"' in policy
+    bootstrap = Path(__file__).with_name("bootstrap-host.sh").read_text()
+    assert 'install -o root -g root -m 0555 "$STAGE/repair-swap.py"' in bootstrap
+
+
+CANDIDATE_POLICY_SPEC = importlib.util.spec_from_file_location(
+    "candidate_network_policy", Path(__file__).with_name("network-policy.py")
+)
+assert CANDIDATE_POLICY_SPEC and CANDIDATE_POLICY_SPEC.loader
+candidate_policy = importlib.util.module_from_spec(CANDIDATE_POLICY_SPEC)
+sys.modules[CANDIDATE_POLICY_SPEC.name] = candidate_policy
+CANDIDATE_POLICY_SPEC.loader.exec_module(candidate_policy)
+
+
+@pytest.mark.parametrize("drift", ["none", "owner", "mode", "digest"])
+def test_candidate_policy_loads_only_pinned_root_helper(monkeypatch, tmp_path, drift):
+    import hashlib
+    import stat
+    from types import SimpleNamespace
+
+    helper = tmp_path / "repair-swap.py"
+    data = b"def enforce_candidate_zero_swap(release, container):\n return [release, container]\n"
+    helper.write_bytes(data)
+    monkeypatch.setattr(candidate_policy, "__file__", str(tmp_path / "network-policy.py"))
+    digest = hashlib.sha256(data).hexdigest() if drift != "digest" else "a" * 64
+    monkeypatch.setattr(candidate_policy, "SWAP_HELPER_SHA256", digest)
+    monkeypatch.setattr(
+        candidate_policy.os,
+        "fstat",
+        lambda _fd: SimpleNamespace(
+            st_mode=stat.S_IFREG | (0o777 if drift == "mode" else 0o555),
+            st_uid=1000 if drift == "owner" else 0,
+            st_gid=0,
+            st_nlink=1,
+            st_size=len(data),
+        ),
+    )
+    if drift == "none":
+        assert candidate_policy.enforce_candidate_zero_swap("container", "release") == [
+            "release",
+            "container",
+        ]
+    else:
+        with pytest.raises(candidate_policy.PolicyError):
+            candidate_policy.enforce_candidate_zero_swap("container", "release")
+
+
+def test_candidate_policy_attests_binding_and_network_before_enforcement(monkeypatch, capsys):
+    events = []
+    monkeypatch.setattr(candidate_policy.Inventory, "load", lambda _: object())
+    monkeypatch.setattr(candidate_policy, "verify_policy", lambda _: events.append("policy") or {})
+    monkeypatch.setattr(
+        candidate_policy, "verify_bootstrap_marker", lambda *_: events.append("binding")
+    )
+    monkeypatch.setattr(candidate_policy, "verify_container", lambda *_: events.append("network"))
+    monkeypatch.setattr(
+        candidate_policy,
+        "enforce_candidate_zero_swap",
+        lambda *_: events.append("swap") or {"status": "passed"},
+    )
+    args = candidate_policy.parser().parse_args(
+        [
+            "enforce-candidate-zero-swap",
+            "a" * 64,
+            "b" * 64,
+            "c" * 64,
+            "sha-" + "d" * 40 + "-r1a1",
+        ]
+    )
+    candidate_policy.execute_guarded_command(args)
+    assert events == ["policy", "binding", "network", "swap"]
+    assert '"candidateSwap":{"status":"passed"}' in capsys.readouterr().out

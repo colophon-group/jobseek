@@ -586,6 +586,9 @@ running_arguments=()
 if (( ! ci_rollback_smoke )); then
   running_arguments=(--allow-active)
 fi
+sudo -n "$POLICY" enforce-candidate-zero-swap \
+  "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" \
+  "$candidate_container_id" "$RELEASE_ID" >/dev/null
 first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env" "${running_arguments[@]}")"
 [[ "$first_verified_id" == "$candidate_container_id" ]] || exit 1
 sudo -n "$POLICY" verify-running-ready \
@@ -601,6 +604,9 @@ if [[ "$CI_FAILURE_MODE" == after-candidate || \
 fi
 started_before_restart="$(docker container inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
 docker restart --time 30 "$candidate_container_id" >/dev/null
+sudo -n "$POLICY" enforce-candidate-zero-swap \
+  "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" \
+  "$candidate_container_id" "$RELEASE_ID" >/dev/null
 [[ "$(docker container inspect --format '{{.Id}}' "$CONTAINER")" == "$candidate_container_id" ]] || exit 1
 started_after_restart="$(docker container inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
 [[ "$started_after_restart" != "$started_before_restart" ]] || exit 1
