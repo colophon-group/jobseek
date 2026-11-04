@@ -4997,6 +4997,8 @@ monro,monro-careers,https://ibqmjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperie
 monro,monro-smartrecruiters,https://careers.smartrecruiters.com/monroinc,smartrecruiters,"{""token"": ""monroinc""}",smartrecruiters,
 monroe-tractor,monroe-tractor-greenhouse,https://job-boards.greenhouse.io/monroetractor,greenhouse,"{""token"": ""monroetractor""}",skip,
 monte-carlo-sbm,monte-carlo-sbm-careers,https://emploi.montecarlosbm.com/psc/HRPRD/RECRUTEMENT/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL,peoplesoft,,peoplesoft,"{""enrich"": [""description"", ""employment_type"", ""job_location_type"", ""base_salary""]}"
+montefiore,montefiore-careers,https://montefiore.wd12.myworkdayjobs.com/mmc,workday,,workday,
+montefiore,montefiore-careers-einstein,https://careers.einsteinmed.edu/jobs,sitemap,"{""sitemap_url"": ""https://careers.einsteinmed.edu/sitemap.xml"", ""url_filter"": ""/jobs/[0-9]+""}",json-ld,
 monumental,monumental-ashby,https://jobs.ashbyhq.com/monumental,ashby,"{""token"": ""monumental""}",skip,
 monumental-sports-entertainment,monumental-sports-entertainment-greenhouse,https://job-boards.greenhouse.io/monumentalsports,greenhouse,"{""token"": ""monumentalsports""}",skip,
 monzo,monzo-careers,https://job-boards.greenhouse.io/monzo,greenhouse,"{""token"": ""monzo""}",skip,
