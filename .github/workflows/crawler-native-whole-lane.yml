@@ -64,6 +64,11 @@ jobs:
             --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "native-lane-candidate:${source_sha}" apps/crawler
+          # Keep the tagged runtime images; discard intermediate Go/build caches
+          # between builds so the Python control can fit on hosted-runner disks.
+          docker builder prune --all --force
+          df -h /
+          docker image inspect "native-lane-candidate:${source_sha}" >/dev/null
           baseline_sha=f486294430dc70d57858711c022e2ea495183fa6
           baseline_dir="$(mktemp -d)"
           trap 'rm -rf "$baseline_dir"' EXIT
@@ -72,6 +77,9 @@ jobs:
             --build-arg "CRAWLER_SOURCE_REVISION=${baseline_sha}" \
             --label "org.opencontainers.image.revision=${baseline_sha}" \
             --tag "native-lane-control:${source_sha}" "$baseline_dir"
+          docker builder prune --all --force
+          df -h /
+          docker image inspect "native-lane-control:${source_sha}" >/dev/null
           docker build --quiet --build-context contracts=apps/crawler/contracts \
             --build-context api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor \
             --build-context dom-detail=apps/crawler/go/dom-detail \
@@ -80,6 +88,10 @@ jobs:
             --build-arg "SOURCE_COMMIT=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --target service --tag "native-lane-renderer:${source_sha}" pilots/go-lightpanda
+          docker builder prune --all --force
+          df -h /
+          docker image inspect "native-lane-candidate:${source_sha}" \
+            "native-lane-control:${source_sha}" "native-lane-renderer:${source_sha}" >/dev/null
       - name: Compare identical complete work and resource use
         id: measurement
         working-directory: apps/crawler
