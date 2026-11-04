@@ -108,7 +108,7 @@
     "drizzle-kit": "^0.31.10",
     "esbuild": "0.28.1",
     "eslint": "^10.10.0",
-    "happy-dom": "^20.14.3",
+    "happy-dom": "^21.0.4",
     "playwright": "^1.63.0",
     "svgo": "^4.1.0",
     "tsx": "^4.23.13",
