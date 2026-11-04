@@ -106,6 +106,27 @@ class RestoreHeadroomTests(unittest.TestCase):
         self.assertFalse(self.failure.exists())
         self.assertNotIn("drill passed", result.stdout)
 
+    def test_marker_write_failure_still_stops_and_fails_closed_after_space_recovers(self):
+        self.available.write_text("not-a-number")
+        result = self.run_shell(
+            'HEADROOM_FAILURE="$BASE_DIR/absent-parent/marker"\n'
+            'watch_headroom &\nHEADROOM_WATCH_PID=$!\n'
+            'for _ in {1..100}; do\n'
+            '  [[ ! -s "$TEST_TRACE" ]] || break\n  sleep 0.03\ndone\n'
+            'test -s "$TEST_TRACE"\n'
+            'test ! -e "$HEADROOM_FAILURE"\n'
+            # A recovered measurement cannot erase the watcher failure.
+            f'printf "{20 * 1024**3}\\n" > "$TEST_AVAILABLE"\n'
+            'true\ncleanup\n'
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "rm -f jobseek-postgresql-restore-load-test jobseek-postgresql-restore-test",
+            self.trace.read_text().splitlines(),
+        )
+        self.assertFalse(self.data.exists())
+        self.assertFalse(self.spool.exists())
+
     def test_other_failure_keeps_requested_debug_data_with_healthy_space(self):
         result = self.run_shell("set +e\nfalse\ncleanup")
         self.assertNotEqual(result.returncode, 0)

@@ -55,9 +55,14 @@ require_headroom() {
 }
 
 watch_headroom() {
+  trap - EXIT
+  trap 'exit 0' TERM INT HUP
   while scratch_headroom_ok; do sleep 1; done
+  # Report pressure through the child's exit status even if the marker cannot
+  # be written on the filesystem that just failed its headroom check.
+  trap 'exit 75' TERM INT HUP
   echo "Restore drill stopped to preserve scratch filesystem headroom" >&2
-  : > "$HEADROOM_FAILURE"
+  { : > "$HEADROOM_FAILURE"; } 2>/dev/null || true
   # Removing only this run's containers interrupts the foreground Docker command.
   # Repeat until cleanup to catch a container racing the phase-start check.
   while :; do
@@ -70,12 +75,13 @@ watch_headroom() {
 cleanup() {
   local rc=$?
   trap - EXIT
+  local watch_rc=0
   if [[ -n "$HEADROOM_WATCH_PID" ]]; then
     kill "$HEADROOM_WATCH_PID" 2>/dev/null || true
-    wait "$HEADROOM_WATCH_PID" 2>/dev/null || true
+    wait "$HEADROOM_WATCH_PID" 2>/dev/null || watch_rc=$?
   fi
   local headroom_failed=false
-  if [[ -e "$HEADROOM_FAILURE" ]] || ! scratch_headroom_ok; then
+  if [[ "$watch_rc" -ne 0 || -e "$HEADROOM_FAILURE" ]] || ! scratch_headroom_ok; then
     headroom_failed=true
     rc=1
   fi
