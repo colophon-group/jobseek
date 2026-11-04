@@ -900,6 +900,8 @@ barry-callebaut,barry-callebaut-careers,https://jobs.barry-callebaut.com/go/All-
 base,base-ashby,https://jobs.ashbyhq.com/base,ashby,"{""token"": ""base""}",skip,
 base-power-company,base-power-company-ashby,https://jobs.ashbyhq.com/base-power,ashby,"{""token"": ""base-power""}",skip,
 baselayer,baselayer-greenhouse,https://job-boards.greenhouse.io/baselayer,greenhouse,"{""token"": ""baselayer""}",skip,
+baseline-fitness,baseline-fitness-careers,https://www.paycomonline.net/v4/ats/web.php/portal/41165fd7da2dd0da85c677e75ee5faf0/career-page,paycom,,paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
+baseline-fitness,baseline-fitness-careers-careerplug,https://pf-mortensengroup.careerplug.com/jobs,dom,"{""render"": false, ""url_filter"": ""^https://pf-mortensengroup\\.careerplug\\.com/jobs/[0-9]+"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 1000}}",json-ld,"{""description_selector"": "".job-description-container""}"
 baseload-capital,baseload-capital-teamtailor,https://baseloadcap.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://baseloadcap.teamtailor.com/jobs.rss""}",skip,
 baseten,baseten-ashby,https://jobs.ashbyhq.com/baseten,ashby,"{""token"": ""baseten""}",skip,
 basf,basf-careers,https://basf.jobs,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://basf.jobs/googlefeed.xml""}",skip,
