@@ -1247,3 +1247,40 @@ func rawSubjectAlternativeNameTest(names ...[]byte) pkix.Extension {
 	value = append(value, contents...)
 	return pkix.Extension{Id: subjectAlternativeNameOID, Value: value}
 }
+
+func TestRuntimeV1ServiceCgroupStartupWait(t *testing.T) {
+	for _, mode := range []string{"ready", "max", "becomes-ready"} {
+		t.Run(mode, func(t *testing.T) {
+			directory := t.TempDir()
+			memory, swap := filepath.Join(directory, "memory.max"), filepath.Join(directory, "memory.swap.max")
+			if err := os.WriteFile(memory, []byte("1073741824\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			value := "max\n"
+			if mode == "ready" {
+				value = "0\n"
+			}
+			if err := os.WriteFile(swap, []byte(value), 0600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if mode == "becomes-ready" {
+				replacement := filepath.Join(directory, "replacement")
+				if err := os.WriteFile(replacement, []byte("0\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				timer := time.AfterFunc(10*time.Millisecond, func() { _ = os.Rename(replacement, swap) })
+				defer timer.Stop()
+			}
+			err := waitRuntimeV1ServiceCgroup(ctx, memory, swap)
+			if mode == "max" {
+				if err == nil {
+					t.Fatal("unlimited swap became ready")
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
