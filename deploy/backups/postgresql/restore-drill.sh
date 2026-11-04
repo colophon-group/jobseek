@@ -24,10 +24,61 @@ CONTAINER="jobseek-postgresql-restore-${RUN_ID}"
 RESTORE_CONTAINER="jobseek-postgresql-restore-load-${RUN_ID}"
 DATA_DIR="$BASE_DIR/$RUN_ID"
 SPOOL_DIR="$BASE_DIR/${RUN_ID}-spool"
+HEADROOM_FAILURE="$BASE_DIR/${RUN_ID}-headroom-failed"
+HEADROOM_WATCH_PID=""
+# Abort with 2 GiB of cleanup margin above the 8 GiB operational free floor.
+# This sampled guard is an early abort, not a filesystem quota.
+HEADROOM_STOP_BYTES=$((10 * 1024 * 1024 * 1024))
+
+scratch_headroom_ok() {
+  local available
+  available="$(python3 - "$BASE_DIR" <<'RESTORE_FREE_SPACE'
+import os
+import sys
+
+try:
+    space = os.statvfs(sys.argv[1])
+except OSError:
+    raise SystemExit(1) from None
+print(space.f_bavail * space.f_frsize)
+RESTORE_FREE_SPACE
+  )" || return 1
+  [[ "$available" =~ ^[0-9]+$ ]] || return 1
+  (( available >= HEADROOM_STOP_BYTES ))
+}
+
+require_headroom() {
+  if [[ -e "$HEADROOM_FAILURE" ]] || ! scratch_headroom_ok; then
+    echo "Restore drill scratch headroom is unavailable or below its stop threshold" >&2
+    return 1
+  fi
+}
+
+watch_headroom() {
+  while scratch_headroom_ok; do sleep 1; done
+  echo "Restore drill stopped to preserve scratch filesystem headroom" >&2
+  : > "$HEADROOM_FAILURE"
+  # Removing only this run's containers interrupts the foreground Docker command.
+  # Repeat until cleanup to catch a container racing the phase-start check.
+  while :; do
+    timeout --signal=TERM --kill-after=2s 10s \
+      docker rm -f "$RESTORE_CONTAINER" "$CONTAINER" >/dev/null 2>&1 || true
+    sleep 1
+  done
+}
 
 cleanup() {
   local rc=$?
   trap - EXIT
+  if [[ -n "$HEADROOM_WATCH_PID" ]]; then
+    kill "$HEADROOM_WATCH_PID" 2>/dev/null || true
+    wait "$HEADROOM_WATCH_PID" 2>/dev/null || true
+  fi
+  local headroom_failed=false
+  if [[ -e "$HEADROOM_FAILURE" ]] || ! scratch_headroom_ok; then
+    headroom_failed=true
+    rc=1
+  fi
   if [[ "$rc" -ne 0 ]]; then
     docker inspect "$RESTORE_CONTAINER" --format \
       'restore_load_container status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} error={{.State.Error}}' \
@@ -52,7 +103,8 @@ cleanup() {
   fi
   [[ "$DATA_DIR" == "$BASE_DIR"/* ]]
   [[ "$SPOOL_DIR" == "$BASE_DIR"/*-spool ]]
-  if [[ "$rc" -ne 0 && "$KEEP_FAILED" == true ]]; then
+  rm -f "$HEADROOM_FAILURE" || rc=1
+  if [[ "$rc" -ne 0 && "$KEEP_FAILED" == true && "$headroom_failed" == false ]]; then
     rm -rf "$SPOOL_DIR" || rc=1
     [[ ! -e "$SPOOL_DIR" ]] || rc=1
     echo "Retained failed restore drill data for diagnosis: $DATA_DIR" >&2
@@ -81,6 +133,9 @@ docker container inspect "$RESTORE_CONTAINER" >/dev/null 2>&1 && {
   exit 1
 }
 install -d -o 70 -g 70 -m 0700 "$DATA_DIR" "$SPOOL_DIR"
+require_headroom
+watch_headroom &
+HEADROOM_WATCH_PID=$!
 
 docker run --rm \
   --name "$RESTORE_CONTAINER" \
@@ -94,6 +149,7 @@ docker run --rm \
   "$IMAGE" \
   pgbackrest --stanza=jobseek --pg1-path=/restore "${restore_set_args[@]}" restore
 
+require_headroom
 docker run --detach \
   --name "$CONTAINER" \
   --network none \
@@ -112,7 +168,9 @@ docker run --detach \
     -c 'logging_collector=off' \
     -c 'log_destination=stderr' >/dev/null
 
+require_headroom
 for _ in $(seq 1 600); do
+  require_headroom
   if docker exec "$CONTAINER" pg_isready -U crawler -d crawler >/dev/null 2>&1 && \
     [[ "$(docker exec "$CONTAINER" psql -U crawler -d crawler -Atc \
       'select pg_is_in_recovery()' 2>/dev/null)" == f ]]; then
@@ -129,6 +187,7 @@ readiness="$(docker exec "$CONTAINER" psql -U crawler -d crawler -v ON_ERROR_STO
   "select current_setting('server_version'), pg_is_in_recovery(), current_setting('archive_mode')")"
 [[ "$readiness" == "16.13|f|off" ]]
 
+require_headroom
 docker exec "$CONTAINER" pg_amcheck \
   --username=crawler \
   --database=crawler \
@@ -137,6 +196,7 @@ docker exec "$CONTAINER" pg_amcheck \
   --on-error-stop \
   --parent-check
 
+require_headroom
 docker exec "$CONTAINER" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
   "select 'database_bytes=' || pg_database_size(current_database());
    select 'public_tables=' || count(*) from information_schema.tables

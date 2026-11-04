@@ -98,6 +98,7 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts -p 'test_native_ingress_metrics.py'
           python3 -m unittest discover -s scripts -p 'test_ingress_stage_order.py'
+          python3 -m unittest discover -s scripts -p 'test_postgresql_restore_headroom.py'
 
       - name: Check dates on changed blog content
         if: github.event_name == 'pull_request'
