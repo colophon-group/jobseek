@@ -593,6 +593,16 @@ rechecks the backup and restore evidence immediately before creating
 the disabled role and before enabling its login. A missing, failed, stale or
 mismatched result stops installation. Reserve a maintenance window for the
 restore drill; a source merge does not authorize the host operation.
+The role helper uses the reviewed default scratch, image and config paths;
+it does not inherit shell startup files or operator path overrides. Admit disk
+and memory capacity against those exact defaults before dispatch. During the
+loader and isolated server phases, the drill samples scratch free space once
+per second and aborts below 10 GiB, leaving a 2 GiB cleanup margin above the
+8 GiB operational floor. Measurement failure also aborts. Only that run's named
+containers and scratch are removed; low-space failures override debug-data
+retention. This is an early-abort guard, not a quota or a guarantee of peak
+space or memory usage. The full exact-label restore and relation checks still
+have to pass before the reader login can be installed.
 The reader gets selected public posting columns, an uploaded-description view,
 and a fixed cutoff function; the privileged statistics membership stays with a
 non-login function owner. An HBA entry alone does not create the login or

@@ -423,7 +423,15 @@ def run_restore_drill(drill_path: Path, label: str, lock_fd: int) -> None:
                     stderr=subprocess.DEVNULL,
                     start_new_session=True,
                     pass_fds=(lock_fd,),
-                    env={**os.environ, "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false"},
+                    # The reviewed drill defaults are part of capacity admission;
+                    # never inherit alternate scratch, image or config paths.
+                    env={
+                        "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
+                        "LANG": "C",
+                        "TZ": "UTC",
+                        "HOME": "/nonexistent",
+                        "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
+                    },
                 )
             finally:
                 signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
