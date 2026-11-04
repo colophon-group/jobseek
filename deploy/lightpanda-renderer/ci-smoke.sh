@@ -241,7 +241,7 @@ read -r NETWORK_INVENTORY_SHA256 _ < <(sha256sum "$work/ci-inventory.json")
 
 phase interrupted-host-bootstrap
 root_stage="$(sudo mktemp -d '/tmp/jobseek-lightpanda-bootstrap.r999999a1.XXXXXX')"
-for artifact in bootstrap-host.sh network-policy.py inventory.json verify.py \
+for artifact in bootstrap-host.sh network-policy.py repair-swap.py inventory.json verify.py \
   jobseek-lightpanda-network.service jobseek-lightpanda-network.tmpfiles \
   jobseek-lightpanda-network.sudoers; do
   sudo install -o root -g root -m 0700 \

@@ -46,6 +46,18 @@ as an artifact. If the write result or later verification is
 uncertain, preserve that artifact and obtain new read-only evidence and a new
 decision before any further action; do not retry or infer a rollback.
 
+Cold renderer replacement also requires the current host-policy bootstrap bundle.
+It installs a root-owned, digest-bound copy of the same swap guard. Under its
+existing lifecycle locks, the renderer installer calls the explicit
+`enforce-candidate-zero-swap` policy action before normal verification and again
+after its restart check. The guard binds the exact candidate generation, image,
+container, process and cgroup leaf; an already-zero leaf needs no write. Only a
+`max` leaf may receive one `0` write, followed by host and container readback.
+Other limits, identity drift and uncertain writes fail closed through the
+existing containment path. The service waits at most 30 seconds for strict
+1-GiB/zero-swap attestation before opening its listener. An old active-container
+repair receipt does not qualify a replacement container.
+
 ## Provider Lifecycle Baseline
 
 [`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the

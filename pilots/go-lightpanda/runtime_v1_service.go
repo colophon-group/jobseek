@@ -343,6 +343,14 @@ func runRuntimeV1Service(
 	config runtimeV1ServiceConfig,
 	execution *runtimeV1ServiceExecution,
 ) error {
+	// The installer enforces the new container's kernel swap leaf after Docker
+	// starts it. Do not open a listener before the strict attestation succeeds.
+	startup, cancel := context.WithTimeout(ctx, 30*time.Second)
+	err := waitRuntimeV1ServiceCgroup(startup, config.MemoryMaxPath, config.MemorySwapMaxPath)
+	cancel()
+	if err != nil {
+		return err
+	}
 	service, err := newRuntimeV1Service(config, execution)
 	if err != nil {
 		return err
@@ -352,6 +360,21 @@ func runRuntimeV1Service(
 		return errors.New("runtime-v1 service could not listen")
 	}
 	return service.serve(ctx, listener)
+}
+
+func waitRuntimeV1ServiceCgroup(ctx context.Context, memoryPath, swapPath string) error {
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if err := attestRuntimeV1ServiceCgroup(memoryPath, swapPath); err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return errors.New("runtime-v1 service cgroup attestation did not become ready")
+		case <-ticker.C:
+		}
+	}
 }
 
 func (service *runtimeV1Service) serve(ctx context.Context, listener net.Listener) error {

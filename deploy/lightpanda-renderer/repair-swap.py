@@ -318,11 +318,18 @@ def write_leaf_once(
     return host_memory, host_swap
 
 
-def release_identity(expected: dict[str, str], deploy_uid: int, deploy_gid: int) -> str:
-    active_metadata = os.lstat(ACTIVE)
-    require(stat.S_ISLNK(active_metadata.st_mode), "active_release_drift")
+def release_identity(
+    expected: dict[str, str],
+    deploy_uid: int,
+    deploy_gid: int,
+    *,
+    candidate: bool = False,
+) -> str:
     generation = ROOT / "releases" / expected["release_id"]
-    require(ACTIVE.resolve(strict=True) == generation, "active_release_drift")
+    if not candidate:
+        active_metadata = os.lstat(ACTIVE)
+        require(stat.S_ISLNK(active_metadata.st_mode), "active_release_drift")
+        require(ACTIVE.resolve(strict=True) == generation, "active_release_drift")
     generation_metadata = os.lstat(generation)
     require(
         stat.S_ISDIR(generation_metadata.st_mode)
@@ -331,10 +338,18 @@ def release_identity(expected: dict[str, str], deploy_uid: int, deploy_gid: int)
         "release_metadata_drift",
     )
     env_bytes = read_exact_file(
-        generation / "release.env", limit=65536, modes=(0o600,), uid=deploy_uid, gid=deploy_gid
+        generation / "release.env",
+        limit=65536,
+        modes=(0o600,),
+        uid=deploy_uid,
+        gid=deploy_gid,
     )
     verify_bytes = read_exact_file(
-        generation / "verify.py", limit=262144, modes=(0o555,), uid=deploy_uid, gid=deploy_gid
+        generation / "verify.py",
+        limit=262144,
+        modes=(0o555,),
+        uid=deploy_uid,
+        gid=deploy_gid,
     )
     require(sha256(env_bytes) == expected["env_sha"], "release_environment_drift")
     require(sha256(verify_bytes) == expected["verifier_sha"], "published_verifier_drift")
@@ -349,22 +364,37 @@ def release_identity(expected: dict[str, str], deploy_uid: int, deploy_gid: int)
         env.get("SOURCE_COMMIT") == source
         and env.get("RELEASE_ID") == expected["release_id"]
         and env.get("RENDERER_RELEASE_DIR") == str(generation)
-        and re.fullmatch(
-            r"ghcr\.io/colophon-group/jobseek-lightpanda-renderer@sha256:[0-9a-f]{64}",
-            env.get("RENDERER_IMAGE_REF", ""),
-        )
-        is not None,
+        and (
+            re.fullmatch(
+                r"ghcr\.io/colophon-group/jobseek-lightpanda-renderer@sha256:[0-9a-f]{64}",
+                env.get("RENDERER_IMAGE_REF", ""),
+            )
+            is not None
+            or candidate
+            and "-ci-" in expected["release_id"]
+            and env.get("RENDERER_IMAGE_REF") == "jobseek-lightpanda-renderer:pr"
+        ),
         "release_environment_identity_drift",
     )
     return env["RENDERER_IMAGE_REF"]
 
 
-def check_identity(expected: dict[str, str], deploy_uid: int, deploy_gid: int) -> tuple[str, str]:
+def check_identity(
+    expected: dict[str, str],
+    deploy_uid: int,
+    deploy_gid: int,
+    *,
+    candidate: bool = False,
+) -> tuple[str, str]:
     machine = read_exact_file(
         Path("/etc/machine-id"), limit=128, modes=(0o444, 0o644), uid=0, gid=0
     )
     require(sha256(machine) == expected["machine_sha"], "host_identity_drift")
-    image_ref = release_identity(expected, deploy_uid, deploy_gid)
+    image_ref = (
+        release_identity(expected, deploy_uid, deploy_gid, candidate=True)
+        if candidate
+        else release_identity(expected, deploy_uid, deploy_gid)
+    )
     inspect = docker_identity()
     require(
         inspect["id"] == expected["container_id"]
@@ -390,6 +420,105 @@ def check_identity(expected: dict[str, str], deploy_uid: int, deploy_gid: int) -
     relative = cgroup_relative_path(pid, expected["container_id"])
     require(sha256(relative.encode()) == expected["cgroup_sha"], "cgroup_path_drift")
     return relative, process_start(pid)
+
+
+def enforce_candidate_zero_swap(release_id: str, container_id: str) -> dict[str, Any]:
+    """Enforce the new leaf under the installer's existing lifecycle locks.
+
+    This root-owned helper is called by the digest-bound host policy. It never
+    activates a generation, starts a service or executes its deploy-owned files.
+    The standalone active-release repair below retains its separate contract.
+    """
+    require(os.geteuid() == 0, "root_required")
+    require(
+        re.fullmatch(r"sha-[0-9a-f]{40}-(?:ci-)?r[0-9]+a[0-9]+", release_id) is not None,
+        "release_id_shape",
+    )
+    require(re.fullmatch(r"[0-9a-f]{64}", container_id) is not None, "container_id_shape")
+    deploy = pwd.getpwnam("deploy")
+    inspect = docker_identity()
+    require(inspect["id"] == container_id and inspect["running"] is True, "candidate_drift")
+    require(
+        isinstance(inspect["pid"], int)
+        and inspect["pid"] > 0
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", str(inspect["image"])) is not None,
+        "candidate_process_shape",
+    )
+    generation = ROOT / "releases" / release_id
+    expected = {
+        "release_id": release_id,
+        "container_id": container_id,
+        "image_id": inspect["image"],
+        "pid": str(inspect["pid"]),
+        "machine_sha": sha256(
+            read_exact_file(Path("/etc/machine-id"), limit=128, modes=(0o444, 0o644), uid=0, gid=0)
+        ),
+        "env_sha": sha256(
+            read_exact_file(
+                generation / "release.env",
+                limit=65536,
+                modes=(0o600,),
+                uid=deploy.pw_uid,
+                gid=deploy.pw_gid,
+            )
+        ),
+        "verifier_sha": sha256(
+            read_exact_file(
+                generation / "verify.py",
+                limit=262144,
+                modes=(0o555,),
+                uid=deploy.pw_uid,
+                gid=deploy.pw_gid,
+            )
+        ),
+        "cgroup_sha": sha256(cgroup_relative_path(inspect["pid"], container_id).encode()),
+    }
+
+    def current() -> tuple[str, str]:
+        return check_identity(expected, deploy.pw_uid, deploy.pw_gid, candidate=True)
+
+    identity = current()
+    pidfd_open = getattr(os, "pidfd_open", None)
+    if not callable(pidfd_open):
+        raise RepairRefused("pidfd_unavailable")
+    pid_fd = cast(int, pidfd_open(inspect["pid"]))
+    receipt: dict[str, Any] = {"writeAttempted": False, "writeCompleted": False}
+    try:
+        directory_fd, memory_fd, swap_fd = open_cgroup_leaf(identity[0])
+        try:
+            assert_leaf_identity(directory_fd, memory_fd, swap_fd)
+            require(read_scalar(memory_fd) == MEMORY_MAX, "memory_limit_drift")
+            before = read_scalar(swap_fd)
+            require(before in ("0", "max"), "unexpected_swap_limit")
+            if before == "max":
+                write_leaf_once(
+                    directory_fd, memory_fd, swap_fd, pid_fd, identity, current, receipt
+                )
+            require(current() == identity, "candidate_changed_after_enforcement")
+            require_pidfd_alive(pid_fd)
+            require(read_scalar(swap_fd) == "0", "host_swap_readback_failed")
+            command = ["docker", "exec", "--user", "10001:10001", container_id, "cat"]
+            memory = run_bounded([*command, "/sys/fs/cgroup/memory.max"], timeout=20)
+            swap = run_bounded([*command, "/sys/fs/cgroup/memory.swap.max"], timeout=20)
+            require(
+                memory.code == 0
+                and memory.stdout == b"1073741824\n"
+                and not memory.stderr
+                and swap.code == 0
+                and swap.stdout == b"0\n"
+                and not swap.stderr,
+                "container_swap_readback_failed",
+            )
+            require(current() == identity, "candidate_changed_after_readback")
+            require_pidfd_alive(pid_fd)
+            assert_leaf_identity(directory_fd, memory_fd, swap_fd)
+            return {"status": "passed", "hostSwapMax": "0", **receipt}
+        finally:
+            os.close(memory_fd)
+            os.close(swap_fd)
+            os.close(directory_fd)
+    finally:
+        os.close(pid_fd)
 
 
 def parse_expected(arguments: list[str]) -> dict[str, str]:
@@ -463,7 +592,13 @@ def repair(expected: dict[str, str], receipt: dict[str, Any]) -> dict[str, Any]:
                     relative_after == relative and start_after == start,
                     "identity_changed_after_write",
                 )
-                docker_exec = ["docker", "exec", "--user", "10001:10001", expected["container_id"]]
+                docker_exec = [
+                    "docker",
+                    "exec",
+                    "--user",
+                    "10001:10001",
+                    expected["container_id"],
+                ]
                 memory = run_bounded([*docker_exec, "cat", "/sys/fs/cgroup/memory.max"], timeout=20)
                 swap = run_bounded(
                     [*docker_exec, "cat", "/sys/fs/cgroup/memory.swap.max"], timeout=20

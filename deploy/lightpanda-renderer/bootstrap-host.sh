@@ -50,6 +50,7 @@ for command in docker flock install python3 readlink runuser sha256sum stat syst
 done
 for artifact in \
   network-policy.py \
+  repair-swap.py \
   inventory.json \
   verify.py \
   jobseek-lightpanda-network.service \
@@ -216,6 +217,7 @@ python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
 install -d -o root -g root -m 0755 "$GENERATION"
 install -o root -g root -m 0555 "$STAGE/network-policy.py" "$GENERATION/network-policy.py"
+install -o root -g root -m 0555 "$STAGE/repair-swap.py" "$GENERATION/repair-swap.py"
 install -o root -g root -m 0444 "$STAGE/inventory.json" "$GENERATION/inventory.json"
 install -D -o root -g root -m 0644 "$STAGE/jobseek-lightpanda-network.service" "$UNIT"
 install -D -o root -g root -m 0440 "$STAGE/jobseek-lightpanda-network.sudoers" "$SUDOERS"
@@ -241,6 +243,7 @@ PY
 
 python3 - \
   "$GENERATION/network-policy.py" \
+  "$GENERATION/repair-swap.py" \
   "$GENERATION/inventory.json" \
   "$UNIT" \
   "$SUDOERS" \
