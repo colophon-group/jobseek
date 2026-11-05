@@ -2151,6 +2151,8 @@ decathlon,decathlon-es-talentclue,https://careers.talentclue.com/en/decathlon,ap
 decathlon-digital-fr,decathlon-digital-fr-greenhouse,https://job-boards.greenhouse.io/decathlontechnology,greenhouse,"{""token"": ""decathlontechnology""}",skip,
 decima-international,decima-international-greenhouse,https://job-boards.greenhouse.io/decimainternational,greenhouse,"{""token"": ""decimainternational""}",skip,
 decimal,decimal-ashby,https://jobs.ashbyhq.com/decimal,ashby,"{""token"": ""decimal""}",skip,
+deckers,deckers-careers,https://deckers.wd5.myworkdayjobs.com/deckers,workday,,workday,
+deckers,deckers-japan,https://hrmos.co/pages/deckersjapan/jobs,hrmos,"{""tenant"": ""deckersjapan""}",json-ld,
 deel,deel-careers,https://jobs.ashbyhq.com/deel,ashby,"{""token"": ""deel""}",skip,
 deepgram,deepgram-ashby,https://jobs.ashbyhq.com/deepgram,ashby,"{""token"": ""deepgram""}",skip,
 deepintent,deepintent-greenhouse,https://job-boards.greenhouse.io/deepintent,greenhouse,"{""token"": ""deepintent""}",skip,
