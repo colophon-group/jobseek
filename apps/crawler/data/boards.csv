@@ -693,6 +693,8 @@ at-home,at-home-careers,https://hdiy.fa.us2.oraclecloud.com/hcmUI/CandidateExper
 ataibeckley,ataibeckley-careers,https://ats.rippling.com/ataibeckley/jobs,rippling,"{""slug"": ""ataibeckley""}",rippling,
 ataraxis-ai,ataraxis-ai-ashby,https://jobs.ashbyhq.com/ataraxis-ai,ashby,"{""token"": ""ataraxis-ai""}",skip,
 atdp-company,atdp-company-join,https://join.com/companies/lesateliersdupreaufr,join,"{""slug"": ""lesateliersdupreaufr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+athletico,athletico-careers,https://clinicalexternal-athletico.icims.com/,icims,,json-ld,
+athletico,athletico-careers-nonclinical,https://careers-athletico.icims.com/,icims,"{""host"": ""careers-athletico.icims.com""}",json-ld,
 athletics-baseball-operations,athletics-baseball-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbaseballops,greenhouse,"{""token"": ""athleticsbaseballops""}",skip,
 athletics-business-operations,athletics-business-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbusinessops,greenhouse,"{""token"": ""athleticsbusinessops""}",skip,
 ati-physical-therapy,ati-physical-therapy-careers,https://careers-atipt.icims.com/,icims,,json-ld,
