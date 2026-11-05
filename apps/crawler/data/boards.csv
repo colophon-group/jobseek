@@ -4199,6 +4199,7 @@ kilocode,kilocode-ashby,https://jobs.ashbyhq.com/kilocode,ashby,"{""token"": ""k
 kimberly-clark,kimberly-clark-careers,https://kimberlyclark.wd1.myworkdayjobs.com/GLOBAL,workday,"{""company"": ""kimberlyclark"", ""wd_instance"": ""wd1"", ""site"": ""GLOBAL""}",workday,
 kimley-horn,kimley-horn-careers,https://careers-kimley-horn.icims.com/,icims,,json-ld,
 kimley-horn,kimley-horn-careers-ca,https://canada-careers-kimley-horn.icims.com/jobs/search,icims,"{""host"": ""canada-careers-kimley-horn.icims.com""}",json-ld,
+kimmel-associates,kimmel-associates-careers,https://kimmel-associates.breezy.hr/,breezy,,json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
 kin,kin-ashby,https://jobs.ashbyhq.com/kin,ashby,"{""token"": ""kin""}",skip,
 kinder-s,kinder-s-greenhouse,https://job-boards.greenhouse.io/kinders,greenhouse,"{""token"": ""kinders""}",skip,
 kindred,kindred-ashby,https://jobs.ashbyhq.com/kindred,ashby,"{""token"": ""kindred""}",skip,
