@@ -234,6 +234,7 @@ agoda,agoda-greenhouse,https://job-boards.greenhouse.io/agoda,greenhouse,"{""tok
 agomab,agomab-pinpoint,https://agomab.pinpointhq.com/,pinpoint,"{""slug"": ""agomab""}",skip,
 agricultural-bank-of-china,agricultural-bank-of-china-careers,https://career.abchina.com.cn/build/index.html,dom,"{""render"":true,""wait"":""networkidle"",""timeout"":45000,""actions"":[{""action"":""wait"",""ms"":5000},{""action"":""evaluate"",""script"":""window.location.hash = '/NoticeList'""},{""action"":""wait"",""ms"":8000}],""url_filter"":""career\\.abchina\\.com""}",json-ld,
 agwest-farm-credit,agwest-farm-credit-greenhouse,https://job-boards.greenhouse.io/agwestfarmcredit,greenhouse,"{""token"": ""agwestfarmcredit""}",skip,
+ahmc-healthcare,ahmc-healthcare-careers,https://careers-ahmchealth.icims.com/,icims,,json-ld,
 ahti-interiors,ahti-interiors-join,https://join.com/companies/ahtiinteriors,join,"{""slug"": ""ahtiinteriors""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 ai-squared,ai-squared-greenhouse,https://job-boards.greenhouse.io/aisquared,greenhouse,"{""token"": ""aisquared""}",skip,
 ai2,ai2-careers,https://job-boards.greenhouse.io/thealleninstitute,greenhouse,"{""token"": ""thealleninstitute""}",skip,
