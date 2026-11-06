@@ -4809,6 +4809,34 @@ class TestCostScoring:
         cfg = board.configs[board.active_config]
         assert cfg["cost"]["initial_load"] > 0
 
+    def test_select_api_sniffer_accepts_finder_pagination(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", active_board="careers"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        config = {
+            "api_url": "https://test.com/api?finder=findReqs;siteNumber=CX_1,limit=200,offset=0",
+            "json_path": "items[0].requisitionList",
+            "url_template": "https://test.com/job/{Id}",
+            "pagination": {
+                "param_name": "finder",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 200,
+                "location": "query",
+                "value_template": "findReqs;siteNumber=CX_1,limit=200,offset={value}",
+            },
+        }
+        result = CliRunner().invoke(
+            ws, ["select", "monitor", "test", "api_sniffer", "--config", json.dumps(config)]
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        assert (
+            board.configs[board.active_config]["monitor_config"]["pagination"]
+            == config["pagination"]
+        )
+
     def test_select_rich_nextdata_accepts_page_metadata_pagination(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))
