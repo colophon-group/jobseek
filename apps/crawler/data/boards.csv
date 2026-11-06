@@ -7640,6 +7640,7 @@ uefa,uefa-main,https://emp.jobylon.com/companies/2972-uefa/,jobylon,"{""company_
 uefa,uefa-uc3,https://www.uc3.com/careers/,dom,"{""render"": false, ""url_filter"": ""^https://emp\\.jobylon\\.com/jobs/[0-9]+-""}",json-ld,
 uipath,uipath-careers,https://jobs.ashbyhq.com/uipath,ashby,"{""token"": ""uipath""}",skip,
 ukg,ukg-ukg,https://apply.ukg.com/careers?domain=ukg.com,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
+ul-solutions,ul-solutions-careers,https://fa-eups-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/ULSolutionsCareers,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 ultima-genomics,ultima-genomics-greenhouse,https://job-boards.greenhouse.io/ultimagenomics,greenhouse,"{""token"": ""ultimagenomics""}",skip,
 ultra,ultra-ashby,https://jobs.ashbyhq.com/ultra,ashby,"{""token"": ""ultra""}",skip,
 ultraviolet-cyber,ultraviolet-cyber-lever,https://jobs.lever.co/uvcyber,lever,"{""token"": ""uvcyber""}",skip,
