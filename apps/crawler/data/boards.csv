@@ -7292,6 +7292,7 @@ techland,techland-careers,https://careers.smartrecruiters.com/TechlandSA,smartre
 technogym,technogym-careers,https://careers.technogym.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.technogym.com/googlefeed.xml"", ""job_filter"": {""field"": ""title"", ""exclude"": ""(?i)^APPLY FOR A CAREER IN ""}}",skip,
 technology,technology-recruitee,https://technology.recruitee.com,recruitee,"{""token"": ""technology""}",skip,
 techtorch,techtorch-ashby,https://jobs.ashbyhq.com/techtorch,ashby,"{""token"": ""techtorch""}",skip,
+tecnologico-de-monterrey,tecnologico-de-monterrey-careers,https://jobs.tec.mx/,rss,"{""preset"": ""successfactors""}",skip,
 tecovas,tecovas-greenhouse,https://job-boards.greenhouse.io/tecovas,greenhouse,"{""token"": ""tecovas""}",skip,
 tegna-inc,tegna-inc-greenhouse,https://job-boards.greenhouse.io/tegnainc,greenhouse,"{""token"": ""tegnainc""}",skip,
 tehtris,tehtris-careers,https://tehtris.taleez.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""taleez\\.com/apply/(?!sp/)""}",json-ld,
