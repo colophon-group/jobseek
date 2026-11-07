@@ -2955,6 +2955,8 @@ fotokite,fotokite-careers,https://fotokite.bamboohr.com/careers,dom,"{""render""
 found,found-greenhouse,https://job-boards.greenhouse.io/found,greenhouse,"{""token"": ""found""}",skip,
 foundation-risk-partners,foundation-risk-partners-greenhouse,https://job-boards.greenhouse.io/foundationriskpartners,greenhouse,"{""token"": ""foundationriskpartners""}",skip,
 founders-green-animal-hospital,founders-green-animal-hospital-greenhouse,https://job-boards.greenhouse.io/founders,greenhouse,"{""token"": ""founders""}",skip,
+foundever,foundever-careers,https://career4.successfactors.com/career?company=SitelPROD,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.foundever.com/googlefeed.xml""}",skip,
+foundever,foundever-careers-br,https://foundever.pandape.infojobs.com.br/,computrabajo,,json-ld,
 foundry-robotics,foundry-robotics-ashby,https://jobs.ashbyhq.com/foundry-robotics,ashby,"{""token"": ""foundry-robotics""}",skip,
 four-hands,four-hands-greenhouse,https://job-boards.greenhouse.io/fourhands,greenhouse,"{""token"": ""fourhands""}",skip,
 four-seasons,four-seasons-careers,https://fourseasons.wd3.myworkdayjobs.com/search,workday,,workday,
