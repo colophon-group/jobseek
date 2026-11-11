@@ -3217,6 +3217,9 @@ gibson-robotics,gibson-robotics-careers,https://www.gibsonrobotics.com/careers,d
 gichd,gichd-beehire,https://app.beehire.com/career/gichd,beehire,"{""slug"": ""gichd""}",skip,
 gierth-partner-steuerkanzlei,gierth-partner-steuerkanzlei-join,https://join.com/companies/taxit-kundede138,join,"{""slug"": ""taxit-kundede138""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 giga-energy,giga-energy-greenhouse,https://job-boards.greenhouse.io/gigaenergy,greenhouse,"{""token"": ""gigaenergy""}",skip,
+gilbane,gilbane-careers,https://careers-gilbaneco.icims.com/,icims,,json-ld,
+gilbane,gilbane-careers-campus,https://careerfairs-gilbaneco.icims.com/,icims,"{""host"": ""careerfairs-gilbaneco.icims.com""}",json-ld,
+gilbane,gilbane-careers-craft,https://careers-gocs.icims.com/,icims,"{""host"": ""careers-gocs.icims.com"", ""dedupe_job_ids_from_hosts"": [""careers-gilbaneco.icims.com""]}",json-ld,
 gilead,gilead-careers,https://gilead.wd1.myworkdayjobs.com/gileadcareers,workday,"{""company"": ""gilead"", ""wd_instance"": ""wd1"", ""site"": ""gileadcareers""}",workday,
 gilion,gilion-teamtailor,https://careers.gilion.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.gilion.com/jobs.rss""}",skip,
 gillig,gillig-greenhouse,https://job-boards.greenhouse.io/gillig,greenhouse,"{""token"": ""gillig""}",skip,
