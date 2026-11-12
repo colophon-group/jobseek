@@ -9,6 +9,7 @@ User=jobseek-web
 Group=jobseek-web
 WorkingDirectory=/opt/jobseek-web
 ExecStart=/usr/bin/node /usr/local/lib/jobseek-web/launch.mjs %i
+SuccessExitStatus=143
 Restart=on-failure
 RestartSec=3s
 TimeoutStartSec=60s
