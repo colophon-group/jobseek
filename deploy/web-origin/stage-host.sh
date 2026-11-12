@@ -64,7 +64,12 @@ systemctl restart jobseek-web@candidate.service
 healthy=0
 for _ in {1..30}; do
   if curl --silent --show-error --max-time 5 --output /dev/null \
-    --header 'Host: jseek.co' --header 'X-Forwarded-Proto: https' --fail http://127.0.0.1:3001/en/sign-in; then
+    --header 'Host: jseek.co' --header 'X-Forwarded-Proto: https' --fail http://127.0.0.1:3001/en/sign-in &&
+    curl --silent --show-error --max-time 5 --output /dev/null \
+      --header 'Host: jseek.co' --header 'X-Forwarded-Proto: https' --fail http://127.0.0.1:3001/js_wide_logo_white.svg &&
+    curl --silent --show-error --max-time 15 --output /dev/null \
+      --header 'Host: jseek.co' --header 'X-Forwarded-Proto: https' --fail \
+      'http://127.0.0.1:3001/_next/image?url=%2Fpublicdomain%2Fthe_astrologer_dark.png&w=640&q=75'; then
     healthy=1
     break
   fi
