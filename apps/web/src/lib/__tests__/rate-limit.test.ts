@@ -231,6 +231,26 @@ describe("getClientIp (issue #3219 — x-forwarded-for spoofing)", () => {
   });
 });
 
+describe("getClientIp behind the Cloudflare tunnel", () => {
+  beforeEach(() => vi.stubEnv("JOBSEEK_WEB_ORIGIN", "cloudflare_tunnel"));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("uses Cloudflare's connecting IP even when legacy headers are spoofed", () => {
+    expect(getClientIp(makeHeaders({
+      "cf-connecting-ip": "203.0.113.9",
+      "x-real-ip": "198.51.100.7",
+      "x-forwarded-for": "192.0.2.4, 198.51.100.8",
+    }))).toBe("203.0.113.9");
+  });
+
+  it("uses the shared unknown key when Cloudflare's header is absent", () => {
+    expect(getClientIp(makeHeaders({
+      "x-real-ip": "198.51.100.7",
+      "x-forwarded-for": "192.0.2.4",
+    }))).toBe("unknown");
+  });
+});
+
 // Regression: assert that the rate-limit key actually passed into
 // `Ratelimit.limit()` is the authoritative IP, not the attacker-controlled
 // first entry of `x-forwarded-for`. This is the surface that issue #3219

@@ -1,0 +1,17 @@
+[Unit]
+Description=Run Jobseek daily job alerts
+After=jobseek-web@production.service
+Requires=jobseek-web@production.service
+
+[Service]
+Type=oneshot
+User=jobseek-web
+Group=jobseek-web
+ExecStart=/usr/bin/node /usr/local/lib/jobseek-web/run-alerts.mjs
+TimeoutStartSec=360s
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

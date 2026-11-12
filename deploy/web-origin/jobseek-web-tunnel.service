@@ -1,0 +1,25 @@
+[Unit]
+Description=Cloudflare Tunnel for the Jobseek web origin
+After=network-online.target jobseek-web@production.service
+Wants=network-online.target
+Requires=jobseek-web@production.service
+
+[Service]
+Type=notify
+User=cloudflared
+Group=cloudflared
+LoadCredential=cloudflare-tunnel-token:/etc/jobseek-web/cloudflare-tunnel-token
+ExecStart=/usr/local/lib/jobseek-web/cloudflared --no-autoupdate tunnel run --token-file ${CREDENTIALS_DIRECTORY}/cloudflare-tunnel-token
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=90s
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

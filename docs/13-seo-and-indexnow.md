@@ -36,23 +36,23 @@ Blog pages contain Article JSON-LD and matching article-specific Open Graph/Twit
 
 ## IndexNow lifecycle
 
-**Automatic path:** `.github/workflows/deploy-web-production.yml` builds and stages the selected main revision, checks it, promotes it, and verifies that `jseek.co` resolves to the promoted deployment. Only then does it run `pnpm --filter @jobseek/web notify-blog-indexnow` from that same checkout.
+**Production path:** `.github/workflows/deploy-web-origin.yml` stages and activates an exact main revision on the Hetzner web origin. After Cloudflare DNS points to that healthy origin, dispatch `.github/workflows/notify-blog-indexnow.yml` for the same revision.
 
-Every successful web promotion submits current published articles. This intentionally includes unchanged articles: the small idempotent resubmission repairs missed notifications and covers cumulative deployments. A skipped or failed promotion does not submit. The notification step requires `INDEXNOW_KEY` from the `Production` GitHub environment and fails on a missing key, rejected HTTP response, or transport error. A notification failure after promotion does not roll back the site.
+The notification step requires `INDEXNOW_KEY` from the `Production` GitHub environment and fails on a missing key, rejected HTTP response, or transport error. A notification failure does not roll back the site.
 
-**Manual retry:** dispatch `.github/workflows/notify-blog-indexnow.yml` on the deployed revision. It shares production-deploy concurrency and requires the selected checkout SHA to match the deployment currently serving `jseek.co`, using the Vercel API. It never waits for a nonexistent `vercel[bot]` GitHub deployment record. If main is ahead of production, let deployment complete before retrying.
+The workflow checks that its checkout SHA matches the active host release, the tunnel is running, and the public sign-in URL responds. It shares production-deploy concurrency. If main is ahead of production, deploy first.
 
 The script loads published MDX and fans out only to each post's actual locales. The common `notifyIndexNow` helper sends to `https://api.indexnow.org/indexnow`, with `keyLocation=https://jseek.co/indexnow-key.txt`; 200/202 are acknowledgements, not proof of indexing. The helper retains safe no-op behavior for non-production callers without a key, but the production script explicitly rejects missing credentials.
 
 ### Credentials and verification
 
-- `INDEXNOW_KEY`: same value in Vercel production and GitHub environment `Production`.
-- Vercel serves the current proof at `/indexnow-key.txt` with `Cache-Control: no-store`. Verify status without printing the key into logs.
-- Automatic submission uses the existing deploy credentials; manual retry additionally reads production identity with `VERCEL_TOKEN` and `VERCEL_ORG_ID`.
+- `INDEXNOW_KEY`: same value in the protected web origin runtime and GitHub environment `Production`.
+- The web origin serves the current proof at `/indexnow-key.txt`. Verify status without printing the key into logs.
+- Submission checks the deployed host identity with protected SSH credentials.
 
 ```sh
 curl -I https://jseek.co/indexnow-key.txt
-gh run list --workflow deploy-web-production.yml --branch main --limit 5
+gh run list --workflow deploy-web-origin.yml --branch main --limit 5
 gh run list --workflow notify-blog-indexnow.yml --limit 5
 ```
 
