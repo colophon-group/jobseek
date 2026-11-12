@@ -85,7 +85,7 @@ workflow before enabling the runner. It adds the per-watchlist
 lets an unsent, definitively rejected delivery later finish as an empty window
 without erasing its attempt history. The existing `0088` migration is required.
 
-Configure only production through Vercel environment management:
+Configure only the protected production web runtime:
 
 | Variable | Behavior |
 | --- | --- |
@@ -99,7 +99,7 @@ Configure only production through Vercel environment management:
 | `RESEND_WEBHOOK_SECRET` | Signing secret for the notification webhook |
 
 Every variable is included in the two Turbo web build allowlists. Preview
-Vercel deployments reject `internal`/`live`. Do not copy production credentials
+Preview deployments reject `internal`/`live`. Do not copy production credentials
 into UI fixtures or preview projects. No provider install, upgrade or additional
 paid resource is needed by this code.
 
@@ -120,7 +120,7 @@ recipient; replaying the same event does not undo an intentional later resume.
 
 ## Scheduling, limits and recovery
 
-Vercel Cron calls `/api/internal/job-alerts` daily at 03:00 UTC. Stable per-owner
+When `JOB_ALERTS_MODE` is enabled, the Hetzner `jobseek-web-alerts.timer` calls `/api/internal/job-alerts` over loopback daily at 03:00 UTC. The timer is disabled while the mode is `off`. Stable per-owner
 weekday/hour slots are evaluated across the preceding seven days, covering a
 missed daily invocation. Both `sent` and zero-match `skipped` windows advance the
 floor. Pauses and fresh opt-ins impose later floors, preventing catch-up mail.

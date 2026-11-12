@@ -1,0 +1,25 @@
+[Unit]
+Description=Jobseek web origin (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jobseek-web
+Group=jobseek-web
+WorkingDirectory=/opt/jobseek-web
+ExecStart=/usr/bin/node /usr/local/lib/jobseek-web/launch.mjs %i
+Restart=on-failure
+RestartSec=3s
+TimeoutStartSec=60s
+MemoryMax=3G
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/cache/jobseek-web
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,6 @@
 name: Retry blog IndexNow submission
 
-# Automatic submissions run after verified promotion in deploy-web-production.
-# Manual recovery may submit only the content actually deployed at jseek.co.
+# Manual submission after the exact main revision is active on the Hetzner origin.
 on:
   workflow_dispatch:
 
@@ -30,19 +29,15 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Require this checkout to be deployed on production
+      - name: Require this checkout to be active on the public origin
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
         run: |
-          production="$(pnpm dlx vercel@59.25.4 api \
-            "/v13/deployments/jseek.co?teamId=$VERCEL_ORG_ID" \
-            --raw --token="$VERCEL_TOKEN")"
-          production_sha="$(jq -r '.gitSource.sha // .meta.githubCommitSha // ""' <<<"$production")"
-          if [[ "$production_sha" != "$(git rev-parse HEAD)" ]]; then
-            echo "Refusing to submit content from a checkout that is not deployed" >&2
-            exit 1
-          fi
+          bash deploy/web-origin/remote.sh verify "$(git rev-parse HEAD)"
+          curl --fail --silent --show-error --max-time 15 \
+            --output /dev/null https://jseek.co/en/sign-in
       - run: pnpm install --frozen-lockfile
       - name: Submit blog post URLs
         env:

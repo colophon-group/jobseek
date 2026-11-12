@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Jobseek job alerts daily at 03:00 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 UTC
+Persistent=true
+Unit=jobseek-web-alerts.service
+
+[Install]
+WantedBy=timers.target

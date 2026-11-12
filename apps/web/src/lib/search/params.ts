@@ -20,11 +20,11 @@ export function parseRangeParam(val: string | undefined): { min: number | undefi
   };
 }
 
-/** Read Vercel geolocation headers, returning undefined for missing/invalid values. */
+/** Read the deployment edge's geolocation headers when available. */
 export async function getGeoFromHeaders(): Promise<{ userLat: number | undefined; userLng: number | undefined }> {
   const h = await headers();
-  const lat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
-  const lng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
+  const lat = parseFloat(h.get("cf-iplatitude") ?? h.get("x-vercel-ip-latitude") ?? "");
+  const lng = parseFloat(h.get("cf-iplongitude") ?? h.get("x-vercel-ip-longitude") ?? "");
   return {
     userLat: Number.isFinite(lat) ? lat : undefined,
     userLng: Number.isFinite(lng) ? lng : undefined,

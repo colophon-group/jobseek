@@ -19,6 +19,11 @@ import { redis } from "@/lib/redis";
  * Reference: https://vercel.com/docs/edge-network/headers/request-headers
  */
 export function getClientIp(headers: Headers): string {
+  if (process.env.JOBSEEK_WEB_ORIGIN === "cloudflare_tunnel") {
+    // The origin listens on loopback and only cloudflared reaches it. Ignore
+    // client-supplied x-real-ip / x-forwarded-for on this ingress path.
+    return headers.get("cf-connecting-ip")?.trim() || "unknown";
+  }
   const real = headers.get("x-real-ip")?.trim();
   if (real) return real;
   const xff = headers.get("x-forwarded-for");
