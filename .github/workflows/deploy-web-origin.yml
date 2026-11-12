@@ -97,8 +97,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/web-origin-package/apps/web/.next"
           cp -a apps/web/.next/standalone/. "$RUNNER_TEMP/web-origin-package/"
           cp -a apps/web/.next/static "$RUNNER_TEMP/web-origin-package/apps/web/.next/static"
-          cp -a apps/web/public "$RUNNER_TEMP/web-origin-package/apps/web/public"
+          mkdir -p "$RUNNER_TEMP/web-origin-package/apps/web/public"
+          cp -a apps/web/public/. "$RUNNER_TEMP/web-origin-package/apps/web/public/"
           test -s "$RUNNER_TEMP/web-origin-package/apps/web/server.js"
+          test -s "$RUNNER_TEMP/web-origin-package/apps/web/public/js_wide_logo_white.svg"
+          test -s "$RUNNER_TEMP/web-origin-package/apps/web/public/publicdomain/the_astrologer_dark.png"
           tar -C "$RUNNER_TEMP/web-origin-package" -czf "$RUNNER_TEMP/web-origin-release.tar.gz" .
 
       - name: Recheck current main before changing the host
