@@ -3879,6 +3879,7 @@ insomnia-cookies,insomnia-cookies-careers,https://jobs.lever.co/insomniacookies,
 insomnia-cookies,insomnia-cookies-careers-uk,https://jobs.eu.lever.co/insomniacookiesuk,lever,"{""token"": ""insomniacookiesuk""}",skip,
 insomniac-games,insomniac-games-greenhouse,https://job-boards.greenhouse.io/insomniac,greenhouse,"{""token"": ""insomniac""}",skip,
 inspira-education,inspira-education-greenhouse,https://job-boards.greenhouse.io/inspiraeducation,greenhouse,"{""token"": ""inspiraeducation""}",skip,
+inspira-health,inspira-health-careers,https://ernh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""total_count_tolerance"": 3}",oracle_hcm,"{""host"": ""ernh.fa.us2.oraclecloud.com"", ""site"": ""CX_1"", ""enrich"": [""description""], ""fields"": {""title"": ""Title"", ""locations"": ""PrimaryLocation"", ""date_posted"": ""ExternalPostedStartDate"", ""description"": [""ExternalDescriptionStr"", ""ExternalQualificationsStr"", ""ExternalResponsibilitiesStr""]}}"
 inspiration-commerce-group,inspiration-commerce-group-ashby,https://jobs.ashbyhq.com/inspiration-commerce-group,ashby,"{""token"": ""inspiration-commerce-group""}",skip,
 inspire-medical-systems-inc,inspire-medical-systems-inc-greenhouse,https://job-boards.greenhouse.io/inspiremedicalsystemsinc,greenhouse,"{""token"": ""inspiremedicalsystemsinc""}",skip,
 inspiren,inspiren-greenhouse,https://job-boards.greenhouse.io/inspiren,greenhouse,"{""token"": ""inspiren""}",skip,

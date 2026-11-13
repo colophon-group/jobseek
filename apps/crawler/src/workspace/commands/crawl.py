@@ -1173,6 +1173,8 @@ def select_monitor(
                 "page_size",
                 "browser",
             }
+            if type_ == "api_sniffer":
+                _VALID_PAG_KEYS.add("value_template")
         pag_cfg = config["pagination"]
         if isinstance(pag_cfg, dict):
             unknown = set(pag_cfg.keys()) - _VALID_PAG_KEYS
