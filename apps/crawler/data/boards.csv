@@ -4390,6 +4390,7 @@ leclanche,leclanche-switzerland-jobup,https://www.jobup.ch/en/enterprises/6099-l
 ledger,ledger-ashby,https://jobs.ashbyhq.com/ledger,ashby,"{""token"": ""ledger""}",skip,
 ledger,ledger-lever,https://jobs.lever.co/ledger,lever,"{""token"": ""ledger""}",skip,
 ledgy,ledgy-greenhouse,https://job-boards.greenhouse.io/ledgy,greenhouse,"{""token"": ""ledgy""}",skip,
+legacy-healthcare-services,legacy-healthcare-services-careers,https://careers-legacyinc.icims.com/,icims,,json-ld,
 legal-services-nyc,legal-services-nyc-greenhouse,https://job-boards.greenhouse.io/legalservicesnyc,greenhouse,"{""token"": ""legalservicesnyc""}",skip,
 legalzoom,legalzoom-pinpoint,https://legalzoom.pinpointhq.com,pinpoint,"{""slug"": ""legalzoom""}",skip,
 legend-biotech-us,legend-biotech-us-greenhouse,https://job-boards.greenhouse.io/legendcareers,greenhouse,"{""token"": ""legendcareers""}",skip,
