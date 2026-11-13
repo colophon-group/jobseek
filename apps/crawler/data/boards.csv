@@ -4083,6 +4083,7 @@ johnson-law-group,johnson-law-group-greenhouse,https://job-boards.greenhouse.io/
 join,join-join,https://join.com/companies/join,join,"{""slug"": ""join""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 join-gmbh,join-gmbh-join,https://join.com/companies/joinit,join,"{""slug"": ""joinit""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 join-our-talent-community,join-our-talent-community-greenhouse,https://job-boards.greenhouse.io/axontalentcommunity,greenhouse,"{""token"": ""axontalentcommunity""}",skip,
+join-parachute,join-parachute-careers,https://joinparachute.pinpointhq.com/,pinpoint,,skip,
 join-the-folx-team,join-the-folx-team-greenhouse,https://job-boards.greenhouse.io/folxhealth,greenhouse,"{""token"": ""folxhealth""}",skip,
 jomboy-media,jomboy-media-greenhouse,https://job-boards.greenhouse.io/jomboymedia,greenhouse,"{""token"": ""jomboymedia""}",skip,
 josko-services,josko-services-greenhouse,https://job-boards.greenhouse.io/joskoasp,greenhouse,"{""token"": ""joskoasp""}",skip,
