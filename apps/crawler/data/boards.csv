@@ -5205,6 +5205,9 @@ nike,nike-careers,https://careers.nike.com,phenom,"{""proxy"":true,""rescrape_po
 nikon,nikon-careers-eu,https://europebv.nikon.com/all-open-positions,recruitee,,skip,
 nikon,nikon-careers-us,https://recruiting.paylocity.com/recruiting/jobs/All/15fca012-892c-4721-a285-e56e02980e47/Nikon-Inc,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",json-ld,
 nimble-gravity,nimble-gravity-greenhouse,https://job-boards.greenhouse.io/nimblegravity,greenhouse,"{""token"": ""nimblegravity""}",skip,
+ninebot,ninebot-careers,https://app.mokahr.com/social-recruitment/ninebot/45626,mokahr,"{""org_id"": ""ninebot"", ""site_id"": 45626}",mokahr,"{""enrich"": [""description"", ""employment_type"", ""date_posted""]}"
+ninebot,ninebot-careers-campus,https://app.mokahr.com/campus-recruitment/ninebot/45627,mokahr,"{""org_id"": ""ninebot"", ""site_id"": 45627}",mokahr,"{""enrich"": [""description"", ""employment_type"", ""date_posted""]}"
+ninebot,ninebot-careers-europe,https://eu-en.segway.com/career.html,dom,"{""render"": true, ""resource_policy"": ""none"", ""link_selector"": ""a[href*=\""/content/dam/segway-ninebot/content-fragment/career/\""][href$=\"".pdf\""]"", ""url_filter"": ""/content/dam/segway-ninebot/content-fragment/career/.*\\.pdf$""}",pdf,"{""title_source"": ""url"", ""title_pattern"": ""Job description - (.+)"", ""location_pattern"": ""(?i)(?:location|based in|based at)\\s*:?\\s*([^\\n]+)""}"
 ninjatrader,ninjatrader-greenhouse,https://job-boards.greenhouse.io/ninjatrader,greenhouse,"{""token"": ""ninjatrader""}",skip,
 nintendo,nintendo-greenhouse,https://job-boards.greenhouse.io/nintendo,greenhouse,"{""token"": ""nintendo""}",skip,
 nira-energy,nira-energy-greenhouse,https://job-boards.greenhouse.io/niraenergy,greenhouse,"{""token"": ""niraenergy""}",skip,
