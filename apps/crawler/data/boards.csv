@@ -4143,6 +4143,8 @@ kapa-ai,kapa-ai-careers,https://www.ycombinator.com/companies/kapa-ai/jobs/,ycom
 kapitus,kapitus-greenhouse,https://job-boards.greenhouse.io/kapitus,greenhouse,"{""token"": ""kapitus""}",skip,
 karat,karat-greenhouse,https://job-boards.greenhouse.io/karat,greenhouse,"{""token"": ""karat""}",skip,
 karbon,karbon-greenhouse,https://job-boards.greenhouse.io/karbon,greenhouse,"{""token"": ""karbon""}",skip,
+kare,kare-careers,https://kare.breezy.hr/,breezy,,json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
+kare,kare-careers-corporate,https://kare-co.breezy.hr/,breezy,"{""portal_url"": ""https://kare-co.breezy.hr/""}",json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
 kargo,kargo-greenhouse,https://job-boards.greenhouse.io/kargo,greenhouse,"{""token"": ""kargo""}",skip,
 karya,karya-greenhouse,https://job-boards.greenhouse.io/karya,greenhouse,"{""token"": ""karya""}",skip,
 kasa,kasa-greenhouse,https://job-boards.greenhouse.io/kasa,greenhouse,"{""token"": ""kasa""}",skip,
