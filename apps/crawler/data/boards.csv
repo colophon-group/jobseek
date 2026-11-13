@@ -7813,6 +7813,7 @@ vam-systems,vam-systems-current,https://careers.smartrecruiters.com/VAMSystems,s
 van-metre-companies,van-metre-companies-greenhouse,https://job-boards.greenhouse.io/vanmetre,greenhouse,"{""token"": ""vanmetre""}",skip,
 vancouver-coastal-health,vancouver-coastal-health-careers,https://careers-vch.icims.com/,icims,,json-ld,
 vancouver-coastal-health,vancouver-coastal-health-research-institute,https://www.vchri.ca/careers,dom,"{""render"": false, ""url_filter"": ""^https://www\\.med\\.ubc\\.ca/careers/[^/]+/?$"", ""rich_rows"": {""row_selector"": ""section.field--name-body .container--field > p:has(> a[href^='https://www.med.ubc.ca/careers/'])"", ""link_selector"": ""a[href]"", ""description_next_selector"": ""p"", ""default_locations"": [""British Columbia, CA""]}}",skip,
+vanguard,vanguard-careers,https://vanguard.wd5.myworkdayjobs.com/vanguard_external,workday,,workday,
 vanilla,vanilla-ashby,https://jobs.ashbyhq.com/vanilla,ashby,"{""token"": ""vanilla""}",skip,
 vanna-health,vanna-health-greenhouse,https://job-boards.greenhouse.io/vannahealth,greenhouse,"{""token"": ""vannahealth""}",skip,
 vannevar,vannevar-greenhouse,https://job-boards.greenhouse.io/vannevarlabs,greenhouse,"{""token"": ""vannevarlabs""}",skip,
