@@ -6887,6 +6887,7 @@ spacex,spacex-greenhouse,https://job-boards.greenhouse.io/spacex,greenhouse,"{""
 spacex-global,spacex-global-greenhouse,https://job-boards.greenhouse.io/spacexglobal,greenhouse,"{""token"": ""spacexglobal""}",skip,
 spacial,spacial-ashby,https://jobs.ashbyhq.com/spacial,ashby,"{""token"": ""spacial""}",skip,
 spade,spade-careers,https://boards.greenhouse.io/spade,greenhouse,"{""token"": ""spade""}",skip,
+spade-recruiting,spade-recruiting-careers,https://spadepartners.applytojob.com/,jazzhr,,jazzhr,
 span,span-ashby,https://jobs.ashbyhq.com/span,ashby,"{""token"": ""span""}",skip,
 spar-inc,spar-inc-canada-field-corporate,https://careers1-sparcanada.icims.com/,icims,"{""host"": ""careers1-sparcanada.icims.com""}",json-ld,
 spar-inc,spar-inc-canada-merchandiser,https://careers2-sparcanada.icims.com/,icims,"{""host"": ""careers2-sparcanada.icims.com""}",json-ld,
