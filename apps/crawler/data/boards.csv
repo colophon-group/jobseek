@@ -7681,6 +7681,7 @@ unique,unique-careers,https://www.unique.ai/careers,dom,"{""render"": true, ""wa
 unisante,unisante-emploi,https://emploi.unisante.ch/index.php/offres,unisante,"{""identity_migration"": ""unisante-provider-reference-v1""}",skip,
 unispace,unispace-greenhouse,https://job-boards.greenhouse.io/unispace,greenhouse,"{""token"": ""unispace""}",skip,
 uniswap,uniswap-ashby,https://jobs.ashbyhq.com/uniswap,ashby,"{""token"": ""uniswap""}",skip,
+unisys,unisys-careers,https://unisys.wd5.myworkdayjobs.com/external,workday,,workday,
 unit,unit-ashby,https://jobs.ashbyhq.com/unit,ashby,"{""token"": ""unit""}",skip,
 unit8,unit8-careers,https://apply.workable.com/unit8/,workable,"{""token"": ""unit8""}",workable,
 unitar,unitar-vacancies,https://unitar.org/vacancy-announcements,dom,"{""render"": false, ""url_filter"": ""/vacancy-announcements/.+""}",dom,"{""scope"": ""body"", ""include_document_title"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?)(?: \\|.*)?$""}, {""from"": 0, ""match_regex"": ""Home-based|Geneva, Switzerland|Remote|Geneva office based"", ""field"": ""locations"", ""regex"": ""(Home-based|Geneva, Switzerland|Remote|Geneva office based)"", ""optional"": true}, {""from"": 0, ""text"": ""Vacancy announcement"", ""field"": ""description"", ""offset"": 2, ""html"": true, ""optional"": true, ""stop"": ""Related""}]}"
