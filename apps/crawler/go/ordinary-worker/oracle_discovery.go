@@ -44,6 +44,13 @@ func discoverOracleInventory(ctx context.Context, client *http.Client, profile q
 	}
 	result.Truncated = found.Truncated
 	for _, job := range found.Jobs {
+		keep, err := rules.FilterURL(job.URL)
+		if err != nil {
+			return RichDiscovery{Response: result.Response}, err
+		}
+		if !keep {
+			continue
+		}
 		title, err := executor.CoerceText(job.Title)
 		if err != nil {
 			return RichDiscovery{Response: result.Response}, err

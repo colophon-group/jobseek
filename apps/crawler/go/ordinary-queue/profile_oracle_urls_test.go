@@ -33,3 +33,32 @@ func TestOraclePublicURLPolicyPreservesIdentityAndRejectsBoundaryViolations(t *t
 		}
 	}
 }
+
+func TestOracleURLFilterAdmissionAndRawSelection(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"] = "oracle_hcm"
+	c["board_url"] = "https://fixture.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001"
+	for _, filter := range []string{`"/job/[0-9]+$"`, `{"include":"/job/","exclude":"_ORA_DELETED$"}`, `null`} {
+		c["metadata"] = `{"url_filter":` + filter + `,"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`
+		if _, err := InspectRichMonitor(profileBoardID, c); err != nil {
+			t.Fatal("valid Oracle filter rejected", filter, err)
+		}
+		rules, err := OracleMonitorURLRules(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, id := range []string{"23538", "18037_300000876670395_ORA_DELETED"} {
+			keep, err := rules.FilterURL(c["board_url"] + "/job/" + id)
+			want := filter == `null` || id == "23538"
+			if err != nil || keep != want {
+				t.Fatal("filter differs from offline selection", filter, id, keep, err)
+			}
+		}
+	}
+	for _, filter := range []string{`"["`, `{"exclude":"["}`, `{"exclude":1}`, `{"unknown":"x"}`, `[]`} {
+		c["metadata"] = `{"url_filter":` + filter + `}`
+		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+			t.Fatal("malformed Oracle filter admitted", filter)
+		}
+	}
+}

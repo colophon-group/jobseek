@@ -12,6 +12,7 @@ import (
 type OracleURLRules struct {
 	allow, find *regexp.Regexp
 	replacement string
+	filter      *FeedURLRules
 }
 
 func OracleMonitorURLRules(config map[string]string) (*OracleURLRules, error) {
@@ -20,6 +21,18 @@ func OracleMonitorURLRules(config map[string]string) (*OracleURLRules, error) {
 		return nil, err
 	}
 	rules := &OracleURLRules{}
+	// Reuse the shared bounded Python-compatible filter parser without changing
+	// Oracle's stricter allowlist and identity-transform policy.
+	if raw, ok := md["url_filter"]; ok {
+		filterMetadata, err := json.Marshal(map[string]json.RawMessage{"url_filter": raw})
+		if err != nil {
+			return nil, ErrUnsupportedProfile
+		}
+		rules.filter, err = FeedMonitorURLRules(map[string]string{"metadata": string(filterMetadata)})
+		if err != nil {
+			return nil, err
+		}
+	}
 	if raw, ok := md["url_allowlist"]; ok {
 		var pattern string
 		if json.Unmarshal(raw, &pattern) != nil || pattern == "" || len(pattern) > 2048 {
@@ -91,4 +104,16 @@ func (r *OracleURLRules) Apply(source string) (string, error) {
 		source = r.find.ReplaceAllString(source, r.replacement)
 	}
 	return source, nil
+}
+
+// FilterURL runs on the complete raw inventory before Oracle's boundary check
+// and canonical rewrite, matching the offline monitor dispatcher order.
+func (r *OracleURLRules) FilterURL(source string) (bool, error) {
+	if r == nil {
+		return false, ErrUnsupportedProfile
+	}
+	if r.filter == nil {
+		return true, nil
+	}
+	return r.filter.FilterURL(source)
 }
