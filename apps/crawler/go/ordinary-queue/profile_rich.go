@@ -293,7 +293,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range oracle.ConfigKeys {
 			allowed[key] = true
 		}
-		for _, key := range []string{"sitemap_url", "proxy", "url_allowlist", "url_transform", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"sitemap_url", "proxy", "url_filter", "url_allowlist", "url_transform", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "api_sniffer":

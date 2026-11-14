@@ -115,3 +115,42 @@ func TestOracleAllowlistRewriteRunsBeforeCanonicalInventory(t *testing.T) {
 		})
 	}
 }
+
+func TestOracleURLFilterReconcilesFullInventoryBeforeSelection(t *testing.T) {
+	for _, shortTail := range []bool{false, true} {
+		t.Run(fmt.Sprint(shortTail), func(t *testing.T) {
+			p, c := oracleFixture()
+			c["metadata"] = `{"url_filter":{"exclude":"_ORA_DELETED$"},"url_allowlist":"^https://fixture\\.fa\\.em2\\.oraclecloud\\.com/hcmUI/CandidateExperience/en/sites/CX_1/job/[0-9]+$","url_transform":{"find":"^https://fixture\\.fa\\.em2\\.oraclecloud\\.com/hcmUI/CandidateExperience/en/sites/CX_1/job/([0-9]+)$","replace":"https://careers.example.net/en/job/\\1"}}`
+			calls := 0
+			client := &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
+				calls++
+				rows := []map[string]any{}
+				if calls == 1 {
+					if r.URL.String() != p.Endpoint {
+						t.Fatal("filter changed fetch authority", r.URL)
+					}
+					for n := range 200 {
+						rows = append(rows, map[string]any{"Id": n + 1, "Title": "Engineer", "PrimaryLocation": "Cincinnati"})
+					}
+				} else if calls == 2 && strings.HasSuffix(r.URL.String(), ",offset=200") {
+					if !shortTail {
+						rows = append(rows, map[string]any{"Id": "18037_300000876670395_ORA_DELETED", "Title": "Deleted nurse"})
+					}
+				} else {
+					t.Fatal("unexpected finder request", r.URL)
+				}
+				body, _ := json.Marshal(map[string]any{"items": []any{map[string]any{"TotalJobsCount": 201, "requisitionList": rows}}})
+				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(string(body))), Request: r}, nil
+			})}
+			got, err := discoverOracleInventory(context.Background(), client, p, c)
+			if err != nil || calls != 2 || got.Truncated != shortTail || len(got.Jobs) != 200 {
+				t.Fatal("filter weakened complete-inventory accounting", got, err, calls)
+			}
+			for n, job := range got.Jobs {
+				if job.URL != fmt.Sprintf("https://careers.example.net/en/job/%d", n+1) || job.Title == nil || *job.Title != "Engineer" {
+					t.Fatal("selection/rewrite order differs", job)
+				}
+			}
+		})
+	}
+}
