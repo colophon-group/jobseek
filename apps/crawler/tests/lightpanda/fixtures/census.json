@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 8307,
-    "boards_sha256": "fc5dcbe228c38d4ea85b7c0f9e07cdee8c3fed5364474a7d39e4d0bb673049c3",
+    "boards_row_count": 8313,
+    "boards_sha256": "42ef1ed78c78b822bbcd6fdd07826b7caad72fcceb76f42ea386d66340e4cef9",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "ffdfa14f29579532a91951fcb5333ca4bd7c85eb9340dd68d292af7c40ab178a",
+  "manifest_sha256": "44d4cfbacb0cbc7b65363f2b57760adf577e8d59d33dcf004c96c7dc77328778",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -6580,6 +6580,29 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "action.wait_for",
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "interactive_dom",
+      "config_shape_sha256": "6978b045d1264415c0bf734e95b4123207ffef330156d7bfb0850b2163fb91b0",
+      "crawler_type": "dom",
+      "digest_sha256": "30c4689f8efd72722571a9adba3449c2d9a4ed2a079cf668d429bdf03462a538",
+      "fixture": "synthetic.interactive_dom.v1",
+      "id": "profile.scraper.dom.a141adb79ac1913f",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "9cec14b6dcb95ed87a20d3f5c92fc5dcddd10976bc13a11356b9b1b38724f781",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "action.evaluate",
         "cdp.navigation",
         "dom.snapshot",
@@ -7715,12 +7738,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "76f6578053b67be7ee7cd41dee516f3bd30347f5622c81bd84292b4010de6831",
       "crawler_type": "dom",
-      "digest_sha256": "6a0b3bf6dd867d6e2a3365258f152f4182c1d161e9389024a45de787d70990d9",
+      "digest_sha256": "ca837672d4ca844bdb7296717980cc7069c96e3b3910299f4596826b032f08cb",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.dom",
       "profile_kind": "registry",
-      "source_count": 905,
-      "source_refs_sha256": "1eb00e77bddcd4cea8ac12bbdd6ef537fcff3572024bf3b28dac433c536e7acc",
+      "source_count": 907,
+      "source_refs_sha256": "8fb148878747c0295a06cc08ad779b0e80e52958d4637565ba467624699e7705",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7803,12 +7826,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "01803bde557557bd0eb33f0e7804ff13f2f8d443582726a4e45fa1be014eaf2b",
       "crawler_type": "rss",
-      "digest_sha256": "4341ed241c91351f4bdeb38faf2839c3fafda6bb2ac04dc34e9f672251b43e44",
+      "digest_sha256": "1f3de79973d8fa0c1ee50d5659fec2b7ceb0393d18c570b6f75ee05dfbcc52e8",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.rss",
       "profile_kind": "registry",
-      "source_count": 438,
-      "source_refs_sha256": "73ca94622f1215857aad197e76f1e14b00b58e3fbcceea2666651db1a0473362",
+      "source_count": 439,
+      "source_refs_sha256": "3a3526a62b85ed5d70c03f7159b77e85d369f856e2c15c6753d398bebe5f24a5",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7849,12 +7872,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "5a08da4785afa1c964a303d332bbded26bf22deb8d73751ad343279b74d02707",
       "crawler_type": "dom",
-      "digest_sha256": "7453276550fcb4a26a5472ee189a728bab8cf3c3e2564fadf780eec548f3ab7f",
+      "digest_sha256": "72fad1ad5e592e2be9056f6ed0fb408d93ca40b161931605d35898e749e43860",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.dom",
       "profile_kind": "registry",
-      "source_count": 827,
-      "source_refs_sha256": "0fb52ac19b58c42075de7102412065d157a176794f97c1c9b5ab4f4842775fe0",
+      "source_count": 832,
+      "source_refs_sha256": "6d0f5735198d82b1b876ba02a273e83387a96e71cb2245cf91001aa421056088",
       "status": "inventory",
       "surface": "scraper"
     },
@@ -7926,12 +7949,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 532,
-    "browser_required_step_count": 688,
-    "configured_profile_occurrence_count": 689,
-    "configured_record_count": 320,
+    "browser_board_count": 533,
+    "browser_required_step_count": 689,
+    "configured_profile_occurrence_count": 690,
+    "configured_record_count": 321,
     "registry_record_count": 17,
-    "total_record_count": 337,
+    "total_record_count": 338,
     "zero_browser_config_registry_count": 1
   }
 }
