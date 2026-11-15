@@ -6843,6 +6843,7 @@ sollis-health,sollis-health-greenhouse,https://job-boards.greenhouse.io/sollishe
 solution-sft,solution-sft-baro-rh,https://barorh.com/offres-emploi/,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""resource_policy"": ""auto"", ""bot_protection"": false, ""url_filter"": ""^https://barorh\\.com/offres-emploi/.+""}",json-ld,
 solution-sft,solution-sft-careers,https://apply.workable.com/solution-sft,workable,,workable,
 solveai,solveai-careers,https://jobs.ashbyhq.com/solve.ai/,ashby,"{""token"": ""solve.ai""}",skip,
+solventum,solventum-careers,https://healthcare.wd1.myworkdayjobs.com/search,workday,,workday,
 sona,sona-ashby,https://jobs.ashbyhq.com/sona,ashby,"{""token"": ""sona""}",skip,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,skip,
 sonatus,sonatus-greenhouse,https://job-boards.greenhouse.io/sonatus,greenhouse,"{""token"": ""sonatus""}",skip,
