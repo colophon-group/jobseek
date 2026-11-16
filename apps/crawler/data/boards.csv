@@ -897,6 +897,7 @@ barkbus,barkbus-ashby,https://jobs.ashbyhq.com/barkbus,ashby,"{""token"": ""bark
 barkley,barkley-greenhouse,https://job-boards.greenhouse.io/barkley,greenhouse,"{""token"": ""barkley""}",skip,
 baron-capital,baron-capital-greenhouse,https://job-boards.greenhouse.io/baroncapital,greenhouse,"{""token"": ""baroncapital""}",skip,
 barry-callebaut,barry-callebaut-careers,https://jobs.barry-callebaut.com/go/All-Jobs/8610800/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.barry-callebaut.com/googlefeed.xml""}",skip,
+barry-wehmiller,barry-wehmiller-careers,https://barrywehmiller.wd1.myworkdayjobs.com/bwcareers,workday,,workday,
 base,base-ashby,https://jobs.ashbyhq.com/base,ashby,"{""token"": ""base""}",skip,
 base-power-company,base-power-company-ashby,https://jobs.ashbyhq.com/base-power,ashby,"{""token"": ""base-power""}",skip,
 baselayer,baselayer-greenhouse,https://job-boards.greenhouse.io/baselayer,greenhouse,"{""token"": ""baselayer""}",skip,
