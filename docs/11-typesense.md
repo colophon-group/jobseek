@@ -49,8 +49,8 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
 
 The server bootstrap key and five generated keys have separate owners and
 lifecycles. Values are stored only where their consumer needs them: protected
-GitHub environment secrets for CI/CD, root-only host files, protected Vercel
-environment variables for the web app, and ignored developer
+GitHub environment secrets for CI/CD, root-only host files and protected
+Hetzner web runtime configuration for the web app, and ignored developer
 `apps/crawler/.env.local` files when local access is required. They are never
 part of a Git branch.
 
@@ -73,13 +73,10 @@ minutes in the future. The search-only scope is identical for every visitor,
 so `/api/typesense-key` deliberately does not read session state; reintroducing
 an auth lookup would make a shared response vary per viewer and pull the auth,
 database, and Redis dependency graph into this hot Function. The endpoint
-returns the signed boundary in milliseconds. Vercel's CDN caches the shared
-response for 510 seconds with a hard `max-age` freshness boundary, leaving 90
-seconds before key expiry, while the browser refreshes 30 seconds early. A
-valid response is also kept in
-`localStorage` until that refresh boundary so reloads and new tabs do not mint
-another key. The scoped child is short-lived and the parent key never leaves
-the server.
+returns the signed boundary in milliseconds. The browser refreshes 30 seconds
+before expiry and keeps a valid response in `localStorage` until that boundary,
+so reloads and new tabs do not mint another key. The scoped child is short-lived
+and the parent key never leaves the server.
 
 ### Browser parent-key rotation
 
