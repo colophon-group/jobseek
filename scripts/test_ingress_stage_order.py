@@ -1,8 +1,14 @@
-"""Exercise the ingress staging order and bounded native listener recovery."""
+"""Exercise ingress staging, listener recovery, and installed feed audit checks."""
 
 from __future__ import annotations
 
+import hashlib
+import os
+import shlex
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
@@ -76,6 +82,61 @@ class IngressStageOrderTests(unittest.TestCase):
         conformance = stage.rindex("--require-enforced")
         self.assertLess(recovered, conformance)
         self.assertLess(conformance, stage.index("trap - ERR EXIT", recovered))
+
+
+class FeedRoleAuditTests(unittest.TestCase):
+    def test_only_the_exact_safe_helper_reaches_the_database_audit(self):
+        source = TRANSPORT.read_text(encoding="utf-8")
+        remote = source.split("<<'REMOTE_FEED_AUDIT'\n", 1)[1].split(
+            "\nREMOTE_FEED_AUDIT", 1
+        )[0]
+        remote = remote.replace("== 0:0:700", f"== {os.getuid()}:{os.getgid()}:700")
+        if sys.platform == "darwin":
+            remote = remote.replace("stat -c '%u:%g:%a' --", "stat -f '%u:%g:%Lp'")
+        if shutil.which("sha256sum") is None:
+            remote = remote.replace("sha256sum", "shasum -a 256")
+        exact = (
+            b"import sys\nassert sys.argv[1:] == ['audit']\nprint('audit executed')\n"
+        )
+        expected = hashlib.sha256(exact).hexdigest()
+        cases = {
+            "missing": "installed helper is missing",
+            "symlink": "installed helper is not a regular file",
+            "unsafe": "installed helper owner, group or permissions are unsafe",
+            "different": "installed helper differs from the reviewed main revision",
+            "exact": None,
+        }
+        for case, failure in cases.items():
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
+                helper = Path(temp) / "installed-helper"
+                test_script = remote.replace(
+                    "/usr/local/sbin/jobseek-justup-feed-role", shlex.quote(str(helper))
+                )
+                if case == "symlink":
+                    helper.symlink_to(Path(temp) / "absent-target")
+                elif case != "missing":
+                    helper.write_bytes(
+                        exact if case != "different" else b"print('changed helper')\n"
+                    )
+                    helper.chmod(0o755 if case == "unsafe" else 0o700)
+                result = subprocess.run(
+                    ["bash", "-s", "--", expected],
+                    input=test_script,
+                    text=True,
+                    capture_output=True,
+                    timeout=5,
+                    check=False,
+                )
+                if failure is None:
+                    self.assertEqual(
+                        (result.returncode, result.stdout, result.stderr),
+                        (0, "audit executed\n", ""),
+                    )
+                else:
+                    self.assertEqual((result.returncode, result.stdout), (1, ""))
+                    self.assertEqual(
+                        result.stderr, f"Justup feed role audit: {failure}\n"
+                    )
 
 
 if __name__ == "__main__":
