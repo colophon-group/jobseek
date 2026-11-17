@@ -7,8 +7,11 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
+import shutil
 import signal
 import subprocess
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -666,6 +669,45 @@ def test_attest_restore_rejects_unpinned_staged_drill(tmp_path: Path, monkeypatc
             uid=os.getuid(),
         )
     assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+
+
+@pytest.mark.parametrize(
+    ("installed", "failure"),
+    [
+        ("missing", "installed helper is missing"),
+        ("symlink", "installed helper is not a regular file"),
+        ("unsafe", "installed helper owner, group or permissions are unsafe"),
+        ("different", "installed helper differs from the reviewed main revision"),
+        ("exact", None),
+    ],
+)
+def test_remote_audit_reports_the_failed_helper_check(
+    tmp_path: Path, installed: str, failure: str | None
+) -> None:
+    source = (ROOT / "deploy/networking/run-remote.sh").read_text(encoding="utf-8")
+    remote = source.split("<<'REMOTE_FEED_AUDIT'\n", 1)[1].split("\nREMOTE_FEED_AUDIT", 1)[0]
+    helper = tmp_path / "installed-helper"
+    remote = remote.replace("/usr/local/sbin/jobseek-justup-feed-role", shlex.quote(str(helper)))
+    remote = remote.replace("== 0:0:700", f"== {os.getuid()}:{os.getgid()}:700")
+    if sys.platform == "darwin":
+        remote = remote.replace("stat -c '%u:%g:%a' --", "stat -f '%u:%g:%Lp'")
+    if shutil.which("sha256sum") is None:
+        remote = remote.replace("sha256sum", "shasum -a 256")
+    exact = b"import sys\nassert sys.argv[1:] == ['audit']\nprint('audit executed')\n"
+    expected = hashlib.sha256(exact).hexdigest()
+    if installed == "symlink":
+        helper.symlink_to(tmp_path / "absent-target")
+    elif installed != "missing":
+        helper.write_bytes(exact if installed != "different" else b"print('changed helper')\n")
+        helper.chmod(0o755 if installed == "unsafe" else 0o700)
+    result = subprocess.run(
+        ["bash", "-s", "--", expected], input=remote, text=True, capture_output=True, timeout=5
+    )
+    if failure is None:
+        assert (result.returncode, result.stdout, result.stderr) == (0, "audit executed\n", "")
+    else:
+        assert (result.returncode, result.stdout) == (1, "")
+        assert result.stderr == f"Justup feed role audit: {failure}\n"
 
 
 def test_remote_install_attests_after_dispatch_before_ddl() -> None:

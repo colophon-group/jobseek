@@ -613,6 +613,8 @@ credentials are provisioned separately from the workflow. Before each
 operator export, run the workflow's read-only `audit-feed-role` action from the
 exact current `main` revision and retain its successful role/HBA receipt; a
 future automated export must make that audit its own preflight.
+After the HBA check, the audit reports a missing, unsafe, unreadable or
+mismatched installed helper before attempting the database role check.
 
 PostgreSQL TLS is not required on this local-crawler data path under the
 current threat model: the database contains crawler-source job data rather
