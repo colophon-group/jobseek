@@ -88,8 +88,8 @@ and on the normal credential-rotation schedule:
 
 1. Create a generated parent with the sole action `documents:search`, exactly
    the six collections above, and an expiry later than any scoped child expiry.
-2. Replace the protected Vercel `TYPESENSE_BROWSER_PARENT_KEY` value and deploy
-   the web app.
+2. Replace `TYPESENSE_BROWSER_PARENT_KEY` in the protected Hetzner web runtime
+   configuration and deploy the web origin through its stage and activate workflow.
 3. Fetch `/api/typesense-key`, decode its scoped payload to confirm
    `expires_at`, and perform a browser-path search with the new child key.
 4. Delete the old parent in Typesense. Confirm a child captured from the old
