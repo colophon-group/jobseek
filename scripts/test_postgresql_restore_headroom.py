@@ -103,11 +103,17 @@ exit 0
             "JOBSEEK_POSTGRES_RESTORE_DRILL_DIR": str(self.base),
             "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
         }
-        for loader_exit in (0, 137):
-            with self.subTest(loader_exit=loader_exit):
+        label = "20261118-010000F"
+        cases = (
+            (["--backup-consistency", label], 0, ["--type=immediate", "--target-action=promote", f"--set={label}"]),
+            ([label], 137, [f"--set={label}"]),
+            ([], 0, []),
+        )
+        for drill_args, loader_exit, recovery_args in cases:
+            with self.subTest(drill_args=drill_args, loader_exit=loader_exit):
                 self.trace.unlink(missing_ok=True)
                 result = subprocess.run(
-                    ["bash", str(DRILL), "20261118-010000F"],
+                    ["bash", str(DRILL), *drill_args],
                     env={**env, "TEST_LOADER_EXIT": str(loader_exit)},
                     capture_output=True,
                     text=True,
@@ -118,6 +124,7 @@ exit 0
                 launches = [line.split() for line in self.trace.read_text().splitlines() if line.startswith("run ")]
                 expected_phases = ["--rm"] if loader_exit else ["--rm", "--detach"]
                 self.assertEqual([args[1] for args in launches], expected_phases)
+                self.assertEqual(launches[0][launches[0].index("--pg1-path=/restore") + 1 :], [*recovery_args, "restore"])
                 for args in launches:
                     self.assertEqual(args[args.index("--memory") + 1], "4g")
                     self.assertEqual(args[args.index("--network") + 1], "none")
@@ -194,12 +201,32 @@ exit 0
             }), patch.object(module.subprocess, "Popen", return_value=process) as popen:
                 module.run_restore_drill(Path("/reviewed/drill"), "exact-label", 9)
             kwargs = popen.call_args.kwargs
+            self.assertEqual(popen.call_args.args[0], (
+                "/bin/bash", "/reviewed/drill", "--backup-consistency", "exact-label",
+            ))
             self.assertEqual(kwargs["env"], {
                 "PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C", "TZ": "UTC",
                 "HOME": "/nonexistent", "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
             })
             self.assertEqual(kwargs["pass_fds"], (9,))
 
+    def test_role_drill_keeps_shutdown_signals_deliverable_in_children(self):
+        path = ROOT / "deploy/networking/justup-feed-readonly-role.py"
+        spec = importlib.util.spec_from_file_location("restore_signal_contract", path)
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {spec.name: module}):
+            spec.loader.exec_module(module)
+        drill = self.base / "verify-signal-mask.sh"
+        drill.write_text(
+            "python3 - <<'PYTHON'\n"
+            "import signal\n"
+            "blocked = signal.pthread_sigmask(signal.SIG_BLOCK, [])\n"
+            "shutdown = {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}\n"
+            "raise SystemExit(bool(blocked & shutdown))\n"
+            "PYTHON\n"
+        )
+        with self.available.open() as lock:
+            module.run_restore_drill(drill, "exact-label", lock.fileno())
 
 if __name__ == "__main__":
     unittest.main()

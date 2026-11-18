@@ -749,7 +749,12 @@ def test_restore_timeout_stops_process_group(monkeypatch) -> None:
     stopped: list[tuple[int, int]] = []
 
     def spawn(args, **kwargs):
-        assert args == ("/bin/bash", "/protected/restore", "20261102-010000F")
+        assert args == (
+            "/bin/bash",
+            "/protected/restore",
+            "--backup-consistency",
+            "20261102-010000F",
+        )
         assert kwargs["pass_fds"] == (3,)
         assert kwargs["start_new_session"] is True
         assert kwargs["env"]["JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED"] == "false"
@@ -771,16 +776,13 @@ def test_restore_interruption_at_spawn_boundary_stops_process_group(monkeypatch)
             assert timeout == role.RESTORE_STOP_GRACE_SECONDS
             return 124
 
+    def interrupted_spawn(*_args, **_kwargs):
+        role.signal.raise_signal(role.signal.SIGTERM)
+        return SpawnedProcess()
+
     stopped: list[tuple[int, int]] = []
-    monkeypatch.setattr(role.subprocess, "Popen", lambda *_args, **_kwargs: SpawnedProcess())
+    monkeypatch.setattr(role.subprocess, "Popen", interrupted_spawn)
     monkeypatch.setattr(role.os, "killpg", lambda pid, signum: stopped.append((pid, signum)))
-
-    def interrupted_on_unmask(how, _mask):
-        if how == role.signal.SIG_SETMASK:
-            raise role.RoleError("PostgreSQL restore drill was interrupted.")
-        return set()
-
-    monkeypatch.setattr(role.signal, "pthread_sigmask", interrupted_on_unmask)
     with pytest.raises(role.RoleError, match="without proof"):
         role.run_restore_drill(Path("/protected/restore"), "20261102-010000F", 3)
     assert stopped == [(SpawnedProcess.pid, role.signal.SIGTERM)]

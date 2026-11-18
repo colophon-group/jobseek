@@ -403,38 +403,45 @@ def backup_operation_lock(path: Path = BACKUP_LOCK, *, uid: int = 0):
 def run_restore_drill(drill_path: Path, label: str, lock_fd: int) -> None:
     """Stop the whole drill process group gracefully on timeout or interruption."""
 
+    process: subprocess.Popen[bytes] | None = None
+    interruption_requested = False
+
     def interrupted(_signum, _frame):
-        raise RoleError("PostgreSQL restore drill was interrupted.")
+        nonlocal interruption_requested
+        if interruption_requested:
+            return
+        interruption_requested = True
+        if process is not None:
+            raise RoleError("PostgreSQL restore drill was interrupted.")
 
     old_term = signal.signal(signal.SIGTERM, interrupted)
     old_int = signal.signal(signal.SIGINT, interrupted)
     old_hup = signal.signal(signal.SIGHUP, interrupted)
-    process: subprocess.Popen[bytes] | None = None
     try:
         try:
-            prior_mask = signal.pthread_sigmask(
-                signal.SIG_BLOCK, {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}
+            if interruption_requested:
+                raise RoleError("PostgreSQL restore drill was interrupted.")
+            # Defer an interruption until Popen returns its process handle.
+            # Blocking these signals here would also block them in the drill.
+            process = subprocess.Popen(
+                ("/bin/bash", str(drill_path), "--backup-consistency", label),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                pass_fds=(lock_fd,),
+                # The reviewed drill defaults are part of capacity admission;
+                # never inherit alternate scratch, image or config paths.
+                env={
+                    "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
+                    "LANG": "C",
+                    "TZ": "UTC",
+                    "HOME": "/nonexistent",
+                    "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
+                },
             )
-            try:
-                process = subprocess.Popen(
-                    ("/bin/bash", str(drill_path), label),
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                    pass_fds=(lock_fd,),
-                    # The reviewed drill defaults are part of capacity admission;
-                    # never inherit alternate scratch, image or config paths.
-                    env={
-                        "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
-                        "LANG": "C",
-                        "TZ": "UTC",
-                        "HOME": "/nonexistent",
-                        "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
-                    },
-                )
-            finally:
-                signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+            if interruption_requested:
+                raise RoleError("PostgreSQL restore drill was interrupted.")
             code = process.wait(timeout=RESTORE_DRILL_TIMEOUT_SECONDS)
         except OSError as exc:
             raise RoleError("PostgreSQL restore drill could not start.") from exc

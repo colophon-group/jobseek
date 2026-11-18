@@ -3,15 +3,22 @@
 # disposable, network-isolated PostgreSQL container and check every relation.
 set -euo pipefail
 
+restore_args=(--stanza=jobseek --pg1-path=/restore)
+if [[ "${1:-}" == --backup-consistency ]]; then
+  [[ $# -eq 2 ]] || { echo "Expected one label for backup consistency" >&2; exit 2; }
+  # The operator's exact backup proof requires all WAL through consistency.
+  # Later WAL belongs to the separate archive replay drill.
+  restore_args+=(--type=immediate --target-action=promote)
+  shift
+fi
 [[ $# -le 1 ]] || { echo "Expected at most one backup label" >&2; exit 2; }
-restore_set_args=()
 if [[ $# -eq 1 ]]; then
   BACKUP_LABEL="$1"
   [[ "$BACKUP_LABEL" =~ ^[A-Za-z0-9_-]{4,128}$ ]] || {
     echo "Invalid backup label" >&2
     exit 2
   }
-  restore_set_args=(--set="$BACKUP_LABEL")
+  restore_args+=(--set="$BACKUP_LABEL")
 fi
 
 IMAGE="${JOBSEEK_POSTGRES_BACKUP_IMAGE:-jobseek-postgres:16-pgbackrest}"
@@ -155,7 +162,7 @@ docker run --rm \
   --volume "$SPOOL_DIR:/var/spool/pgbackrest" \
   --volume "$DATA_DIR:/restore" \
   "$IMAGE" \
-  pgbackrest --stanza=jobseek --pg1-path=/restore "${restore_set_args[@]}" restore
+  pgbackrest "${restore_args[@]}" restore
 
 require_headroom
 docker run --detach \
