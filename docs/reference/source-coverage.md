@@ -24,6 +24,40 @@ The inner snapshot uses `sourceVersion: "jobseek-coverage-v1"` and a 14-day comp
 
 The current source reader accepts up to 500 companies, 2,000 boards, 100,000 observations, 4 MiB of decoded JSON, and 6 MiB of wrapper JSON. An oversized export fails and needs a reviewed capacity change. No production export should be copied to a public repository or served by an HTTP route.
 
+## Export evidence of current monitoring
+
+The weekly artifact describes a historical interval. For the status of an
+approved board now, the offline monitoring receipt reads the latest terminal
+check of its exact scope revision in a read-only, repeatable PostgreSQL
+transaction. The producer checks that the board still belongs to the company
+and is active with the current configuration bound.
+
+Run the receipt command from the repository root in the protected source environment
+with `LOCAL_DATABASE_URL` supplied by the existing operator credential boundary.
+Give it an absolute path to a private mode-0600, single-link JSON approval file
+owned by the operator running the command. The approval has exactly
+`schemaVersion:1`, `companyId`, `boardId`, and `revision`. The three identifiers
+are canonical UUIDs for the separately reviewed Jobseek scope.
+
+```sh
+uv run --project apps/crawler --frozen python scripts/justup_monitoring_receipt.py /private/approved-monitoring-scope.json
+```
+
+The command writes a single `jobseek-monitoring-v1` receipt to standard output
+with the approved identifiers, state, reason and observation time. A current
+receipt also carries the complete check's verification time and expiry. Expiry
+is capped by the scheduled next check and configured cadence with 15 minutes
+of grace and by 24 hours after verification. A moved or changed scope, a disabled
+board, a missing or incomplete latest check, an invalid schedule, or a missed
+check produces an unavailable receipt. The command reads no listings,
+configuration contents, requests or account data and changes no crawler state.
+
+Retain the receipt privately and transmit its exact byte digest through the
+existing protected operator approval path. A consumer must bind the bytes to
+that independent digest and approved identity, reject stale or superseded
+positive receipts and let newer unavailable receipts withdraw their claims.
+The receipt alone does not enable an application or notification schedule.
+
 ## Schema and rollback
 
 Migration `0042` adds `source_coverage_scope`, `source_coverage_check`, `source_coverage_scope_loss`, and `source_coverage_posting_first` with board and posting triggers. The native local migrator and Alembic use the same generated schema. A prior crawler image can run against the additive schema during image rollback. A schema downgrade removes the coverage evidence and must occur only under the production deployment contract after the new writer is stopped; subsequent weekly periods then begin with unknown coverage.
