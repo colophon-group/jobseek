@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.local-schema-migrations/v1",
-  "head": "0042",
+  "head": "0043",
   "source_hashes": {
     "src/migrations/env.py": "12e05eb24e5cad089f790440d19c48190cf0feb0f2630daf011507c1fe5d1b3e",
     "src/migrations/versions/0001_initial_schema.py": "c8f8ed971c1ddbfd9a8516b1b42e2083bbd2df02a51299d0b22fee8681571b30",
@@ -45,6 +45,7 @@
     "src/migrations/versions/0040_add_ordinary_detail_handoff.py": "0bf650efc9c71cdbf3843a8d267674bff39b52849332fdaf670e025f959bfc8c",
     "src/migrations/versions/0041_bind_default_monitor_receipts.py": "0c4a322becf2be680f0408c6844fb5beffb5cd980a1e64687e0a00ec4228e3f1",
     "src/migrations/versions/0042_record_source_coverage_history.py": "e1e117af8d008bb8d029008ab3d05593667d4779fa03a738a2c4f88b9ebedb12",
+    "src/migrations/versions/0043_source_public_career_links.py": "90a5d955ba5c1f4e30fc3caac7068f2398298f33794c73e354f63a7e87d649e7",
     "src/migrations/sql/ordinary_cold_lease_index.sql": "bc476ad155560aeae2357c18547ea277d8fdb36fb679375e520e65c31d793be6",
     "src/migrations/sql/ordinary_detail_handoff.sql": "363826a22dbbd4da22bd3d83c860f5ea7f064e8d281bf3a2227d5b1411528c03",
     "src/migrations/sql/ordinary_worker_ownership.sql": "0554b287e9acd807be996e1c79642c0f88b9f58b426855ab379b5a17b0a4ab6b",
@@ -620,6 +621,18 @@
         "UPDATE alembic_version SET version_num='0042' WHERE alembic_version.version_num = '0041';"
       ],
       "statements_sha256": "624614480f1888fa04bba498b669928abbd9ef75b91beb59cdb7ea114ccdbb80"
+    },
+    {
+      "id": "0043",
+      "previous": "0042",
+      "file": "0043.sql",
+      "sha256": "8d387cb7643337c515e7f3c9df86a3976e73f87d0d25c2f35dee16d8547646e2",
+      "special": "",
+      "statements": [
+        "CREATE TABLE public.source_coverage_public_link (\n    board_id uuid PRIMARY KEY REFERENCES public.job_board(id) ON DELETE CASCADE,\n    company_id uuid NOT NULL REFERENCES public.company(id),\n    public_url text NOT NULL CHECK (length(public_url) BETWEEN 9 AND 2048),\n    provenance text NOT NULL CHECK (provenance IN\n        ('employer-careers', 'ats-careers', 'reviewed-redirect')),\n    approved_at timestamptz NOT NULL DEFAULT clock_timestamp()\n);\n\nCREATE FUNCTION public.jobseek_source_coverage_public_link_revision()\nRETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$\nBEGIN\n    IF TG_OP = 'UPDATE' THEN\n        IF OLD.board_id IS DISTINCT FROM NEW.board_id THEN\n            RAISE EXCEPTION 'approved public link board identity cannot change';\n        END IF;\n    END IF;\n    UPDATE public.source_coverage_scope\n    SET revision = gen_random_uuid(), tracked_since = clock_timestamp(),\n        effective_config_sha256 = NULL\n    WHERE board_id = COALESCE(NEW.board_id, OLD.board_id);\n    RETURN NULL;\nEND;\n$$;\nCREATE TRIGGER source_coverage_public_link_revision\nAFTER INSERT OR UPDATE OR DELETE ON public.source_coverage_public_link\nFOR EACH ROW EXECUTE FUNCTION public.jobseek_source_coverage_public_link_revision();;",
+        "UPDATE alembic_version SET version_num='0043' WHERE alembic_version.version_num = '0042';"
+      ],
+      "statements_sha256": "e2e9be273a9c0904f0338f94871a707938c053c5f88ab86e00a83a0dff23336c"
     }
   ]
 }

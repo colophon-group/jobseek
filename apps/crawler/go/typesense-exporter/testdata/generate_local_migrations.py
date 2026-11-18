@@ -19,12 +19,12 @@ os.environ["LOCAL_DATABASE_URL"] = "postgresql://fixture@localhost/unused"
 config = Config(str(root / "src/migrations/alembic.ini"))
 script = ScriptDirectory.from_config(config)
 revisions = list(reversed(list(script.walk_revisions())))
-assert len(revisions) == 42 and script.get_current_head() == "0042"
+assert len(revisions) == 43 and script.get_current_head() == "0043"
 out = root / "go/typesense-exporter/local-migrations"
 out.mkdir(exist_ok=True)
 manifest = {
     "schema": "jobseek.local-schema-migrations/v1",
-    "head": "0042",
+    "head": "0043",
     "source_hashes": {},
     "revisions": [],
 }

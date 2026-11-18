@@ -16,8 +16,9 @@ func TestRegistryNativeRejectsBeforeCommitAndPublication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tables := emptyReviewedSourceLinks(t)
 	board := registryBoard{Company: "native-fixture", URL: "https://job-boards.greenhouse.io/native-fixture", Monitor: "greenhouse", Metadata: `{"token":"native-fixture","scraper_type":"skip"}`, Domain: "greenhouse"}
-	effects, err := commitRegistryWithNativeEligibility(ctx, conn, map[string]registryTable{}, plan, []registryBoard{board}, true)
+	effects, err := commitRegistryWithNativeEligibility(ctx, conn, tables, plan, []registryBoard{board}, true)
 	if err != nil || len(effects.Schedules) != 1 {
 		t.Fatal("supported native registry transaction failed", err)
 	}
@@ -28,7 +29,7 @@ func TestRegistryNativeRejectsBeforeCommitAndPublication(t *testing.T) {
 	bad := board
 	bad.URL = "https://unsupported-native-fixture.invalid/jobs"
 	bad.Monitor = "unsupported-native-fixture"
-	effects, err = commitRegistryWithNativeEligibility(ctx, conn, map[string]registryTable{}, nil, []registryBoard{bad}, true)
+	effects, err = commitRegistryWithNativeEligibility(ctx, conn, tables, nil, []registryBoard{bad}, true)
 	if err == nil || len(effects.Schedules) != 0 || len(effects.Orphans) != 0 {
 		t.Fatal("unsupported config authorized downstream publication")
 	}

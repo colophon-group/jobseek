@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const sourceCoverageVersion = "jobseek-coverage-v1"
+const sourceCoverageVersion = "jobseek-coverage-v2"
 const sourceCoverageWindow = 14 * 24 * time.Hour
 const sourceCoverageGrace = 15 * time.Minute
 const sourceCoverageMaxCadence = 24 * time.Hour
@@ -47,12 +47,19 @@ type coverageInterval struct {
 	State string `json:"state"`
 }
 type coverageScope struct {
-	ID             string             `json:"id"`
-	CompanyID      string             `json:"companyId"`
-	Revision       string             `json:"revision"`
-	TrackedSince   string             `json:"trackedSince"`
-	LastVerifiedAt *string            `json:"lastVerifiedAt"`
-	Coverage       []coverageInterval `json:"coverage"`
+	ID             string              `json:"id"`
+	CompanyID      string              `json:"companyId"`
+	Revision       string              `json:"revision"`
+	TrackedSince   string              `json:"trackedSince"`
+	LastVerifiedAt *string             `json:"lastVerifiedAt"`
+	PublicLink     *coveragePublicLink `json:"publicLink"`
+	Coverage       []coverageInterval  `json:"coverage"`
+}
+type coveragePublicLink struct {
+	URL        string `json:"url"`
+	Status     string `json:"status"`
+	Provenance string `json:"provenance"`
+	ApprovedAt string `json:"approvedAt"`
 }
 type coveragePosting struct {
 	ID            string `json:"id"`
@@ -89,9 +96,36 @@ type coverageBoard struct {
 	Tracked     time.Time
 	Enabled     bool
 	Fingerprint bool
+	PublicLink  *coveragePublicLink
 }
 
 func coverageTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
+
+func sourceCoverageInWindow(at, end time.Time) bool {
+	return !at.Before(end) && at.Before(end.Add(24*time.Hour))
+}
+
+func sourceCoverageSnapshotTime(ctx context.Context, tx pgx.Tx) (time.Time, error) {
+	// The first query establishes the repeatable-read snapshot. Read the clock
+	// inside that query so a revision committed before the snapshot cannot
+	// have a tracked_since later than the artifact's generatedAt.
+	var at time.Time
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&at); err != nil {
+		return time.Time{}, err
+	}
+	return at.UTC(), nil
+}
+
+func buildSourceCoverageSnapshot(ctx context.Context, tx pgx.Tx, end time.Time, approved []string) (coverageSnapshot, error) {
+	snapshotAt, err := sourceCoverageSnapshotTime(ctx, tx)
+	if err != nil {
+		return coverageSnapshot{}, err
+	}
+	if !sourceCoverageInWindow(snapshotAt, end) {
+		return coverageSnapshot{}, errors.New("database snapshot is outside the Monday UTC export window")
+	}
+	return buildCoverageSnapshot(ctx, tx, end, snapshotAt, approved)
+}
 
 func runSourceCoverageExport(args []string) error {
 	if len(args) != 3 {
@@ -102,7 +136,7 @@ func runSourceCoverageExport(args []string) error {
 		return errors.New("period end must be a Monday UTC date")
 	}
 	now := time.Now().UTC()
-	if now.Before(end) || !now.Before(end.Add(24*time.Hour)) {
+	if !sourceCoverageInWindow(now, end) {
 		return errors.New("export is allowed only within 24 hours after the Monday UTC period end")
 	}
 	approved, err := readCoverageAllowlist(args[1])
@@ -117,7 +151,14 @@ func runSourceCoverageExport(args []string) error {
 	}
 	path := filepath.Join(args[2], args[0]+".json")
 	if existing, err := readExistingCoverageArtifact(path); err == nil {
-		return validateExistingCoverageArtifact(existing, end)
+		version, err := coverageArtifactVersion(existing, end)
+		if err != nil {
+			return err
+		}
+		if version != 2 {
+			return errors.New("immutable v1 period already exists; use a separate approved v2 directory")
+		}
+		return nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -137,7 +178,7 @@ func runSourceCoverageExport(args []string) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	snapshot, err := buildCoverageSnapshot(ctx, tx, end, now, approved)
+	snapshot, err := buildSourceCoverageSnapshot(ctx, tx, end, approved)
 	if err != nil {
 		return err
 	}
@@ -189,7 +230,7 @@ func readCoverageAllowlist(path string) ([]string, error) {
 
 func buildCoverageSnapshot(ctx context.Context, tx pgx.Tx, end, now time.Time, approved []string) (coverageSnapshot, error) {
 	start := end.Add(-sourceCoverageWindow)
-	s := coverageSnapshot{SchemaVersion: 1, SourceVersion: sourceCoverageVersion, AsOf: coverageTime(end), GeneratedAt: coverageTime(now), Companies: []coverageCompany{}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
+	s := coverageSnapshot{SchemaVersion: 2, SourceVersion: sourceCoverageVersion, AsOf: coverageTime(end), GeneratedAt: coverageTime(now), Companies: []coverageCompany{}, Scopes: []coverageScope{}, Postings: []coveragePosting{}}
 	companyIDs := make(map[string]bool)
 	rows, err := tx.Query(ctx, `SELECT id::text,name,website FROM public.company WHERE slug=ANY($1::text[]) ORDER BY id`, approved)
 	if err != nil {
@@ -235,8 +276,10 @@ WHERE company_id::text=ANY($1::text[]) AND lost_at >= $2 AND lost_at <= $3`, com
 		return s, fmt.Errorf("%d approved career-page scopes were deleted or reassigned during the comparison window", lostScopes)
 	}
 	boardRows, err := tx.Query(ctx, `SELECT b.id::text,b.company_id::text,COALESCE(sc.revision::text,''),COALESCE(sc.tracked_since,'epoch'::timestamptz),b.is_enabled,b.board_status,
-  NULLIF(b.metadata->>'_monitor_config_fingerprint','') IS NOT NULL
+  NULLIF(b.metadata->>'_monitor_config_fingerprint','') IS NOT NULL,
+  link.company_id::text,link.public_url,link.provenance,link.approved_at
 FROM public.job_board b LEFT JOIN public.source_coverage_scope sc ON sc.board_id=b.id
+LEFT JOIN public.source_coverage_public_link link ON link.board_id=b.id
 WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyIDs))
 	if err != nil {
 		return s, err
@@ -244,12 +287,30 @@ WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyID
 	boards := []coverageBoard{}
 	for boardRows.Next() {
 		var b coverageBoard
-		if err = boardRows.Scan(&b.ID, &b.CompanyID, &b.Revision, &b.Tracked, &b.Enabled, &b.Status, &b.Fingerprint); err != nil {
+		var linkCompany, linkURL, provenance *string
+		var approvedAt *time.Time
+		if err = boardRows.Scan(&b.ID, &b.CompanyID, &b.Revision, &b.Tracked, &b.Enabled, &b.Status, &b.Fingerprint, &linkCompany, &linkURL, &provenance, &approvedAt); err != nil {
 			break
 		}
 		if b.Revision == "" {
 			err = errors.New("approved board lacks source coverage scope")
 			break
+		}
+		if linkURL != nil {
+			if linkCompany == nil || *linkCompany != b.CompanyID || provenance == nil || approvedAt == nil || approvedAt.After(now) {
+				err = errors.New("public career-page approval has invalid board provenance")
+				break
+			}
+			canonical, urlErr := canonicalCoverageCareerURL(*linkURL)
+			if urlErr != nil || canonical != *linkURL {
+				err = errors.New("public career-page approval has unsafe URL")
+				break
+			}
+			if *provenance != "employer-careers" && *provenance != "ats-careers" && *provenance != "reviewed-redirect" {
+				err = errors.New("public career-page approval has invalid provenance")
+				break
+			}
+			b.PublicLink = &coveragePublicLink{URL: canonical, Status: "approved", Provenance: *provenance, ApprovedAt: coverageTime(*approvedAt)}
 		}
 		boards = append(boards, b)
 		if len(boards) > 2000 {
@@ -270,7 +331,7 @@ WHERE b.company_id::text=ANY($1::text[]) ORDER BY b.id`, companyIDList(companyID
 			err = checkErr
 			break
 		}
-		s.Scopes = append(s.Scopes, coverageScope{ID: b.ID, CompanyID: b.CompanyID, Revision: b.Revision, TrackedSince: coverageTime(b.Tracked), LastVerifiedAt: last, Coverage: []coverageInterval{{Start: coverageTime(start), End: coverageTime(end), State: state}}})
+		s.Scopes = append(s.Scopes, coverageScope{ID: b.ID, CompanyID: b.CompanyID, Revision: b.Revision, TrackedSince: coverageTime(b.Tracked), LastVerifiedAt: last, PublicLink: b.PublicLink, Coverage: []coverageInterval{{Start: coverageTime(start), End: coverageTime(end), State: state}}})
 	}
 	if err != nil {
 		return s, err
@@ -447,7 +508,7 @@ func canonicalCoverageURL(raw string) (string, error) {
 }
 
 func privateCoverageHost(host string) bool {
-	for _, suffix := range []string{"localhost", "local", "internal", "invalid", "test", "lan", "home", "corp"} {
+	for _, suffix := range []string{"localhost", "local", "localdomain", "internal", "invalid", "test", "example", "onion", "arpa", "lan", "home", "private", "corp", "intranet"} {
 		if host == suffix || strings.HasSuffix(host, "."+suffix) {
 			return true
 		}
@@ -495,36 +556,38 @@ func readExistingCoverageArtifact(path string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, sourceCoverageArtifactLimit+1))
 }
 
-func validateExistingCoverageArtifact(data []byte, end time.Time) error {
+func coverageArtifactVersion(data []byte, end time.Time) (int, error) {
 	if len(data) > sourceCoverageArtifactLimit {
-		return errors.New("existing coverage artifact exceeds size limit")
+		return 0, errors.New("existing coverage artifact exceeds size limit")
 	}
 	var wrapper coverageArtifact
 	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return err
+		return 0, err
 	}
 	if wrapper.ArtifactVersion != 1 {
-		return errors.New("existing coverage artifact has unsupported version")
+		return 0, errors.New("existing coverage artifact has unsupported version")
 	}
 	decoded, err := base64.StdEncoding.Strict().DecodeString(wrapper.SnapshotBytesBase64)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if len(decoded) > sourceCoverageSnapshotLimit || base64.StdEncoding.EncodeToString(decoded) != wrapper.SnapshotBytesBase64 {
-		return errors.New("existing coverage snapshot has invalid size or base64")
+		return 0, errors.New("existing coverage snapshot has invalid size or base64")
 	}
 	digest := sha256.Sum256(decoded)
 	if hex.EncodeToString(digest[:]) != wrapper.SHA256 {
-		return errors.New("existing coverage artifact digest mismatch")
+		return 0, errors.New("existing coverage artifact digest mismatch")
 	}
 	var snapshot coverageSnapshot
 	if err = json.Unmarshal(decoded, &snapshot); err != nil {
-		return err
+		return 0, err
 	}
-	if snapshot.SchemaVersion != 1 || snapshot.SourceVersion != sourceCoverageVersion || snapshot.AsOf != coverageTime(end) {
-		return errors.New("existing coverage artifact has wrong source version or period")
+	validV1 := snapshot.SchemaVersion == 1 && snapshot.SourceVersion == "jobseek-coverage-v1"
+	validV2 := snapshot.SchemaVersion == 2 && snapshot.SourceVersion == sourceCoverageVersion
+	if (!validV1 && !validV2) || snapshot.AsOf != coverageTime(end) {
+		return 0, errors.New("existing coverage artifact has wrong source version or period")
 	}
-	return nil
+	return snapshot.SchemaVersion, nil
 }
 
 func publishCoverageArtifact(path string, data []byte, end time.Time) error {
@@ -562,7 +625,7 @@ func publishCoverageArtifact(path string, data []byte, end time.Time) error {
 		if string(existing) != string(data) {
 			return errors.New("coverage period already has a different immutable artifact")
 		}
-		if err := validateExistingCoverageArtifact(existing, end); err != nil {
+		if _, err := coverageArtifactVersion(existing, end); err != nil {
 			return err
 		}
 		return syncCoverageDirectory(dir)

@@ -1393,7 +1393,8 @@ class TestRunSync:
         mock_local_pool.release = AsyncMock()
         mock_create_local_pool.return_value = mock_local_pool
 
-        await run_sync(dry_run=False)
+        with patch("src.sync._load_source_coverage_links", return_value=pl.DataFrame()):
+            await run_sync(dry_run=False)
 
         mock_ensure_location_index.assert_awaited_once_with(mock_local_conn)
         mock_sync_lookup_tables_local.assert_called_once_with(
@@ -1537,6 +1538,7 @@ class TestRunSync:
             "_load_companies": MagicMock(return_value=companies),
             "_load_company_descriptions": MagicMock(return_value=empty),
             "_load_boards": MagicMock(return_value=boards),
+            "_load_source_coverage_links": MagicMock(return_value=pl.DataFrame()),
             "get_typesense_client": MagicMock(return_value=MagicMock()),
             "create_local_pool": AsyncMock(return_value=local_pool),
             "ensure_location_name_lookup_index": AsyncMock(),
