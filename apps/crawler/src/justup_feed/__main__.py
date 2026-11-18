@@ -307,11 +307,7 @@ def write_atomic(path: Path, data: bytes) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
-        fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        sync_directory(path.parent)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -795,25 +791,59 @@ async def export(directory: Path, reconcile: bool, selector: Path | None) -> dic
                 pool.terminate()
 
 
+def import_receipt_digest(path: Path) -> str:
+    check_receipt(path)
+    try:
+        pairs = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=tuple)
+    except (OSError, ValueError) as exc:
+        raise FeedError("Import receipt cannot be read.") from exc
+    if not isinstance(pairs, tuple) or len(pairs) != 2:
+        raise FeedError("Import receipt is invalid.")
+    receipt = dict(pairs)
+    if (
+        set(receipt) != {"schemaVersion", "manifestSha256"}
+        or type(receipt["schemaVersion"]) is not int
+        or receipt["schemaVersion"] != SCHEMA_VERSION
+        or not isinstance(receipt["manifestSha256"], str)
+        or not re.fullmatch(r"[0-9a-f]{64}", receipt["manifestSha256"])
+    ):
+        raise FeedError("Import receipt is invalid.")
+    return receipt["manifestSha256"]
+
+
+def confirm_acknowledgement_replay(
+    directory: Path, state: dict[str, Any], digest: str
+) -> dict[str, Any]:
+    accepted = state["accepted"]
+    if (
+        not accepted
+        or accepted[-1]["sha256"] != digest
+        or state["cursor"] is None
+        or state["scope"] is None
+    ):
+        raise FeedError("Import receipt does not match the pending or latest acknowledged batch.")
+    verify_pending(
+        directory, {**accepted[-1], "toCursor": state["cursor"], "scope": state["scope"]}
+    )
+    # The previous process may have replaced state.json before it could sync
+    # its directory. A replay confirms durability without changing the cursor.
+    fd = os.open(directory / "state.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    sync_directory(directory)
+    return {"cursor": state["cursor"]}
+
+
 def acknowledge(directory: Path, receipt_path: Path) -> dict[str, Any]:
     with state_lock(directory):
         state = load_state(directory)
-        recover_unreferenced(directory, state)
+        digest = import_receipt_digest(receipt_path)
         pending = state["pending"]
-        if pending is None:
-            raise FeedError("There is no pending feed batch.")
-        check_receipt(receipt_path)
-        try:
-            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise FeedError("Import receipt cannot be read.") from exc
-        if (
-            not isinstance(receipt, dict)
-            or set(receipt) != {"schemaVersion", "manifestSha256"}
-            or receipt["schemaVersion"] != SCHEMA_VERSION
-            or receipt["manifestSha256"] != pending["sha256"]
-        ):
-            raise FeedError("Import receipt does not match the pending batch.")
+        if pending is None or digest != pending["sha256"]:
+            return confirm_acknowledgement_replay(directory, state, digest)
+        recover_unreferenced(directory, state)
         verify_pending(directory, pending)
         if len(state["accepted"]) >= MAX_ACCEPTED:
             raise FeedError(

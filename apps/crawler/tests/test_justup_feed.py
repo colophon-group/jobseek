@@ -447,6 +447,102 @@ def test_ack_requires_exact_receipt_and_preserves_pending_replay(tmp_path):
     assert batch.is_dir()
 
 
+def stage_ack_batch(target, seconds):
+    cutoff = START + timedelta(seconds=seconds)
+
+    async def capture(_):
+        return cutoff
+
+    pool = FakePool(
+        FakeConnection(source_row(updated_at=cutoff - timedelta(microseconds=1)), committed=True)
+    )
+    state = feed.load_state(target)
+    with patch.object(feed, "capture_justup_feed_cutoff", capture):
+        return asyncio.run(
+            feed.build_batch(pool, target, state, False, None, {"kind": "all_eligible"})
+        )
+
+
+def test_ack_replay_resyncs_a_state_replaced_before_the_reply(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    pending = stage_ack_batch(target, 2)
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({"schemaVersion": 1, "manifestSha256": pending["sha256"]}))
+    path = target / "state.json"
+
+    # Model replacement followed by a failed directory sync and lost response.
+    with patch.object(feed, "sync_directory", side_effect=OSError("interrupted sync")):
+        with pytest.raises(OSError, match="interrupted sync"):
+            feed.acknowledge(target, receipt)
+        assert feed.load_state(target)["pending"] is None
+        with pytest.raises(OSError, match="interrupted sync"):
+            feed.acknowledge(target, receipt)
+    accepted = path.read_bytes(), path.stat().st_mtime_ns
+    with (
+        patch.object(feed, "sync_directory", wraps=feed.sync_directory) as sync,
+        patch.object(feed.os, "fsync", wraps=feed.os.fsync) as fsync,
+    ):
+        assert feed.acknowledge(target, receipt) == {"cursor": pending["toCursor"]}
+        sync.assert_called_once_with(target)
+        assert fsync.call_count == 2  # The state file and its parent directory.
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == accepted
+    assert len(feed.load_state(target)["accepted"]) == 1
+
+
+def test_ack_replay_never_advances_or_discards_a_new_pending_batch(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    first = stage_ack_batch(target, 2)
+    receipt = tmp_path / "first.json"
+    receipt.write_text(json.dumps({"schemaVersion": 1, "manifestSha256": first["sha256"]}))
+    feed.acknowledge(target, receipt)
+    next_pending = stage_ack_batch(target, 3)
+    path = target / "state.json"
+    before = path.read_bytes()
+    assert feed.acknowledge(target, receipt) == {"cursor": first["toCursor"]}
+    assert path.read_bytes() == before
+    assert feed.load_state(target)["pending"] == next_pending
+
+    newer = tmp_path / "newer.json"
+    newer.write_text(json.dumps({"schemaVersion": 1, "manifestSha256": next_pending["sha256"]}))
+    assert feed.acknowledge(target, newer) == {"cursor": next_pending["toCursor"]}
+    with pytest.raises(feed.FeedError, match="latest acknowledged batch"):
+        feed.acknowledge(target, receipt)
+    assert feed.load_state(target)["cursor"] == next_pending["toCursor"]
+
+
+def test_ack_replay_requires_the_retained_manifest_at_the_committed_cursor(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    pending = stage_ack_batch(target, 2)
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(json.dumps({"schemaVersion": 1, "manifestSha256": pending["sha256"]}))
+    feed.acknowledge(target, receipt)
+    state = feed.load_state(target)
+    state["cursor"] = feed.cursor(START + timedelta(seconds=3))
+    feed.write_atomic(target / "state.json", feed.encode(state))
+    with pytest.raises(feed.FeedError, match="manifest does not match feed state"):
+        feed.acknowledge(target, receipt)
+    assert feed.load_state(target) == state
+
+
+def test_ack_rejects_a_duplicate_or_malformed_digest_field(tmp_path):
+    target = tmp_path / "feed"
+    target.mkdir(mode=0o700)
+    pending = stage_ack_batch(target, 2)
+    receipt = tmp_path / "receipt.json"
+    digest = pending["sha256"]
+    for text in (
+        '{"schemaVersion":1,"manifestSha256":"bad","manifestSha256":"' + digest + '"}',
+        '{"schemaVersion":true,"manifestSha256":"' + digest + '"}',
+    ):
+        receipt.write_text(text)
+        with pytest.raises(feed.FeedError, match="receipt is invalid"):
+            feed.acknowledge(target, receipt)
+        assert feed.load_state(target)["pending"] == pending
+
+
 def test_recover_removes_only_unpublished_batches_and_incomplete_staging(tmp_path):
     target = tmp_path / "feed"
     target.mkdir(mode=0o700)

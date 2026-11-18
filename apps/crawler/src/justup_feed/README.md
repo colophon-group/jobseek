@@ -108,6 +108,15 @@ The operator must retain the manifest and parts through Justup acceptance and
 backup/restore verification. A crash before acknowledgement is replayed as the
 same batch; Justup must accept an exact retry idempotently.
 
+If the acknowledgement reply is lost on the producer side, retry `ack` with
+the exact same Justup receipt. While the batch is the latest retained accepted
+batch, the command verifies its manifest, parts, and committed cursor, then
+syncs the existing state before returning the same acknowledgement. The retry
+adds no history entry and leaves any newer pending batch in place. After a
+newer batch is acknowledged or the original evidence is pruned, the old
+receipt can no longer confirm the current cursor. Resolve an uncertain reply
+before proceeding with the next export.
+
 Acknowledged bundles remain in the private directory. A verified backup job
 may produce a separate receipt containing the accepted manifest digest and
 `backupVerified:true`:
