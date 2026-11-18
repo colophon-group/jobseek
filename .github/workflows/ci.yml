@@ -133,6 +133,9 @@ jobs:
         working-directory: apps/crawler
         run: uv run --frozen pytest -q tests/test_ingress_baseline.py
 
+      - name: Verify Justup monitoring receipt rules
+        run: uv run --project apps/crawler --frozen python -m pytest -q scripts/test_justup_monitoring_receipt.py
+
       - name: Verify bounded observation dispatch and timer activation
         run: |
           python3 scripts/test-company-selection-observation-dispatch.py
