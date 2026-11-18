@@ -80,12 +80,22 @@ if [[ "$MODE" == audit-feed-role ]]; then
     <scripts/jobseek-ingress-conformance.py
   remote 5m "bash -s -- '$installer_sha'" <<'REMOTE_FEED_AUDIT'
 set -euo pipefail
+fail_audit() {
+  printf 'Justup feed role audit: %s\n' "$1" >&2
+  exit 1
+}
 installer_sha="$1"
-[[ "$installer_sha" =~ ^[0-9a-f]{64}$ ]]
+[[ "$installer_sha" =~ ^[0-9a-f]{64}$ ]] || fail_audit 'expected helper digest is invalid'
 installer=/usr/local/sbin/jobseek-justup-feed-role
-[[ -f "$installer" && ! -L "$installer" ]]
-[[ "$(stat -c '%u:%g:%a' -- "$installer")" == 0:0:700 ]]
-[[ "$(sha256sum "$installer" | awk '{print $1}')" == "$installer_sha" ]]
+[[ -e "$installer" || -L "$installer" ]] || fail_audit 'installed helper is missing'
+[[ -f "$installer" && ! -L "$installer" ]] || fail_audit 'installed helper is not a regular file'
+metadata="$(stat -c '%u:%g:%a' -- "$installer" 2>/dev/null)" ||
+  fail_audit 'installed helper metadata could not be read'
+[[ "$metadata" == 0:0:700 ]] || fail_audit 'installed helper owner, group or permissions are unsafe'
+actual_sha="$(sha256sum "$installer" 2>/dev/null | awk '{print $1}')" ||
+  fail_audit 'installed helper digest could not be read'
+[[ "$actual_sha" == "$installer_sha" ]] ||
+  fail_audit 'installed helper differs from the reviewed main revision'
 python3 "$installer" audit
 REMOTE_FEED_AUDIT
   exit 0
