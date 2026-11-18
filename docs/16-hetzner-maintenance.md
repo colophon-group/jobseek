@@ -593,6 +593,10 @@ rechecks the backup and restore evidence immediately before creating
 the disabled role and before enabling its login. A missing, failed, stale or
 mismatched result stops installation. Reserve a maintenance window for the
 restore drill; a source merge does not authorize the host operation.
+The installation drill restores every file and replays archived WAL through
+the selected backup's first consistent checkpoint, promotes the isolated
+server, and checks every relation. Use the standalone restore drill to rehearse
+replay through the end of the archive.
 The role helper uses the reviewed default scratch, image and config paths;
 it does not inherit shell startup files or operator path overrides. Admit disk
 and memory capacity against those exact defaults before dispatch. During the
