@@ -835,25 +835,11 @@ def _canonical_public_career_url(raw: str) -> str:
             len(part) > 63 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", part)
             for part in host.split(".")
         )
-        or host.endswith(
-            (
-                ".local",
-                ".internal",
-                ".invalid",
-                ".test",
-                ".example",
-                ".onion",
-                ".arpa",
-                ".lan",
-                ".home",
-                ".corp",
-                ".localhost",
-            )
-        )
-        or host
+        or host.rsplit(".", 1)[-1]
         in {
             "localhost",
             "local",
+            "localdomain",
             "internal",
             "invalid",
             "test",
@@ -862,8 +848,11 @@ def _canonical_public_career_url(raw: str) -> str:
             "arpa",
             "lan",
             "home",
+            "private",
             "corp",
+            "intranet",
         }
+        or not re.fullmatch(r"[A-Za-z0-9!$&'()*+,./:;=@_~-]*", parsed.path)
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
         raise ValueError("invalid public career-page URL")

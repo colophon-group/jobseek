@@ -21,6 +21,7 @@ type sourceCoverageLinkInput struct {
 }
 
 var sourceCoverageBoardSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,159}$`)
+var sourceCoverageCareerPath = regexp.MustCompile(`^[A-Za-z0-9!$&'()*+,./:;=@_~-]*$`)
 
 func prepareSourceCoverageLinks(table registryTable) ([]sourceCoverageLinkInput, error) {
 	want := []string{"company_slug", "board_slug", "public_url", "provenance"}
@@ -69,14 +70,15 @@ func canonicalCoverageCareerURL(raw string) (string, error) {
 			return "", errors.New("non-ASCII or control character in public career-page URL")
 		}
 	}
-	url, err := canonicalCoverageURL(raw)
+	canonical, err := canonicalCoverageURL(raw)
 	if err != nil {
 		return "", errors.New("invalid public HTTPS career-page URL")
 	}
-	if strings.Contains(url, "%") {
-		return "", errors.New("public career-page URL contains encoded characters")
+	_, path, hasPath := strings.Cut(strings.TrimPrefix(canonical, "https://"), "/")
+	if !hasPath || !sourceCoverageCareerPath.MatchString(path) {
+		return "", errors.New("public career-page path requires escaping")
 	}
-	return url, nil
+	return canonical, nil
 }
 
 func stageSourceCoverageLinks(ctx context.Context, tx pgx.Tx, links []sourceCoverageLinkInput) error {

@@ -101,6 +101,10 @@ type coverageBoard struct {
 
 func coverageTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
 
+func sourceCoverageInWindow(at, end time.Time) bool {
+	return !at.Before(end) && at.Before(end.Add(24*time.Hour))
+}
+
 func sourceCoverageSnapshotTime(ctx context.Context, tx pgx.Tx) (time.Time, error) {
 	// The first query establishes the repeatable-read snapshot. Read the clock
 	// inside that query so a revision committed before the snapshot cannot
@@ -117,6 +121,9 @@ func buildSourceCoverageSnapshot(ctx context.Context, tx pgx.Tx, end time.Time, 
 	if err != nil {
 		return coverageSnapshot{}, err
 	}
+	if !sourceCoverageInWindow(snapshotAt, end) {
+		return coverageSnapshot{}, errors.New("database snapshot is outside the Monday UTC export window")
+	}
 	return buildCoverageSnapshot(ctx, tx, end, snapshotAt, approved)
 }
 
@@ -129,7 +136,7 @@ func runSourceCoverageExport(args []string) error {
 		return errors.New("period end must be a Monday UTC date")
 	}
 	now := time.Now().UTC()
-	if now.Before(end) || !now.Before(end.Add(24*time.Hour)) {
+	if !sourceCoverageInWindow(now, end) {
 		return errors.New("export is allowed only within 24 hours after the Monday UTC period end")
 	}
 	approved, err := readCoverageAllowlist(args[1])
@@ -144,7 +151,14 @@ func runSourceCoverageExport(args []string) error {
 	}
 	path := filepath.Join(args[2], args[0]+".json")
 	if existing, err := readExistingCoverageArtifact(path); err == nil {
-		return validateExistingCoverageArtifact(existing, end)
+		version, err := coverageArtifactVersion(existing, end)
+		if err != nil {
+			return err
+		}
+		if version != 2 {
+			return errors.New("immutable v1 period already exists; use a separate approved v2 directory")
+		}
+		return nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -494,7 +508,7 @@ func canonicalCoverageURL(raw string) (string, error) {
 }
 
 func privateCoverageHost(host string) bool {
-	for _, suffix := range []string{"localhost", "local", "internal", "invalid", "test", "example", "onion", "arpa", "lan", "home", "corp"} {
+	for _, suffix := range []string{"localhost", "local", "localdomain", "internal", "invalid", "test", "example", "onion", "arpa", "lan", "home", "private", "corp", "intranet"} {
 		if host == suffix || strings.HasSuffix(host, "."+suffix) {
 			return true
 		}
@@ -542,38 +556,38 @@ func readExistingCoverageArtifact(path string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, sourceCoverageArtifactLimit+1))
 }
 
-func validateExistingCoverageArtifact(data []byte, end time.Time) error {
+func coverageArtifactVersion(data []byte, end time.Time) (int, error) {
 	if len(data) > sourceCoverageArtifactLimit {
-		return errors.New("existing coverage artifact exceeds size limit")
+		return 0, errors.New("existing coverage artifact exceeds size limit")
 	}
 	var wrapper coverageArtifact
 	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return err
+		return 0, err
 	}
 	if wrapper.ArtifactVersion != 1 {
-		return errors.New("existing coverage artifact has unsupported version")
+		return 0, errors.New("existing coverage artifact has unsupported version")
 	}
 	decoded, err := base64.StdEncoding.Strict().DecodeString(wrapper.SnapshotBytesBase64)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if len(decoded) > sourceCoverageSnapshotLimit || base64.StdEncoding.EncodeToString(decoded) != wrapper.SnapshotBytesBase64 {
-		return errors.New("existing coverage snapshot has invalid size or base64")
+		return 0, errors.New("existing coverage snapshot has invalid size or base64")
 	}
 	digest := sha256.Sum256(decoded)
 	if hex.EncodeToString(digest[:]) != wrapper.SHA256 {
-		return errors.New("existing coverage artifact digest mismatch")
+		return 0, errors.New("existing coverage artifact digest mismatch")
 	}
 	var snapshot coverageSnapshot
 	if err = json.Unmarshal(decoded, &snapshot); err != nil {
-		return err
+		return 0, err
 	}
 	validV1 := snapshot.SchemaVersion == 1 && snapshot.SourceVersion == "jobseek-coverage-v1"
 	validV2 := snapshot.SchemaVersion == 2 && snapshot.SourceVersion == sourceCoverageVersion
 	if (!validV1 && !validV2) || snapshot.AsOf != coverageTime(end) {
-		return errors.New("existing coverage artifact has wrong source version or period")
+		return 0, errors.New("existing coverage artifact has wrong source version or period")
 	}
-	return nil
+	return snapshot.SchemaVersion, nil
 }
 
 func publishCoverageArtifact(path string, data []byte, end time.Time) error {
@@ -611,7 +625,7 @@ func publishCoverageArtifact(path string, data []byte, end time.Time) error {
 		if string(existing) != string(data) {
 			return errors.New("coverage period already has a different immutable artifact")
 		}
-		if err := validateExistingCoverageArtifact(existing, end); err != nil {
+		if _, err := coverageArtifactVersion(existing, end); err != nil {
 			return err
 		}
 		return syncCoverageDirectory(dir)

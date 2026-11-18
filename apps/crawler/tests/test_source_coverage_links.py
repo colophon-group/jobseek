@@ -32,6 +32,11 @@ def test_public_career_url_preserves_reviewed_non_root_path() -> None:
         "https://example.com/a/../jobs",
         "https://example.com/jobs\\private",
         "https://example.com/jobs\x00secret",
+        "https://jobs.corp.private/careers",
+        "https://jobs.office.intranet/careers",
+        "https://jobs.localdomain/careers",
+        "https://example.com/jobs/[]e",
+        "https://example.com/jobs/{listing}",
     ],
 )
 def test_public_career_url_rejects_unsafe_sources(url: str) -> None:

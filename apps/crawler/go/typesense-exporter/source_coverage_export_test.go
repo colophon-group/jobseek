@@ -55,6 +55,23 @@ func TestEvaluateScopeCoverageRequiresContinuousCompleteChecks(t *testing.T) {
 	assert("unknown", &sparse, checks, "same", start.Add(-time.Hour), true)
 }
 
+func TestCoverageExportWindowUsesTheDatabaseSnapshotTime(t *testing.T) {
+	end := time.Date(2026, 11, 23, 0, 0, 0, 0, time.UTC)
+	for _, sample := range []struct {
+		offset time.Duration
+		valid  bool
+	}{
+		{-time.Millisecond, false},
+		{0, true},
+		{24*time.Hour - time.Millisecond, true},
+		{24 * time.Hour, false},
+	} {
+		if got := sourceCoverageInWindow(end.Add(sample.offset), end); got != sample.valid {
+			t.Fatalf("offset %s: window validity %v want %v", sample.offset, got, sample.valid)
+		}
+	}
+}
+
 func TestCoverageArtifactIsByteHashedAndImmutable(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0700); err != nil {
@@ -85,23 +102,42 @@ func TestCoverageArtifactIsByteHashedAndImmutable(t *testing.T) {
 	if !bytes.Equal(existing, wrapper) {
 		t.Fatal("published bytes changed")
 	}
-	if err := validateExistingCoverageArtifact(existing, end); err != nil {
-		t.Fatal(err)
+	if version, err := coverageArtifactVersion(existing, end); err != nil || version != 2 {
+		t.Fatalf("v2 artifact has version %d: %v", version, err)
 	}
-	if err := validateExistingCoverageArtifact(make([]byte, sourceCoverageArtifactLimit+1), end); err == nil {
+	if _, err := coverageArtifactVersion(make([]byte, sourceCoverageArtifactLimit+1), end); err == nil {
 		t.Fatal("oversized coverage artifact accepted")
 	}
 	badDigest, err := json.Marshal(coverageArtifact{1, base64.StdEncoding.EncodeToString(raw), strings.Repeat("0", 64)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateExistingCoverageArtifact(badDigest, end); err == nil {
+	if _, err := coverageArtifactVersion(badDigest, end); err == nil {
 		t.Fatal("invalid byte digest accepted")
 	}
 	changed := append([]byte(nil), wrapper...)
 	changed[len(changed)-2] = 'X'
 	if err := publishCoverageArtifact(path, changed, end); err == nil || !strings.Contains(err.Error(), "different immutable") {
 		t.Fatalf("changed retry: %v", err)
+	}
+	legacy := bytes.ReplaceAll(raw, []byte(`"schemaVersion":2,"sourceVersion":"jobseek-coverage-v2"`), []byte(`"schemaVersion":1,"sourceVersion":"jobseek-coverage-v1"`))
+	legacySum := sha256.Sum256(legacy)
+	legacyWrapper, err := json.Marshal(coverageArtifact{1, base64.StdEncoding.EncodeToString(legacy), hex.EncodeToString(legacySum[:])})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if version, err := coverageArtifactVersion(legacyWrapper, end); err != nil || version != 1 {
+		t.Fatalf("legacy immutable artifact has version %d: %v", version, err)
+	}
+	legacyPath := filepath.Join(dir, "legacy.json")
+	if err := publishCoverageArtifact(legacyPath, legacyWrapper, end); err != nil {
+		t.Fatal(err)
+	}
+	if err := publishCoverageArtifact(legacyPath, wrapper, end); err == nil {
+		t.Fatal("v2 was allowed to replace a v1 artifact")
+	}
+	if original, err := os.ReadFile(legacyPath); err != nil || !bytes.Equal(original, legacyWrapper) {
+		t.Fatalf("legacy artifact bytes changed: %v", err)
 	}
 	if err := os.Symlink(path, filepath.Join(dir, "linked.json")); err != nil {
 		t.Fatal(err)
@@ -181,6 +217,8 @@ func TestReviewedCareerLinkRegistryRejectsUnsafeOrAmbiguousSources(t *testing.T)
 		"https://example.com/jobs%2Fprivate", "https://example.com/a/../jobs",
 		"https://example.com/jobs here",
 		"https://example.com/jobs\\private", "https://example.com/jobs\x00secret",
+		"https://jobs.corp.private/careers", "https://jobs.office.intranet/careers", "https://jobs.localdomain/careers",
+		"https://example.com/jobs/[]e", "https://example.com/jobs/{listing}",
 	} {
 		if _, err := parse("acme,acme-careers," + raw + ",employer-careers\n"); err == nil {
 			t.Fatalf("unsafe public career-page URL accepted: %q", raw)

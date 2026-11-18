@@ -179,7 +179,13 @@ VALUES ('00000000-0000-0000-0000-000000000109','00000000-0000-0000-0000-00000000
 		t.Fatal(err)
 	}
 	applyLinks(links[:1])
-	deletionView, err := buildSourceCoverageSnapshot(ctx, projectionAfterDeletion, periodEnd, []string{"coverage-test"})
+	// The fixture projects a synthetic period end so fresh insertions fit both
+	// weekly windows. Capture the real transaction clock independently of it.
+	snapshotAt, err := sourceCoverageSnapshotTime(ctx, projectionAfterDeletion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deletionView, err := buildCoverageSnapshot(ctx, projectionAfterDeletion, periodEnd, snapshotAt, []string{"coverage-test"})
 	_ = projectionAfterDeletion.Rollback(ctx)
 	if err != nil {
 		t.Fatal(err)
