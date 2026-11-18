@@ -34,7 +34,22 @@ class RestoreHeadroomTests(unittest.TestCase):
         }
         for name, body in {
             "python3": '#!/bin/sh\ncat "$TEST_AVAILABLE"\n',
-            "docker": '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TEST_TRACE"\n',
+            "docker": """#!/bin/sh
+printf '%s\\n' "$*" >> "$TEST_TRACE"
+case "$1 $2" in
+  'container inspect') exit 1 ;;
+  'run --rm') exit "${TEST_LOADER_EXIT:-0}" ;;
+  'exec '*)
+    case "$*" in
+      *current_setting*) echo '16.13|f|off' ;;
+      *pg_is_in_recovery*) echo f ;;
+    esac ;;
+esac
+exit 0
+""",
+            "mountpoint": "#!/bin/sh\nexit 0\n",
+            "findmnt": "#!/bin/sh\necho cifs\n",
+            "install": '#!/bin/sh\nfor value do case "$value" in /*) mkdir -p -- "$value";; esac; done\n',
             "timeout": '#!/bin/sh\nshift 3\nexec "$@"\n',
         }.items():
             path = self.bin / name
@@ -77,6 +92,36 @@ class RestoreHeadroomTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.available.write_text(value)
                 self.assertNotEqual(self.run_shell("require_headroom").returncode, 0)
+
+    def test_memory_limit_applies_to_both_phases_and_loader_failure_stops(self):
+        config = self.base / "config"
+        config.mkdir()
+        (config / "pgbackrest.conf").write_text("synthetic\n")
+        env = {
+            **self.env,
+            "JOBSEEK_POSTGRES_BACKUP_CONFIG": str(config),
+            "JOBSEEK_POSTGRES_RESTORE_DRILL_DIR": str(self.base),
+            "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "false",
+        }
+        for loader_exit in (0, 137):
+            with self.subTest(loader_exit=loader_exit):
+                self.trace.unlink(missing_ok=True)
+                result = subprocess.run(
+                    ["bash", str(DRILL), "20261118-010000F"],
+                    env={**env, "TEST_LOADER_EXIT": str(loader_exit)},
+                    capture_output=True,
+                    text=True,
+                    timeout=8,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, loader_exit, result.stderr)
+                launches = [line.split() for line in self.trace.read_text().splitlines() if line.startswith("run ")]
+                expected_phases = ["--rm"] if loader_exit else ["--rm", "--detach"]
+                self.assertEqual([args[1] for args in launches], expected_phases)
+                for args in launches:
+                    self.assertEqual(args[args.index("--memory") + 1], "4g")
+                    self.assertEqual(args[args.index("--network") + 1], "none")
+                self.assertEqual(list(self.base.glob("20*")), [])
 
     def test_pressure_watch_removes_only_owned_containers_including_phase_race(self):
         result = self.run_shell(

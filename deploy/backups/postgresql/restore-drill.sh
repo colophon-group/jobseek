@@ -19,6 +19,7 @@ CONFIG_DIR="${JOBSEEK_POSTGRES_BACKUP_CONFIG:-/etc/jobseek-backup/postgresql}"
 REPOSITORY_DIR="${JOBSEEK_POSTGRES_BACKUP_REPOSITORY:-/mnt/jobseek-postgresql-backups}"
 BASE_DIR="${JOBSEEK_POSTGRES_RESTORE_DRILL_DIR:-/var/lib/jobseek-backup/postgresql/restore-drills}"
 KEEP_FAILED="${JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED:-false}"
+RESTORE_MEMORY_LIMIT=4g
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)${RANDOM}"
 CONTAINER="jobseek-postgresql-restore-${RUN_ID}"
 RESTORE_CONTAINER="jobseek-postgresql-restore-load-${RUN_ID}"
@@ -146,6 +147,7 @@ HEADROOM_WATCH_PID=$!
 docker run --rm \
   --name "$RESTORE_CONTAINER" \
   --network none \
+  --memory "$RESTORE_MEMORY_LIMIT" \
   --user 70:70 \
   --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
   --volume "$CONFIG_DIR/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro" \
@@ -159,7 +161,7 @@ require_headroom
 docker run --detach \
   --name "$CONTAINER" \
   --network none \
-  --memory 4g \
+  --memory "$RESTORE_MEMORY_LIMIT" \
   --restart no \
   --env PGDATA=/restore \
   --volume "$CONFIG_DIR:/etc/jobseek-backup:ro" \
