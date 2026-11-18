@@ -141,9 +141,11 @@ stage="/var/lib/jobseek-ingress/feed-role-staging/$stage_id"
 install -d -o root -g root -m 0700 -- "$stage"
 REMOTE_FEED_PREPARE
 
+  stage="/var/lib/jobseek-ingress/feed-role-staging/$stage_id"
+  # The staging contract requires 0600 even for source scripts tracked as executable.
   tar --create --file - "$installer" "$conformance" "$drill" |
     remote 5m \
-      "umask 077; tar --extract --file - --directory '/var/lib/jobseek-ingress/feed-role-staging/$stage_id' --no-same-owner --no-same-permissions --keep-old-files"
+      "set -e; umask 077; tar --extract --file - --directory '$stage' --no-same-owner --no-same-permissions --keep-old-files; chmod 0600 '$stage/$installer' '$stage/$conformance' '$stage/$drill'"
 
   remote 5h \
     "bash -s -- '$stage_id' '$crawler_private_ip' '$installer_sha' '$conformance_sha' '$drill_sha'" \
