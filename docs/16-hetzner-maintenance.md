@@ -596,7 +596,8 @@ restore drill; a source merge does not authorize the host operation.
 The role helper uses the reviewed default scratch, image and config paths;
 it does not inherit shell startup files or operator path overrides. Admit disk
 and memory capacity against those exact defaults before dispatch. During the
-loader and isolated server phases, the drill samples scratch free space once
+sequential loader and isolated server phases, each container has a 4 GiB
+memory limit. The drill samples scratch free space once
 per second and aborts below 10 GiB, leaving a 2 GiB cleanup margin above the
 8 GiB operational floor. Measurement failure also aborts. Only that run's named
 containers and scratch are removed; low-space failures override debug-data
