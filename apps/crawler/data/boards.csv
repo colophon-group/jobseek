@@ -2267,6 +2267,7 @@ distantjob,distantjob-greenhouse,https://job-boards.greenhouse.io/distantjob,gre
 divergent,divergent-greenhouse,https://job-boards.greenhouse.io/divergent,greenhouse,"{""token"": ""divergent""}",skip,
 dkatalis,dkatalis-greenhouse,https://job-boards.greenhouse.io/dkatalislabs,greenhouse,"{""token"": ""dkatalislabs""}",skip,
 dlh,dlh-greenhouse,https://job-boards.greenhouse.io/dlhcorporation,greenhouse,"{""token"": ""dlhcorporation""}",skip,
+dlr,dlr-careers,https://jobs.dlr.de/,rss,"{""preset"": ""successfactors""}",skip,
 dlr-group,dlr-group-greenhouse,https://job-boards.greenhouse.io/dlrgroup,greenhouse,"{""token"": ""dlrgroup""}",skip,
 dmg-events,dmg-events-greenhouse,https://job-boards.greenhouse.io/dmgevents,greenhouse,"{""token"": ""dmgevents""}",skip,
 dna-script,dna-script-greenhouse,https://job-boards.eu.greenhouse.io/dnascript,greenhouse,"{""token"": ""dnascript""}",skip,
