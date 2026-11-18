@@ -6,6 +6,7 @@ import hashlib
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -85,6 +86,39 @@ class IngressStageOrderTests(unittest.TestCase):
 
 
 class FeedRoleAuditTests(unittest.TestCase):
+    def test_feed_role_transfer_makes_executable_sources_private_without_changing_bytes(self):
+        source = TRANSPORT.read_text(encoding="utf-8")
+        transfer = source.split("\nREMOTE_FEED_PREPARE\n", 1)[1].split("\n\n  remote 5h", 1)[0]
+        paths = {
+            "installer": "deploy/networking/justup-feed-readonly-role.py",
+            "conformance": "scripts/jobseek-ingress-conformance.py",
+            "drill": "deploy/backups/postgresql/restore-drill.sh",
+        }
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as target:
+            stage, checkout = Path(target), Path(directory)
+            for name in paths.values():
+                path = checkout / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(name.encode())
+                path.chmod(0o755)
+            assignments = "\n".join(f"{key}={shlex.quote(value)}" for key, value in paths.items())
+            transfer = transfer.replace("/var/lib/jobseek-ingress/feed-role-staging/$stage_id", str(stage))
+            script = f'set -euo pipefail\n{assignments}\nremote() {{ shift; bash -c "$1"; }}\n{transfer}'
+            result = subprocess.run(
+                ["bash", "-c", script],
+                cwd=checkout,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "LC_ALL": "C"},
+                timeout=5,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for file in stage.rglob("*"):
+                self.assertEqual(stat.S_IMODE(file.stat().st_mode), 0o700 if file.is_dir() else 0o600)
+            for name in paths.values():
+                self.assertEqual((stage / name).read_bytes(), name.encode())
+
     def test_only_the_exact_safe_helper_reaches_the_database_audit(self):
         source = TRANSPORT.read_text(encoding="utf-8")
         remote = source.split("<<'REMOTE_FEED_AUDIT'\n", 1)[1].split(
