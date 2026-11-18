@@ -26,6 +26,11 @@ ROLE_ENV = {
     "postgresql": "HETZNER_POSTGRES_HOST",
     "typesense": "HETZNER_TYPESENSE_HOST",
 }
+ROLE_LABEL = {
+    "crawler": "crawler-browser",
+    "postgresql": "postgresql",
+    "typesense": "typesense",
+}
 SENSITIVE_PUBLIC_PORTS = {
     "crawler": (6379, 8080, 9093, 9094, 9095, 9096, 9097, 9098, 12346, 12347),
     "postgresql": (5432, 12347),
@@ -219,8 +224,9 @@ def discover_targets(
         server_id = server.get("id")
         if not isinstance(server_id, int) or server_id in used:
             raise IngressError("production host mapping is not one-to-one")
-        if "murmur" in str(server.get("name") or "").lower():
-            raise IngressError("refusing to include Murmur in the ingress baseline")
+        labels = server.get("labels")
+        if not isinstance(labels, dict) or labels.get("role") != ROLE_LABEL[role]:
+            raise IngressError(f"unexpected {role} server role label")
         used.add(server_id)
         targets[role] = server
     if set(targets) != set(ROLE_ENV):

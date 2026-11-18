@@ -1,239 +1,44 @@
-# Job Posting Enrichment
+# Job enrichment
 
-LLM-based structured data extraction from job posting descriptions. Runs as a batch process using the LLM provider's batch API for cost efficiency.
+Production monitor and detail processing use the shared
+[Go job-enrichment module](../apps/crawler/go/job-enrichment/README.md).
+Go workers call its matcher and location index in process. It owns occupation,
+seniority, technology and experience matching, salary extraction, language
+recognition and description HTML normalization; the caller resolves database
+identities and persists canonical output. See the
+[field reference](08-job-data-fields.md) and completed
+[delivery checkpoint](27-go-lightpanda-continuation-plan.md).
 
-## Overview
+## Retained offline tools
 
-The enricher reads job description HTML from R2, sends it through an LLM batch API, and writes structured fields back to the `job_posting.enrichment` JSONB column. It extracts information that scrapers cannot reliably determine from raw HTML — seniority, education requirements, work permit policy, and benefit categorization.
+Company setup still uses the Python metadata helpers under
+`apps/crawler/src/core/enrich/` for JSON-LD and Wikidata evidence. The Python
+job-processing interfaces and Go bridge remain useful workspace tools and
+independent parity oracles. They do not provide a production runtime fallback.
 
-OpenAI is the preferred documented provider for new Codex migration smokes.
-Anthropic and Gemini remain supported providers. Runtime defaults stay
-conservative: an empty `ENRICH_PROVIDER` disables enrichment until an operator
-explicitly configures a provider, model, API key, and spend cap.
+The separate [labelled-posting routine](15-data-sampling-routine.md) creates
+structured training/evaluation records through its normalizer, splitter and
+extractors. Follow its Codex subscription workflow and validation gates; it is
+not a bulk production enrichment daemon.
 
-## Extracted Fields
+## Retired provider-batch implementation
 
-All fields are nullable. The LLM returns `null` when information is absent or ambiguous.
+The unused Python provider-batch subsystem, provider SDK dependency extra,
+configuration keys and smoke instructions were retired in repository cleanup.
+There is no supported `enricher` command, provider polling daemon or
+`ENRICH_PROVIDER` activation path. Do not introduce provider API work through
+those old instructions.
 
-### `seniority`
+The former design and extracted-field catalogue remain in
+[immutable source history](https://github.com/colophon-group/jobseek/blob/6fa1d1125327ccb4d79f4c20b72124c76d1d060a/docs/09-enrichment.md).
+This source cleanup does not drop or rewrite stored `job_posting.enrichment`
+values, the historical `enrich_batch` table or migration files. Removing
+persisted schema requires a separate database migration decision.
 
-Career level inferred from job title + requirements.
+## Verification
 
-| Value | Meaning |
-|---|---|
-| `intern` | Internship, working student (Werkstudent, Praktikum, stage) |
-| `entry` | Junior, graduate program, trainee, 0-2 years experience |
-| `mid` | Mid-level, 2-5 years, no seniority qualifier in title |
-| `senior` | Senior, Sr., 5+ years |
-| `lead` | Team lead, tech lead, engineering lead |
-| `staff` | Staff engineer/designer |
-| `principal` | Principal engineer/architect |
-| `director` | Director-level, VP (non-C-suite) |
-| `executive` | C-suite, Managing Director, CEO, CTO, CFO |
-
-### `education`
-
-Minimum stated education requirement. "Or equivalent experience" still counts as that level.
-
-| Value | Meaning |
-|---|---|
-| `none` | Explicitly states no degree required |
-| `vocational` | Apprenticeship, trade school, Ausbildung, CFC/EFZ, BTS, apprendistato |
-| `associate` | Associate degree, community college, DUT, DEUG |
-| `bachelor` | Bachelor's, licence, Fachhochschule degree, laurea triennale |
-| `master` | Master's, Diplom, DEA, laurea magistrale |
-| `doctorate` | PhD, Dr., Promotion, doctorat |
-
-### `experience`
-
-Years of experience requirement. Object with integer `min` and `max` years; either
-can be null.
-
-| Input | Output |
-|---|---|
-| "3+ years" | `{"min": 3, "max": null}` |
-| "1-2 years" | `{"min": 1, "max": 2}` |
-| "5 years" | `{"min": 5, "max": 5}` |
-| Not mentioned | `null` |
-
-### `occupation`
-
-Canonical job function/role in English, without seniority qualifiers. The enricher guesses a free-text English title; a **separate resolution agent** maps it to an `occupation_id` FK via the `occupations.csv` taxonomy.
-
-- Strips seniority: "Senior", "Junior", "Lead", "Staff", "Principal", "Head of", "VP of"
-- Strips gender markers: (m/f/d), :in, etc.
-- Always English regardless of posting language
-
-| Input title | Output |
-|---|---|
-| "Senior Software Engineer" | `"Software Engineer"` |
-| "Junior Data Analyst (m/f/d)" | `"Data Analyst"` |
-| "Werkstudent:in Frontend-Entwicklung" | `"Frontend Developer"` |
-
-The `occupation_id` column on `job_posting` is populated by the resolver, not the enricher.
-
-### `work_permit_support`
-
-Whether the employer offers to support work authorization (visa sponsorship, work permit assistance, etc.).
-
-| Value | Meaning |
-|---|---|
-| `yes` | Explicitly offered ("we sponsor visas", "work permit assistance", "Arbeitsbewilligung wird unterstützt") |
-| `no` | Requires existing authorization ("must have work permit", "valid work authorization required") |
-| `null` | Not mentioned |
-
-### `technologies`
-
-List of specific named tools, frameworks, and programming languages. Proper casing, no generic categories.
-
-- "PostgreSQL" not "postgres" or "databases"
-- "React" not "react" or "frontend framework"
-- "Kubernetes" not "k8s" or "container orchestration"
-
-### `keywords`
-
-5-10 lowercase search terms a job seeker would use. Domain-specific: role function, industry terms, specialization. Excludes technology names (covered by `technologies`) and generic words ("job", "company", "team").
-
-Example: `["backend engineer", "fintech", "payments", "api design", "distributed systems"]`
-
-### `benefits`
-
-Standardized benefit identifiers. The LLM maps free-text benefits to these enum values.
-
-| Value | Covers |
-|---|---|
-| `equity` | Stock options, RSUs, ESOP, VSOP |
-| `bonus` | Performance/annual bonus, 13th/14th salary, Gratifikation |
-| `retirement` | Company pension, 401(k), Betriebsrente, prévoyance, LPP/BVG, Pensionskasse |
-| `signing_bonus` | One-time sign-on/welcome bonus |
-| `relocation` | Relocation package, moving assistance |
-| `health_insurance` | Supplementary/private health, Zusatzversicherung |
-| `dental` | Dental plan, Zahnzusatzversicherung |
-| `vision` | Vision plan, eye care coverage |
-| `life_insurance` | Life/AD&D insurance |
-| `disability_insurance` | Short/long-term disability, Invalidenversicherung |
-| `mental_health` | Therapy, EAP, psychological support |
-| `gym` | Fitness/sports membership, Urban Sports Club |
-| `pto` | Paid time off, unlimited PTO (US-specific) |
-| `parental_leave` | Parental leave beyond statutory minimum |
-| `childcare` | Childcare subsidy, Kita, crèche, on-site nursery |
-| `vacation_extra` | Vacation days above local statutory minimum |
-| `sabbatical` | Sabbatical, extended leave option |
-| `flexible_hours` | Flextime, Gleitzeit, core hours |
-| `remote_budget` | Home office stipend, equipment budget |
-| `education_budget` | Learning budget, conference attendance, Weiterbildungsbudget |
-| `meal_allowance` | Meal vouchers, lunch subsidy, tickets restaurant |
-| `public_transport` | Transit pass, Jobticket, Navigo, SBB GA/Halbtax |
-| `bike_leasing` | JobRad, bicycle leasing, Swapfiets |
-| `company_car` | Company car, car allowance, Firmenwagen |
-
-## Architecture
-
-```
-┌──────────────────────────────────────────┐
-│  Workers (pipeline.py)                   │
-│  └─ monitors discover new postings       │
-│     └─ to_be_enriched = true             │
-└──────────────┬───────────────────────────┘
-               │
-┌──────────────▼───────────────────────────┐
-│  Batch orchestration (core/enrich/batch) │
-│  Phase A: collect_completed_batches()    │
-│    - poll provider for finished batches  │
-│    - validate results against schema     │
-│    - write to job_posting.enrichment     │
-│  Phase B: prepare_batch() + submit()     │
-│    - claim pending postings (SKIP LOCKED)│
-│    - fetch HTML from R2                  │
-│    - build LLM prompts                   │
-│    - submit via provider batch API       │
-└──────────────┬───────────────────────────┘
-               │
-┌──────────────▼───────────────────────────┐
-│  LLM Providers (core/enrich/providers/)  │
-│  - OpenAI Batch API                      │
-│  - Anthropic Message Batches             │
-│  - Gemini Batch API                      │
-└──────────────────────────────────────────┘
-```
-
-Provider-specific code should stay limited to batch submission, status
-polling, result download, and provider response parsing. Prompts, JSON Schema,
-validation, taxonomy resolution, cost estimation, and persistence stay
-provider-neutral so OpenAI, Anthropic, and Gemini runs share the same behavior
-after provider parsing.
-
-## Storage
-
-Enrichment data is stored in `job_posting.enrichment` as JSONB:
-
-```json
-{
-  "v": 4,
-  "extracted_at": "2026-03-11T12:00:00+00:00",
-  "seniority": "senior",
-  "education": "bachelor",
-  "experience": {"min": 5, "max": null},
-  "occupation": "Software Engineer",
-  "work_permit_support": null,
-  "technologies": ["Python", "PostgreSQL", "Kubernetes"],
-  "keywords": ["backend engineer", "fintech", "payments"],
-  "benefits": ["equity", "bonus", "flexible_hours", "education_budget"]
-}
-```
-
-The `v` field tracks the schema version. When the schema changes, `ENRICH_VERSION` is bumped and `--reprocess` re-queues items below the current version.
-
-## Fields NOT extracted (handled elsewhere)
-
-| Data | Source |
-|---|---|
-| Remote/hybrid/onsite | `job_posting.location_types` (location resolver) |
-| Locations | `job_posting.location_ids` (GeoNames-backed) |
-| Salary | R2 extras (scraper-extracted); no DB column yet |
-| Industry | `company.industry` (Wikidata-backed FK) |
-| Occupation (resolved) | `job_posting.occupation_id` (taxonomy FK, set by resolver agent) |
-| Employment type | `job_posting.employment_type` (scraper-extracted, normalized) |
-
-## Commands
-
-Current `main` does not register an enrichment console script or crawler
-subcommand. `apps/crawler/pyproject.toml` registers only `crawler`, `ws`, and
-`labeller`, and `src/cli.py` has no `enrich` subcommand.
-
-The provider abstraction and batch helpers under `src/core/enrich/` are library
-building blocks for an implementation branch. When an operator entry point is
-added, update this section with the exact `uv run ...` command, flags, dry-run
-mode, and rollback procedure. Until then, do not run `uv run enricher`; that
-script does not exist.
-
-## Configuration
-
-Set in environment variables (see `src/config.py`):
-
-| Variable | Default | Description |
-|---|---|---|
-| `ENRICH_PROVIDER` | `""` (disabled) | `openai`, `anthropic`, or `gemini`; prefer `openai` for new smokes |
-| `ENRICH_MODEL` | `""` | Provider model ID |
-| `ENRICH_API_KEY` | `""` | Provider API key |
-| `ENRICH_BATCH_SIZE` | `500` | Max items per batch |
-| `ENRICH_MIN_BATCH_SIZE` | `10` | Submit when >= this many pending |
-| `ENRICH_MAX_WAIT_MINUTES` | `60` | Submit after this wait even if below min |
-| `ENRICH_POLL_INTERVAL` | `300` | Seconds between poll cycles |
-| `ENRICH_DAILY_SPEND_CAP_USD` | `5.0` | Daily budget limit |
-| `ENRICH_INPUT_PRICE_PER_M` | `0.10` | Estimated input-token price per million tokens for budget checks |
-| `ENRICH_OUTPUT_PRICE_PER_M` | `0.40` | Estimated output-token price per million tokens for budget checks |
-
-For OpenAI smoke verification, first confirm the implementation branch has added
-an operator entry point, then start with a tiny dry run and low daily cap. The
-central checklist is [17 — Codex migration verification runbook](./17-codex-migration-verification-runbook.md#enrichment-openai-smoke).
-
-## Key Files
-
-| File | Purpose |
-|---|---|
-| `src/core/enrich/job.py` | Schema (Pydantic model), prompt, user message builder |
-| `src/core/enrich/batch.py` | Batch processor (claim, prepare, submit, collect, persist) |
-| `src/core/enrich/taxonomy.py` | Provider-neutral taxonomy resolution |
-| `src/core/enrich/providers/` | Provider adapters (OpenAI, Anthropic, Gemini) |
-| `src/core/description_store.py` | R2 read/write (HTML descriptions) |
+Use the shared module's Go regression/parity tests and the production native
+worker tests for processing changes. Keep the current complete-lane comparison
+for canonical output and resource qualification. Run the labeller's schema and
+agent-contract checks for labelling changes. Never substitute a provider-batch
+smoke for either surface.

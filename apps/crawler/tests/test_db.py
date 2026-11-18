@@ -75,23 +75,3 @@ class TestCreateLocalPool:
                 observe.assert_called_once_with(created_pool, "local")
         finally:
             db._local_pool = None
-
-
-class TestCreatePool:
-    """The mirror pool retains its longer persistent statement guard."""
-
-    async def test_passes_persistent_server_settings(self):
-        db._pool = None
-        try:
-            with (
-                patch("src.db.asyncpg.create_pool", new_callable=AsyncMock) as create,
-                patch("src.db._observe_pool"),
-            ):
-                create.return_value = object()
-                await db.create_pool()
-                kwargs = create.await_args.kwargs
-                assert "init" not in kwargs
-                assert kwargs["server_settings"]["statement_timeout"] == "5min"
-                assert kwargs["server_settings"]["idle_in_transaction_session_timeout"] == "60s"
-        finally:
-            db._pool = None

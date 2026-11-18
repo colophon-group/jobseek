@@ -140,6 +140,36 @@ msgstr ""
 #~ msgid "watchlists.view.editDescription"
 #~ msgstr "Cliquer pour modifier la description"
 
+#. Dismiss the Pro launch banner without changing marketing consent
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+#~ msgid "pro.announcement.dismiss"
+#~ msgstr "Fermer l’annonce Pro"
+
+#. Pro announcement link to explanation, pricing and trial terms
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+#~ msgid "pro.announcement.cta"
+#~ msgstr "Découvrir Pro"
+
+#. Accessible label for the dismissible gold Pro launch banner
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+#~ msgid "pro.announcement.label"
+#~ msgstr "Annonce Job Seek Pro"
+
+#. Pro announcement; eligibility and billing terms appear on the linked offer page
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+#~ msgid "pro.announcement.message"
+#~ msgstr "Pro est disponible. Affinez vos listes de suivi avec vos propres critères. Un essai gratuit de 7 jours est proposé aux nouveaux abonnés."
+
+#. Opens the optional marketing checkbox; clicking this link does not opt in
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+#~ msgid "pro.announcement.updates"
+#~ msgstr "Nouveautés"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -1770,12 +1800,6 @@ msgstr "Déconnecter"
 msgid "search.aiFilter.reminder.dismiss"
 msgstr "Fermer le rappel d’affinage"
 
-#. Dismiss the Pro launch banner without changing marketing consent
-#. js-lingui-explicit-id
-#: src/components/ProAnnouncementBanner.tsx
-msgid "pro.announcement.dismiss"
-msgstr "Fermer l’annonce Pro"
-
 #. FAQ question about whether the product suits company-targeted job seekers.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2047,12 +2071,6 @@ msgstr "Explorer les emplois"
 #: app/[lang]/(app)/explore/page.tsx
 msgid "explore.meta.title"
 msgstr "Explorer les emplois"
-
-#. Pro announcement link to explanation, pricing and trial terms
-#. js-lingui-explicit-id
-#: src/components/ProAnnouncementBanner.tsx
-msgid "pro.announcement.cta"
-msgstr "Découvrir Pro"
 
 #. Short link to the Pro subscription from the compact watchlist control
 #. Short link to the Pro subscription from the compact watchlist control
@@ -2859,12 +2877,6 @@ msgstr "Job Seek continue de grandir"
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
 msgstr "Politique de confidentialité de Job Seek — données personnelles collectées, utilisation, droits, cookies et demandes de suppression du compte et des données."
-
-#. Accessible label for the dismissible gold Pro launch banner
-#. js-lingui-explicit-id
-#: src/components/ProAnnouncementBanner.tsx
-msgid "pro.announcement.label"
-msgstr "Annonce Job Seek Pro"
 
 #. Public marketing page: tracker_imageAlt
 #. js-lingui-explicit-id
@@ -4327,12 +4339,6 @@ msgstr "Pro ajoute les résultats Narrowed aux watchlists. Les comptes éligible
 msgid "settings.billing.proSummary"
 msgstr "Pro ajoute des résultats affinés à vos listes."
 
-#. Pro announcement; eligibility and billing terms appear on the linked offer page
-#. js-lingui-explicit-id
-#: src/components/ProAnnouncementBanner.tsx
-msgid "pro.announcement.message"
-msgstr "Pro est disponible. Affinez vos listes de suivi avec vos propres critères. Un essai gratuit de 7 jours est proposé aux nouveaux abonnés."
-
 #. Payment data privacy heading
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -4361,12 +4367,6 @@ msgstr "Ingénieur produit"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.productNews.title"
-msgstr "Nouveautés"
-
-#. Opens the optional marketing checkbox; clicking this link does not opt in
-#. js-lingui-explicit-id
-#: src/components/ProAnnouncementBanner.tsx
-msgid "pro.announcement.updates"
 msgstr "Nouveautés"
 
 #. Marketing email settings heading

@@ -378,7 +378,7 @@ def test_action_polling_rejects_a_different_action_identity() -> None:
         ("POST", "/servers/900001/actions/reboot"),
         ("GET", "//attacker.example/servers"),
         ("GET", "/servers?name=unmanaged&page=1&per_page=50"),
-        ("GET", "/servers?name=jobseek-crawler&per_page=50"),
+        ("GET", "/servers?name=nbg1-node-01&per_page=50"),
     ],
 )
 def test_transport_rejects_every_endpoint_outside_the_fixed_surface(method: str, path: str) -> None:
@@ -473,10 +473,10 @@ def test_apply_rejects_unbounded_polling(attempts: object, interval: object) -> 
 
 def test_fixed_allowlist_never_weakens_protection() -> None:
     assert [(desired.kind, desired.name, desired.role) for desired in fleet.DESIRED_RESOURCES] == [
-        ("server", "jobseek-crawler", "crawler-browser"),
-        ("server", "jobseek-postings-postgresql", "postgresql"),
-        ("server", "jobseek-typesense", "typesense"),
-        ("server", "murmur-server", "murmur"),
+        ("server", "nbg1-node-01", "crawler-browser"),
+        ("server", "nbg1-node-02", "postgresql"),
+        ("server", "nbg1-node-03", "typesense"),
+        ("server", "nbg1-node-04", "murmur"),
         ("volume", "jobseek-postings-postgresql", "postgresql"),
         ("volume", "jobseek-typesense-snapshots", "typesense"),
         ("volume", "murmur-volume", "murmur"),

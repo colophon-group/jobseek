@@ -2,6 +2,47 @@ name: Bootstrap Lightpanda renderer host policy
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: Existing host policy bootstrap or exact running renderer zero-swap repair
+        required: true
+        type: choice
+        options:
+          - bootstrap
+          - repair-zero-swap
+        default: bootstrap
+      expected_machine_sha:
+        description: SHA-256 of the reviewed renderer host machine-id; repair only
+        required: false
+        type: string
+      expected_release_id:
+        description: Exact active renderer release ID; repair only
+        required: false
+        type: string
+      expected_image_id:
+        description: Exact immutable renderer image ID; repair only
+        required: false
+        type: string
+      expected_container_id:
+        description: Exact running renderer container ID; repair only
+        required: false
+        type: string
+      expected_pid:
+        description: Exact running renderer host PID; repair only
+        required: false
+        type: string
+      expected_cgroup_sha:
+        description: SHA-256 of exact host /proc/PID/cgroup path; repair only
+        required: false
+        type: string
+      expected_verifier_sha:
+        description: SHA-256 of installed published renderer verifier; repair only
+        required: false
+        type: string
+      expected_env_sha:
+        description: SHA-256 of installed active release.env; repair only
+        required: false
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -43,6 +84,7 @@ jobs:
           test "$remote_main" = "$DISPATCH_SHA"
 
       - name: Bootstrap persistent host policy
+        if: inputs.action == 'bootstrap'
         env:
           TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -51,3 +93,37 @@ jobs:
         run: |
           set -euo pipefail
           bash deploy/lightpanda-renderer/bootstrap-remote.sh "${{ github.sha }}"
+
+      - name: Repair exact renderer zero-swap leaf
+        if: inputs.action == 'repair-zero-swap'
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_MURMUR_KNOWN_HOSTS }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          EXPECTED_MACHINE_SHA: ${{ inputs.expected_machine_sha }}
+          EXPECTED_RELEASE_ID: ${{ inputs.expected_release_id }}
+          EXPECTED_IMAGE_ID: ${{ inputs.expected_image_id }}
+          EXPECTED_CONTAINER_ID: ${{ inputs.expected_container_id }}
+          EXPECTED_PID: ${{ inputs.expected_pid }}
+          EXPECTED_CGROUP_SHA: ${{ inputs.expected_cgroup_sha }}
+          EXPECTED_VERIFIER_SHA: ${{ inputs.expected_verifier_sha }}
+          EXPECTED_ENV_SHA: ${{ inputs.expected_env_sha }}
+        run: |
+          set -euo pipefail
+          bash deploy/lightpanda-renderer/bootstrap-remote.sh \
+            "${{ github.sha }}" repair-zero-swap \
+            "$EXPECTED_MACHINE_SHA" "$EXPECTED_RELEASE_ID" \
+            "$EXPECTED_IMAGE_ID" "$EXPECTED_CONTAINER_ID" "$EXPECTED_PID" \
+            "$EXPECTED_CGROUP_SHA" "$EXPECTED_VERIFIER_SHA" "$EXPECTED_ENV_SHA"
+
+      - name: Retain exact bounded repair receipts
+        if: always() && inputs.action == 'repair-zero-swap'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lightpanda-zero-swap-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/lightpanda-zero-swap.stdout.raw
+            ${{ runner.temp }}/lightpanda-zero-swap.stderr.raw
+          if-no-files-found: warn
+          retention-days: 30

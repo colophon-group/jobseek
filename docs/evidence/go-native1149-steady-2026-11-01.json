@@ -1,0 +1,320 @@
+{
+  "schema": "jobseek.natural-traffic-capacity-steady/v1",
+  "version": "0.13.1149",
+  "source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+  "nodes": {
+    "crawler": {
+      "start_utc": "2026-11-01T20:11:06.899691+00:00",
+      "end_utc": "2026-11-01T21:03:22.656270+00:00",
+      "elapsed_seconds": 3135.7599999997765,
+      "host_cpu_count": 8,
+      "mean_host_busy_cores_excluding_iowait_steal": 3.0375393677153326,
+      "minimum_sampled_available_memory_mib": 11569.73828125,
+      "minimum_sampled_root_free_gib": 32.998043060302734,
+      "endpoint_container_membership_fixed": true,
+      "common_containers": [
+        {
+          "service_class": "drain",
+          "mean_cpu_cores": 0.003948950174758554,
+          "start_working_mib": 9.2265625,
+          "end_working_mib": 9.51171875,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "ordinary-go",
+          "mean_cpu_cores": 1.9039861756003091,
+          "start_working_mib": 205.28515625,
+          "end_working_mib": 619.5078125,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "other",
+          "mean_cpu_cores": 0.015039109498176953,
+          "start_working_mib": 68.8125,
+          "end_working_mib": 67.5625,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "redis",
+          "mean_cpu_cores": 0.4511691031839493,
+          "start_working_mib": 2086.46875,
+          "end_working_mib": 2085.6875,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "alloy",
+          "mean_cpu_cores": 0.03732137950608731,
+          "start_working_mib": 112.27734375,
+          "end_working_mib": 118.81640625,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "exporter",
+          "mean_cpu_cores": 0.005508685932597276,
+          "start_working_mib": 88.9765625,
+          "end_working_mib": 92.18359375,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "lease-reaper",
+          "mean_cpu_cores": 0.0007212305788708834,
+          "start_working_mib": 23.1875,
+          "end_working_mib": 23.83984375,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        }
+      ],
+      "worker_counter_increments": {
+        "scrape.failed": 666,
+        "monitor.succeeded": 5492,
+        "scrape.host_circuit_half_open": 26,
+        "monitor.host_circuit_open": 190,
+        "monitor.failed": 46,
+        "scrape.skipped": 6264,
+        "scrape.succeeded": 8648,
+        "scrape.host_circuit_open": 1882,
+        "jobseek_ordinary_go_posting_touches_total": 1271199,
+        "monitor.authority_lost": 2,
+        "monitor.host_circuit_half_open": 136,
+        "jobseek_ordinary_go_claim_errors_total": 164
+      },
+      "active_claim_samples": [
+        44,
+        109
+      ],
+      "ready_both": true,
+      "successful_monitors_per_minute": 105.08457279894618,
+      "successful_details_per_minute": 165.47184733526703
+    },
+    "postgresql": {
+      "start_utc": "2026-11-01T20:11:05.654658+00:00",
+      "end_utc": "2026-11-01T21:03:45.997889+00:00",
+      "elapsed_seconds": 3160.350000000559,
+      "host_cpu_count": 4,
+      "mean_host_busy_cores_excluding_iowait_steal": 1.0079417588157409,
+      "minimum_sampled_available_memory_mib": 5608.65625,
+      "minimum_sampled_root_free_gib": 62.592979431152344,
+      "endpoint_container_membership_fixed": true,
+      "common_containers": [
+        {
+          "service_class": "postgres-image-family",
+          "mean_cpu_cores": 0.0022768838894422225,
+          "start_working_mib": 169.02734375,
+          "end_working_mib": 166.8671875,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        },
+        {
+          "service_class": "postgres-image-family",
+          "mean_cpu_cores": 0.8937204005883843,
+          "start_working_mib": 3045.515625,
+          "end_working_mib": 3395.3203125,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        }
+      ]
+    },
+    "typesense": {
+      "start_utc": "2026-11-01T20:11:06.700131+00:00",
+      "end_utc": "2026-11-01T21:03:47.115386+00:00",
+      "elapsed_seconds": 3160.4199999999255,
+      "host_cpu_count": 4,
+      "mean_host_busy_cores_excluding_iowait_steal": 0.6119064601589566,
+      "minimum_sampled_available_memory_mib": 2130.76171875,
+      "minimum_sampled_root_free_gib": 22.767276763916016,
+      "endpoint_container_membership_fixed": true,
+      "common_containers": [
+        {
+          "service_class": "typesense-image-family",
+          "mean_cpu_cores": 0.5004191357477922,
+          "start_working_mib": 5587.0703125,
+          "end_working_mib": 5549.59375,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        }
+      ],
+      "health_200_both": true
+    },
+    "renderer": {
+      "start_utc": "2026-11-01T20:11:06.379435+00:00",
+      "end_utc": "2026-11-01T21:03:49.843844+00:00",
+      "elapsed_seconds": 3163.4699999997392,
+      "host_cpu_count": 2,
+      "mean_host_busy_cores_excluding_iowait_steal": 0.22389094746530616,
+      "minimum_sampled_available_memory_mib": 3191.66796875,
+      "minimum_sampled_root_free_gib": 9.790119171142578,
+      "endpoint_container_membership_fixed": true,
+      "common_containers": [
+        {
+          "service_class": "renderer-image-family",
+          "mean_cpu_cores": 0.20757547629661546,
+          "start_working_mib": 111.45703125,
+          "end_working_mib": 98.9296875,
+          "no_restart_increment": true,
+          "no_oom_event_increment": true
+        }
+      ],
+      "demo_reservation_preserved": true
+    }
+  },
+  "sum_observed_container_mean_cpu_cores": 4.021686530996984,
+  "sum_mean_host_busy_cores": 4.881278534155336,
+  "sum_end_observed_container_working_gib": 11.941230773925781,
+  "scope": "Two read-only endpoint samples per four physical hosts, roughly52minutes of natural mixed traffic on the same native1149 actors; intake data advanced normally. Stable endpoint memberships do not exclude unobserved transient containers between samples; host CPU includes their potential work. Sample RAM endpoints are lower bounds, not window maxima. Skips excluded from success throughput; posting touches are not unique job completions. No equivalent-workload, billed-savings, cleared-backlog or universal-health claim.",
+  "current_queue_observation": {
+    "observed_at_utc": "2026-11-01T21:05:56.349064+00:00",
+    "source_revision": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+    "detail_demand": null,
+    "actual_redis_queue_workload": {
+      "lanes": {
+        "simple": {
+          "regular_monitors_due": 548,
+          "ready_domains": 2467,
+          "first_monitor_entries": 0,
+          "regular_details_over_week": 2831305,
+          "regular_details_over_day": 3091862,
+          "regular_details_due": 3157320,
+          "valid_inflight_entries": 146,
+          "inflight_entries": 147,
+          "regular_monitor_entries": 7833,
+          "first_detail_entries": 0,
+          "regular_detail_entries": 3286326
+        },
+        "browser": {
+          "regular_monitors_due": 172,
+          "ready_domains": 391,
+          "first_monitor_entries": 0,
+          "regular_details_over_week": 29641,
+          "regular_details_over_day": 42184,
+          "regular_details_due": 62974,
+          "valid_inflight_entries": 3,
+          "inflight_entries": 3,
+          "regular_monitor_entries": 416,
+          "first_detail_entries": 0,
+          "regular_detail_entries": 84555
+        }
+      },
+      "redis_now_epoch": 1793567156.0979
+    },
+    "original_adf": {
+      "enabled": true,
+      "status": "quarantined",
+      "interval": 60,
+      "last_checked_at": "2026-11-01T17:37:14.487176+00:00",
+      "last_success_at": "2026-10-28T13:37:57.808563+00:00",
+      "next_check_at": "2026-11-02T17:37:17.889837+00:00",
+      "consecutive_failures": 12,
+      "tdm_reserved": false
+    },
+    "original_adf_queue": {
+      "queued_scores": [
+        {
+          "fasttrack": false,
+          "score": 1793641037.8898,
+          "lane": "browser"
+        }
+      ],
+      "redis_now_epoch": 1793567156.0976
+    },
+    "worker_metrics": {
+      "jobseek_ordinary_go_ready": 1.0,
+      "jobseek_ordinary_go_active_claims": 100.0
+    },
+    "worker_limits": {
+      "cpu_cores": 4.0,
+      "memory_bytes": 2147483648,
+      "restarts": 0,
+      "settings": {
+        "MONITOR_CONCURRENCY": "30",
+        "GOMEMLIMIT": "1GiB",
+        "DISCOVERY_CONCURRENCY": "120"
+      },
+      "cgroup_cpu_stat": {
+        "usage_usec": 8546169698,
+        "user_usec": 7568677725,
+        "system_usec": 977491972,
+        "nr_periods": 42854,
+        "nr_throttled": 526,
+        "throttled_usec": 5820128
+      },
+      "cpu_pressure": [
+        "some avg10=0.10 avg60=0.10 avg300=0.12 total=34064343",
+        "full avg10=0.10 avg60=0.06 avg300=0.04 total=26749161"
+      ],
+      "memory_current_bytes": 628002816,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      }
+    },
+    "canonical_board_keys_sha256": "c5c36de08f2c8c11dbc6f15c86b7ae78649bf82ff211a34b177f9357f8f675f8",
+    "canonical_monitor_ids_sha256": "f5940503338e226e58dd54a28e233f9f1ee6e94bda4dc9c31b91c8191bd700ed",
+    "monitor_conservation": {
+      "multiple_representations": 0,
+      "other_lane_representations": 0,
+      "missing": 0,
+      "inflight_token_missing": 0,
+      "inflight_token_present": 24,
+      "represented": 8273,
+      "expired_inflight_only": 0,
+      "missing_cache": 0,
+      "valid_inflight": 24,
+      "canonical_eligible": 8273,
+      "canonical_enabled": 8273,
+      "deadletter_only": 0,
+      "cache_lane_mismatch": 0,
+      "queued": 8249,
+      "cache_domain_mismatch": 0
+    },
+    "unexplained_missing": 0,
+    "gap_followup": null,
+    "scope": "Atomic bounded Redis observation for canonical enabled monitors; source-bound read-only SQL/Redis. IDs/URLs stay in RAM; token values never read, only HEXISTS booleans before output. No claims, repairs or origin work."
+  },
+  "original_floor_preservation": {
+    "observed_at_utc": "2026-11-01T21:08:51.905476+00:00",
+    "runtime_source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+    "original_csv_source": "a515fb91381a0f836ac5f8ea690fc100cabb9839",
+    "original_count": 8270,
+    "current_enabled": 8273,
+    "matched_original": 8270,
+    "additional": 3,
+    "missing_original": 0,
+    "original_uuid_sha256": "0d5cd7219ce3a5d7ddff2b7b7948a06a8a028a068cb0730aedd5e396acf927e1",
+    "original_uuid_hash_matches": true,
+    "current_key_sha256": "c5c36de08f2c8c11dbc6f15c86b7ae78649bf82ff211a34b177f9357f8f675f8",
+    "scope": "Source-bound read-only SQL original-capacity registry subset/UUID proof. Embedded original registry keys stay private and are removed after this observer is consumed. No Redis token reads, claims, provider work or production writes."
+  },
+  "bounded_error_classification": {
+    "observed_at_utc": "2026-11-01T21:08:50.969040+00:00",
+    "window_start_utc": "2026-11-01T20:11:06Z",
+    "window_end_utc": "2026-11-01T21:03:23Z",
+    "bounded_log_records": 843,
+    "tail_limit_reached": false,
+    "authority_loss_reason_counts": {
+      "cache_snapshot": 2
+    },
+    "authority_loss_records": [
+      {
+        "at_utc": "2026-11-01T20:45:31.237847862Z",
+        "reason": "cache_snapshot"
+      },
+      {
+        "at_utc": "2026-11-01T20:45:32.000619301Z",
+        "reason": "cache_snapshot"
+      }
+    ],
+    "panic_marker_count": 0,
+    "worker_restarts": 0,
+    "scope": "Read-only current-worker bounded log classification. Raw records stay in remote RAM; only fixed code-owned reason categories/counts/timestamps emitted. No repairs, schedule/counter changes or provider work."
+  },
+  "capacity_conclusion": "The authorized4CPU/2GiB/120discovery/30monitor allocation is installed and stable in observed native generations. Mean worker CPU1.904/4 and low current pressure do not establish a CPU allocation bottleneck; no further CPU increase qualified. Persistent detail backlog, failure/circuit/skip counts and mixed workload remain disclosed; no universal freshness/demand-cleared claim."
+}

@@ -10,6 +10,8 @@ on:
         options:
           - audit
           - apply
+          - install-feed-role
+          - audit-feed-role
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -20,7 +22,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -28,23 +30,38 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Install PostgreSQL 16 for the reader boundary proof
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
       - name: Validate ingress tooling
+        env:
+          JOBSEEK_TEST_PG_BIN: /usr/lib/postgresql/16/bin
         run: |
           set -euo pipefail
           bash -n deploy/networking/install-host.sh
           bash -n deploy/networking/harden-postgresql.sh
           bash -n deploy/networking/verify-private-paths.sh
           bash -n deploy/networking/run-remote.sh
+          bash -n deploy/backups/postgresql/restore-drill.sh
           shellcheck \
             deploy/networking/install-host.sh \
             deploy/networking/harden-postgresql.sh \
             deploy/networking/verify-private-paths.sh \
-            deploy/networking/run-remote.sh
+            deploy/networking/run-remote.sh \
+            deploy/backups/postgresql/restore-drill.sh
           python3 -m py_compile \
             scripts/jobseek-ingress-conformance.py \
-            scripts/manage-hetzner-ingress.py
+            scripts/manage-hetzner-ingress.py \
+            deploy/networking/justup-feed-readonly-role.py
+          python3 -m unittest discover -s scripts -p 'test_ingress_stage_order.py'
           cd apps/crawler
-          uv run --frozen pytest tests/test_ingress_baseline.py -q
+          uv run --frozen pytest \
+            tests/test_ingress_baseline.py \
+            tests/test_justup_feed_role.py \
+            tests/test_justup_feed_role_postgres.py -q
 
   control-plane-audit:
     needs: validate
@@ -75,10 +92,6 @@ jobs:
     environment: production
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [crawler, postgresql, typesense]
     env:
       HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
@@ -96,7 +109,7 @@ jobs:
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
       - name: Audit crawler without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'crawler' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
@@ -106,7 +119,7 @@ jobs:
           crawler
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
       - name: Audit PostgreSQL without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'postgresql' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -116,7 +129,7 @@ jobs:
           postgresql
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
       - name: Audit Typesense without writing to production
-        if: ${{ inputs.action == 'audit' && matrix.service == 'typesense' }}
+        if: ${{ !cancelled() && inputs.action == 'audit' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -125,21 +138,10 @@ jobs:
           audit
           typesense
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
-      - name: Stage crawler host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'crawler' }}
-        env:
-          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
-          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
-        run: >-
-          bash deploy/networking/run-remote.sh
-          stage
-          crawler
-          "${{ github.sha }}"
-          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
-          "$JOBSEEK_CRAWLER_PRIVATE_IP"
-          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      # PostgreSQL replacement interrupts native clients. Finish data services
+      # before checking crawler listeners; the host rollback timers stay armed.
       - name: Stage PostgreSQL host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        if: ${{ inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -152,7 +154,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Stage Typesense host policy
-        if: ${{ inputs.action == 'apply' && matrix.service == 'typesense' }}
+        if: ${{ inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -164,8 +166,21 @@ jobs:
           "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Stage crawler host policy
+        if: ${{ inputs.action == 'apply' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          stage
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed crawler host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'crawler' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
@@ -178,7 +193,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed PostgreSQL host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
@@ -191,7 +206,7 @@ jobs:
           "$JOBSEEK_CRAWLER_PRIVATE_IP"
           "$JOBSEEK_POSTGRES_PRIVATE_IP"
       - name: Roll back a failed Typesense host stage
-        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'typesense' }}
+        if: ${{ failure() && inputs.action == 'apply' }}
         env:
           TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
@@ -469,3 +484,57 @@ jobs:
           rollback=0
           trap - EXIT
           rm -f "$state"
+
+  feed-role-maintenance:
+    if: ${{ inputs.action == 'install-feed-role' || inputs.action == 'audit-feed-role' }}
+    needs: control-plane-audit
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
+      HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require the exact current merged main revision
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          test -n "$current_main"
+          test "$current_main" = "$GITHUB_SHA"
+      - name: Derive the exact private inventory
+        run: |
+          set -euo pipefail
+          python3 scripts/manage-hetzner-ingress.py audit \
+            --state "${RUNNER_TEMP}/unused-firewall-state.json" \
+            --github-env "$GITHUB_ENV"
+      - name: Verify applied HBA, transport and install the fixed feed role
+        if: ${{ inputs.action == 'install-feed-role' }}
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          install-feed-role
+          postgresql
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+      - name: Audit the installed feed role before an operator export
+        if: ${{ inputs.action == 'audit-feed-role' }}
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          audit-feed-role
+          postgresql
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"

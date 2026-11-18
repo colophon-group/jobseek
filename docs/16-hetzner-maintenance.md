@@ -7,29 +7,85 @@ Operational runbook for the Jobseek Hetzner machines.
 Credentials and current IPs live in `apps/crawler/.env.local`; do not hardcode
 secrets into commands or documentation.
 
-| Role | Host variable | Main workload |
-|------|---------------|---------------|
-| Crawler | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
-| Postgres | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
-| Typesense | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
+| Role | Hetzner name | Host variable | Main workload |
+|------|--------------|---------------|---------------|
+| Crawler | `nbg1-node-01` | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
+| Postgres | `nbg1-node-02` | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
+| Typesense | `nbg1-node-03` | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
+| Renderer | `nbg1-node-04` | `RENDERER` | Lightpanda renderer and shared preview allocation |
 
 Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented separately in
 [`19-data-backup-recovery.md`](19-data-backup-recovery.md). That runbook is
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.
 
+## Renderer zero-swap maintenance
+
+The [renderer host-policy workflow](../.github/workflows/bootstrap-lightpanda-renderer-host.yml)
+has a `repair-zero-swap` action for an exact running renderer whose cgroup v2
+`memory.swap.max` leaf reads `max` while its published contract requires `0`.
+This is a one-time maintenance action, not a renderer deployment. It takes the
+existing host-policy lock followed by the renderer lifecycle lock; it does not
+restart the container, update an image, or change crawler services.
+
+Before dispatch, retain a fresh read-only record in protected local storage of the host
+machine-ID digest, active release ID, immutable image ID, full container ID,
+host PID, installed `release.env` and `verify.py` digests, and the SHA-256 of
+the unified `/proc/<PID>/cgroup` path **including its leading slash**. Supply
+those exact values as the workflow's `expected_*` inputs. Review the source
+commit, current `main`, active renderer identity, host overlap, and a finite
+execution window separately. A merged PR or the presence of credentials does
+not authorize the host write.
+
+The action refuses a changed identity, a non-exact leaf, an unavailable cgroup
+or PID capability, or any initial swap value other than `max`. It writes `0`
+only once to that exact leaf, then reads the host and container values and runs
+the installed published `running --allow-active` verifier, including its
+negative TLS/client probe. The workflow retains bounded raw stdout and stderr
+as an artifact. If the write result or later verification is
+uncertain, preserve that artifact and obtain new read-only evidence and a new
+decision before any further action; do not retry or infer a rollback.
+
+Cold renderer replacement also requires the current host-policy bootstrap bundle.
+It installs a root-owned, digest-bound copy of the same swap guard. Under its
+existing lifecycle locks, the renderer installer calls the explicit
+`enforce-candidate-zero-swap` policy action before normal verification and again
+after its restart check. The guard binds the exact candidate generation, image,
+container, process and cgroup leaf; an already-zero leaf needs no write. Only a
+`max` leaf may receive one `0` write, followed by host and container readback.
+Other limits, identity drift and uncertain writes fail closed through the
+existing containment path. The service waits at most 30 seconds for strict
+1-GiB/zero-swap attestation before opening its listener. An old active-container
+repair receipt does not qualify a replacement container.
+
 ## Provider Lifecycle Baseline
 
 [`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the
 fail-closed source of truth for the provider-side ownership labels and
 lifecycle protection of the Jobseek production fleet. Its allowlist is fixed
-in code: the `jobseek-crawler`, `jobseek-postings-postgresql`,
-`jobseek-typesense`, and `murmur-server` servers; the
+in code: the `nbg1-node-01`, `nbg1-node-02`,
+`nbg1-node-03`, and `nbg1-node-04` servers; the
 `jobseek-postings-postgresql`, `jobseek-typesense-snapshots`, and
 `murmur-volume` Volumes; and `jobseek-network`. The command does not accept
 names or provider IDs as arguments, does not use `hcloud` or `jq`, and does not
 change placement, server backups, snapshots, or any application backup
 schedule.
+
+The numbered Hetzner resource names describe location and stable inventory
+order. The workload roles remain in labels and this runbook. Renaming these
+provider resources does not change the guest OS hostnames, DNS, IPs, or
+running services. Infrastructure API credentials live in Doppler project
+`hetzner-infrastructure`: `prd_admin` holds a Read & Write token for bounded
+operator work, `prd_inventory` holds a separate Read token, and
+`prd_jobseek_ci` holds a distinct active credential archived from the
+Jobseek CI setup. The protected GitHub `production` environment supplies
+`HETZNER_API_TOKEN` to deployment workflows; verify it against the Doppler
+copy before changing or rotating it. Never sync the operator token there.
+Use the inventory token for read-only checks and keep the admin token out of
+app and CI runtime. The CI credential is for the existing deployment
+workflows, not an application runtime credential.
+Justup's host-scoped SSH deploy key remains in `justup-deploy/dev_murmur`;
+it is separate from all Hetzner API tokens.
 
 The desired labels are `environment=production`, `project=jobseek`,
 `owner=jobseek-operations`, and the resource's fixed `role`. Label updates
@@ -38,11 +94,12 @@ labels. All four servers require both delete and rebuild protection. All three
 Volumes and the private network require delete protection. Volume roles follow
 the owning service: `postgresql`, `typesense`, and `murmur` respectively.
 
-Load `HETZNER_API_KEY` from the root-only operator environment and run the
-default read-only check first:
+Authenticate the Doppler CLI for this checkout (`doppler login --scope .`),
+then run the default read-only check with its inventory token first:
 
 ```bash
-python3 scripts/manage-hetzner-fleet.py
+doppler run --project hetzner-infrastructure --config prd_inventory --no-fallback -- \
+  python3 scripts/manage-hetzner-fleet.py
 ```
 
 Exit `0` means the complete allowlist is conformant, `2` means the dry-run
@@ -61,7 +118,8 @@ After reviewing the complete dry-run, enable protection and merge the managed
 labels with the explicit apply flag:
 
 ```bash
-python3 scripts/manage-hetzner-fleet.py --apply
+doppler run --project hetzner-infrastructure --config prd_admin --no-fallback -- \
+  python3 scripts/manage-hetzner-fleet.py --apply
 ```
 
 Apply enables and verifies all required deletion/rebuild protections before
@@ -520,7 +578,41 @@ networking, so local Alloy can still scrape ports 9093–9098 without exposing
 them on a host interface. PostgreSQL binds only to loopback and its private
 address. Its exact HBA permits the `crawler` and
 `jobseek_labeller_readonly` roles, on the `crawler` database, from loopback and
-the exact crawler private address, using SCRAM-SHA-256.
+the exact crawler private address. The dedicated `justup_feed_readonly` role
+is admitted only from that crawler private address; a preceding local-socket
+reject prevents the general local trust rule from admitting it. All TCP entries
+require SCRAM-SHA-256. After the applied HBA passes audit, role grants are
+installed and audited by the fixed
+[`justup-feed-readonly-role.py`](../deploy/networking/justup-feed-readonly-role.py)
+helper through the protected ingress workflow's `install-feed-role` action.
+That action serializes with PostgreSQL backups, checks the latest successful
+backup, and runs the exact staged restore-drill source for that backup label on
+the PostgreSQL host. It records a root-only restore result, checks that `main`
+still names the dispatched source and that the applied HBA is unchanged, then
+rechecks the backup and restore evidence immediately before creating
+the disabled role and before enabling its login. A missing, failed, stale or
+mismatched result stops installation. Reserve a maintenance window for the
+restore drill; a source merge does not authorize the host operation.
+The role helper uses the reviewed default scratch, image and config paths;
+it does not inherit shell startup files or operator path overrides. Admit disk
+and memory capacity against those exact defaults before dispatch. During the
+loader and isolated server phases, the drill samples scratch free space once
+per second and aborts below 10 GiB, leaving a 2 GiB cleanup margin above the
+8 GiB operational floor. Measurement failure also aborts. Only that run's named
+containers and scratch are removed; low-space failures override debug-data
+retention. This is an early-abort guard, not a quota or a guarantee of peak
+space or memory usage. The full exact-label restore and relation checks still
+have to pass before the reader login can be installed.
+The reader gets selected public posting columns, an uploaded-description view,
+and a fixed cutoff function; the privileged statistics membership stays with a
+non-login function owner. An HBA entry alone does not create the login or
+authorize a data transfer.
+The installer expects `/etc/jobseek-feed/reader-password`, owned by root with
+mode `0600`, and the matching protected crawler-side database URL. Those
+credentials are provisioned separately from the workflow. Before each
+operator export, run the workflow's read-only `audit-feed-role` action from the
+exact current `main` revision and retain its successful role/HBA receipt; a
+future automated export must make that audit its own preflight.
 
 PostgreSQL TLS is not required on this local-crawler data path under the
 current threat model: the database contains crawler-source job data rather

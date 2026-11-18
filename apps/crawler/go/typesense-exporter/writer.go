@@ -50,6 +50,22 @@ func loadExporterSettings() (exporterSettings, error) {
 		MetricsPort:   9093,
 		RedisURL:      os.Getenv("REDIS_URL"),
 	}
+	for _, setting := range []struct {
+		name    string
+		maximum int
+		apply   func(int)
+	}{
+		{"EXPORT_BATCH_LIMIT", 2000, func(n int) { c.BatchLimit = n }},
+		{"EXPORT_INTERVAL", 3600, func(n int) { c.Interval = time.Duration(n) * time.Second }},
+	} {
+		if raw := os.Getenv(setting.name); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 1 || n > setting.maximum {
+				return c, fmt.Errorf("%s must be 1..%d", setting.name, setting.maximum)
+			}
+			setting.apply(n)
+		}
+	}
 	protocol, host, port := os.Getenv("TYPESENSE_PROTOCOL"), os.Getenv("TYPESENSE_HOST"), os.Getenv("TYPESENSE_PORT")
 	if c.DBURL == "" || c.OperationsKey == "" || (protocol != "http" && protocol != "https") || host == "" || port == "" {
 		return c, errors.New("local database and Typesense operations configuration are required")

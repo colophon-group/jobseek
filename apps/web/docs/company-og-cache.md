@@ -34,7 +34,6 @@ og/company/<renderer-version>/_complete/current.json
 characters, of the files that can alter pixels:
 
 - `src/lib/og/company-og-card.tsx`
-- `src/lib/og/render-company-og.tsx`
 - `public/fonts/JetBrainsMono-Bold.ttf`
 
 The version helper is shared by `next.config.ts` and the prewarmer so both

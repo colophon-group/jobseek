@@ -18,32 +18,22 @@ class TestSettings:
         assert s.crawler_db_pool_max == 4
 
     def test_custom_values(self, monkeypatch):
-        monkeypatch.setenv("DATABASE_URL", "postgresql://custom@localhost/custom")
+        monkeypatch.setenv("LOCAL_DATABASE_URL", "postgresql://custom@localhost/custom")
         monkeypatch.setenv("LOG_LEVEL", "DEBUG")
         monkeypatch.setenv("CRAWLER_MAX_CONCURRENT", "50")
         s = Settings()
-        assert s.database_url == "postgresql://custom@localhost/custom"
+        assert s.local_database_url == "postgresql://custom@localhost/custom"
         assert s.log_level == "DEBUG"
         assert s.crawler_max_concurrent == 50
 
-    def test_database_url_defaults_to_empty(self, monkeypatch):
-        monkeypatch.delenv("DATABASE_URL", raising=False)
-        s = Settings(_env_file=None)
-        assert s.database_url == ""
-
-    def test_web_database_url_is_optional_without_mirror_fallback(self, monkeypatch):
-        monkeypatch.setenv("DATABASE_URL", "postgresql://mirror@localhost/mirror")
-        monkeypatch.delenv("WEB_DATABASE_URL", raising=False)
-        s = Settings(_env_file=None)
-        assert s.database_url.endswith("/mirror")
-        assert s.web_database_url == ""
-
-    def test_web_database_url_is_independent(self, monkeypatch):
-        monkeypatch.setenv("DATABASE_URL", "postgresql://mirror@localhost/mirror")
-        monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://web@localhost/web")
-        s = Settings(_env_file=None)
-        assert s.database_url.endswith("/mirror")
-        assert s.web_database_url.endswith("/web")
+    def test_legacy_database_url_is_retained_for_the_network_guard_only(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://guard-host.invalid/retired")
+        monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://web-host.invalid/web")
+        monkeypatch.setenv("LOCAL_DATABASE_URL", "postgresql://local-host.invalid/local")
+        settings = Settings(_env_file=None)
+        assert settings.database_url == "postgresql://guard-host.invalid/retired"
+        assert settings.local_database_url == "postgresql://local-host.invalid/local"
+        assert "web_database_url" not in settings.model_dump()
 
     def test_webshare_backbone_pool_is_normalized(self):
         settings = Settings(

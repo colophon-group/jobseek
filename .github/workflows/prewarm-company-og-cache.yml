@@ -15,7 +15,6 @@ on:
       - "apps/web/src/lib/og/company-og-prewarm-plan.ts"
       - "apps/web/src/lib/og/company-og-renderer-version.ts"
       - "apps/web/src/lib/og/company-og-source-version.ts"
-      - "apps/web/src/lib/og/render-company-og.tsx"
       - "apps/web/src/lib/og/site-og-card.tsx"
       - "apps/web/src/lib/og/site-og-key.ts"
   schedule:

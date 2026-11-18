@@ -70,35 +70,16 @@ Rollback criterion: revert to the Claude-compatible route if Codex duplicates
 prompt text across orchestrator/subagent contexts, skips validation retries,
 uploads rejected records, or produces inconsistent block IDs.
 
-## Enrichment OpenAI Smoke
+<a id="enrichment-openai-smoke"></a>
+## Retired batch-enrichment smoke
 
-OpenAI is the preferred provider for migration smokes; Anthropic and Gemini
-remain supported. Do not change runtime defaults for the smoke: an empty
-`ENRICH_PROVIDER` still means disabled.
-
-1. Confirm the pilot branch has added an enrichment entry point before running
-   API work. Current `main` does not register `uv run enricher`; use the exact
-   replacement command added by the implementation branch.
-2. Use a tiny batch and daily cap:
-
-   ```bash
-   ENRICH_PROVIDER=openai \
-   ENRICH_MODEL=<openai-batch-capable-model> \
-   ENRICH_API_KEY=$OPENAI_API_KEY \
-   ENRICH_BATCH_SIZE=2 \
-   ENRICH_MIN_BATCH_SIZE=1 \
-   ENRICH_DAILY_SPEND_CAP_USD=1 \
-   <enrichment-command> --dry-run --limit 2
-   ```
-
-3. After dry-run output is sane, run one live batch and one collect pass.
-4. Verify persisted `enrich_batch.provider`, `model`, estimated cost, status,
-   and `job_posting.enrichment.v`.
-5. Compare at least two parsed results against the source posting HTML.
-
-Rollback criterion: disable by clearing `ENRICH_PROVIDER` if cost estimation is
-missing, schema validation fails, result parsing is provider-shaped outside the
-provider adapter, or persisted fields drift from the provider-neutral schema.
+The former Python provider-batch smoke is retired with its unused implementation
+and dependency extra. Its provider environment keys and placeholder command are
+not supported entry points. No provider API work should follow that old smoke.
+Use [current enrichment guidance](09-enrichment.md) for production native tests
+and the separate labelled-posting routine. The production scheduler uses Codex
+subscription execution as documented in the root AGENTS and runner deployment
+contract.
 
 ## `ws` Resolver Manual Fallback
 
@@ -158,21 +139,9 @@ multiple agent layers and produces conflicting instructions.
 
 ## Provider Boundary Checks
 
-Provider-specific enrichment code should stay limited to:
-
-- batch submission
-- status polling
-- result download and provider response parsing
-
-Prompts, JSON Schema, validation, taxonomy resolution, cost estimation, and
-persistence must remain provider-neutral.
-
-Suggested scan:
-
-```bash
-rg -n "ENRICH_PROVIDER|anthropic|openai" docs apps/crawler/AGENTS.md AGENTS.md apps/crawler/src/core/enrich || true
-```
-
-Rollback criterion: stop the migration if OpenAI-specific assumptions leak into
-shared prompts, schema validation, taxonomy mapping, cost accounting, or DB
-persistence.
+Production scheduled routines use the Hetzner Codex subscription runner.
+Retain bounded trace capture, schema validation and QA gates. The unused
+provider-batch subsystem is retired; do not restore its SDKs, credentials or
+API smoke as part of Codex verification. Current enrichment and labeller
+boundaries are documented in [enrichment](09-enrichment.md) and
+[gold labelling](15-data-sampling-routine.md).

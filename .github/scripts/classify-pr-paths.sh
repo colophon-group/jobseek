@@ -67,22 +67,23 @@ is_crawler_code_path() {
   return 0
 }
 
-is_go_http_pilot_path() {
+is_feed_reader_path() {
   local file="$1"
-
-  [[ "$file" == pilots/go-http-sitemap/* || \
-    "$file" == .github/workflows/crawler-go-sitemap-shadow.yml || \
-    "$file" == .github/workflows/crawler-sitemap-fleet-benchmark.yml || \
-    "$file" == apps/crawler/Dockerfile || \
-    "$file" == apps/crawler/uv.lock || \
-    "$file" == apps/crawler/data/boards.csv || \
-    "$file" == apps/crawler/src/core/__init__.py || \
-    "$file" == apps/crawler/src/core/monitor.py || \
-    "$file" == apps/crawler/src/core/monitors/raw.py || \
-    "$file" == apps/crawler/src/core/monitors/sitemap.py || \
-    "$file" == apps/crawler/src/shared/__init__.py || \
-    "$file" == apps/crawler/src/shared/ssrf.py || \
-    "$file" == apps/crawler/src/shared/tdm.py ]]
+  case "$file" in
+    apps/crawler/src/justup_feed/* | \
+      apps/crawler/src/export_cursor_fence.py | \
+      apps/crawler/tests/test_justup_feed*.py | \
+      apps/crawler/tests/test_export_cursor_fence.py | \
+      apps/crawler/tests/test_ingress_baseline.py | \
+      deploy/networking/justup-feed-readonly-role.py | \
+      deploy/networking/harden-postgresql.sh | \
+      deploy/networking/run-remote.sh | \
+      scripts/jobseek-ingress-conformance.py | \
+      .github/workflows/ci.yml | \
+      .github/workflows/deploy-hetzner-ingress.yml)
+      return 0 ;;
+  esac
+  return 1
 }
 
 # Independent of `code`: company registry-only PRs still change selectable identity.
@@ -102,7 +103,7 @@ is_company_reference_path() {
 company_reference=false
 code=false
 crawler_code=false
-go_http_pilot=false
+feed_reader=false
 boards_csv=false
 
 if ! changed_files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)'); then
@@ -125,12 +126,12 @@ while IFS= read -r file; do
     crawler_code=true
   fi
 
-  if is_company_reference_path "$file"; then
-    company_reference=true
+  if is_feed_reader_path "$file"; then
+    feed_reader=true
   fi
 
-  if is_go_http_pilot_path "$file"; then
-    go_http_pilot=true
+  if is_company_reference_path "$file"; then
+    company_reference=true
   fi
 
   if [[ "$file" == "apps/crawler/data/boards.csv" ]]; then
@@ -157,7 +158,7 @@ fi
 emit "company_reference" "$company_reference"
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
-emit "go_http_pilot" "$go_http_pilot"
+emit "feed_reader" "$feed_reader"
 emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"
 emit "is_pr" "true"

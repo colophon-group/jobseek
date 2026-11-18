@@ -36,6 +36,9 @@ while IFS= read -r path; do
       apps/crawler/data/occupations.csv | \
       apps/crawler/data/seniority.csv | \
       apps/crawler/data/technologies.csv | \
+      .github/workflows/deploy-lightpanda-renderer.yml | \
+      .github/workflows/lightpanda-renderer.yml | \
+      .github/workflows/bootstrap-lightpanda-renderer-host.yml | \
       .github/workflows/deploy-crawler-browser.yml | \
       .github/scripts/resolve-crawler-deploy-revisions.sh | \
       scripts/derive-crawler-build-version.mjs | \
@@ -47,11 +50,12 @@ while IFS= read -r path; do
       apps/crawler/traces/* | \
       apps/crawler/tests/lightpanda/fixtures/census.json | \
       apps/crawler/ws-package/* | \
-      apps/crawler/*.md)
+      apps/crawler/*.md | \
+      apps/lightpanda/*.md)
       # These exclusions mirror Deploy Crawler (Hetzner). Keep both surfaces
       # synchronized so a required gate is neither missing nor over-broad.
       ;;
-    apps/crawler/*)
+    apps/crawler/* | apps/lightpanda/* | deploy/lightpanda-renderer/*)
       runtime_paths+=("$path")
       ;;
   esac

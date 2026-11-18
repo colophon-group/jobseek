@@ -119,6 +119,9 @@ Status tags:
 
 ## Operations And Routines
 
+- [40 - Hetzner Web Origin and Cloudflare Tunnel](40-web-origin-deployment.md)
+  `[runbook]` - protected runtime, exact-release staging, Cloudflare DNS cutover,
+  verification, and rollback for the full Next.js app.
 - [Doppler Credential Migration](secrets-migration.md) `[runbook]` - bounded,
   owner-dispatched import of existing CI credentials into isolated secret stores.
 

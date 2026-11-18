@@ -2060,6 +2060,11 @@ def _monitor_runtime_for_board(
         if selected.strip()
     }
     if board_id in lever_board_ids or (monitor_type == "lever" and percent_selected):
+        # The retained Go CLI route has no per-posting exclusion contract.
+        # Native ordinary-worker admission handles this configuration, while
+        # this explicit legacy route must fail closed rather than emit it unfiltered.
+        if monitor_config and "exclude_blank_posting_ids" in monitor_config:
+            raise ValueError("Go Lever CLI does not support exact blank posting exclusions")
         from src.runtime.lever_go import GoLeverMonitorRuntime
 
         return GoLeverMonitorRuntime(board_id=board_id)

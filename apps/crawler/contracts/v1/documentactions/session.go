@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
@@ -213,12 +215,32 @@ type Request struct {
 	Actions           []Action     `json:"actions"`
 	InlineCards       *InlineCards `json:"inline_cards,omitempty"`
 	LargeDocument     bool         `json:"large_document,omitempty"`
+	WarmupURL         string       `json:"warmup_url,omitempty"`
 }
 
 func (Request) String() string   { return "document action request" }
 func (Request) GoString() string { return "document action request" }
 func (r Request) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && (Valid(r.Actions) || len(r.Actions) == 0 && (r.InlineCards != nil || r.LargeDocument)) && (r.InlineCards == nil || r.InlineCards.Valid())
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Input) > 0 && len(r.Input) <= 65536 && (Valid(r.Actions) || len(r.Actions) == 0 && (r.InlineCards != nil || r.LargeDocument)) && (r.InlineCards == nil || r.InlineCards.Valid()) && (r.WarmupURL == "" || r.LargeDocument && r.InlineCards == nil && validWarmupURL(r.WarmupURL))
+}
+
+// SameOriginWarmup binds the preparatory page to the exact detail origin. The
+// renderer repeats this check against its decoded navigation plan.
+func SameOriginWarmup(target, warmup string) bool {
+	if !validWarmupURL(target) || !validWarmupURL(warmup) {
+		return false
+	}
+	u, _ := url.Parse(target)
+	w, _ := url.Parse(warmup)
+	return u.Scheme == w.Scheme && u.Host == w.Host
+}
+
+func validWarmupURL(raw string) bool {
+	if len(raw) == 0 || len(raw) > 8192 || strings.ContainsAny(raw, "\x00\r\n\t ") {
+		return false
+	}
+	u, err := url.Parse(raw)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.Fragment == "" && u.Opaque == ""
 }
 
 func (r Request) ResultLimit() int {

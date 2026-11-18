@@ -15,10 +15,6 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
-const crawlerSamplerContainerSmoke = readFileSync(
-  ".github/scripts/crawler-sampler-container-smoke.py",
-  "utf8",
-);
 const webBuildEnvAction = readFileSync(
   ".github/actions/setup-web-build-env/action.yml",
   "utf8",
@@ -86,32 +82,6 @@ const resolveCrawlerDeployRevisionsScript = readFileSync(
 const crawlerRuntimeContractsWorkflow = readFileSync(
   ".github/workflows/crawler-runtime-contracts.yml",
   "utf8",
-);
-const goSitemapShadowWorkflow = readFileSync(
-  ".github/workflows/crawler-go-sitemap-shadow.yml",
-  "utf8",
-);
-const goSitemapShadowDockerfile = readFileSync(
-  "pilots/go-http-sitemap/Dockerfile.shadow",
-  "utf8",
-);
-const goSitemapFleetWorkflow = readFileSync(
-  ".github/workflows/crawler-sitemap-fleet-benchmark.yml",
-  "utf8",
-);
-const pythonFleetDockerfile = readFileSync(
-  "pilots/go-http-sitemap/Dockerfile.python-benchmark",
-  "utf8",
-);
-const pythonFleetRequirements = readFileSync(
-  "pilots/go-http-sitemap/python_shadow/requirements.lock",
-  "utf8",
-);
-const goSitemapShadowManifest = JSON.parse(
-  readFileSync("pilots/go-http-sitemap/canary/production.json", "utf8"),
-);
-const goSitemapFleetManifest = JSON.parse(
-  readFileSync("pilots/go-http-sitemap/benchmark/fleet.json", "utf8"),
 );
 const crawlerBoards = readFileSync("apps/crawler/data/boards.csv", "utf8");
 const crawlerDockerfile = readFileSync("apps/crawler/Dockerfile", "utf8");
@@ -692,26 +662,6 @@ test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
   assert.match(workflow, /crawler_code:\n(?:              - .+\n)+/);
-  const pilotInputs = [
-    "pilots/go-http-sitemap/**",
-    ".github/workflows/crawler-go-sitemap-shadow.yml",
-    ".github/workflows/crawler-sitemap-fleet-benchmark.yml",
-    "apps/crawler/Dockerfile",
-    "apps/crawler/uv.lock",
-    "apps/crawler/data/boards.csv",
-    "apps/crawler/src/core/__init__.py",
-    "apps/crawler/src/core/monitor.py",
-    "apps/crawler/src/core/monitors/raw.py",
-    "apps/crawler/src/core/monitors/sitemap.py",
-    "apps/crawler/src/shared/__init__.py",
-    "apps/crawler/src/shared/ssrf.py",
-    "apps/crawler/src/shared/tdm.py",
-  ];
-  const pilotFilter = workflow.match(/go_http_pilot:\n              - '([^']+)'/);
-  assert.ok(pilotFilter, "missing Go HTTP pilot filter");
-  for (const input of pilotInputs) {
-    assert.ok(pilotFilter[1].includes(input), `pilot filter omits ${input}`);
-  }
   assert.match(workflow, /boards_csv:\n              - 'apps\/crawler\/data\/boards\.csv'/);
 });
 
@@ -751,9 +701,27 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
   );
   assert.match(classifyPrPathsScript, /emit "code" "\$code"/);
   assert.match(classifyPrPathsScript, /emit "crawler_code" "\$crawler_code"/);
-  assert.match(classifyPrPathsScript, /emit "go_http_pilot" "\$go_http_pilot"/);
+  assert.match(classifyPrPathsScript, /emit "feed_reader" "\$feed_reader"/);
   assert.match(classifyPrPathsScript, /emit "boards_csv" "\$boards_csv"/);
   assert.match(classifyPrPathsScript, /emit "codeql" "\$code"/);
+});
+
+test("feed reader changes select the bounded PostgreSQL 16 proof", () => {
+  const selected = runClassifyPrPaths({
+    files: ["deploy/networking/justup-feed-readonly-role.py"],
+  });
+  const unrelated = runClassifyPrPaths({
+    files: ["apps/crawler/src/core/monitor.py"],
+  });
+  assert.equal(selected.status, 0, selected.stderr);
+  assert.equal(unrelated.status, 0, unrelated.stderr);
+  assert.match(selected.outputs, /^feed_reader=true$/m);
+  assert.match(unrelated.outputs, /^feed_reader=false$/m);
+  const job = jobBlock("test-feed-reader-pg16");
+  assert.match(job, /needs\.changes\.outputs\.feed_reader == 'true'/);
+  assert.match(job, /postgresql-16/);
+  assert.match(job, /test_justup_feed_role_postgres\.py/);
+  assert.match(jobBlock("required-ci"), /requireSuccess\("test-feed-reader-pg16", feedReader\)/);
 });
 
 test("manual PR classification exports the validated PR base context", () => {
@@ -764,7 +732,6 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.outputs, /^code=true$/m);
   assert.match(result.outputs, /^crawler_code=true$/m);
-  assert.match(result.outputs, /^go_http_pilot=true$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
@@ -783,68 +750,6 @@ test("company census fixture remains on the data-only CI path", () => {
   assert.match(result.outputs, /^crawler_code=false$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^codeql=false$/m);
-});
-
-test("Go HTTP pilot changes use dedicated CI without crawler release classification", () => {
-  const result = runClassifyPrPaths({
-    files: ["pilots/go-http-sitemap/sitemap/sitemap.go"],
-    baseRef: "main",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.outputs, /^code=true$/m);
-  assert.match(result.outputs, /^crawler_code=false$/m);
-  assert.match(result.outputs, /^go_http_pilot=true$/m);
-  assert.match(result.outputs, /^codeql=true$/m);
-
-  const productionComparatorInput = runClassifyPrPaths({
-    files: ["apps/crawler/src/core/monitor.py"],
-    baseRef: "main",
-  });
-  assert.equal(productionComparatorInput.status, 0, productionComparatorInput.stderr);
-  assert.match(productionComparatorInput.outputs, /^crawler_code=true$/m);
-  assert.match(productionComparatorInput.outputs, /^go_http_pilot=true$/m);
-
-  const unrelated = runClassifyPrPaths({
-    files: ["apps/crawler/src/exporter.py"],
-    baseRef: "main",
-  });
-  assert.equal(unrelated.status, 0, unrelated.stderr);
-  assert.match(unrelated.outputs, /^crawler_code=true$/m);
-  assert.match(unrelated.outputs, /^go_http_pilot=false$/m);
-
-  const deploymentWorkflow = runClassifyPrPaths({
-    files: [".github/workflows/crawler-go-sitemap-shadow.yml"],
-    baseRef: "main",
-  });
-  assert.equal(deploymentWorkflow.status, 0, deploymentWorkflow.stderr);
-  assert.match(deploymentWorkflow.outputs, /^code=true$/m);
-  assert.match(deploymentWorkflow.outputs, /^crawler_code=false$/m);
-  assert.match(deploymentWorkflow.outputs, /^go_http_pilot=true$/m);
-
-  const fleetWorkflow = runClassifyPrPaths({
-    files: [".github/workflows/crawler-sitemap-fleet-benchmark.yml"],
-    baseRef: "main",
-  });
-  assert.equal(fleetWorkflow.status, 0, fleetWorkflow.stderr);
-  assert.match(fleetWorkflow.outputs, /^code=true$/m);
-  assert.match(fleetWorkflow.outputs, /^crawler_code=false$/m);
-  assert.match(fleetWorkflow.outputs, /^go_http_pilot=true$/m);
-});
-
-test("manual PR classification retains a renamed pilot source path", () => {
-  const result = runClassifyPrPaths({
-    files: [
-      {
-        filename: "archive/go-http-sitemap/sitemap.go",
-        previous_filename: "pilots/go-http-sitemap/sitemap/sitemap.go",
-        status: "renamed",
-      },
-    ],
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.outputs, /^code=true$/m);
-  assert.match(result.outputs, /^crawler_code=false$/m);
-  assert.match(result.outputs, /^go_http_pilot=true$/m);
 });
 
 test("manual PR classification fails closed on files API failure or empty results", () => {
@@ -920,7 +825,7 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.match(crawlerImageJob, /docker\/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069/);
   assert.match(crawlerImageJob, /docker\/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc/);
   assert.match(crawlerImageJob, /context: apps\/crawler/);
-  assert.match(crawlerImageJob, /name: Build slim crawler image[\s\S]*target: slim/);
+  assert.match(crawlerImageJob, /name: Build offline crawler tools image[\s\S]*target: tools/);
   assert.match(crawlerImageJob, /platforms: linux\/amd64/);
   assert.match(crawlerImageJob, /name: Test installed sync data-root contract/);
   assert.match(crawlerImageJob, /target=\/app\/data,readonly/);
@@ -937,14 +842,13 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.match(crawlerImageJob, /seniority_resolve\._load_seniority_slugs/);
   assert.match(crawlerImageJob, /technology_resolve\.match_technologies/);
   assert.match(crawlerImageJob, /company\.match_industry/);
-  assert.match(crawlerImageJob, /taxonomy\._load_tech_name_map/);
   assert.doesNotMatch(crawlerImageJob, /mv \/app\/data/);
   assert.match(crawlerImageJob, /--entrypoint \/app\/\.venv\/bin\/crawler/);
   assert.match(
     crawlerImageJob,
     /installed crawler sync requires \/app\/data to be a separate read-only mount/,
   );
-  assert.match(crawlerImageJob, /target: full/);
+  assert.doesNotMatch(crawlerImageJob, /target: full/);
   assert.match(crawlerImageJob, /push: false/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(versionJob, /gh api "repos\/\$GITHUB_REPOSITORY\/pulls\/\$PR_NUMBER"/);
@@ -963,100 +867,6 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.doesNotMatch(probeJob, /github\.event_name == 'pull_request'/);
 });
 
-test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selected", () => {
-  const changesJob = jobBlock("changes");
-  const goPilotJob = jobBlock("test-go-http-pilot");
-  const requiredCiJob = jobBlock("required-ci");
-
-  assert.match(
-    changesJob,
-    /go_http_pilot: \$\{\{ steps\.manual-default\.outputs\.go_http_pilot \|\| steps\.manual-pr\.outputs\.go_http_pilot \|\| steps\.filter\.outputs\.go_http_pilot \}\}/,
-  );
-  assert.match(changesJob, /echo "go_http_pilot=true"/);
-  assert.match(
-    goPilotJob,
-    /if: needs\.changes\.outputs\.go_http_pilot == 'true'/,
-  );
-  assert.match(goPilotJob, /runs-on: ubuntu-latest/);
-  assert.match(goPilotJob, /timeout-minutes: 25/);
-  assert.match(
-    goPilotJob,
-    /go-version-file: pilots\/go-http-sitemap\/go\.mod/,
-  );
-  assert.match(goPilotJob, /working-directory: pilots\/go-http-sitemap/);
-  assert.match(
-    goPilotJob,
-    /test -z "\$\(find \. -type f -name '\*\.go' -exec gofmt -l \{\} \+\)"/,
-  );
-  assert.match(goPilotJob, /run: go test \.\/\.\.\./);
-  assert.match(goPilotJob, /run: go test -race \.\/\.\.\./);
-  assert.match(goPilotJob, /run: go vet \.\/\.\.\./);
-  assert.match(goPilotJob, /run: go mod tidy -diff/);
-  assert.match(goPilotJob, /Test Python comparator/);
-  assert.match(
-    goPilotJob,
-    /uv run python -m unittest discover -s \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow/,
-  );
-  assert.match(
-    goPilotJob,
-    /uv run python -m unittest discover -s \.\.\/\.\.\/pilots\/go-http-sitemap\/benchmark -p 'test_report_wire\.py'/,
-  );
-  assert.match(goPilotJob, /uv run ruff check \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow/);
-  assert.match(goPilotJob, /pilots\/go-http-sitemap\/benchmark\/\*\.py/);
-  assert.match(
-    goPilotJob,
-    /uv run pyright --level error \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow\/runner\.py \.\.\/\.\.\/pilots\/go-http-sitemap\/benchmark\/report_wire\.py/,
-  );
-  assert.match(
-    goPilotJob,
-    /docker\/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069/,
-  );
-  assert.match(
-    goPilotJob,
-    /docker\/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc/,
-  );
-  assert.match(goPilotJob, /file: pilots\/go-http-sitemap\/Dockerfile\.shadow/);
-  assert.match(goPilotJob, /platforms: linux\/arm64/);
-  assert.match(goPilotJob, /push: false/);
-  assert.match(goPilotJob, /outputs: type=cacheonly/);
-  assert.match(goPilotJob, /SOURCE_COMMIT=\$\{\{ github\.sha \}\}/);
-  assert.match(
-    goPilotJob,
-    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-go-sitemap-shadow:sha-\$\{\{ github\.sha \}\}/,
-  );
-  assert.match(
-    goPilotJob,
-    /file: pilots\/go-http-sitemap\/Dockerfile\.resident-shadow/,
-  );
-  assert.match(
-    goPilotJob,
-    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-go-sitemap-resident-shadow:sha-\$\{\{ github\.sha \}\}/,
-  );
-  assert.match(goPilotJob, /file: pilots\/go-http-sitemap\/Dockerfile\.benchmark/);
-  assert.match(
-    goPilotJob,
-    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-sitemap-fleet-go:sha-\$\{\{ github\.sha \}\}/,
-  );
-  assert.match(
-    goPilotJob,
-    /file: pilots\/go-http-sitemap\/Dockerfile\.python-benchmark/,
-  );
-  assert.match(
-    goPilotJob,
-    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-sitemap-fleet-python:sha-\$\{\{ github\.sha \}\}/,
-  );
-  assert.equal((goPilotJob.match(/platforms: linux\/arm64/g) ?? []).length, 4);
-  assert.match(requiredCiJob, /- test-go-http-pilot/);
-  assert.match(
-    requiredCiJob,
-    /const goHttpPilot = needs\.changes\?\.outputs\?\.go_http_pilot === "true"/,
-  );
-  assert.match(
-    requiredCiJob,
-    /requireSuccess\("test-go-http-pilot", goHttpPilot\)/,
-  );
-});
-
 test("Go Lightpanda B0 supervisor quality gate is protected", () => {
   const goSupervisorJob = jobBlock("test-go-b0-supervisor");
   const requiredCiJob = jobBlock("required-ci");
@@ -1070,63 +880,6 @@ test("Go Lightpanda B0 supervisor quality gate is protected", () => {
     requiredCiJob,
     /requireSuccess\("test-go-b0-supervisor", crawlerCode\)/,
   );
-});
-
-test("Python fleet comparator stays locked to its production authorities", () => {
-  const crawlerBase = crawlerDockerfile.match(
-    /^FROM docker\.io\/library\/(python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
-  );
-  const comparatorBase = pythonFleetDockerfile.match(
-    /^ARG PYTHON_IMAGE=docker\.io\/library\/(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
-  );
-  assert.ok(crawlerBase, "crawler Python base must remain digest-pinned");
-  assert.ok(comparatorBase, "comparator Python base must remain digest-pinned");
-  assert.equal(comparatorBase[1], crawlerBase[1]);
-
-  const requirements = pythonFleetRequirements
-    .trim()
-    .split("\n")
-    .map((line) => {
-      const match = line.match(
-        /^([a-z0-9-]+)==([A-Za-z0-9.+!-]+) --hash=sha256:([0-9a-f]{64})$/,
-      );
-      assert.ok(match, `invalid locked comparator requirement: ${line}`);
-      return { name: match[1], version: match[2], hash: match[3] };
-    });
-  assert.deepEqual(
-    requirements.map(({ name }) => name),
-    ["anyio", "certifi", "h11", "httpcore", "httpx", "idna", "structlog"],
-  );
-  for (const requirement of requirements) {
-    const marker = `[[package]]\nname = "${requirement.name}"\n`;
-    const start = crawlerUvLock.indexOf(marker);
-    assert.notEqual(start, -1, `uv.lock omits ${requirement.name}`);
-    const next = crawlerUvLock.indexOf("\n[[package]]", start + marker.length);
-    const block = crawlerUvLock.slice(start, next === -1 ? undefined : next);
-    assert.match(
-      block,
-      new RegExp(`^version = "${requirement.version.replaceAll(".", "\\.")}"$`, "m"),
-    );
-    assert.ok(
-      block.includes(`hash = "sha256:${requirement.hash}"`),
-      `${requirement.name} wheel hash drifted from uv.lock`,
-    );
-  }
-
-  for (const source of [
-    "apps/crawler/src/core/__init__.py",
-    "apps/crawler/src/core/monitor.py",
-    "apps/crawler/src/core/monitors/raw.py",
-    "apps/crawler/src/core/monitors/sitemap.py",
-    "apps/crawler/src/shared/__init__.py",
-    "apps/crawler/src/shared/ssrf.py",
-    "apps/crawler/src/shared/tdm.py",
-  ]) {
-    assert.ok(pythonFleetDockerfile.includes(`COPY ${source} `), `comparator omits ${source}`);
-    const classified = runClassifyPrPaths({ files: [source], baseRef: "main" });
-    assert.equal(classified.status, 0, classified.stderr);
-    assert.match(classified.outputs, /^go_http_pilot=true$/m);
-  }
 });
 
 test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
@@ -1149,566 +902,20 @@ test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
   assert.match(crawlerDockerfile, /COPY --from=go-b0-executor-build .*\/usr\/local\/bin\/go-lightpanda-b0-executor/);
 });
 
-test("fleet benchmark manifest remains an exact literal-only production projection", () => {
-  const boards = new Map(
-    parseCsvRecords(crawlerBoards).map((board) => [board.board_slug, board]),
-  );
-  assert.equal(goSitemapFleetManifest.schema_version, 1);
-  assert.equal(goSitemapFleetManifest.jobs.length, 32);
-  assert.equal(
-    new Set(goSitemapFleetManifest.jobs.map((job) => job.id)).size,
-    32,
-  );
-  assert.equal(
-    new Set(
-      goSitemapFleetManifest.jobs.map(
-        (job) => new URL(job.sitemap_url).origin,
-      ),
-    ).size,
-    32,
-  );
-  for (const job of goSitemapFleetManifest.jobs) {
-    const board = boards.get(job.id);
-    assert.ok(board, `missing production board ${job.id}`);
-    assert.equal(board.monitor_type, "sitemap");
-    assert.equal(board.board_url, job.board_url);
-    const config = JSON.parse(board.monitor_config);
-    assert.deepEqual(
-      Object.keys(config).sort(),
-      config.url_filter === undefined
-        ? ["sitemap_url"]
-        : ["sitemap_url", "url_filter"],
-    );
-    assert.equal(typeof (config.url_filter ?? ""), "string");
-    assert.equal(config.sitemap_url, job.sitemap_url);
-    assert.equal(config.url_filter ?? "", job.include_literal);
-    assert.equal(job.exclude_literal, "");
-    assert.equal(job.max_urls, 50_000);
-    assert.equal(job.max_index_children, 1);
-  }
-});
-
-test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire parser", () => {
-  assert.match(goSitemapFleetWorkflow, /^on:\n  workflow_dispatch:\s*$/m);
-  assert.match(goSitemapFleetWorkflow, /group: deploy-murmur-shim/);
-  assert.match(goSitemapFleetWorkflow, /timeout-minutes: 360/);
-  assert.match(goSitemapFleetWorkflow, /\[\[ "\$DISPATCH_REF" == refs\/heads\/main \]\]/);
-  assert.match(goSitemapFleetWorkflow, /platforms: linux\/arm64/g);
-  assert.match(goSitemapFleetWorkflow, /timeout --signal=TERM --kill-after=30s 18000s bash -s/);
-  assert.match(goSitemapFleetWorkflow, /--read-only --network bridge/);
-  assert.match(goSitemapFleetWorkflow, /--cap-drop ALL --pids-limit 128/);
-  assert.match(goSitemapFleetWorkflow, /--cpus 1 --memory 1g/);
-  assert.match(goSitemapFleetWorkflow, /--memory-swap 1g --user 65532:65532/);
-  assert.match(
-    goSitemapFleetWorkflow,
-    /--log-driver local --log-opt max-size=256k --log-opt max-file=1 --log-opt compress=false/,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /"Config": \{"compress": "false", "max-file": "1", "max-size": "256k"\}/,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /config\.get\("Entrypoint"\) == image\["Config"\]\.get\("Entrypoint"\)/,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /config\.get\("Cmd"\) == \["--profile", os\.environ\["PROFILE"\]\]/,
-  );
-  assert.doesNotMatch(
-    goSitemapFleetWorkflow,
-    /container\["Args"\] == \["--profile", os\.environ\["PROFILE"\]\]/,
-  );
-  assert.equal(
-    (
-      goSitemapFleetWorkflow.match(
-        /docker ps -aq --no-trunc --filter "label=\$\{label_key\}=\$\{(?:owner|label_value)\}"/g,
-      ) ?? []
-    ).length,
-    2,
-  );
-  assert.equal(
-    (
-      goSitemapFleetWorkflow.match(
-        /\[\[ "\$(?:id|candidate_id)" =~ \^\[0-9a-f\]\{64\}\$ \]\]/g,
-      ) ?? []
-    ).length,
-    2,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /remote_docker_config="\/tmp\/jobseek-sitemap-fleet-auth\.\$owner"/,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /python3 pilots\/go-http-sitemap\/benchmark\/report_wire\.py/,
-  );
-  assert.equal(goSitemapFleetWorkflow.includes("def safe_raw"), false);
-  const explicitCleanup = goSitemapFleetWorkflow.indexOf(
-    "run_remote_cleanup >/dev/null 2>\"$remote_stderr_path\"",
-  );
-  const independentAudit = goSitemapFleetWorkflow.indexOf(
-    "# This independent read-only check runs after both success and trap cleanup.",
-  );
-  assert.ok(explicitCleanup > 0 && independentAudit > explicitCleanup);
-  const policyClassification = goSitemapFleetWorkflow.indexOf(
-    'policy_kind="$(report_policy_kind "$stdout_file")"',
-  );
-  const lifecycleEmission = goSitemapFleetWorkflow.indexOf(
-    'emit_arm "$pair" "$implementation" "$profile" "$container_status"',
-    policyClassification,
-  );
-  assert.ok(policyClassification > 0 && lifecycleEmission > policyClassification);
-  assert.match(
-    goSitemapFleetWorkflow,
-    /--protected-postflight-sha256 "\$protected_postflight_sha256"/,
-  );
-  assert.equal(goSitemapFleetWorkflow.includes("{{if .State.Health}}"), false);
-  assert.equal(
-    (
-      goSitemapFleetWorkflow.match(
-        /\{\{\.Id\}\}\|\{\{\.RestartCount\}\}\|\{\{json \.State\}\}/g,
-      ) ?? []
-    ).length,
-    2,
-  );
-  assert.equal(
-    (goSitemapFleetWorkflow.match(/health_state = state\.get\("Health"\)/g) ?? []).length,
-    2,
-  );
-  assert.match(
-    goSitemapFleetWorkflow,
-    /printf 'PREFLIGHT_FAILURE\\t%s\\t%s\\t%s\\n'/,
-  );
-  assert.match(goSitemapFleetWorkflow, /status != 0 && meta_emitted == 0/);
-  assert.match(goSitemapFleetWorkflow, /meta_emitted=1/);
-  for (const stage of [
-    "inventory",
-    "protected_services",
-    "host_resources_before_pull",
-    "pull_go_image",
-    "pull_python_image",
-    "host_resources_after_pull",
-    "image_attestation",
-    "schedule_validation",
-    "dns_pinning",
-  ]) {
-    assert.match(goSitemapFleetWorkflow, new RegExp(`preflight_stage=${stage}`));
-  }
-  assert.match(goSitemapFleetWorkflow, /wait_for_quiet_host\(\)/);
-  assert.match(goSitemapFleetWorkflow, /for attempt in \{1\.\.13\}/);
-  assert.match(goSitemapFleetWorkflow, /value <= 1\.50/);
-  assert.match(goSitemapFleetWorkflow, /attempt == 13 \)\) \|\| sleep 5/);
-  assert.equal(
-    (goSitemapFleetWorkflow.match(/resources_(?:before|after)_pull="\$\(wait_for_quiet_host\)"/g) ?? [])
-      .length,
-    2,
-  );
-  assert.ok(
-    (goSitemapFleetWorkflow.match(/len\(hosts\) != 32 or len\(set\(hosts\)\) != 32/g) ?? [])
-      .length >= 2,
-  );
-  assert.match(goSitemapFleetWorkflow, /len\(pairs\) != 18/);
-  assert.match(goSitemapFleetWorkflow, /len\(rows\) == 18/);
-  assert.match(
-    goSitemapFleetWorkflow,
-    /\[\[ "\$pair" =~ \^p\(0\[1-9\]\|1\[0-8\]\)\$ && "\$profile" =~ \^c\(5\|12\|16\)\$ \]\] \|\| exit 71/,
-  );
-  assert.equal(
-    (goSitemapFleetWorkflow.match(/expected = \{"c5": 6, "c12": 6, "c16": 6\}/g) ?? [])
-      .length,
-    2,
-  );
-  assert.match(goSitemapFleetWorkflow, /arm_number == 36/);
-  assert.match(goSitemapFleetWorkflow, /"\$arm_number" -eq 36/);
-  assert.match(
-    goSitemapFleetWorkflow,
-    /any\(unsafe\(address\) or address in excluded for address in answers\)/,
-  );
-  assert.match(goSitemapFleetWorkflow, /add_host_args\+=\(--add-host "\$host:\$address"\)/);
-  assert.match(goSitemapFleetWorkflow, /host\.get\("ExtraHosts"\) == expected_hosts/);
-  assert.match(
-    goSitemapFleetWorkflow,
-    /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
-  );
-  assert.match(goSitemapFleetWorkflow, /\(\.arms \| length == 36\)/);
-});
-
-test("Go sitemap production shadow is manual, isolated, and Murmur-scoped", () => {
-  assert.match(goSitemapShadowWorkflow, /^on:\n  workflow_dispatch:\s*$/m);
-  assert.match(goSitemapShadowWorkflow, /group: deploy-murmur-shim/);
-  assert.match(goSitemapShadowWorkflow, /environment: Production/);
-  assert.match(goSitemapShadowWorkflow, /refs\/heads\/main/);
-  assert.match(goSitemapShadowWorkflow, /ref: main/);
-  assert.match(goSitemapShadowWorkflow, /platforms: linux\/arm64/);
-  assert.match(goSitemapShadowWorkflow, /secrets\.HETZNER_MURMUR_HOST/);
-  assert.match(goSitemapShadowWorkflow, /secrets\.HETZNER_MURMUR_KNOWN_HOSTS/);
-  assert.match(goSitemapShadowWorkflow, /StrictHostKeyChecking=yes/);
-  assert.match(goSitemapShadowWorkflow, /DOCKER_CONFIG=/);
-  assert.match(goSitemapShadowWorkflow, /--network bridge/);
-  assert.doesNotMatch(goSitemapShadowWorkflow, /--network host/);
-  assert.match(goSitemapShadowWorkflow, /--read-only/);
-  assert.match(goSitemapShadowWorkflow, /--cap-drop ALL/);
-  assert.match(goSitemapShadowWorkflow, /--pids-limit 64/);
-  assert.match(goSitemapShadowWorkflow, /--cpus 0\.5/);
-  assert.match(goSitemapShadowWorkflow, /--memory 256m/);
-  assert.match(goSitemapShadowWorkflow, /--memory-swap 256m/);
-  assert.match(goSitemapShadowWorkflow, /com\.docker\.compose\.service=\$service/);
-  assert.match(goSitemapShadowWorkflow, /protected_services_unchanged/);
-  assert.match(goSitemapShadowWorkflow, /\.State\.OOMKilled/);
-  assert.match(goSitemapShadowWorkflow, /SHADOW_LIFECYCLE\\t%s\\t%s\\t%s\\t%s\\t%s/);
-  assert.match(goSitemapShadowWorkflow, /report_transport_invalid/);
-  assert.match(goSitemapShadowWorkflow, /write_fallback_report\n/);
-  assert.match(
-    goSitemapShadowWorkflow,
-    /jq -e -s 'length == 1 and \(\.\[0\] \| type == "object"\)'/,
-  );
-  assert.match(goSitemapShadowWorkflow, /'\.\[0\] \+ \{/);
-  assert.match(goSitemapShadowWorkflow, /tail -n \+2 "\$wire_path"/);
-  assert.match(goSitemapShadowWorkflow, /if-no-files-found: error/);
-  assert.match(goSitemapShadowWorkflow, /org\.colophon\.jobseek\.shadow\.owner/);
-  assert.match(goSitemapShadowWorkflow, /--cidfile "\$cid_file"/);
-  assert.match(goSitemapShadowWorkflow, /docker rm -f "\$\{owned_ids\[@\]\}"/);
-  assert.doesNotMatch(goSitemapShadowWorkflow, /docker compose/);
-  assert.doesNotMatch(goSitemapShadowWorkflow, /HETZNER_CRAWLER_KNOWN_HOSTS/);
-
-  const remoteScript = goSitemapShadowWorkflow.match(
-    /<<'REMOTE'\n([\s\S]*?)\n          REMOTE/,
-  )?.[1];
-  assert.ok(remoteScript, "remote shadow script must remain inspectable");
-  assert.doesNotMatch(remoteScript, /\bjq\b/);
-
-  assert.match(
-    goSitemapShadowDockerfile,
-    /golang:1\.24\.7-alpine3\.22@sha256:[0-9a-f]{64}/,
-  );
-  assert.match(goSitemapShadowDockerfile, /FROM --platform=\$BUILDPLATFORM/);
-  assert.match(goSitemapShadowDockerfile, /ARG TARGETOS/);
-  assert.match(goSitemapShadowDockerfile, /ARG TARGETARCH/);
-  assert.match(
-    goSitemapShadowDockerfile,
-    /GOOS="\$TARGETOS" GOARCH="\$TARGETARCH"/,
-  );
-  assert.match(goSitemapShadowDockerfile, /^FROM scratch$/m);
-  assert.match(goSitemapShadowDockerfile, /^USER 65532:65532$/m);
-
-  assert.equal(goSitemapShadowManifest.schema_version, 1);
-  assert.equal(
-    goSitemapShadowManifest.jobs.find(
-      ({ id }) => id === "acosta-group-dee-set",
-    )?.sitemap_url,
-    "https://careers.deeset.co.uk/jobs/sitemap.xml",
-  );
-  assert.deepEqual(
-    goSitemapShadowManifest.jobs.map(({ id }) => id).sort(),
-    ["acosta-group-dee-set", "verity-breezy"],
-  );
-});
-
-test("Go sitemap shadow accepts exactly one report document", () => {
-  const expression = 'length == 1 and (.[0] | type == "object")';
-  const one = spawnSync("jq", ["-e", "-s", expression], {
-    input: '{"status":"failed"}\n',
-    encoding: "utf8",
-  });
-  assert.equal(one.status, 0, one.stderr);
-
-  const multiple = spawnSync("jq", ["-e", "-s", expression], {
-    input: '{"status":"failed"}\n{"status":"succeeded"}\n',
-    encoding: "utf8",
-  });
-  assert.notEqual(multiple.status, 0, multiple.stderr);
-});
-
-test("crawler image job proves live sampler and shutdown lifecycle", () => {
+test("crawler image job validates native execution and offline package separately", () => {
   const imageJob = jobBlock("crawler-image");
-  assert.match(imageJob, /psql -U crawler -d crawler -v ON_ERROR_STOP=1/);
-  assert.match(imageJob, /lightpanda-b0-executor\/testdata\/startup-fixture\.sql/);
-  const crawlerImageJob = jobBlock("crawler-image");
-
-  assert.match(
-    crawlerImageJob,
-    /services:\n      postgres:\n        image: docker\.io\/library\/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
-  );
-  assert.match(crawlerImageJob, /POSTGRES_USER: crawler/);
-  assert.match(crawlerImageJob, /POSTGRES_PASSWORD: crawler/);
-  assert.match(crawlerImageJob, /POSTGRES_DB: crawler/);
-  assert.match(crawlerImageJob, /- 5432:5432/);
-  assert.match(crawlerImageJob, /pg_isready -U crawler -d crawler/);
-  assert.match(
-    crawlerImageJob,
-    /redis:\n        image: docker\.io\/library\/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
-  );
-  assert.match(crawlerImageJob, /- 6379:6379/);
-  assert.match(crawlerImageJob, /redis-cli ping/);
-
-  assert.match(
-    crawlerImageJob,
-    /actions\/checkout@[0-9a-f]+[^\n]*\n        with:\n          fetch-depth: 0\n          persist-credentials: false/,
-  );
-  assert.match(crawlerImageJob, /name: Verify exact PR merge provenance/);
-  assert.match(crawlerImageJob, /id: merge-provenance/);
-  assert.match(crawlerImageJob, /TESTED_BUILD_SHA: \$\{\{ github\.sha \}\}/);
-  assert.match(
-    crawlerImageJob,
-    /PR_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
-  );
-  assert.match(
-    crawlerImageJob,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
-  );
-  assert.match(crawlerImageJob, /git rev-list --parents -n 1 HEAD/);
-  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
-  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
-  assert.match(crawlerImageJob, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
-  assert.match(crawlerImageJob, /git rev-parse HEAD\^1/);
-  assert.match(crawlerImageJob, /git rev-parse HEAD\^2/);
-  assert.match(crawlerImageJob, /echo "base_sha=\$parent_one" >> "\$GITHUB_OUTPUT"/);
-
-  const buildxIndex = crawlerImageJob.indexOf("docker/setup-buildx-action@");
-  const slimGuardIndex = crawlerImageJob.indexOf("name: Guard exact slim image build context");
-  const slimBuildIndex = crawlerImageJob.indexOf("name: Build slim crawler image");
-  const fullGuardIndex = crawlerImageJob.indexOf("name: Guard exact full image build context");
-  const fullBuildIndex = crawlerImageJob.indexOf("name: Build full crawler image");
-  const probeSelfTestIndex = crawlerImageJob.indexOf("name: Self-test sampler container probe");
-  assert.ok(buildxIndex < slimGuardIndex);
-  assert.ok(slimGuardIndex < slimBuildIndex);
-  assert.ok(slimBuildIndex < fullGuardIndex);
-  assert.ok(fullGuardIndex < fullBuildIndex);
-  assert.ok(fullBuildIndex < probeSelfTestIndex);
-  const namedBuildSteps = [
-    ...crawlerImageJob.matchAll(/^      - name: (.+)$/gm),
-  ].map((match) => match[1]);
-  assert.equal(
-    namedBuildSteps[namedBuildSteps.indexOf("Guard exact slim image build context") + 1],
-    "Build slim crawler image",
-  );
-  assert.equal(
-    namedBuildSteps[namedBuildSteps.indexOf("Guard exact full image build context") + 1],
-    "Build full crawler image",
-  );
-  assert.equal(
-    (crawlerImageJob.match(/git status --porcelain=v1 --untracked-files=all/g) ?? []).length,
-    2,
-  );
-  for (const guard of [
-    crawlerImageJob.slice(slimGuardIndex, slimBuildIndex),
-    crawlerImageJob.slice(fullGuardIndex, fullBuildIndex),
-  ]) {
-    assert.match(guard, /test -z "\$\(git status --porcelain=v1 --untracked-files=all\)"/);
-    assert.match(guard, /git rev-list --parents -n 1 HEAD/);
-    assert.match(guard, /test "\$commit" = "\$TESTED_BUILD_SHA"/);
-    assert.match(guard, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
-    assert.match(guard, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
-    assert.match(guard, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
-    assert.match(guard, /git rev-parse HEAD\^1/);
-    assert.match(guard, /git rev-parse HEAD\^2/);
-    assert.doesNotMatch(guard, /python|node|apps\/crawler/);
-  }
-
-  assert.equal(
-    (crawlerImageJob.match(/org\.opencontainers\.image\.source=/g) ?? []).length,
-    2,
-  );
-  assert.equal(
-    (crawlerImageJob.match(/org\.opencontainers\.image\.revision=\$\{\{ github\.sha \}\}/g) ?? [])
-      .length,
-    2,
-  );
-  assert.equal(
-    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.pr-head=/g) ?? []).length,
-    2,
-  );
-  assert.equal(
-    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=\$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/g) ?? []).length,
-    2,
-  );
-  assert.match(
-    crawlerImageJob,
-    /name: Exercise real sampler and container shutdown lifecycle[\s\S]*BASE_SHA: \$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/,
-  );
-
-  assert.match(crawlerImageJob, /crawler-sampler-container-smoke\.py --self-test/);
-  assert.match(
-    crawlerImageJob,
-    /name: Exercise real sampler and container shutdown lifecycle[\s\S]*crawler-sampler-container-smoke\.py[\s\S]*--slim-image jobseek-crawler-slim-ci:pr[\s\S]*--full-image jobseek-crawler-ci:pr[\s\S]*--tested-build-sha "\$TESTED_BUILD_SHA"[\s\S]*--pr-head-sha "\$PR_HEAD_SHA"[\s\S]*--base-sha "\$BASE_SHA"[\s\S]*--metrics-port 19091[\s\S]*--evidence "\$EVIDENCE_PATH"/,
-  );
-  assert.match(
-    crawlerImageJob,
-    /if: always\(\)[\s\S]*actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a[\s\S]*crawler-sampler-container-smoke\.json[\s\S]*if-no-files-found: error/,
-  );
-
-  for (const flag of [
-    '"--platform",\n        "linux/amd64"',
-    '"--init"',
-    '"--cgroupns=private"',
-    '"--network",\n        "host"',
-    '"--read-only"',
-    '"/tmp:rw,noexec,nosuid,nodev,size=64m"',
-    '"--stop-timeout",\n        "30"',
-  ]) {
-    assert.match(crawlerSamplerContainerSmoke, new RegExp(flag));
-  }
-  for (const forbidden of [
-    "--privileged",
-    "--pid=host",
-    "/proc:/proc",
-    "/sys/fs/cgroup:/sys/fs/cgroup",
-    "--cap-add",
-  ]) {
-    assert.doesNotMatch(crawlerSamplerContainerSmoke, new RegExp(forbidden));
-  }
-  assert.match(crawlerSamplerContainerSmoke, /"CRAWLER_DB_POOL_MIN": "1"/);
-  assert.match(crawlerSamplerContainerSmoke, /"CRAWLER_DB_POOL_MAX": "2"/);
-  assert.match(crawlerSamplerContainerSmoke, /"DISCOVERY_CONCURRENCY": "1"/);
-  assert.match(crawlerSamplerContainerSmoke, /"MONITOR_CONCURRENCY": "1"/);
-  assert.match(crawlerSamplerContainerSmoke, /"SHUTDOWN_GRACE_SECONDS": "2"/);
-  assert.match(crawlerSamplerContainerSmoke, /"PROXY_PROVIDER": "none"/);
-  assert.match(crawlerSamplerContainerSmoke, /"UV_CACHE_DIR": "\/tmp\/uv-cache"/);
-  const dockerRunCommand = crawlerSamplerContainerSmoke.slice(
-    crawlerSamplerContainerSmoke.indexOf("def _docker_run_command("),
-    crawlerSamplerContainerSmoke.indexOf("def _remove_container("),
-  );
-  assert.doesNotMatch(dockerRunCommand, /--entrypoint|--privileged|--pid=host|--cap-add/);
-  assert.match(dockerRunCommand, /command\.append\(image\)\n    return command/);
-  assert.match(crawlerSamplerContainerSmoke, /for mode in \("graceful", "forced"\)/);
-  assert.match(crawlerSamplerContainerSmoke, /for image_key, expected_role in \(\("slim", "run"\), \("full", "run-browser"\)\)/);
-  assert.match(crawlerSamplerContainerSmoke, /"host_pid"/);
-  assert.match(crawlerSamplerContainerSmoke, /"host_ppid"/);
-  assert.match(crawlerSamplerContainerSmoke, /"start_time_ticks"/);
-  assert.match(crawlerSamplerContainerSmoke, /"crawler_runtime_process_tree_observation_sequence"/);
-  assert.match(crawlerSamplerContainerSmoke, /\["docker", "stop", f"--time=\{stop_time\}"/);
-  assert.match(crawlerSamplerContainerSmoke, /stopped\["state"\]\["exit_code"\] == 137/);
-  assert.match(crawlerSamplerContainerSmoke, /stopped\["state"\]\["exit_code"\] == 0/);
-  assert.match(crawlerSamplerContainerSmoke, /GITHUB_STEP_SUMMARY/);
-  assert.match(crawlerSamplerContainerSmoke, /_atomic_write_json\(evidence_path, evidence\)/);
-  for (const requiredEvidence of [
-    '"content_id"',
-    '"platform": "linux/amd64"',
-    '"created"',
-    '"host_pid"',
-    '"host_ppid"',
-    '"container_pid"',
-    '"start_time_ticks"',
-    '"docker_stop_seconds"',
-    '"exit_code"',
-    '"oom_killed"',
-    '"log_markers"',
-    '"all_recorded_identities_gone"',
-    '"container_id"',
-    '"diagnostic_captures"',
-    '"raw_byte_count"',
-    '"redacted_byte_count"',
-    '"line_count"',
-    '"redaction"',
-  ]) {
-    assert.ok(crawlerSamplerContainerSmoke.includes(requiredEvidence), requiredEvidence);
-  }
-  for (const liveContract of [
-    "container PID 1 is not docker-init",
-    "expected exactly one default uv crawler launcher command",
-    "expected exactly one real crawler root command",
-    "expected exactly one multiprocessing sampler child",
-    "sampler parent is not the crawler root",
-    "processes are not at the private cgroup-v2 namespace root",
-    "full image did not start exactly one Xvfb",
-    "crawler_runtime_process_tree_samples_total",
-    "crawler_runtime_process_tree_sampler_starts_total",
-    "crawler_runtime_process_tree_sampling_gaps_total",
-    "crawler_runtime_process_tree_sample_interval_seconds",
-    "crawler_runtime_process_root_cpu_seconds_total",
-    "crawler_runtime_process_tree_cpu_seconds_total",
-    "crawler_runtime_process_root_resident_memory_bytes",
-    "crawler_runtime_process_tree_resident_memory_bytes",
-    "crawler_runtime_process_tree_descendants",
-    "pipeline.stopped",
-    "cli.shutting_down",
-    "cli.stopped",
-  ]) {
-    assert.ok(crawlerSamplerContainerSmoke.includes(liveContract), liveContract);
-  }
-  assert.match(crawlerSamplerContainerSmoke, /READINESS_TIMEOUT_SECONDS: Final = 30\.0/);
-  assert.match(crawlerSamplerContainerSmoke, /GRACEFUL_STOP_TIMEOUT_SECONDS: Final = 20\.0/);
-  assert.match(crawlerSamplerContainerSmoke, /FORCED_STOP_TIMEOUT_SECONDS: Final = 5\.0/);
-  assert.match(crawlerSamplerContainerSmoke, /ORPHAN_TIMEOUT_SECONDS: Final = 5\.0/);
-  assert.match(crawlerSamplerContainerSmoke, /"signal": "SIGSTOP"/);
-
-  const lifecycleCase = crawlerSamplerContainerSmoke.slice(
-    crawlerSamplerContainerSmoke.indexOf("def _run_lifecycle_case("),
-    crawlerSamplerContainerSmoke.indexOf("def _append_summary("),
-  );
-  assert.ok(lifecycleCase.indexOf("registry.register(container_name, case)") >= 0);
-  assert.ok(
-    lifecycleCase.indexOf("registry.register(container_name, case)") <
-      lifecycleCase.indexOf("result = _run("),
-  );
-  assert.match(lifecycleCase, /registry\.capture_best_effort\(container_name, phase="post-create"\)/);
-  assert.doesNotMatch(lifecycleCase, /created\s*=/);
-  assert.match(crawlerSamplerContainerSmoke, /class _ActiveContainerRegistry:/);
-  assert.match(crawlerSamplerContainerSmoke, /def cleanup_all\(self\)/);
-  assert.match(crawlerSamplerContainerSmoke, /\["docker", "rm", "--force", container_name\]/);
-  assert.match(crawlerSamplerContainerSmoke, /"registered_before_create": True/);
-  assert.match(crawlerSamplerContainerSmoke, /"all_known_identities_gone"/);
-  assert.match(crawlerSamplerContainerSmoke, /signal\.signal\(signum, self\._handle\)/);
-  assert.match(crawlerSamplerContainerSmoke, /except BaseException as exc:/);
-  assert.match(crawlerSamplerContainerSmoke, /cleanup_failures = registry\.cleanup_all\(\)/);
-  assert.match(crawlerSamplerContainerSmoke, /finally:[\s\S]*signal_controller\.restore\(\)/);
-  assert.match(crawlerSamplerContainerSmoke, /URI_USERINFO_PATTERN/);
-  assert.match(crawlerSamplerContainerSmoke, /AUTHORIZATION_PATTERN/);
-  assert.match(crawlerSamplerContainerSmoke, /SENSITIVE_KEY_PATTERN/);
-  assert.match(
-    crawlerSamplerContainerSmoke,
-    /SENSITIVE_ASSIGNMENT_PREFIX_PATTERN/,
-  );
-  assert.match(crawlerSamplerContainerSmoke, /SHELL_CONTROL_OPERATOR_STARTS/);
-  assert.match(crawlerSamplerContainerSmoke, /def _redact_sensitive_assignments\(/);
-  assert.doesNotMatch(crawlerSamplerContainerSmoke, /QUOTED_ASSIGNMENT_PATTERN/);
-  assert.match(crawlerSamplerContainerSmoke, /def _capture_container_diagnostics\(/);
-  for (const diagnosticState of [
-    '"path": raw.get("Path")',
-    '"args": raw.get("Args")',
-    '"paused": state.get("Paused")',
-    '"restarting": state.get("Restarting")',
-    '"dead": state.get("Dead")',
-    '"pid": state.get("Pid")',
-    '"error": state.get("Error")',
-    '"started_at": state.get("StartedAt")',
-    '"finished_at": state.get("FinishedAt")',
-  ]) {
-    assert.ok(crawlerSamplerContainerSmoke.includes(diagnosticState), diagnosticState);
-  }
-  const cleanupAll = crawlerSamplerContainerSmoke.slice(
-    crawlerSamplerContainerSmoke.indexOf("    def cleanup_all(self)"),
-    crawlerSamplerContainerSmoke.indexOf("def _send_sigstop("),
-  );
-  assert.ok(cleanupAll.indexOf("self.capture_diagnostics(") >= 0);
-  assert.ok(
-    cleanupAll.indexOf("self.capture_diagnostics(") <
-      cleanupAll.indexOf("_force_remove_container_name(container_name)"),
-  );
-  assert.ok(
-    lifecycleCase.indexOf('case["container"] = container') <
-      lifecycleCase.indexOf("_validate_container_runtime(container"),
-  );
-  assert.ok(
-    lifecycleCase.indexOf("stopped_capture = registry.capture_diagnostics(") <
-      lifecycleCase.indexOf("_remove_container(container_name"),
-  );
-  for (const failureTest of [
-    "test_docker_run_uses_tmp_uv_cache_without_overrides",
-    "test_credential_redaction_is_escape_aware",
-    "test_shell_assignment_redaction_consumes_complete_word",
-    "test_shell_assignment_redaction_honors_continuations_and_controls",
-    "test_early_exit_diagnostics_are_redacted_before_remove",
-    "test_diagnostic_inspect_failure_is_typed",
-    "test_diagnostic_log_failure_is_typed",
-    "test_create_failure_cleanup_is_name_driven",
-    "test_readiness_failure_cleanup_polls_early_identity",
-    "test_signal_interruption_is_idempotent_for_cleanup",
-    "test_cleanup_failure_fails_closed",
-  ]) {
-    assert.ok(crawlerSamplerContainerSmoke.includes(failureTest), failureTest);
-  }
+  assert.match(imageJob, /Verify exact PR merge provenance/);
+  assert.match(imageJob, /Guard exact offline image build context/);
+  assert.match(imageJob, /Build offline crawler tools image/);
+  assert.match(imageJob, /target: tools/);
+  assert.match(imageJob, /JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"/);
+  assert.match(imageJob, /JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"/);
+  assert.match(imageJob, /Prove installed native ordinary executable/);
+  assert.match(imageJob, /verify-build-info-release\.py/);
+  assert.doesNotMatch(imageJob, /target: full|target: slim|crawler-sampler-container-smoke/);
+  assert.match(crawlerDockerfile, /AS tools/);
+  assert.match(crawlerDockerfile, /offline-tools="v1"/);
+  assert.doesNotMatch(crawlerDockerfile, /AS slim|AS full|AS benchmark-browser|playwright install|with-xvfb/);
 });
 
 test("workflow-security runs repository script tests", () => {
@@ -1981,7 +1188,7 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
   );
   assert.match(
     crawlerDeployScript,
-    /exec 9>\/run\/lock\/jobseek-crawler-mutation\.lock[\s\S]*uv run --no-sync crawler sync/,
+    /exec 9>\/run\/lock\/jobseek-crawler-mutation\.lock[\s\S]*go-typesense-exporter --sync-registry/,
   );
   assert.match(
     syncDataWorkflow,
@@ -2748,14 +1955,10 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
     ensureCompanyOgPrewarmScript,
     /TARGET_REVISION[\s\S]*handoff_token=\$\(openssl rand -hex 16\)[\s\S]*-f target_revision="\$TARGET_REVISION"[\s\S]*-f handoff_token="\$handoff_token"[\s\S]*gh api/,
   );
-  assert.match(
-    deployCrawlerWorkflow,
-    /company-og:[\s\S]*actions: write[\s\S]*name: Ensure exact-revision company OG coverage[\s\S]*TARGET_REVISION: \$\{\{ github\.sha \}\}[\s\S]*ensure-company-og-prewarm\.sh/,
-  );
-  assert.match(
-    deployCrawlerWorkflow,
-    /deploy:\n\s+needs: \[preflight, company-og, build\]/,
-  );
+  // Share-image availability is a web concern, independent of native runtime
+  // activation. CSV publication above keeps its existing OG attestation.
+  assert.doesNotMatch(deployCrawlerWorkflow, /company-og:|ensure-company-og-prewarm/);
+  assert.match(deployCrawlerWorkflow, /deploy:\n\s+needs: \[preflight, build\]/);
   assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });
 
@@ -3502,6 +2705,18 @@ test("crawler deploy gate blocks a runtime file renamed into an excluded path", 
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /apps\/crawler\/src\/core\/monitor\.py/);
+});
+
+test("production renderer paths honor crawler deployment holds", () => {
+  for (const file of [
+    "apps/lightpanda/main.go",
+    "deploy/lightpanda-renderer/install-host.sh",
+    ".github/workflows/lightpanda-renderer.yml",
+    ".github/workflows/deploy-lightpanda-renderer.yml",
+  ]) {
+    const result = runCrawlerDeployGate({ files: [file], holds: [{ number: 42, title: "runtime held", url: "https://example.test/hold" }] });
+    assert.notEqual(result.status, 0, `${file} must honor the deployment hold`);
+  }
 });
 
 test("crawler deploy gate permits a ready runtime change when holds are clear", () => {

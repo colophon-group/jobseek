@@ -241,7 +241,7 @@ def test_runner_launch_overrides_previous_host_model_policy(
     assert result.stdout.strip() == "gpt-6.1-sol high"
 
 
-def test_governor_launch_overrides_previous_four_hour_pacing() -> None:
+def test_governor_launch_pins_six_hour_pacing() -> None:
     exec_start = next(
         line.removeprefix("ExecStart=")
         for line in GOVERNOR_SERVICE.read_text().splitlines()
@@ -268,7 +268,7 @@ def test_governor_launch_overrides_previous_four_hour_pacing() -> None:
         text=True,
         check=True,
     )
-    assert result.stdout.strip() == "3600 3600"
+    assert result.stdout.strip() == "21600 21600"
 
 
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:

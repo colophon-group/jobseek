@@ -1,15 +1,15 @@
-name: Deploy dormant Lightpanda renderer
+name: Deploy Lightpanda renderer
 
 on:
   pull_request:
     paths:
       - "deploy/lightpanda-renderer/**"
-      - "pilots/go-lightpanda/**"
+      - "apps/lightpanda/**"
       - "apps/crawler/contracts/v1/**"
       - "apps/crawler/tests/test_lightpanda_renderer_deployment.py"
       - ".github/workflows/deploy-lightpanda-renderer.yml"
       - ".github/workflows/bootstrap-lightpanda-renderer-host.yml"
-      - ".github/workflows/go-lightpanda-pilot.yml"
+      - ".github/workflows/lightpanda-renderer.yml"
   workflow_dispatch:
 
 env:
@@ -33,7 +33,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: apps/crawler/uv.lock
 
-      - name: Validate dormant deployment contract
+      - name: Validate renderer deployment contract
         run: |
           set -euo pipefail
           bash -n deploy/lightpanda-renderer/deploy-remote.sh
@@ -105,7 +105,7 @@ jobs:
           printf 'source_commit=%s\n' "$source_commit" >>"$GITHUB_OUTPUT"
 
       - name: Build real ARM64 service image for pull request
-        working-directory: pilots/go-lightpanda
+        working-directory: apps/lightpanda
         env:
           SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
         run: |
@@ -190,8 +190,8 @@ jobs:
         id: push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: pilots/go-lightpanda
-          file: pilots/go-lightpanda/Dockerfile
+          context: apps/lightpanda
+          file: apps/lightpanda/Dockerfile
           build-contexts: |
             contracts=apps/crawler/contracts
             api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor
@@ -242,7 +242,7 @@ jobs:
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
           test "$remote_main" = "$EXPECTED_SOURCE_COMMIT"
 
-      - name: Deploy one dormant controlled-egress renderer
+      - name: Deploy production controlled-egress renderer
         env:
           TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -264,7 +264,7 @@ jobs:
           image_ref="$IMAGE_REPOSITORY@$IMAGE_DIGEST"
           bash deploy/lightpanda-renderer/deploy-remote.sh "$SOURCE_COMMIT" "$image_ref"
 
-      - name: Record sanitized dormant release identity
+      - name: Record sanitized renderer release identity
         env:
           SOURCE_COMMIT: ${{ needs.publish.outputs.source_commit }}
           IMAGE_DIGEST: ${{ needs.publish.outputs.image_digest }}

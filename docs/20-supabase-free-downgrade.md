@@ -206,12 +206,13 @@ counts are refreshed separately and are not misrepresented as part of this
 static proof. Any failed command prevents the later commands from running and
 makes the maintenance job non-successful.
 
-Rollback-compatible Supabase library code remains temporarily in
-`exporter.py`, `sync.py`, `reconciliation.py`, `repair_relisted_cdc.py`,
-`bootstrap.py`, `db.py`, and the obsolete cursor/state/metric tests. It is not
-reachable from deployed normal commands. Remove it, the `database_url` setting,
-the Supabase reconciliation state row/schema allowances, and obsolete metrics
-after the rollback window and contract migration are complete.
+The former Supabase posting-mirror implementation and Python mirror/web pools
+are retired. Production processing, maintenance and rollback use native Go
+releases. Python local sync and Typesense projection remain useful offline
+oracles, together with the posting-schema snapshots used by current parity and
+CDC validation. The legacy `DATABASE_URL` field remains only as an SSRF host-deny
+input; it cannot open a Python mirror pool. Historical migration files and
+persisted cursor/state schema are retained pending a separate database decision.
 
 ## Local location source repair (#6282)
 

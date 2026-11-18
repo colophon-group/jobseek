@@ -130,7 +130,7 @@ func lastHTTPFetcher(client *http.Client, o api.LastHTTPOptions, scope providerR
 		if !scope.ResourceMatches(r.URL) || r.Method != "GET" && r.Method != "POST" || r.Method == "POST" && (o.Provider != "peoplesoft" || r.URL != o.ListingURL()) {
 			return nil, nil, queue.ErrConfiguration
 		}
-		bootstrap := o.Provider == "infor" && (strings.Contains(r.URL, "/CandidateSelfService/lm") || strings.Contains(r.URL, "/CandidateSelfService/controller.servlet")) || o.Provider == "peoplesoft" && strings.Contains(r.URL, "/psp/")
+		bootstrap := o.Provider == "infor" && (strings.Contains(r.URL, "/CandidateSelfService/lm") || strings.Contains(r.URL, "/CandidateSelfService/controller.servlet")) || o.Provider == "peoplesoft" && r.Method == http.MethodGet
 		attempts := 3
 		if o.Provider == "infor" || r.Method == "POST" {
 			attempts = 1
@@ -190,7 +190,9 @@ func lastHTTPFetcher(client *http.Client, o api.LastHTTPOptions, scope providerR
 				// Infor returns to the initial URL with new cookies. State-aware
 				// loop detection above and the original hard bound preserve it.
 				if e != nil || response.location == "" || redirects >= 20 || !scope.ResourceMatches(next) {
-					return nil, nil, queue.ErrConfiguration
+					// The publisher controls Location. Reject it without following,
+					// while keeping invalid caller requests fatal above.
+					return nil, nil, &DiscoveryError{Kind: "redirect"}
 				}
 				current.URL = next
 				// Redirect requests rebuild ordinary jar cookies for the new URL.

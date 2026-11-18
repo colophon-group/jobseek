@@ -130,6 +130,7 @@ FROM captured
 LEFT JOIN classified ON true
 GROUP BY captured.captured_at
 """
+_JUSTUP_FEED_CUTOFF_SQL = "SELECT * FROM justup_feed.capture_cdc_snapshot_cutoff()"
 _CDC_SLOW_CUTOFF_SECONDS = 30.0
 
 CursorFenceFactory = Callable[[asyncpg.Pool], AbstractAsyncContextManager[None]]
@@ -223,6 +224,20 @@ async def capture_cdc_snapshot_cutoff(pool: asyncpg.Pool) -> datetime:
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(_CDC_CUTOFF_SQL, CDC_WRITER_BARRIER_ID)
+
+    return _validated_cdc_cutoff(row)
+
+
+async def capture_justup_feed_cutoff(pool: asyncpg.Pool) -> datetime:
+    """Read the fixed privileged cutoff without exposing session statistics."""
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(_JUSTUP_FEED_CUTOFF_SQL)
+
+    return _validated_cdc_cutoff(row)
+
+
+def _validated_cdc_cutoff(row: asyncpg.Record | None) -> datetime:
 
     if row is None:
         raise RuntimeError("PostgreSQL returned no CDC cutoff")

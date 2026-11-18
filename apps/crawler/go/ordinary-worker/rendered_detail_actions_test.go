@@ -126,6 +126,10 @@ func detailActionTLSFixture(t *testing.T, profile queue.WorkdayDetailProfile, ht
 		if request.ConfigFingerprint != profile.EffectiveBoardSHA256 || len(request.Actions) != 2 || request.Actions[0].Kind != "wait" || request.Actions[1].Kind != "click" {
 			t.Error("action order or source binding differs")
 		}
+		wantWarmup, _ := profile.DOMConfig["warmup_url"].(string)
+		if request.WarmupURL != wantWarmup {
+			t.Error("bounded warmup lost its detail source binding")
+		}
 		var input runtimev1.BrowserExecutionInput
 		if proto.Unmarshal(request.Input, &input) != nil || input.Plan.TargetUrl != fetchURL {
 			t.Error("action navigation source differs")
@@ -165,13 +169,19 @@ func detailActionTLSFixture(t *testing.T, profile queue.WorkdayDetailProfile, ht
 }
 func TestNativeRenderedDetailsExecuteBoundActionsOverPinnedMutualTLS(t *testing.T) {
 	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
-		for _, mode := range []string{"success", "reserved", "changed-response-binding", "cancel"} {
+		for _, mode := range []string{"success", "warmup-success", "reserved", "changed-response-binding", "cancel"} {
+			if mode == "warmup-success" && scraper != "dom" {
+				continue
+			}
 			t.Run(scraper+"/"+mode, func(t *testing.T) {
 				options := map[string]any{"render": true, "actions": []any{map[string]any{"action": "wait", "ms": float64(0)}, map[string]any{"action": "click", "selector": "#details", "required": true}}}
 				html := nativeDOMHTML
 				profile := queue.WorkdayDetailProfile{BoardID: "11111111-1111-4111-8111-111111111111", CompanyID: "22222222-2222-4222-8222-222222222222", SourceURL: "https://jobs.example.net/job/42", EffectiveBoardSHA256: strings.Repeat("a", 64)}
 				switch scraper {
 				case "dom":
+					if mode == "warmup-success" {
+						options["warmup_url"] = "https://jobs.example.net/careers"
+					}
 					options["steps"] = []any{map[string]any{"tag": "h1", "field": "title"}, map[string]any{"tag": "h2", "text": "Role", "offset": 1, "field": "description", "html": true}}
 					profile.Profile = "dom.rendered-detail/v1"
 					profile.DOMConfig = options
@@ -197,7 +207,7 @@ func TestNativeRenderedDetailsExecuteBoundActionsOverPinnedMutualTLS(t *testing.
 					t.Fatal("action reservation cleanup did not finish", e)
 				}
 				switch mode {
-				case "success":
+				case "success", "warmup-success":
 					if e != nil || reserved != nil || out["title"] != "Senior Software Engineer" || out["description"] == nil {
 						t.Fatal("post-action canonical fields differ", e, out["title"])
 					}

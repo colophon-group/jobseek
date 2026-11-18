@@ -32,7 +32,10 @@ _PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _JOB_ID_RE = re.compile(r"[1-9]\d{0,11}")
-_COUNT_RE = re.compile(r"<b>\s*(?P<count>\d{1,6})\s*</b>\s*jobs?\s+found", re.IGNORECASE)
+_COUNT_RE = re.compile(
+    r"<b>\s*(?P<count>\d{1,6})\s*</b>\s*(?:jobs?\s+found|emplois?\s+trouv[eé]s?)",
+    re.IGNORECASE,
+)
 _GONE_STATUSES = frozenset({404, 410})
 _MORE_ACTION = "HRS_AGNT_RSLT_I$hdown$0"
 _MAX_GRID_REQUESTS = 1_001
@@ -182,12 +185,21 @@ async def fetch_peoplesoft_page(
 ) -> str:
     """Establish an anonymous Candidate Gateway session, then fetch a page."""
 
-    await _fetch_page(
-        client,
-        board.bootstrap_url,
-        log_event="peoplesoft.bootstrap_backoff",
-        follow_redirects=True,
-    )
+    try:
+        await _fetch_page(
+            client,
+            board.bootstrap_url,
+            log_event="peoplesoft.bootstrap_backoff",
+            follow_redirects=True,
+        )
+    except PaginationFetchError as exc:
+        if exc.last_status != 503:
+            raise
+        # Some public gateways disable /psp/ but establish their anonymous
+        # session through a same-origin redirect from the /psc/ page itself.
+        return await _fetch_page(
+            client, url, log_event="peoplesoft.page_backoff", follow_redirects=True
+        )
     return await _fetch_page(client, url, log_event="peoplesoft.page_backoff")
 
 
@@ -200,7 +212,7 @@ def _value(row: LexborNode, prefix: str) -> str | None:
 
 
 def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[DiscoveredJob], int]:
-    if "HRS_AGNT_RSLT_I" not in page or "Search Results List" not in page:
+    if "HRS_AGNT_RSLT_I" not in page:
         raise ValueError("PeopleSoft response omitted the public search-result grid")
     count_match = _COUNT_RE.search(page)
     if count_match is None:

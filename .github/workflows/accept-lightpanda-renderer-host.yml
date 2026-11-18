@@ -4,6 +4,7 @@ on:
     paths:
       - "deploy/lightpanda-renderer/**"
       - "apps/crawler/tests/test_lightpanda_host_acceptance.py"
+      - "apps/crawler/go/ordinary-worker/cmd/live/**"
       - ".github/workflows/accept-lightpanda-renderer-host.yml"
   workflow_dispatch:
     inputs:
@@ -43,11 +44,11 @@ jobs:
           set -euo pipefail
           bash -n deploy/lightpanda-renderer/{acceptance-remote,acceptance-crawler,deploy-remote,install-host}.sh
           shellcheck -x deploy/lightpanda-renderer/{acceptance-remote,acceptance-crawler,deploy-remote,install-host,lock}.sh
-          python3 -m py_compile deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py
+          python3 -m py_compile deploy/lightpanda-renderer/{acceptance-host,verify}.py
           cd apps/crawler
-          uv run --frozen ruff check ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py tests/test_lightpanda_host_acceptance.py
-          uv run --frozen ruff format --check ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py tests/test_lightpanda_host_acceptance.py
-          uv run --frozen pyright ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py
+          uv run --frozen ruff check ../../deploy/lightpanda-renderer/{acceptance-host,verify}.py tests/test_lightpanda_host_acceptance.py
+          uv run --frozen ruff format --check ../../deploy/lightpanda-renderer/{acceptance-host,verify}.py tests/test_lightpanda_host_acceptance.py
+          uv run --frozen pyright ../../deploy/lightpanda-renderer/{acceptance-host,verify}.py
           uv run --frozen pytest tests/test_lightpanda_host_acceptance.py tests/test_lightpanda_renderer_deployment.py -q
   accept:
     if: github.event_name == 'workflow_dispatch'

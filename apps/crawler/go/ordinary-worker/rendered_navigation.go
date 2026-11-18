@@ -18,9 +18,9 @@ import (
 
 // One reservation and cleanup boundary for document monitor/detail navigation.
 // Parser configuration and queue/database authority remain with their callers.
-func (r *NativeRenderedDetails) executeDocumentNavigation(ctx context.Context, input *runtimev1.BrowserExecutionInput, options map[string]any, fingerprint string, pipeline []actions.Action) (*runtimev1.BrowserResult, error) {
+func (r *NativeRenderedDetails) executeDocumentNavigation(ctx context.Context, input *runtimev1.BrowserExecutionInput, options map[string]any, fingerprint string, pipeline []actions.Action, warmup string) (*runtimev1.BrowserResult, error) {
 	return retryBrowserProxyOriginBlocks(ctx, input, options, func(attempt *runtimev1.BrowserExecutionInput) (*runtimev1.BrowserResult, error) {
-		return r.executeDocumentNavigationOnce(ctx, attempt, options, fingerprint, pipeline)
+		return r.executeDocumentNavigationOnce(ctx, attempt, options, fingerprint, pipeline, warmup)
 	})
 }
 
@@ -73,7 +73,10 @@ func retryBrowserProxyOriginBlocks(ctx context.Context, input *runtimev1.Browser
 	return previous, nil
 }
 
-func (r *NativeRenderedDetails) executeDocumentNavigationOnce(ctx context.Context, input *runtimev1.BrowserExecutionInput, options map[string]any, fingerprint string, pipeline []actions.Action) (*runtimev1.BrowserResult, error) {
+func (r *NativeRenderedDetails) executeDocumentNavigationOnce(ctx context.Context, input *runtimev1.BrowserExecutionInput, options map[string]any, fingerprint string, pipeline []actions.Action, warmup string) (*runtimev1.BrowserResult, error) {
+	if warmup != "" && (input == nil || input.Plan == nil || !actions.SameOriginWarmup(input.Plan.TargetUrl, warmup)) {
+		return nil, queue.ErrConfiguration
+	}
 	lease, err := bindBrowserProxy(input, options, r.proxyHTTP)
 	if err != nil {
 		return nil, err
@@ -89,7 +92,7 @@ func (r *NativeRenderedDetails) executeDocumentNavigationOnce(ctx context.Contex
 		return nil, marshalErr
 	}
 	requestDigest := sha256.Sum256([]byte(input.Plan.Navigation.OriginRequestId))
-	response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: fingerprint, Input: payload, Actions: pipeline, LargeDocument: true})
+	response, err := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: fingerprint, Input: payload, Actions: pipeline, LargeDocument: true, WarmupURL: warmup})
 	body := response.Result
 	held.Close()
 	if err != nil {

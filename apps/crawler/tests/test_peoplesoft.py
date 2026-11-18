@@ -7,6 +7,7 @@ from src.core.monitors.peoplesoft import (
     PeopleSoftBoard,
     can_handle,
     discover,
+    fetch_all_listings,
     parse_listing,
     peoplesoft_job_from_url,
     peoplesoft_listing_from_url,
@@ -154,3 +155,41 @@ async def test_monitor_and_scraper_bootstrap_anonymous_session():
     assert continuation_posts == 2
     assert detail_url is not None and "JobOpeningId=699007" in detail_url
     assert content.description and "Design flight systems" in content.description
+
+
+async def test_french_gateway_falls_back_when_psp_bootstrap_is_unavailable():
+    board = peoplesoft_listing_from_url(BOARD_URL)
+    assert board is not None
+    listing = (
+        _listing()
+        .replace("Search Results List", "Résultats de recherche")
+        .replace("jobs found.", "emplois trouvés.")
+    )
+    bootstrap_attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal bootstrap_attempts
+        if request.url.path.startswith("/psp/"):
+            bootstrap_attempts += 1
+            return httpx.Response(503)
+        if "PSJSESSIONID=abc" not in request.headers.get("cookie", ""):
+            return httpx.Response(
+                302,
+                headers={
+                    "location": str(request.url) + "&",
+                    "set-cookie": "PSJSESSIONID=abc; Path=/; Secure",
+                },
+            )
+        if request.url.params.get("Page") == "HRS_APP_SCHJOB_FL":
+            return httpx.Response(200, text=listing)
+        return httpx.Response(200, text=_detail())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await fetch_all_listings(board, client)
+        content = await scrape(jobs[0].url, {}, client)
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "R&D Engineer 0, Hybrid"
+    assert content.title == "R&D Engineer, Hybrid"
+    assert content.description and "Design flight systems" in content.description
+    assert bootstrap_attempts == 6

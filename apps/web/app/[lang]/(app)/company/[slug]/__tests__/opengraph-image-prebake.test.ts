@@ -1,8 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const mocks = vi.hoisted(() => ({
-  getCompanyBySlug: vi.fn(),
-}));
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -14,19 +10,7 @@ vi.mock("next/og", () => ({
   },
 }));
 
-vi.mock("next/cache", () => ({
-  cacheLife: vi.fn(),
-}));
-
-vi.mock("@/lib/services/company", () => ({
-  getCompanyBySlug: mocks.getCompanyBySlug,
-}));
-
-import * as renderer from "@/lib/og/render-company-og";
-
-beforeEach(() => {
-  mocks.getCompanyBySlug.mockReset();
-});
+import * as renderer from "@/lib/og/company-og-card";
 
 describe("company opengraph image icon rendering", () => {
   it("only passes known raster icon URLs to next/og", () => {
@@ -85,38 +69,4 @@ describe("company opengraph image icon rendering", () => {
     ).toEqual({ kind: "none" });
   });
 
-  it("preserves the existing PNG renderer on a durable-cache miss", async () => {
-    mocks.getCompanyBySlug.mockResolvedValue({
-      id: "co-1",
-      name: "Acme Labs",
-      slug: "acme",
-      icon: null,
-      logo: null,
-      website: "https://acme.example",
-      description: "A company.",
-      industryId: 1,
-      industryName: "Software",
-      employeeCountRange: null,
-      foundedYear: null,
-      activeJobCount: 12,
-    });
-
-    const result = await renderer.renderCompanyOgImage("acme", "en");
-
-    expect(result.cacheable).toBe(true);
-    expect(new Uint8Array(await result.response.arrayBuffer())).toEqual(
-      new Uint8Array([9, 8, 7]),
-    );
-  });
-
-  it("keeps unknown-company cards out of the durable cache", async () => {
-    mocks.getCompanyBySlug.mockResolvedValue(null);
-
-    const result = await renderer.renderCompanyOgImage("missing", "en");
-
-    expect(result.cacheable).toBe(false);
-    expect(new Uint8Array(await result.response.arrayBuffer())).toEqual(
-      new Uint8Array([9, 8, 7]),
-    );
-  });
 });

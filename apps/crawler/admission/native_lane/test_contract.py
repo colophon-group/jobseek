@@ -27,16 +27,13 @@ from admission.native_lane.fixture_server import FixtureState, tls_server
 from admission.native_lane.resources import allocation, role, sample
 
 
-@pytest.mark.parametrize("service", ["legacy-simple", "legacy-browser", "b0-control"])
+@pytest.mark.parametrize("service", ["legacy-simple", "legacy-browser"])
 def test_retained_comparator_selects_python_extraction_and_enrichment(monkeypatch, service):
     from src.runtime import dom_go_http, dom_go_parse, job_enrichment_go, jsonld_go_detail
 
     root = Path(__file__).resolve().parent
     path = root / "compose.yml"
     key = service
-    if service == "b0-control":
-        path = root.parent / "lightpanda_b0/compose.yml"
-        key = "control"
     environment = yaml.safe_load(path.read_text())["services"][key]["environment"]
     for name in (
         "JSONLD_GO_DETAIL_PERCENT",
@@ -940,3 +937,51 @@ def test_sampler_includes_support_services_and_excludes_inactive_file_memory(tmp
     assert output["groups"]["postgresql"]["mean_working_memory_bytes"] == pytest.approx(600)
     assert output["retained_working_memory_bytes"] == 600
     assert output["sampled_peak_working_memory_bytes"] == 600
+
+
+@pytest.mark.parametrize("wrong_lane", [None, "native", "legacy", "renderer"])
+def test_comparison_binds_historical_control_without_relaxing_candidate_sources(
+    monkeypatch, wrong_lane
+):
+    current, baseline = "a" * 40, "b" * 40
+    images = {
+        name: "sha256:" + digit * 64
+        for name, digit in (
+            ("native", "1"),
+            ("legacy", "2"),
+            ("renderer", "3"),
+        )
+    }
+    names = {image: name for name, image in images.items()}
+    seen = []
+
+    def inspect(args):
+        assert args[:3] == ["docker", "image", "inspect"]
+        image = args[3]
+        lane = names[image]
+        expected = baseline if lane == "legacy" else current
+        if lane == wrong_lane:
+            expected = current if lane == "legacy" else baseline
+        seen.append(lane)
+        return json.dumps(
+            [
+                {
+                    "Id": image,
+                    "Architecture": "arm64",
+                    "Config": {
+                        "Labels": {"org.opencontainers.image.revision": expected},
+                    },
+                }
+            ]
+        )
+
+    monkeypatch.setattr(controller, "run", inspect)
+    if wrong_lane:
+        with pytest.raises(RuntimeError, match="comparison image source differs"):
+            controller._comparison_image_provenance(images, current, baseline)
+    else:
+        proof = controller._comparison_image_provenance(images, current, baseline)
+        assert seen == ["native", "legacy", "renderer"]
+        assert proof["native"]["source_revision"] == current
+        assert proof["renderer"]["source_revision"] == current
+        assert proof["legacy"]["source_revision"] == baseline

@@ -7,19 +7,14 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from src.config import settings
 from src.core.monitor import MonitorResult
 from src.core.monitors import (
     BoardGoneError,
     _build_comment,
-    all_monitor_types,
-    api_monitor_types,
 )
 from src.core.monitors import pageup as monitor
 from src.core.scrapers.dom import parse_html as parse_dom_html
-from src.probe_boards import PROBES, _probe_pageup
-from src.processing.board import _throttle_key
-from src.redis_queue import _KNOWN_ATS_DOMAINS, delay_for_domain
+from src.probe_boards import _probe_pageup
 from src.shared.pageup import (
     PageUpBoard,
     pageup_board_from_metadata,
@@ -28,12 +23,7 @@ from src.shared.pageup import (
     pageup_listing_board_from_html,
     pageup_pagination_identity,
 )
-from src.sync import _compute_throttle_key
-from src.workers.pipeline import _configured_egress_host
-from src.workspace._compat import auto_scraper_type, detect_ats_from_url
-from src.workspace.career_discover import _scan_ats_urls_in_html
-from src.workspace.commands.crawl import _MONITOR_CONFIG_HINTS
-from src.workspace.commands.help import MONITOR_CARDS
+from src.workspace._compat import auto_scraper_type
 
 BOARD = PageUpBoard(873, "cw", "en-us")
 LISTING_URL = BOARD.listing_url
@@ -513,41 +503,6 @@ class TestDetectionAndWorkflow:
             "<p>Install and maintain campus plumbing.</p>"
             "<ul><li>Valid trade qualification</li></ul>"
         )
-
-    def test_registry_ws_discovery_and_pacing_are_wired(self):
-        assert "pageup" in all_monitor_types()
-        assert "pageup" in api_monitor_types()
-        assert detect_ats_from_url(LISTING_URL) == "pageup"
-        assert "pageup" in MONITOR_CARDS
-        assert "pageup" in _MONITOR_CONFIG_HINTS
-        assert "pageup" in PROBES
-        assert "careers.pageuppeople.com" in _KNOWN_ATS_DOMAINS
-        assert delay_for_domain("careers.pageuppeople.com") == settings.throttle_delay_ats
-        assert _compute_throttle_key("pageup", LISTING_URL, {}) == "careers.pageuppeople.com"
-        assert (
-            _throttle_key(
-                {
-                    "crawler_type": "pageup",
-                    "board_url": "https://example.com/careers",
-                    "metadata": {},
-                }
-            )
-            == "careers.pageuppeople.com"
-        )
-        assert (
-            _configured_egress_host(
-                {
-                    "crawler_type": "pageup",
-                    "board_url": "https://example.com/careers",
-                    "metadata": json.dumps(
-                        {"instance": 873, "source_pointer": "cw", "locale": "en-us"}
-                    ),
-                }
-            )
-            == "careers.pageuppeople.com"
-        )
-        found = _scan_ats_urls_in_html(f'<a href="{LISTING_URL}">Jobs</a>')
-        assert any(item.url == LISTING_URL for item in found)
 
     def test_probe_comment_is_human_readable(self):
         assert _build_comment("pageup", {"listing_url": LISTING_URL, "jobs": 17}) == (

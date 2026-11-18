@@ -1,0 +1,969 @@
+"""Check the fixed, source-scoped PostgreSQL reader before host installation."""
+
+from __future__ import annotations
+
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+import signal
+import subprocess
+import time
+from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from src.export_cursor_fence import _CDC_CUTOFF_SQL, CDC_WRITER_BARRIER_ID
+
+ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = ROOT / "deploy/networking/justup-feed-readonly-role.py"
+SPEC = importlib.util.spec_from_file_location("justup_feed_readonly_role", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+role = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(role)
+
+
+def audit_evidence(*, taxonomy: int = 0) -> dict[str, object]:
+    return {
+        "login": True,
+        "inherit": True,
+        "superuser": False,
+        "createdb": False,
+        "createrole": False,
+        "replication": False,
+        "bypassrls": False,
+        "connectionLimit": 2,
+        "databaseConnect": True,
+        "databaseCreate": False,
+        "schemaCreate": False,
+        "scramPassword": True,
+        "taxonomyCount": taxonomy,
+        "memberships": [],
+        "schemaUsage": ["justup_feed", "public"],
+        "writableSchemas": [],
+        "settings": sorted(role.ROLE_SETTINGS),
+        "readableTables": [role.VIEW],
+        "readableColumns": sorted(
+            {
+                f"public.{table}.{column}"
+                for table, columns in (
+                    role.CORE_COLUMNS | (role.TAXONOMY_COLUMNS if taxonomy == 4 else {})
+                ).items()
+                for column in columns
+            }
+            | {f"{role.VIEW}.{column}" for column in ("posting_id", "locale", "hash", "html")}
+        ),
+        "writableTables": [],
+        "accessibleSequences": [],
+        "callableRoutines": [
+            {
+                "schema": "justup_feed",
+                "name": "capture_cdc_snapshot_cutoff",
+                "owner": role.OWNER,
+                "securityDefiner": True,
+            }
+        ],
+    }
+
+
+def boundary_evidence() -> dict[str, object]:
+    return {
+        "ownerLogin": False,
+        "ownerSuperuser": False,
+        "ownerCreateRole": False,
+        "ownerCreateDb": False,
+        "ownerReplication": False,
+        "ownerBypassRls": False,
+        "ownerMemberships": ["pg_read_all_stats"],
+        "ownerInboundMemberships": 0,
+        "schemaOwner": role.OWNER,
+        "schemaAcl": [f"{role.OWNER}:CREATE", f"{role.OWNER}:USAGE", f"{role.ROLE}:USAGE"],
+        "functionCount": 1,
+        "functionOwner": role.OWNER,
+        "functionSecurityDefiner": True,
+        "functionVolatility": "v",
+        "functionParallel": "u",
+        "functionLeakproof": False,
+        "functionSource": role.CUTOFF_FUNCTION_BODY,
+        "functionSettings": ["search_path=pg_catalog, pg_temp"],
+        "functionAcl": [f"{role.OWNER}:EXECUTE", f"{role.ROLE}:EXECUTE"],
+        "viewOwner": "crawler",
+        "viewSecurityBarrier": True,
+        "viewDefinition": role.VIEW_DEFINITION,
+        "viewAcl": [
+            "crawler:DELETE",
+            "crawler:INSERT",
+            "crawler:REFERENCES",
+            "crawler:SELECT",
+            "crawler:TRIGGER",
+            "crawler:TRUNCATE",
+            "crawler:UPDATE",
+            f"{role.ROLE}:SELECT",
+        ],
+    }
+
+
+def test_install_sql_limits_role_to_source_columns_and_cutoff_function() -> None:
+    sql = role.install_sql("A" * 64)
+    assert "CONNECTION LIMIT 2" in sql
+    assert "GRANT SELECT (" in sql
+    assert "ON TABLE public.company TO justup_feed_readonly" in sql
+    assert "GRANT pg_read_all_stats TO justup_feed_cutoff_owner" in sql
+    assert "GRANT pg_read_all_stats TO justup_feed_readonly" not in sql
+    assert "WITH (security_barrier=true)" in sql
+    assert "GRANT SELECT ON TABLE justup_feed.uploaded_description" in sql
+    assert "GRANT SELECT ON TABLE public.descriptions" not in sql
+    assert "PASSWORD 'SCRAM-SHA-256$4096:" in sql
+    assert "A" * 64 not in sql
+    assert "GRANT SELECT ON ALL TABLES" not in sql
+    assert "GRANT INSERT" not in sql
+    with pytest.raises(role.RoleError):
+        role.install_sql("A' ; DROP TABLE job_posting; --")
+
+
+def test_protected_password_matches_only_its_scram_verifier() -> None:
+    verifier = role.scram_verifier("A" * 64, b"0" * 16)
+    assert role.password_matches_scram("A" * 64, verifier)
+    assert not role.password_matches_scram("B" * 64, verifier)
+    assert not role.password_matches_scram("A" * 64, "not-a-scram-verifier")
+
+
+def test_privileged_cutoff_is_identical_to_crawler_writer_barrier() -> None:
+    assert role.CDC_WRITER_BARRIER_ID == CDC_WRITER_BARRIER_ID
+    assert role.CUTOFF_QUERY.replace("pg_catalog.", "") == _CDC_CUTOFF_SQL.replace(
+        "$1::bigint", f"{CDC_WRITER_BARRIER_ID}::bigint"
+    )
+    assert "SET search_path = pg_catalog, pg_temp" in role.install_sql("A" * 64)
+
+
+@pytest.mark.parametrize("taxonomy", [0, 4])
+def test_audit_accepts_only_exact_reader_contract(taxonomy: int) -> None:
+    result = role.validate_audit(audit_evidence(taxonomy=taxonomy), boundary_evidence())
+    assert result["role"] == "justup_feed_readonly"
+    assert len(result["readableColumns"]) == 30 + sum(
+        len(columns) for columns in role.TAXONOMY_COLUMNS.values()
+    ) * (taxonomy == 4)
+
+
+@pytest.mark.parametrize(
+    ("field", "unexpected"),
+    [
+        ("memberships", ["pg_read_all_stats"]),
+        ("readableTables", [role.VIEW, "public.job_board"]),
+        ("readableColumns", ["public.company.extras"]),
+        ("writableTables", ["public.job_posting"]),
+        ("schemaUsage", ["justup_feed", "public", "private"]),
+        ("accessibleSequences", ["public.secret_sequence"]),
+        ("connectionLimit", -1),
+        ("databaseCreate", True),
+        ("scramPassword", False),
+    ],
+)
+def test_audit_rejects_broader_or_unbounded_role(field: str, unexpected: object) -> None:
+    evidence = audit_evidence()
+    evidence[field] = unexpected
+    with pytest.raises(role.RoleError):
+        role.validate_audit(evidence, boundary_evidence())
+
+
+def test_audit_rejects_partial_taxonomy_schema() -> None:
+    with pytest.raises(role.RoleError, match="partial"):
+        role.validate_audit(audit_evidence(taxonomy=2), boundary_evidence())
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "ownerMemberships",
+        "functionSource",
+        "functionAcl",
+        "viewDefinition",
+        "viewAcl",
+        "viewSecurityBarrier",
+    ],
+)
+def test_audit_rejects_privileged_boundary_drift(field: str) -> None:
+    boundary = boundary_evidence()
+    boundary[field] = None
+    with pytest.raises(role.RoleError):
+        role.validate_audit(audit_evidence(), boundary)
+
+
+def test_audit_rejects_callable_external_security_definer() -> None:
+    evidence = audit_evidence()
+    evidence["callableRoutines"].append(
+        {
+            "schema": "public",
+            "name": "private_data",
+            "owner": "crawler",
+            "securityDefiner": True,
+        }
+    )
+    with pytest.raises(role.RoleError, match="unexpected privileged routine"):
+        role.validate_audit(evidence, boundary_evidence())
+
+
+def test_psql_hides_password_even_when_database_error_echoes_sql(monkeypatch) -> None:
+    secret = "S" * 64
+
+    def failed_run(args, **kwargs):
+        assert tuple(args) == role.PSQL
+        assert secret not in " ".join(args)
+        assert secret not in kwargs["input"]
+        return SimpleNamespace(returncode=1, stdout="", stderr=f"ERROR: {kwargs['input']}")
+
+    monkeypatch.setattr(subprocess, "run", failed_run)
+    with pytest.raises(role.RoleError) as failure:
+        role.psql(role.install_sql(secret))
+    assert secret not in str(failure.value)
+
+
+def test_stage_verifier_requires_exact_digest_checked_payloads(tmp_path: Path) -> None:
+    stage = tmp_path / "stage"
+    installer = stage / "deploy/networking/justup-feed-readonly-role.py"
+    conformance = stage / "scripts/jobseek-ingress-conformance.py"
+    drill = stage / "deploy/backups/postgresql/restore-drill.sh"
+    for directory in (
+        stage,
+        installer.parent.parent,
+        installer.parent,
+        conformance.parent,
+        drill.parent.parent,
+        drill.parent,
+    ):
+        directory.mkdir(exist_ok=True, mode=0o700)
+    installer.write_bytes(b"fixed installer")
+    conformance.write_bytes(b"fixed ingress audit")
+    drill.write_bytes(b"fixed restore drill")
+    installer.chmod(0o600)
+    conformance.chmod(0o600)
+    drill.chmod(0o600)
+    installer_hash = hashlib.sha256(installer.read_bytes()).hexdigest()
+    conformance_hash = hashlib.sha256(conformance.read_bytes()).hexdigest()
+    drill_hash = hashlib.sha256(drill.read_bytes()).hexdigest()
+    role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+
+    conformance.write_bytes(b"tampered")
+    with pytest.raises(role.RoleError, match="digest"):
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+    conformance.write_bytes(b"fixed ingress audit")
+    drill.write_bytes(b"tampered restore drill")
+    with pytest.raises(role.RoleError, match="digest"):
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+    drill.write_bytes(b"fixed restore drill")
+    extra = stage / "extra"
+    extra.write_bytes(b"unexpected")
+    with pytest.raises(role.RoleError, match="missing or extra"):
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+    extra.unlink()
+    conformance.unlink()
+    with pytest.raises(role.RoleError, match="missing or extra"):
+        role.verify_stage(stage, installer_hash, conformance_hash, drill_hash, uid=os.getuid())
+
+
+def test_install_requires_no_pending_ingress_rollback(tmp_path: Path, monkeypatch) -> None:
+    pending = tmp_path / "pending"
+    monkeypatch.setattr(role, "INGRESS_PENDING", (pending,))
+
+    def inactive(args, **_kwargs):
+        if args[0] == "systemctl":
+            return SimpleNamespace(returncode=0, stdout="inactive\n")
+        return SimpleNamespace(returncode=0, stdout="")
+
+    monkeypatch.setattr(subprocess, "run", inactive)
+    role.assert_ingress_stable()
+    pending.touch()
+    with pytest.raises(role.RoleError, match="pending"):
+        role.assert_ingress_stable()
+    pending.unlink()
+
+    def active_timer(args, **_kwargs):
+        if args[0] == "systemctl" and args[-1] == "jobseek-ingress-rollback.timer":
+            return SimpleNamespace(returncode=0, stdout="active\n")
+        return inactive(args)
+
+    monkeypatch.setattr(subprocess, "run", active_timer)
+    with pytest.raises(role.RoleError, match="not quiescent"):
+        role.assert_ingress_stable()
+
+    def rollback_container(args, **_kwargs):
+        if args[0] == "docker":
+            return SimpleNamespace(returncode=0, stdout="postgres-rollback-pre-ingress\n")
+        return inactive(args)
+
+    monkeypatch.setattr(subprocess, "run", rollback_container)
+    with pytest.raises(role.RoleError, match="rollback container"):
+        role.assert_ingress_stable()
+
+
+def backup_restore_status(
+    tmp_path: Path, now: int, *, producer: str = "current"
+) -> tuple[Path, Path]:
+    status_dir = tmp_path / "status"
+    status_dir.mkdir(mode=0o700)
+    backup_path = status_dir / "postgresql.json"
+    restore_path = status_dir / "postgresql-restore-drill.json"
+    backup_success = now - 90
+    label = "20261102-010000F"
+    stop = now - 95
+    # The installed legacy writer emits operation details at the top level.
+    # The current writer additionally stores those details under this key.
+    details = {
+        "backup_type": "full",
+        "backup_label": label,
+        "backup_database_bytes": 123,
+        "backup_repository_bytes": 100,
+        "repository_backup_count": 1,
+        "repository_latest_stop_unix": stop,
+    }
+    backup_record = {
+        "schema_version": 1,
+        "service": "postgresql",
+        "success": True,
+        "attempt_at": datetime.fromtimestamp(now - 100, UTC).isoformat(),
+        "attempt_unix": now - 100,
+        "finished_at": datetime.fromtimestamp(backup_success, UTC).isoformat(),
+        "duration_seconds": 10.0,
+        "last_success_at": datetime.fromtimestamp(backup_success, UTC).isoformat(),
+        "last_success_unix": backup_success,
+        **details,
+    }
+    if producer == "current":
+        backup_record["last_success_details"] = details.copy()
+    else:
+        assert producer == "legacy"
+    for path, value in (
+        (backup_path, backup_record),
+        (
+            restore_path,
+            {
+                "schema_version": 1,
+                "service": "postgresql",
+                "source": "jobseek-postgresql-restore-drill",
+                "success": True,
+                "started_unix": now - 45,
+                "completed_unix": now - 30,
+                "backup_last_success_unix": backup_success,
+                "backup_label": label,
+                "backup_stop_unix": stop,
+            },
+        ),
+    ):
+        path.write_text(json.dumps(value), encoding="utf-8")
+        path.chmod(0o600)
+    return backup_path, restore_path
+
+
+@pytest.mark.parametrize("producer", ["legacy", "current"])
+@pytest.mark.parametrize(
+    ("restore_field", "replacement"),
+    [("backup_label", "another-backup"), ("backup_stop_unix", 1)],
+)
+def test_backup_gate_accepts_bound_producer_status(
+    tmp_path: Path, producer: str, restore_field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer=producer)
+    role.assert_backup_restore_fresh(
+        backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+    )
+
+    receipt = json.loads(restore.read_text(encoding="utf-8"))
+    receipt[restore_field] = replacement
+    restore.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="mismatched"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("backup_label", None),
+        ("backup_label", "invalid label"),
+        ("repository_latest_stop_unix", None),
+        ("repository_latest_stop_unix", True),
+        ("repository_latest_stop_unix", 2_000_000_000),
+    ],
+)
+def test_legacy_backup_identity_must_be_valid(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record[field] = replacement
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="identity is invalid"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize("field", ["backup_label", "repository_latest_stop_unix"])
+def test_legacy_backup_identity_must_be_complete(tmp_path: Path, field: str) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    del record[field]
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="identity is missing"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("nested", "failure"),
+    [
+        (None, "identity"),
+        ([], "identity"),
+        ({}, "identity"),
+        ({"backup_label": "wrong-label", "repository_latest_stop_unix": 1}, "mismatched"),
+    ],
+)
+def test_present_nested_identity_never_falls_back_to_legacy(
+    tmp_path: Path, nested: object, failure: str
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record["last_success_details"] = nested
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError, match=failure):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("schema_version", 2),
+        ("service", "typesense"),
+        ("success", False),
+        ("attempt_unix", True),
+        ("attempt_unix", 2_000_000_000),
+        ("last_success_unix", 1),
+    ],
+)
+def test_legacy_identity_keeps_status_and_time_gates(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now, producer="legacy")
+    record = json.loads(backup.read_text(encoding="utf-8"))
+    record[field] = replacement
+    backup.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(role.RoleError):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+def test_install_backup_gate_requires_fresh_bound_restore(tmp_path: Path) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    role.assert_backup_restore_fresh(
+        backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+    )
+
+    with pytest.raises(role.RoleError, match="stale"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup,
+            restore_path=restore,
+            now=now + role.RESTORE_MAX_AGE_SECONDS + 1,
+            uid=os.getuid(),
+        )
+
+    with pytest.raises(role.RoleError, match="stale"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup,
+            restore_path=restore,
+            now=now + role.BACKUP_MAX_AGE_SECONDS + 1,
+            uid=os.getuid(),
+        )
+    restore.unlink()
+    with pytest.raises(role.RoleError, match="cannot be read"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+def test_install_backup_gate_rejects_failed_or_unbound_evidence(tmp_path: Path) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    value = json.loads(restore.read_text(encoding="utf-8"))
+    value["backup_label"] = "different-backup"
+    restore.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="mismatched"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+    value["backup_label"] = "20261102-010000F"
+    value["success"] = False
+    restore.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(role.RoleError, match="not successful"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+    restore.chmod(0o644)
+    with pytest.raises(role.RoleError, match="not protected"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("source", "operator-assertion"),
+        ("backup_stop_unix", 1),
+        ("completed_unix", True),
+        ("started_unix", 1),
+    ],
+)
+def test_install_backup_gate_rejects_tampered_restore_receipt(
+    tmp_path: Path, field: str, replacement: object
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    value = json.loads(restore.read_text(encoding="utf-8"))
+    value[field] = replacement
+    restore.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(role.RoleError):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+def test_restore_receipt_symlink_cannot_replace_protected_evidence(tmp_path: Path) -> None:
+    now = 2_000_000_000
+    _backup, restore = backup_restore_status(tmp_path, now)
+    target = tmp_path / "target"
+    target.write_text("preserve", encoding="utf-8")
+    restore.unlink()
+    restore.symlink_to(target)
+    with pytest.raises(role.RoleError, match="not protected"):
+        role.write_restore_status(restore, {"success": False}, uid=os.getuid())
+    assert target.read_text(encoding="utf-8") == "preserve"
+
+
+def test_install_rechecks_backup_gate_before_activation(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def gated() -> None:
+        calls.append("gate")
+        if calls.count("gate") == 2:
+            raise role.RoleError("Backup or restore evidence is stale or mismatched.")
+
+    def psql(sql: str) -> str:
+        if sql.startswith("SELECT rolcanlogin"):
+            return ""
+        if sql.startswith("SELECT rolpassword"):
+            return "verifier"
+        calls.append("activate" if "ALTER ROLE justup_feed_readonly LOGIN" in sql else "sql")
+        return ""
+
+    monkeypatch.setattr(role, "read_password", lambda _path: "A" * 64)
+    monkeypatch.setattr(role, "assert_backup_restore_fresh", gated)
+    monkeypatch.setattr(role, "psql", psql)
+    monkeypatch.setattr(role, "audit", lambda **_kwargs: ({}, "role", "boundary"))
+    monkeypatch.setattr(role, "password_matches_scram", lambda *_args: True)
+    with pytest.raises(role.RoleError, match="stale"):
+        role.install(Path("/unused/password"))
+    assert calls == ["gate", "sql", "gate", "sql"]
+    assert "activate" not in calls
+
+
+def test_attest_restore_binds_real_drill_to_current_backup(tmp_path: Path, monkeypatch) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    drill = tmp_path / "restore-drill"
+    drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    drill.chmod(0o600)
+    observed: list[object] = []
+
+    def run(path: Path, label: str, lock_fd: int) -> None:
+        observed.append((path, label))
+        assert os.fstat(lock_fd).st_ino > 0
+        assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+
+    monkeypatch.setattr(role, "run_restore_drill", run)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+    result = role.attest_restore(
+        backup_path=backup,
+        restore_path=restore,
+        drill_path=drill,
+        drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
+        lock_path=tmp_path / "backup.lock",
+        uid=os.getuid(),
+    )
+    assert observed == [(drill, "20261102-010000F")]
+    assert result["success"] is True
+    assert result["backup_last_success_unix"] == now - 90
+    assert result["backup_label"] == "20261102-010000F"
+    assert json.loads(restore.read_text(encoding="utf-8")) == result
+    role.assert_backup_restore_fresh(
+        backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+    )
+    with pytest.raises(role.RoleError, match="stale"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup,
+            restore_path=restore,
+            now=now + role.RESTORE_MAX_AGE_SECONDS + 1,
+            uid=os.getuid(),
+        )
+
+
+def test_failed_drill_invalidates_old_restore_proof(tmp_path: Path, monkeypatch) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    drill = tmp_path / "restore-drill"
+    drill.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    drill.chmod(0o600)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+
+    def fail(_path: Path, _label: str, _lock_fd: int) -> None:
+        raise role.RoleError("PostgreSQL restore drill failed; no feed role was installed.")
+
+    monkeypatch.setattr(role, "run_restore_drill", fail)
+    with pytest.raises(role.RoleError, match="restore drill failed"):
+        role.attest_restore(
+            backup_path=backup,
+            restore_path=restore,
+            drill_path=drill,
+            drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
+            lock_path=tmp_path / "backup.lock",
+            uid=os.getuid(),
+        )
+    assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+    with pytest.raises(role.RoleError, match="not successful"):
+        role.assert_backup_restore_fresh(
+            backup_path=backup, restore_path=restore, now=now, uid=os.getuid()
+        )
+
+
+def test_attest_restore_rejects_unpinned_staged_drill(tmp_path: Path, monkeypatch) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    drill = tmp_path / "restore-drill"
+    drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    drill.chmod(0o600)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+    monkeypatch.setattr(role, "run_restore_drill", lambda *_args: pytest.fail("drill ran"))
+    with pytest.raises(role.RoleError, match="digest"):
+        role.attest_restore(
+            backup_path=backup,
+            restore_path=restore,
+            drill_path=drill,
+            drill_sha256="0" * 64,
+            lock_path=tmp_path / "backup.lock",
+            uid=os.getuid(),
+        )
+    assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+
+
+def test_remote_install_attests_after_dispatch_before_ddl() -> None:
+    source = (ROOT / "deploy/networking/run-remote.sh").read_text(encoding="utf-8")
+    install = source.split('if [[ "$MODE" == install-feed-role ]]; then', 1)[1].split(
+        'if [[ "$MODE" == audit ]]; then', 1
+    )[0]
+    attestation = install.index("jobseek-justup-feed-role attest-restore")
+    source_recheck = install.index("git ls-remote origin refs/heads/main", attestation)
+    conformance = install.index('python3 "$conformance" --role postgresql', source_recheck)
+    ddl = install.index("jobseek-justup-feed-role install", conformance)
+    assert attestation < source_recheck < conformance < ddl
+    assert "remote 5h" in install
+    assert 'tar --create --file - "$installer" "$conformance" "$drill"' in install
+    assert '--restore-drill-sha256 "$drill_sha"' in install
+    assert '--drill-path "$drill" --drill-sha256 "$drill_sha"' in install
+
+
+def test_restore_attestation_rejects_backup_rotated_during_drill(
+    tmp_path: Path, monkeypatch
+) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    drill = tmp_path / "restore-drill"
+    drill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    drill.chmod(0o600)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+
+    def rotate(_path: Path, _label: str, _lock_fd: int) -> None:
+        value = json.loads(backup.read_text(encoding="utf-8"))
+        value["last_success_unix"] = now - 1
+        backup.write_text(json.dumps(value), encoding="utf-8")
+
+    monkeypatch.setattr(role, "run_restore_drill", rotate)
+    with pytest.raises(role.RoleError, match="changed during"):
+        role.attest_restore(
+            backup_path=backup,
+            restore_path=restore,
+            drill_path=drill,
+            drill_sha256=hashlib.sha256(drill.read_bytes()).hexdigest(),
+            lock_path=tmp_path / "backup.lock",
+            uid=os.getuid(),
+        )
+    assert json.loads(restore.read_text(encoding="utf-8"))["success"] is False
+
+
+def test_attest_restore_rejects_concurrent_backup_before_drill(tmp_path: Path, monkeypatch) -> None:
+    now = 2_000_000_000
+    backup, restore = backup_restore_status(tmp_path, now)
+    lock_path = tmp_path / "backup.lock"
+    lock_path.touch(mode=0o600)
+    lock_path.chmod(0o600)
+    monkeypatch.setattr(role.time, "time", lambda: now)
+    monkeypatch.setattr(role, "run_restore_drill", lambda *_args: pytest.fail("drill ran"))
+    with lock_path.open("r+") as locked:
+        fcntl.flock(locked, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(role.RoleError, match="already running"):
+            role.attest_restore(
+                backup_path=backup,
+                restore_path=restore,
+                drill_path=tmp_path / "unused",
+                drill_sha256="0" * 64,
+                lock_path=lock_path,
+                uid=os.getuid(),
+            )
+    assert json.loads(restore.read_text(encoding="utf-8"))["success"] is True
+
+
+def test_restore_timeout_stops_process_group(monkeypatch) -> None:
+    class TimedOutProcess:
+        pid = 43210
+        waits = 0
+
+        def wait(self, *, timeout: int) -> int:
+            self.waits += 1
+            if self.waits == 1:
+                raise subprocess.TimeoutExpired("restore", timeout)
+            return 124
+
+    process = TimedOutProcess()
+    stopped: list[tuple[int, int]] = []
+
+    def spawn(args, **kwargs):
+        assert args == ("/bin/bash", "/protected/restore", "20261102-010000F")
+        assert kwargs["pass_fds"] == (3,)
+        assert kwargs["start_new_session"] is True
+        assert kwargs["env"]["JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED"] == "false"
+        return process
+
+    monkeypatch.setattr(role.subprocess, "Popen", spawn)
+    monkeypatch.setattr(role.os, "killpg", lambda pid, signum: stopped.append((pid, signum)))
+    with pytest.raises(role.RoleError, match="without proof"):
+        role.run_restore_drill(Path("/protected/restore"), "20261102-010000F", 3)
+    assert stopped == [(process.pid, role.signal.SIGTERM)]
+    assert process.waits == 2
+
+
+def test_restore_interruption_at_spawn_boundary_stops_process_group(monkeypatch) -> None:
+    class SpawnedProcess:
+        pid = 43211
+
+        def wait(self, *, timeout: int) -> int:
+            assert timeout == role.RESTORE_STOP_GRACE_SECONDS
+            return 124
+
+    stopped: list[tuple[int, int]] = []
+    monkeypatch.setattr(role.subprocess, "Popen", lambda *_args, **_kwargs: SpawnedProcess())
+    monkeypatch.setattr(role.os, "killpg", lambda pid, signum: stopped.append((pid, signum)))
+
+    def interrupted_on_unmask(how, _mask):
+        if how == role.signal.SIG_SETMASK:
+            raise role.RoleError("PostgreSQL restore drill was interrupted.")
+        return set()
+
+    monkeypatch.setattr(role.signal, "pthread_sigmask", interrupted_on_unmask)
+    with pytest.raises(role.RoleError, match="without proof"):
+        role.run_restore_drill(Path("/protected/restore"), "20261102-010000F", 3)
+    assert stopped == [(SpawnedProcess.pid, role.signal.SIGTERM)]
+
+
+def test_isolated_restore_drill_selects_exact_backup_set(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for name, source in {
+        "mountpoint": "#!/bin/sh\nexit 0\n",
+        "findmnt": "#!/bin/sh\necho cifs\n",
+        "install": (
+            '#!/bin/sh\nfor value do case "$value" in /*) mkdir -p -- "$value";; esac; done\n'
+        ),
+        "docker": """#!/bin/sh
+printf '%s\\n' "$*" >> "$TRACE"
+case "$1 $2" in
+  'image inspect') exit 0 ;;
+  'container inspect') exit 1 ;;
+  'container ls')
+    [ "${DOCKER_LIST_FAIL:-}" = 1 ] && exit 51
+    if [ "${DOCKER_LIST_RETAIN:-}" = 1 ]; then
+      sed -n 's/^run --rm --name \\([^ ]*\\).*/\\1/p' "$TRACE" | tail -1
+    fi
+    exit 0 ;;
+  'run --rm')
+    found=false
+    for value do
+      case "$value" in --set=*) found=$value ;; esac
+    done
+    if [ -n "$EXPECTED_LABEL" ]; then
+      [ "$found" = "--set=$EXPECTED_LABEL" ] || exit 7
+    else
+      [ "$found" = false ] || exit 7
+    fi
+    [ "${SLOW_RESTORE:-}" = 1 ] && sleep 30
+    exit 0 ;;
+  'run --detach') echo synthetic-container; exit 0 ;;
+  'exec '*)
+    case "$*" in
+      *current_setting*) echo '16.13|f|off' ;;
+      *pg_is_in_recovery*) echo f ;;
+    esac
+    exit 0 ;;
+  'rm -f') exit 0 ;;
+esac
+exit 0
+""",
+    }.items():
+        path = fake_bin / name
+        path.write_text(source, encoding="utf-8")
+        path.chmod(0o700)
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "pgbackrest.conf").write_text("synthetic\n", encoding="utf-8")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    base = tmp_path / "drills"
+    base.mkdir()
+    trace = tmp_path / "docker.trace"
+    label = "20261102-010000F"
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "TRACE": str(trace),
+        "EXPECTED_LABEL": label,
+        "JOBSEEK_POSTGRES_BACKUP_CONFIG": str(config),
+        "JOBSEEK_POSTGRES_BACKUP_REPOSITORY": str(repository),
+        "JOBSEEK_POSTGRES_RESTORE_DRILL_DIR": str(base),
+    }
+    drill = ROOT / "deploy/backups/postgresql/restore-drill.sh"
+    exact = subprocess.run(
+        ("bash", str(drill), label),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    trace_at_failure = trace.read_text(encoding="utf-8") if trace.exists() else "no docker trace"
+    assert exact.returncode == 0, f"{exact.stderr}\n{trace_at_failure}"
+    assert f"--set={label}" in trace.read_text(encoding="utf-8")
+    assert "--name jobseek-postgresql-restore-load-" in trace.read_text(encoding="utf-8")
+    assert "restore and relation integrity drill passed" in exact.stdout
+
+    trace.unlink()
+    mismatched = subprocess.run(
+        ("bash", str(drill), "20261102-020000F"),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert mismatched.returncode != 0
+    assert "restore and relation integrity drill passed" not in mismatched.stdout
+    assert "--set=20261102-020000F" in trace.read_text(encoding="utf-8")
+
+    trace.unlink()
+    retained = subprocess.run(
+        ("bash", str(drill), "20261102-020000F"),
+        env={**env, "JOBSEEK_POSTGRES_RESTORE_KEEP_FAILED": "true"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert retained.returncode != 0
+    retained_trace = trace.read_text(encoding="utf-8")
+    assert "rm -f jobseek-postgresql-restore-load-" in retained_trace
+    assert "rm -f jobseek-postgresql-restore-" in retained_trace
+    remaining = list(base.iterdir())
+    assert len(remaining) == 1 and not remaining[0].name.endswith("-spool")
+    assert "Retained failed restore drill data" in retained.stderr
+
+    trace.unlink()
+    unverified_cleanup = subprocess.run(
+        ("bash", str(drill), label),
+        env={**env, "DOCKER_LIST_FAIL": "1"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert unverified_cleanup.returncode != 0
+    assert "removal could not be verified" in unverified_cleanup.stderr
+    assert "restore and relation integrity drill passed" not in unverified_cleanup.stdout
+
+    trace.unlink()
+    remaining_container = subprocess.run(
+        ("bash", str(drill), label),
+        env={**env, "DOCKER_LIST_RETAIN": "1"},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert remaining_container.returncode != 0
+    assert "container remains" in remaining_container.stderr
+    assert "restore and relation integrity drill passed" not in remaining_container.stdout
+
+    trace.unlink()
+    latest = subprocess.run(
+        ("bash", str(drill)),
+        env={**env, "EXPECTED_LABEL": ""},
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert latest.returncode == 0, latest.stderr
+    assert "--set=" not in trace.read_text(encoding="utf-8")
+
+    trace.unlink()
+    unsafe = subprocess.run(
+        ("bash", str(drill), "bad;label"),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert unsafe.returncode == 2
+    assert not trace.exists()
+
+    stopped = subprocess.Popen(
+        ("bash", str(drill), label),
+        env={**env, "SLOW_RESTORE": "1"},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        for _ in range(100):
+            if trace.exists() and "run --rm" in trace.read_text(encoding="utf-8"):
+                break
+            time.sleep(0.02)
+        else:
+            pytest.fail("restore fixture never reached the container step")
+        os.killpg(stopped.pid, signal.SIGTERM)
+        assert stopped.wait(timeout=5) != 0
+        assert "rm -f jobseek-postgresql-restore-load-" in trace.read_text(encoding="utf-8")
+    finally:
+        if stopped.poll() is None:
+            os.killpg(stopped.pid, signal.SIGKILL)
+            stopped.wait(timeout=5)

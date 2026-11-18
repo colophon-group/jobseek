@@ -22,10 +22,9 @@ import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
-from src.reconciliation import TypesenseReconciliationClient
 from src.sync import refresh_typesense_counts
 from src.typesense_candidate_order import candidate_order_fields
-from src.typesense_schema import COLLECTIONS, _patch_missing_fields
+from src.typesense_schema import COLLECTIONS
 
 # ---------------------------------------------------------------------------
 # Typesense connectivity check
@@ -686,11 +685,11 @@ class TestSchemas:
             document = collection.documents[posting_id].retrieve()
             assert {name: document[name] for name in expected_values} == expected_values
         finally:
-            _patch_missing_fields(
-                ts_client,
-                collection_name,
-                SCHEMA_BY_NAME["job_posting"]["fields"],
-            )
+            for desired in SCHEMA_BY_NAME["job_posting"]["fields"]:
+                if desired["name"] in legacy_shapes:
+                    collection.update(
+                        {"fields": [{"name": desired["name"], "drop": True}, desired]}
+                    )
 
         fields = {field["name"]: field for field in collection.retrieve()["fields"]}
         assert all(fields[name].get("index") is False for name in legacy_shapes)
@@ -886,24 +885,6 @@ class TestDataIntegrity:
             posting["id"] for posting in POSTINGS if posting["reconciliation_bucket"] == "00"
         }
         assert returned == expected
-
-    async def test_async_reconciliation_export_streams_one_exact_bucket(
-        self,
-        ts_client: typesense.Client,
-    ):
-        assert ts_client.operations.is_healthy()
-        client = TypesenseReconciliationClient()
-        try:
-            snapshot = await client.partition_snapshot(0)
-        finally:
-            await client.aclose()
-
-        expected = {
-            uuid.UUID(posting["id"]): posting["is_active"]
-            for posting in POSTINGS
-            if posting["reconciliation_bucket"] == "00"
-        }
-        assert snapshot.states == expected
 
     def test_job_posting_timestamps_are_unix(self, ts_client: typesense.Client, alias_map: dict):
         """first_seen_at and last_seen_at are integers (unix timestamps),

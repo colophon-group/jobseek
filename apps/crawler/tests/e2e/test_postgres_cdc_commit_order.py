@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+import json
 import os
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -15,7 +18,13 @@ from src.export_cursor_fence import (
     CDC_WRITER_BARRIER_ID,
     capture_cdc_snapshot_cutoff,
 )
-from src.reconciliation import reconcile_partition
+from src.justup_feed import __main__ as justup_feed
+
+ROLE_HELPER = Path(__file__).resolve().parents[4] / "deploy/networking/justup-feed-readonly-role.py"
+ROLE_SPEC = importlib.util.spec_from_file_location("justup_feed_role_e2e", ROLE_HELPER)
+assert ROLE_SPEC is not None and ROLE_SPEC.loader is not None
+feed_role = importlib.util.module_from_spec(ROLE_SPEC)
+ROLE_SPEC.loader.exec_module(feed_role)
 
 REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
 pytestmark = pytest.mark.skipif(
@@ -253,109 +262,146 @@ async def test_still_held_session_writer_marker_fails_closed() -> None:
         await pool.close()
 
 
-async def test_bidirectional_supabase_drift_is_repaired_from_locked_local_truth() -> None:
-    """The real COPY/upsert path repairs both directions and verifies state."""
+async def test_justup_feed_handles_absent_and_complete_taxonomy_tables(tmp_path) -> None:
+    """The crawler schema works alone; complete display tables add labels."""
 
     dsn = os.environ["LOCAL_DATABASE_URL"]
-    local_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
     control = await asyncpg.connect(dsn)
-    schema = f"reconciliation_e2e_{uuid.uuid4().hex}"
-    remote_pool: asyncpg.Pool | None = None
-    company_id = uuid.uuid4()
-    board_id = uuid.uuid4()
-    prefix = 0xAB
-    posting_ids = [uuid.UUID(hex=f"{prefix:02x}{suffix:030x}") for suffix in range(1, 6)]
-    shared, mismatch, missing, remote_active, remote_inactive = posting_ids
+    company_id, board_id, posting_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    created_tables: list[str] = []
+    feed_schema_installed = False
+
+    def private_spool(name: str):
+        directory = tmp_path / name
+        directory.mkdir(mode=0o700)
+        return directory
+
+    def exported_rows(directory, pending):
+        manifest = json.loads((directory / pending["manifest"]).read_text())
+        return manifest, [
+            row
+            for part in manifest["parts"]
+            for row in json.loads(
+                (directory / pending["manifest"]).parent.joinpath(part["file"]).read_text()
+            )["rows"]
+        ]
 
     try:
-        await control.execute(f'CREATE SCHEMA "{schema}"')
+        present = await control.fetchval(justup_feed.TAXONOMY_TABLE_COUNT_SQL)
+        assert present == 0, "fresh crawler migrations must not require taxonomy display tables"
+        # Install the production feed schema, uploaded-only view and cutoff
+        # function in this disposable database before exercising the exporter.
+        await control.execute(feed_role.install_sql("A" * 64))
+        feed_schema_installed = True
         await control.execute(
-            f'CREATE TABLE "{schema}".job_posting (LIKE public.job_posting INCLUDING ALL)'
-        )
-        # Durable identity is authoritative-local matching state. The remote
-        # projection intentionally receives mutable source_url through
-        # PostingSchema without storing the private identity key.
-        await control.execute(f'ALTER TABLE "{schema}".job_posting DROP COLUMN source_identity')
-        remote_columns = await control.fetchval(
-            """
-            SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
-            FROM pg_attribute
-            WHERE attrelid = 'public.job_posting'::regclass
-              AND attnum > 0
-              AND NOT attisdropped
-              AND attname <> 'source_identity'
-            """
-        )
-        assert isinstance(remote_columns, str)
-        remote_pool = await asyncpg.create_pool(
-            dsn,
-            min_size=1,
-            max_size=2,
-            server_settings={"search_path": f"{schema},public"},
+            "INSERT INTO company (id, slug, name, website) VALUES ($1, $2, $3, $4)",
+            company_id,
+            f"feed-e2e-{company_id}",
+            "Synthetic employer",
+            "https://example.invalid/",
         )
         await control.execute(
             "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
             board_id,
             company_id,
-            f"reconciliation-e2e-{board_id}",
-            f"https://reconciliation-e2e.invalid/{board_id}",
+            f"feed-e2e-{board_id}",
+            f"https://example.invalid/board/{board_id}",
         )
-        for posting_id in posting_ids:
-            await control.execute(
-                "INSERT INTO job_posting (id, company_id, board_id, source_url) "
-                "VALUES ($1, $2, $3, $4)",
-                posting_id,
-                company_id,
-                board_id,
-                f"https://reconciliation-e2e.invalid/posting/{posting_id}",
-            )
+        await control.execute(
+            """INSERT INTO job_posting
+               (id, company_id, board_id, source_url, titles, locales, location_ids,
+                location_types, occupation_id, seniority_id, description_r2_hash)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+            posting_id,
+            company_id,
+            board_id,
+            f"https://example.invalid/job/{posting_id}",
+            ["Engineer"],
+            ["en"],
+            [2657896],
+            ["onsite"],
+            42,
+            7,
+            1,
+        )
+        await asyncio.sleep(0.01)
+        selector = tmp_path / "companies.json"
+        selector.write_text(json.dumps({"schemaVersion": 1, "companyIds": [str(company_id)]}))
+        selector.chmod(0o600)
+
+        empty_display = private_spool("without-taxonomy")
+        missing_pending = await justup_feed.export(empty_display, False, selector)
+        missing_manifest, missing_rows = exported_rows(empty_display, missing_pending)
+        assert missing_manifest["sourceScopeRowCount"] == 1
+        assert len(missing_rows) == 1
+        assert missing_rows[0]["locationDirectIds"] == [2657896]
+        assert missing_rows[0]["locationNames"] == [None]
+        assert missing_rows[0]["locationGeoTypes"] == [None]
+        assert missing_rows[0]["occupationId"] == 42
+        assert missing_rows[0]["occupationName"] is None
+
+        receipt = tmp_path / "receipt.json"
+        receipt.write_text(
+            json.dumps({"schemaVersion": 1, "manifestSha256": missing_pending["sha256"]})
+        )
+        receipt.chmod(0o600)
+        justup_feed.acknowledge(empty_display, receipt)
+        await asyncio.sleep(0.01)
+        await control.execute(
+            "UPDATE job_posting SET titles = $2 WHERE id = $1", posting_id, ["Senior Engineer"]
+        )
+        await asyncio.sleep(0.01)
+        changes_pending = await justup_feed.export(empty_display, False, selector)
+        changes_manifest, changes_rows = exported_rows(empty_display, changes_pending)
+        assert changes_manifest["kind"] == "changes"
+        assert len(changes_rows) == 1
+        assert changes_rows[0]["title"] == "Senior Engineer"
+        assert changes_rows[0]["locationNames"] == [None]
+
+        await control.execute("CREATE TABLE location (id integer PRIMARY KEY, type text NOT NULL)")
+        created_tables.append("location")
+        with pytest.raises(justup_feed.FeedError, match="partially present"):
+            await justup_feed.export(private_spool("partial-taxonomy"), False, selector)
 
         await control.execute(
-            "UPDATE job_posting SET is_active = false WHERE id = $1",
-            mismatch,
+            "CREATE TABLE location_name "
+            "(location_id integer, locale text, name text, is_display boolean)"
         )
+        created_tables.append("location_name")
         await control.execute(
-            f'INSERT INTO "{schema}".job_posting ({remote_columns}) '
-            f"SELECT {remote_columns} FROM public.job_posting WHERE id = ANY($1::uuid[])",
-            [shared, mismatch, remote_active, remote_inactive],
+            "CREATE TABLE occupation_name "
+            "(occupation_id integer, locale text, name text, is_display boolean)"
         )
+        created_tables.append("occupation_name")
         await control.execute(
-            f'UPDATE "{schema}".job_posting SET is_active = true WHERE id = $1',
-            mismatch,
+            "CREATE TABLE seniority_name "
+            "(seniority_id integer, locale text, name text, is_display boolean)"
         )
-        await control.execute(
-            f'UPDATE "{schema}".job_posting SET is_active = false WHERE id = $1',
-            remote_inactive,
-        )
-        await control.execute(
-            "DELETE FROM public.job_posting WHERE id = ANY($1::uuid[])",
-            [remote_active, remote_inactive],
-        )
-
-        result = await reconcile_partition(
-            local_pool,
-            remote_pool,
-            target="supabase",
-            partition=prefix,
-            repair=True,
-        )
-
-        assert result.detected == 3
-        assert result.repaired == 3
-        assert result.unresolved == 0
-        rows = await remote_pool.fetch("SELECT id, is_active FROM job_posting ORDER BY id")
-        assert {row["id"]: row["is_active"] for row in rows} == {
-            shared: True,
-            mismatch: False,
-            missing: True,
-            remote_active: False,
-            remote_inactive: False,
-        }
+        created_tables.append("seniority_name")
+        await control.execute("INSERT INTO location VALUES (2657896, 'city')")
+        await control.execute("INSERT INTO location_name VALUES (2657896, 'en', 'Zurich', true)")
+        await control.execute("INSERT INTO occupation_name VALUES (42, 'en', 'Engineer', true)")
+        await control.execute("INSERT INTO seniority_name VALUES (7, 'en', 'Senior', true)")
+        full_display = private_spool("with-taxonomy")
+        full_pending = await justup_feed.export(full_display, False, selector)
+        full_manifest, full_rows = exported_rows(full_display, full_pending)
+        assert full_manifest["sourceScopeRowCount"] == 1
+        assert len(full_rows) == 1
+        assert full_rows[0]["locationNames"] == ["Zurich"]
+        assert full_rows[0]["locationGeoTypes"] == ["city"]
+        assert full_rows[0]["occupationName"] == "Engineer"
+        assert full_rows[0]["seniorityName"] == "Senior"
     finally:
-        if remote_pool is not None:
-            await remote_pool.close()
-        await control.execute("DELETE FROM public.job_posting WHERE board_id = $1", board_id)
-        await control.execute("DELETE FROM public.job_board WHERE id = $1", board_id)
-        await control.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        for table in reversed(created_tables):
+            await control.execute(f"DROP TABLE IF EXISTS {table}")
+        await control.execute("DELETE FROM job_posting WHERE id = $1", posting_id)
+        await control.execute("DELETE FROM job_board WHERE id = $1", board_id)
+        await control.execute("DELETE FROM company WHERE id = $1", company_id)
+        if feed_schema_installed:
+            await control.execute("DROP SCHEMA justup_feed CASCADE")
+            await control.execute("DROP OWNED BY justup_feed_readonly")
+            await control.execute("DROP ROLE justup_feed_readonly")
+            await control.execute("REVOKE pg_read_all_stats FROM justup_feed_cutoff_owner")
+            await control.execute("DROP OWNED BY justup_feed_cutoff_owner")
+            await control.execute("DROP ROLE justup_feed_cutoff_owner")
         await control.close()
-        await local_pool.close()

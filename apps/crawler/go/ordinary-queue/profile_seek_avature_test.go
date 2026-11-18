@@ -21,7 +21,7 @@ func TestSeekAvatureCurrentRegistrySourceBindings(t *testing.T) {
 	for i, key := range rows[0] {
 		h[key] = i
 	}
-	count := 0
+	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
 		if provider != "seek" && provider != "avature" {
@@ -73,9 +73,10 @@ func TestSeekAvatureCurrentRegistrySourceBindings(t *testing.T) {
 				t.Fatal("unproven configuration admitted", change)
 			}
 		}
-		count++
+		counts[provider]++
 	}
-	if count != 13 {
-		t.Fatal("registry coverage changed", count)
+	// Validate every current board; require each capability without freezing intake totals.
+	if counts["seek"] == 0 || counts["avature"] == 0 {
+		t.Fatal("registry capability coverage missing", counts)
 	}
 }

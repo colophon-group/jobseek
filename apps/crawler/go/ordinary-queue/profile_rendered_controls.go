@@ -11,7 +11,8 @@ import (
 // These complete original configurations have matching original Chromium and
 // verified-TLS Lightpanda document fields. Their replacement uses normal
 // Lightpanda navigation; legacy engine settings remain in the ownership hash.
-// This is not general support for stealth, TLS exceptions or warmup navigation.
+// Their warmup value remains ignored. Bounded rendered-DOM warmup is admitted
+// separately by inspectRenderedDetail; stealth and TLS exceptions stay denied.
 var renderedDOMControlSources = map[string]string{
 	"0ff92fedff84d362463b42e14fbef686101e479d4a1207eb473328abb114d635": "www.alten.be",
 	"6098bafc7a62677d713378f1bc6340aec62193d44310ad9734eed3b9d9154951": "www.alten.it",

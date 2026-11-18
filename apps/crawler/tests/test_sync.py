@@ -1244,7 +1244,7 @@ class TestRunSync:
     @patch("src.sync._load_seniority")
     @patch("src.sync._load_occupations")
     @patch("src.sync._load_occupation_domains")
-    @patch("src.sync.create_pool")
+    @patch("src.sync.create_local_pool")
     async def test_empty_csvs_returns_early(
         self,
         mock_create_pool,

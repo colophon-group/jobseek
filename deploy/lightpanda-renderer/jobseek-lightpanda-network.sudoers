@@ -3,3 +3,4 @@ deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy
 deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready [0-9a-f]* [0-9a-f]*
 deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy verify-attested [0-9a-f]* [0-9a-f]*
 deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy quarantine
+deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy enforce-candidate-zero-swap [0-9a-f]* [0-9a-f]* [0-9a-f]* sha-*

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import json
 import re
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -79,6 +83,9 @@ def _server(server_id: int, name: str, address: str, private: str) -> dict:
     return {
         "id": server_id,
         "name": name,
+        "labels": {
+            "role": {1: "crawler-browser", 2: "postgresql", 3: "typesense", 4: "murmur"}[server_id]
+        },
         "public_net": {"ipv4": {"ip": address}},
         "private_net": [{"ip": private}],
     }
@@ -86,10 +93,10 @@ def _server(server_id: int, name: str, address: str, private: str) -> dict:
 
 def test_target_discovery_is_exact_and_excludes_murmur() -> None:
     servers = [
-        _server(1, "crawler", "192.0.2.1", "10.0.0.2"),
-        _server(2, "postgresql", "192.0.2.2", "10.0.0.3"),
-        _server(3, "typesense", "192.0.2.3", "10.0.0.4"),
-        _server(4, "murmur", "192.0.2.4", "10.0.0.5"),
+        _server(1, "nbg1-node-01", "192.0.2.1", "10.0.0.2"),
+        _server(2, "nbg1-node-02", "192.0.2.2", "10.0.0.3"),
+        _server(3, "nbg1-node-03", "192.0.2.3", "10.0.0.4"),
+        _server(4, "nbg1-node-04", "192.0.2.4", "10.0.0.5"),
     ]
 
     targets = firewall.discover_targets(
@@ -107,7 +114,7 @@ def test_target_discovery_is_exact_and_excludes_murmur() -> None:
         "typesense": 3,
     }
 
-    with pytest.raises(firewall.IngressError, match="Murmur"):
+    with pytest.raises(firewall.IngressError, match="unexpected crawler server role label"):
         firewall.discover_targets(
             InventoryClient(servers),
             {
@@ -258,6 +265,38 @@ def test_listener_scope_parser_distinguishes_public_wildcard_private_and_loopbac
     }
 
 
+def test_crawler_audit_reports_only_fixed_metrics_scope_categories(monkeypatch) -> None:
+    listeners = (
+        "LISTEN 0 128 127.0.0.1:9093 0.0.0.0:*\n"
+        "LISTEN 0 128 0.0.0.0:9094 0.0.0.0:*\n"
+        "LISTEN 0 128 10.0.0.8:9095 0.0.0.0:*\n"
+        "LISTEN 0 128 8.8.8.8:9097 0.0.0.0:*\n"
+        "LISTEN 0 128 127.0.0.1:9098 0.0.0.0:*\n"
+        "LISTEN 0 128 0.0.0.0:9098 0.0.0.0:*\n"
+    )
+
+    def run(command):
+        return conformance.CommandResult(0, listeners if command == ["ss", "-H", "-lnt"] else "")
+
+    monkeypatch.setattr(conformance, "_run", run)
+    monkeypatch.setattr(conformance, "_ufw_state", lambda *_args, **_kwargs: {"compliant": True})
+    monkeypatch.setattr(conformance, "_sshd_state", lambda _output: {"compliant": True})
+    state = conformance.audit("crawler", "10.0.0.2")
+
+    assert state["required_listener_scope"] is False
+    assert state["compliant"] is False
+    assert state["metrics_listener_diagnostics"] == {
+        "9093": "loopback_only",
+        "9094": "includes_non_loopback",
+        "9095": "includes_non_loopback",
+        "9096": "missing",
+        "9097": "includes_non_loopback",
+        "9098": "includes_non_loopback",
+    }
+    assert "10.0.0." not in json.dumps(state)
+    assert "8.8.8.8" not in json.dumps(state)
+
+
 def test_sshd_parser_requires_key_only_root_and_an_explicit_user_allowlist() -> None:
     state = conformance._sshd_state(
         "authenticationmethods publickey\n"
@@ -373,7 +412,87 @@ def test_ufw_parser_requires_only_the_role_private_service_path() -> None:
     )["compliant"]
 
 
-def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
+@pytest.fixture
+def postgresql_hba() -> list[dict]:
+    # The complete ordered policy written by harden-postgresql.sh, with full arrays.
+    policy = [
+        ("local", None, None, ["all"], ["justup_feed_readonly"], "reject"),
+        ("local", None, None, ["all"], ["all"], "trust"),
+        ("host", "127.0.0.1", "255.255.255.255", ["crawler"], ["crawler"], "scram-sha-256"),
+        (
+            "host",
+            "127.0.0.1",
+            "255.255.255.255",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "::1",
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            ["crawler"],
+            ["crawler"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "::1",
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        ("host", "10.0.0.3", "255.255.255.255", ["crawler"], ["crawler"], "scram-sha-256"),
+        (
+            "host",
+            "10.0.0.3",
+            "255.255.255.255",
+            ["crawler"],
+            ["jobseek_labeller_readonly"],
+            "scram-sha-256",
+        ),
+        (
+            "host",
+            "10.0.0.3",
+            "255.255.255.255",
+            ["crawler"],
+            ["justup_feed_readonly"],
+            "scram-sha-256",
+        ),
+    ]
+    return [
+        dict(
+            zip(
+                (
+                    "rule_number",
+                    "type",
+                    "address",
+                    "netmask",
+                    "database",
+                    "user_name",
+                    "auth_method",
+                    "options",
+                    "error",
+                ),
+                (number, *rule, None, None),
+                strict=True,
+            )
+        )
+        for number, rule in enumerate(policy, 1)
+    ]
+
+
+@pytest.fixture
+def postgresql_hba_source() -> bytes:
+    hardener = (ROOT / "deploy/networking/harden-postgresql.sh").read_text(encoding="utf-8")
+    write_hba = hardener.split("\nwrite_hba() {\n", 1)[1]
+    source = write_hba.split('cat >"$temporary" <<EOF\n', 1)[1].split("\nEOF\n", 1)[0] + "\n"
+    return source.replace("${CRAWLER_PRIVATE_IP}", "10.0.0.3").encode("utf-8")
+
+
+@pytest.fixture
+def postgresql_state(monkeypatch, postgresql_hba, postgresql_hba_source):
     class NetworkConfig:
         @staticmethod
         def read_text(*, encoding: str) -> str:
@@ -385,115 +504,375 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
             return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o100600)
 
     monkeypatch.setattr(conformance, "POSTGRES_NETWORK_CONFIG", NetworkConfig())
-    hba = "\n".join(
-        [
-            "local|||all|all|trust",
-            "host|127.0.0.1|255.255.255.255|crawler|crawler|scram-sha-256",
-            "host|127.0.0.1|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
-            "host|::1|ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff|crawler|crawler|scram-sha-256",
-            "host|::1|ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff|crawler|jobseek_labeller_readonly|scram-sha-256",
-            "host|10.0.0.2|255.255.255.255|crawler|crawler|scram-sha-256",
-            "host|10.0.0.2|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
-        ]
-    )
-    bounded_log_config = '{"Type":"json-file","Config":{"max-size":"50m","max-file":"3"}}\n'
 
-    def run(command):
-        query = command[-1]
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "1073741824\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
+    def state(
+        *,
+        hba_stdout=None,
+        hba_returncode=0,
+        hba_source=None,
+        proof_override=None,
+        shm_bytes=1073741824,
+        bounded_log=True,
+        socket_outcome="reject_observed",
+    ):
+        def run(command):
+            if command[:4] == [
+                "docker",
+                "inspect",
+                "--format",
+                "{{json .HostConfig.LogConfig}}",
+            ]:
+                config = {"max-size": "50m", "max-file": "3"} if bounded_log else {}
+                return conformance.CommandResult(
+                    0, json.dumps({"Type": "json-file", "Config": config})
+                )
+            if command[:2] == ["docker", "inspect"]:
+                return conformance.CommandResult(0, str(shm_bytes))
+            if command[-2:] == ["-B1", "/dev/shm"]:
+                return conformance.CommandResult(
+                    0,
+                    "Filesystem 1B-blocks Used Available Use% Mounted on\n"
+                    f"shm {shm_bytes} 67108864 1006632960 7% /dev/shm\n",
+                )
+            if "pg_settings" in command[-1]:
+                return conformance.CommandResult(
+                    0,
+                    "listen_addresses|127.0.0.1,10.0.0.4\n"
+                    "password_encryption|scram-sha-256\nssl|off\n",
+                )
+            if "pg_conf_load_time()" in command[-1]:
+                assert "pg_read_file('/var/lib/postgresql/data/pg_hba.conf',0,4096)" in command[-1]
+                return conformance.CommandResult(
+                    0,
+                    json.dumps(
+                        {
+                            "source_within_4096_bytes": True,
+                            "first_active_source_line_reject": True,
+                            "file_mtime_at_or_before_config_load": True,
+                        }
+                    ),
+                )
+            assert command[:10] == [
+                "docker",
+                "exec",
+                "container",
+                "psql",
+                "-U",
+                "crawler",
+                "-d",
+                "crawler",
+                "-At",
+                "-c",
+            ]
+            # Include expansion can reuse file-local line numbers. The query must
+            # preserve full arrays, errors and options in PostgreSQL's effective order.
+            # Source proof must inspect only the fixed canonical path, with a bound.
+            assert command[-1] == (
+                "select json_build_object('source_path_exact',current_setting('hba_file')="
+                "'/var/lib/postgresql/data/pg_hba.conf','source_sha256',encode(sha256("
+                "pg_read_binary_file('/var/lib/postgresql/data/pg_hba.conf',0,4096)),'hex'),"
+                "'rules',coalesce(json_agg(row_to_json(rules) order by rule_number nulls last),"
+                "'[]'::json)) from (select rule_number,type,address,netmask,database,user_name,"
+                "auth_method,options,error from pg_hba_file_rules) rules"
             )
-        if "pg_settings" in query:
+            source = postgresql_hba_source if hba_source is None else hba_source
+            proof = {
+                "source_path_exact": True,
+                "source_sha256": hashlib.sha256(source[:4096]).hexdigest(),
+                "rules": postgresql_hba,
+                **(proof_override or {}),
+            }
             return conformance.CommandResult(
-                0,
-                "listen_addresses|127.0.0.1,10.0.0.4\npassword_encryption|scram-sha-256\nssl|off\n",
+                hba_returncode,
+                json.dumps(proof) if hba_stdout is None else hba_stdout,
             )
-        return conformance.CommandResult(0, hba)
 
-    monkeypatch.setattr(conformance, "_run", run)
+        monkeypatch.setattr(conformance, "_run", run)
+        monkeypatch.setattr(
+            conformance, "_feed_local_socket_outcome", lambda _container: socket_outcome
+        )
+        return conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
 
-    state = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    return state
+
+
+def test_postgresql_conformance_accepts_only_complete_ordered_policy(postgresql_state) -> None:
+    state = postgresql_state()
+    assert state["hba_exact"] is True
+    assert state["compliant"] is True
+    assert state["feed_hba_diagnostics"] == {
+        "source_exact": True,
+        "parsed_first_local_reject": True,
+        "parsed_second_local_trust": True,
+        "parsed_feed_local_rule_count": "one",
+        "parsed_feed_host_rule_count": "one",
+        "parsed_feed_host_rule_at_nine": True,
+        "parsed_errors_absent": True,
+        "source_within_4096_bytes": True,
+        "first_active_source_line_reject": True,
+        "file_mtime_at_or_before_config_load": True,
+        "effective_local_socket": "reject_observed",
+        "effective_feed_host_rule": "unproved",
+    }
+    assert "10.0.0." not in json.dumps(state)
+
+
+def test_full_hba_mismatch_does_not_claim_feed_rule_is_missing(
+    postgresql_state, postgresql_hba_source
+) -> None:
+    state = postgresql_state(hba_source=postgresql_hba_source + b"# unrelated edit\n")
+    assert state["hba_exact"] is False
     assert state["compliant"] is False
+    assert state["feed_hba_diagnostics"]["source_exact"] is False
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_at_nine"] is True
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "one"
+    assert state["feed_hba_diagnostics"]["effective_feed_host_rule"] == "unproved"
 
-    private_hba = hba.replace("10.0.0.2", "10.0.0.3")
 
-    def compliant_run(command):
-        if command[:4] == [
+def test_socket_diagnostic_does_not_change_existing_hba_conformance(postgresql_state) -> None:
+    state = postgresql_state(socket_outcome="accepted_unsafe")
+    assert state["hba_exact"] is True
+    assert state["compliant"] is True
+    assert state["feed_hba_diagnostics"]["effective_local_socket"] == "accepted_unsafe"
+
+
+def test_feed_file_diagnostics_fail_closed_without_raw_output(monkeypatch) -> None:
+    monkeypatch.setattr(
+        conformance, "_run", lambda _command: conformance.CommandResult(1, "raw HBA or error")
+    )
+    assert set(conformance._feed_hba_file_diagnostics("postgres").values()) == {None}
+
+    def fail(_command):
+        raise conformance.ConformanceError("raw error")
+
+    monkeypatch.setattr(conformance, "_run", fail)
+    assert set(conformance._feed_hba_file_diagnostics("postgres").values()) == {None}
+
+
+def test_feed_socket_probe_reports_only_categorical_outcomes(monkeypatch) -> None:
+    def reject(command, **kwargs):
+        assert command[:7] == [
             "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "1073741824\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 1073741824 67108864 1006632960 7% /dev/shm\n",
-            )
-        return (
-            conformance.CommandResult(
-                0,
-                "listen_addresses|127.0.0.1,10.0.0.4\npassword_encryption|scram-sha-256\nssl|off\n",
-            )
-            if "pg_settings" in command[-1]
-            else conformance.CommandResult(0, private_hba)
+            "exec",
+            "-e",
+            "PGPASSWORD=",
+            "-e",
+            "PGPASSFILE=/dev/null",
+            "postgres",
+        ]
+        assert kwargs["timeout"] == 8
+        return SimpleNamespace(
+            returncode=1,
+            stdout=b"",
+            stderr=b"pg_hba.conf rejects connection for private address 10.0.0.3",
         )
 
-    monkeypatch.setattr(conformance, "_run", compliant_run)
-    assert conformance._postgres_state("container", conformance._private_address("10.0.0.3"))[
-        "compliant"
-    ]
+    monkeypatch.setattr(conformance.subprocess, "run", reject)
+    assert conformance._feed_local_socket_outcome("postgres") == "reject_observed"
+    monkeypatch.setattr(
+        conformance.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout=b"1\n", stderr=b""),
+    )
+    assert conformance._feed_local_socket_outcome("postgres") == "accepted_unsafe"
+    monkeypatch.setattr(
+        conformance.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=1, stdout=b"", stderr=b"role does not exist: private row"
+        ),
+    )
+    assert conformance._feed_local_socket_outcome("postgres") == "unproved"
 
-    def unbounded_log_run(command):
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, '{"Type":"json-file","Config":{}}\n')
-        return compliant_run(command)
 
-    monkeypatch.setattr(conformance, "_run", unbounded_log_run)
-    unbounded = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+def test_postgresql_hba_source_contract_matches_hardener_below_read_bound(postgresql_hba_source):
+    assert (
+        conformance.POSTGRES_HBA_SOURCE.format(crawler_ip="10.0.0.3").encode("utf-8")
+        == postgresql_hba_source
+    )
+    assert len(conformance.POSTGRES_HBA_SOURCE.format(crawler_ip="192.168.255.255").encode()) < 4096
+
+
+@pytest.mark.parametrize(
+    "first_rule",
+    [
+        b'local "all" justup_feed_readonly reject',
+        b'local all "justup_feed_readonly" reject',
+        b"include 'reader-local.conf'",
+    ],
+)
+def test_postgresql_conformance_rejects_changed_source_despite_identical_parsed_rules(
+    postgresql_state, postgresql_hba_source, first_rule
+) -> None:
+    assert postgresql_state()["hba_exact"] is True
+    changed = postgresql_hba_source.replace(b"local all justup_feed_readonly reject", first_rule, 1)
+    # pg_hba_file_rules drops token quoting and expands includes. Keep its entire
+    # projection identical here so only the raw-source proof can refuse the change.
+    state = postgresql_state(hba_source=changed)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+@pytest.mark.parametrize("suffix", [b"\n", b"\ninclude 'extra.conf'\n", b"x" * 8192])
+def test_postgresql_conformance_rejects_appended_hba_source(
+    postgresql_state, postgresql_hba_source, suffix
+) -> None:
+    assert not postgresql_state(hba_source=postgresql_hba_source + suffix)["hba_exact"]
+
+
+@pytest.mark.parametrize(
+    "proof",
+    [
+        {"source_path_exact": False},
+        {"source_path_exact": None},
+        {"source_path_exact": 1},
+        {"source_sha256": None},
+        {"source_sha256": ""},
+        {"source_sha256": "0" * 64},
+    ],
+)
+def test_postgresql_conformance_rejects_unavailable_or_mismatched_source_proof(
+    postgresql_state, proof
+) -> None:
+    state = postgresql_state(proof_override=proof)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_rejects_missing_source_proof(postgresql_state, postgresql_hba):
+    # A successful legacy view-only query is no longer sufficient evidence.
+    assert not postgresql_state(hba_stdout=json.dumps(postgresql_hba))["hba_exact"]
+
+
+@pytest.mark.parametrize("row", [0, 1, 2, 3, 4, 5, 6, 7, 8])
+@pytest.mark.parametrize("field", ["database", "user_name"])
+def test_postgresql_conformance_rejects_extra_array_members(
+    postgresql_state, postgresql_hba, row, field
+) -> None:
+    postgresql_hba[row][field].append("additional_identity")
+    state = postgresql_state()
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+@pytest.mark.parametrize("row", [0, 1, 2, 8])
+def test_postgresql_conformance_rejects_authentication_options(
+    postgresql_state, postgresql_hba, row
+) -> None:
+    postgresql_hba[row]["options"] = ["map=unexpected"]
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize("location", ["extra_row", "existing_row"])
+def test_postgresql_conformance_rejects_every_invalid_hba_row(
+    postgresql_state, postgresql_hba, location
+) -> None:
+    invalid = {key: None for key in postgresql_hba[0]}
+    invalid["error"] = "invalid authentication rule"
+    if location == "extra_row":
+        postgresql_hba.append(invalid)
+    else:
+        postgresql_hba[2] = invalid
+    state = postgresql_state()
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+@pytest.mark.parametrize("first,second", [(0, 1), (1, 2), (2, 3), (6, 8)])
+def test_postgresql_conformance_rejects_reordered_policy(
+    postgresql_state, postgresql_hba, first, second
+) -> None:
+    postgresql_hba[first], postgresql_hba[second] = postgresql_hba[second], postgresql_hba[first]
+    # PostgreSQL assigns rule numbers after include expansion and parsing; a real
+    # reordered file has consecutive rule numbers but different authentication order.
+    for number, rule in enumerate(postgresql_hba, 1):
+        rule["rule_number"] = number
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize("row", [0, 8])
+def test_postgresql_conformance_rejects_missing_feed_rules(
+    postgresql_state, postgresql_hba, row
+) -> None:
+    postgresql_hba.pop(row)
+    state = postgresql_state()
+    assert not state["hba_exact"]
+    if row == 0:
+        assert state["feed_hba_diagnostics"]["parsed_feed_local_rule_count"] == "none"
+    else:
+        assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "none"
+        assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_at_nine"] is False
+
+
+def test_postgresql_conformance_rejects_extra_feed_loopback(
+    postgresql_state, postgresql_hba
+) -> None:
+    postgresql_hba.append({**postgresql_hba[8], "rule_number": 10, "address": "127.0.0.1"})
+    state = postgresql_state()
+    assert not state["hba_exact"]
+    assert state["feed_hba_diagnostics"]["parsed_feed_host_rule_count"] == "multiple"
+
+
+@pytest.mark.parametrize("duplicate", ["extra", "replacement"])
+def test_postgresql_conformance_rejects_duplicate_rules(
+    postgresql_state, postgresql_hba, duplicate
+) -> None:
+    if duplicate == "extra":
+        postgresql_hba.append({**postgresql_hba[2], "rule_number": 10})
+    else:
+        postgresql_hba[3] = {**postgresql_hba[2], "rule_number": 4}
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("address", "10.0.0.2"),
+        ("netmask", "255.255.255.0"),
+        ("type", "hostssl"),
+        ("auth_method", "trust"),
+        ("error", ""),
+        ("options", []),
+        ("rule_number", None),
+        ("rule_number", True),
+        ("rule_number", 1.0),
+        ("database", "crawler"),
+        ("user_name", None),
+    ],
+)
+def test_postgresql_conformance_rejects_changed_or_malformed_rule_fields(
+    postgresql_state, postgresql_hba, field, value
+) -> None:
+    postgresql_hba[0 if field == "rule_number" else 8][field] = value
+    assert not postgresql_state()["hba_exact"]
+
+
+@pytest.mark.parametrize("output", ["", "not-json", "null", "{}", "[]", "[null]", "[{}]"])
+def test_postgresql_conformance_fails_closed_on_malformed_hba_output(
+    postgresql_state, output
+) -> None:
+    state = postgresql_state(hba_stdout=output)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_rejects_missing_field(postgresql_state, postgresql_hba) -> None:
+    del postgresql_hba[0]["error"]
+    assert not postgresql_state()["hba_exact"]
+
+
+def test_postgresql_conformance_fails_closed_on_hba_query_failure(postgresql_state) -> None:
+    # Even canonical-looking output cannot override an unsuccessful inspection.
+    state = postgresql_state(hba_returncode=1)
+    assert state["hba_exact"] is False
+    assert state["compliant"] is False
+
+
+def test_postgresql_conformance_retains_container_resource_checks(postgresql_state) -> None:
+    unbounded = postgresql_state(bounded_log=False)
     assert unbounded["bounded_container_log"] is False
     assert unbounded["compliant"] is False
-
-    def undersized_run(command):
-        if command[:4] == [
-            "docker",
-            "inspect",
-            "--format",
-            "{{json .HostConfig.LogConfig}}",
-        ]:
-            return conformance.CommandResult(0, bounded_log_config)
-        if command[:2] == ["docker", "inspect"]:
-            return conformance.CommandResult(0, "67108864\n")
-        if command[-2:] == ["-B1", "/dev/shm"]:
-            return conformance.CommandResult(
-                0,
-                "Filesystem 1B-blocks Used Available Use% Mounted on\n"
-                "shm 67108864 22315008 44793856 34% /dev/shm\n",
-            )
-        return compliant_run(command)
-
-    monkeypatch.setattr(conformance, "_run", undersized_run)
-    undersized = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    undersized = postgresql_state(shm_bytes=67108864)
     assert undersized["shared_memory_contract"] is False
     assert undersized["compliant"] is False
 
@@ -513,6 +892,10 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert '--setenv="JOBSEEK_POSTGRES_PRIVATE_IP=' in postgres
     assert "root-password-was-unlocked" in host
     assert "postgres-rollback-pre-ingress" in postgres
+    assert "host crawler justup_feed_readonly ${CRAWLER_PRIVATE_IP}/32 scram-sha-256" in postgres
+    assert postgres.index("local all justup_feed_readonly reject") < postgres.index(
+        "local all all trust"
+    )
     assert 'run_replacement "$data"' in postgres
     assert "a fresh successful PostgreSQL backup is required" in postgres
     assert "postgresql-network.env" in migration
@@ -577,7 +960,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
     transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
     combined = workflow + transport
 
-    assert workflow.count("bash deploy/networking/run-remote.sh") == 19
+    assert workflow.count("bash deploy/networking/run-remote.sh") == 21
     assert "secrets[" not in workflow
     assert "&& secrets." not in workflow
     assert "appleboy/" not in combined
@@ -593,7 +976,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
 
     for host_secret, known_hosts_secret, expected_connections in (
         ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS", 7),
-        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 6),
+        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 8),
         ("HETZNER_TYPESENSE_HOST", "HETZNER_TYPESENSE_KNOWN_HOSTS", 6),
     ):
         assert (
@@ -609,7 +992,7 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
         for block in workflow.split("      - name:")[1:]
         if "bash deploy/networking/run-remote.sh" in block
     ]
-    assert len(remote_steps) == 19
+    assert len(remote_steps) == 21
     role_mappings = {
         "crawler": ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS"),
         "postgresql": ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS"),
@@ -623,6 +1006,138 @@ def test_ingress_workflow_pins_every_role_specific_connection() -> None:
         assert step.count("SSH_KNOWN_HOSTS:") == 1
         assert f"TARGET_HOST: ${{{{ secrets.{host_secret} }}}}" in step
         assert f"SSH_KNOWN_HOSTS: ${{{{ secrets.{known_hosts_secret} }}}}" in step
+
+
+def test_feed_role_install_uses_merged_main_and_verified_postgresql_transport() -> None:
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
+    job = _workflow_job(workflow, "feed-role-maintenance")
+    assert 'test "$GITHUB_REF" = refs/heads/main' in job
+    assert 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"' in job
+    assert "git ls-remote origin refs/heads/main" in job
+    assert job.index("Require the exact current merged main revision") < job.index(
+        "Verify applied HBA, transport and install the fixed feed role"
+    )
+    assert "TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}" in job
+    assert "SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}" in job
+    assert "install-feed-role|audit-feed-role)" in transport
+    assert "justup-feed-readonly-role.py" in transport
+    assert "verify-stage" in transport
+    assert transport.index("--require-enforced") < transport.index(
+        "python3 /usr/local/sbin/jobseek-justup-feed-role install"
+    )
+    assert "audit-feed-role" in job
+    assert "/usr/local/sbin/jobseek-justup-feed-role" in transport
+
+
+def test_postgresql_rollback_uses_snapshot_when_new_container_is_absent(tmp_path: Path) -> None:
+    source = (ROOT / "deploy/networking/harden-postgresql.sh").read_text()
+    hba_check = source.split("\nsnapshot_rejects_feed_local_login() {\n", 1)[1].split(
+        "\n}\n\nsnapshot_feed_role_boundary()", 1
+    )[0]
+    rollback = source.split("\nrollback() {\n", 1)[1].split("\n}\n\nrollback_on_error()", 1)[0]
+    transaction = tmp_path / "rollback" / "candidate"
+    transaction.mkdir(parents=True)
+    (transaction / "pg_hba.conf").write_text(
+        "local all justup_feed_readonly reject\nlocal all all trust\n"
+    )
+    (transaction / "feed-role-present").touch()
+    pending = tmp_path / "pending"
+    pending.write_text(str(transaction) + "\n")
+    script = f"""
+set -euo pipefail
+CURRENT_NAME=postgres
+ROLLBACK_NAME=postgres-rollback-pre-ingress
+ROLLBACK_ROOT={shlex.quote(str(transaction.parent))}
+PENDING_FILE={shlex.quote(str(pending))}
+LOG={shlex.quote(str(tmp_path / "calls"))}
+fail() {{ exit 90; }}
+snapshot_rejects_feed_local_login() {{
+{hba_check}
+}}
+cancel_rollback_timer() {{ :; }}
+restore_hba() {{ test -s "$1/pg_hba.conf"; }}
+wait_ready() {{ :; }}
+docker() {{
+  printf '%s\\n' "$*" >> "$LOG"
+  case "$*" in
+    'container inspect postgres-rollback-pre-ingress' | \
+    'rm -f postgres' | \
+    'rename postgres-rollback-pre-ingress postgres' | \
+    'start postgres') return 0 ;;
+    *) return 91 ;;
+  esac
+}}
+rollback() {{
+{rollback}
+}}
+rollback
+"""
+    result = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    calls = (tmp_path / "calls").read_text()
+    assert "rename postgres-rollback-pre-ingress postgres" in calls
+    assert "start postgres" in calls
+    assert "exec " not in calls
+    assert not pending.exists()
+
+    pending.write_text(str(transaction) + "\n")
+    (transaction / "pg_hba.conf").write_text("local all all trust\n")
+    rejected = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert rejected.returncode == 90
+    assert pending.exists()
+    (transaction / "pg_hba.conf").write_text(
+        "local all all trust\nlocal all justup_feed_readonly reject\n"
+    )
+    reversed_order = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert reversed_order.returncode == 90
+    assert pending.exists()
+
+
+def test_postgresql_stage_rejects_an_old_hba_before_pending_state(tmp_path: Path) -> None:
+    source = (ROOT / "deploy/networking/harden-postgresql.sh").read_text()
+    hba_check = source.split("\nsnapshot_rejects_feed_local_login() {\n", 1)[1].split(
+        "\n}\n\nsnapshot_feed_role_boundary()", 1
+    )[0]
+    preflight = source.split("\nsnapshot_feed_role_boundary() {\n", 1)[1].split(
+        "\n}\n\nwrite_network_config()", 1
+    )[0]
+    stage = source.split("\nstage() {\n", 1)[1].split("\n}\n\ncommit()", 1)[0]
+    assert stage.index('snapshot_feed_role_boundary "$tx"') < stage.index(
+        'printf \'%s\\n\' "$tx" >"${PENDING_FILE}.tmp"'
+    )
+    transaction = tmp_path / "candidate"
+    transaction.mkdir()
+    hba = transaction / "pg_hba.conf"
+    hba.write_text("local all all trust\n")
+    script = f"""
+set -euo pipefail
+CURRENT_NAME=postgres
+fail() {{ exit 90; }}
+docker() {{
+  [[ "$*" == *"SELECT 1 FROM pg_roles WHERE rolname = 'justup_feed_readonly'"* ]]
+  printf '1\\n'
+}}
+install() {{ local destination="${{!#}}"; touch "$destination"; }}
+snapshot_rejects_feed_local_login() {{
+{hba_check}
+}}
+snapshot_feed_role_boundary() {{
+{preflight}
+}}
+snapshot_feed_role_boundary {shlex.quote(str(transaction))}
+"""
+    rejected = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert rejected.returncode == 90
+    assert not (transaction / "feed-role-present").exists()
+    hba.write_text("local all all trust\nlocal all justup_feed_readonly reject\n")
+    reversed_order = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert reversed_order.returncode == 90
+    assert not (transaction / "feed-role-present").exists()
+    hba.write_text("local all justup_feed_readonly reject\nlocal all all trust\n")
+    accepted = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True)
+    assert accepted.returncode == 0, accepted.stderr
+    assert (transaction / "feed-role-present").exists()
 
 
 def test_ingress_transport_executes_only_verified_root_owned_payloads() -> None:

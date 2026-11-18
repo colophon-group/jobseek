@@ -9,12 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Retained only for direct transitional library calls. Production crawler
-    # commands and generated runtime environments never select this boundary.
+    # Legacy URL remains only as input to the SSRF infrastructure-host denylist.
+    # No Python connection pool or mirror writer consumes it.
     database_url: str = ""
-    # Provider-neutral boundary for web-owned data (currently watchlists).
-    # This may point at Supabase Free without making it a crawler mirror.
-    web_database_url: str = ""
     local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
 
     # Proxy provider — applies to hosts with ``"proxy": true`` in
@@ -214,18 +211,6 @@ class Settings(BaseSettings):
     typesense_protocol: str = "http"
     typesense_operations_key: str = ""
     typesense_health_interval_seconds: float = 30.0
-
-    # Enrichment (disabled by default — empty provider means skip)
-    enrich_provider: str = ""
-    enrich_model: str = ""
-    enrich_api_key: str = ""
-    enrich_batch_size: int = 500
-    enrich_min_batch_size: int = 10
-    enrich_max_wait_minutes: int = 60
-    enrich_poll_interval: int = 300
-    enrich_daily_spend_cap_usd: float = 5.0
-    enrich_input_price_per_m: float = 0.10
-    enrich_output_price_per_m: float = 0.40
 
     # IndexNow (disabled when indexnow_key is empty). A single POST to
     # api.indexnow.org propagates to Bing, Yandex, Seznam, Naver, and

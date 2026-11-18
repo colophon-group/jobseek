@@ -190,6 +190,12 @@ func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue
 	if profile.Provider != "lever" {
 		return result, &DiscoveryError{Kind: "invalid_configuration"}
 	}
+	excludedBlankIDs := map[string]bool{}
+	if profile.LeverExcludeBlankPostingIDs != "" {
+		for _, id := range strings.Split(profile.LeverExcludeBlankPostingIDs, ",") {
+			excludedBlankIDs[id] = true
+		}
+	}
 	totalBytes := 0
 	for skip := 0; skip <= lever.MaxJobs; skip += lever.BatchSize {
 		endpoint := strings.TrimSuffix(profile.Endpoint, "skip=0") + "skip=" + strconv.Itoa(skip)
@@ -235,7 +241,7 @@ func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue
 			// A later-page 404 is a failed complete inventory, not board disappearance.
 			return RichDiscovery{}, err
 		}
-		jobs, count, err := lever.ParsePage(body)
+		jobs, count, err := lever.ParsePageWithBlankExclusions(body, excludedBlankIDs)
 		if err != nil {
 			return RichDiscovery{}, &DiscoveryError{Kind: "invalid_inventory"}
 		}

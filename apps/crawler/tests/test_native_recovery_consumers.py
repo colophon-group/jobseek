@@ -99,11 +99,7 @@ def test_parked_repair_uses_selected_cli_without_retry(
     assert result.returncode == status
     calls = log.read_text().splitlines()
     assert len(calls) == 1
-    expected = (
-        "go-typesense-exporter --repair-umantis-identity-cutover --park-monitors"
-        if backend == "native"
-        else "uv run --no-sync crawler repair-umantis-identity-cutover --park-monitors"
-    )
+    expected = "go-typesense-exporter --repair-umantis-identity-cutover --park-monitors"
     assert calls[0].endswith(IMAGE + " " + expected)
 
 
@@ -159,14 +155,15 @@ sync_release_data "$TEST_ROOT/release" "$TEST_ROLE"
         capture_output=True,
         check=False,
     )
+    if capability != "v1":
+        assert result.returncode != 0
+        assert "require native maintenance" in result.stderr
+        assert not log.exists()
+        return
     assert result.returncode == status, result.stderr
     calls = log.read_text().splitlines()
     assert len(calls) == 1
-    command = (
-        "go-typesense-exporter --sync-registry"
-        if role == "csv-sync" or capability == "v1"
-        else "uv run --no-sync crawler sync"
-    )
+    command = "go-typesense-exporter --sync-registry"
     if runtime_capability == "v1":
         command += " --require-native"
     assert calls[0].endswith(IMAGE + " " + command)

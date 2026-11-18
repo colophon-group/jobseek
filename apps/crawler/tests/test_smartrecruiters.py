@@ -681,6 +681,37 @@ class TestParseDetail:
 
 
 class TestScrape:
+    @pytest.mark.parametrize(
+        ("posting_id", "expected"),
+        [
+            ("744000146943905", None),
+            ("744000156827705", None),
+            ("744000155975486", "Full-time"),
+            ("744000156733674", "Full-time"),
+        ],
+    )
+    async def test_exact_employment_type_omission_preserves_detail(self, posting_id, expected):
+        config = {
+            "omit_employment_type_urls": [
+                "https://jobs.smartrecruiters.com/LeCollectionist/744000146943905",
+                "https://jobs.smartrecruiters.com/LeCollectionist/744000156827705",
+            ]
+        }
+        payload = {
+            "name": "Official role",
+            "jobAd": {"sections": {"jobDescription": {"text": "<p>Detailed duties.</p>"}}},
+            "location": {"fullLocation": "St Anton, Austria"},
+            "typeOfEmployment": {"label": "Full-time"},
+        }
+        transport = httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
+        async with httpx.AsyncClient(transport=transport) as client:
+            url = f"https://jobs.smartrecruiters.com/LeCollectionist/{posting_id}"
+            result = await scrape(url, config, client)
+            assert result.employment_type == expected
+            assert result.title == "Official role"
+            assert result.description == "<p>Detailed duties.</p>"
+            assert result.locations == ["St Anton, Austria"]
+
     async def test_full_scrape(self):
         def handler(request):
             url = str(request.url)

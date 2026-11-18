@@ -79,3 +79,44 @@ func TestWorkdayCanonicalURLTransformDoesNotChangeFetchAuthority(t *testing.T) {
 		t.Fatal("invalid transform admitted before fetch")
 	}
 }
+
+func TestWorkdayURLFilterAdmissionAndBinding(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "workday", "https://melcoresorts.wd3.myworkdayjobs.com/en-US/career"
+	c["metadata"] = `{"company":"melcoresorts","wd_instance":"wd3","site":"career","scraper_type":"workday","url_filter":{"exclude":"_REQ(?:11520|15020)(?:$|[?#])"}}`
+	profile, err := InspectRichMonitor(profileBoardID, c)
+	rules, ruleErr := FeedMonitorURLRules(c)
+	if err != nil || ruleErr != nil || profile.Endpoint != "https://melcoresorts.wd3.myworkdayjobs.com/wday/cxs/melcoresorts/career/jobs" {
+		t.Fatal("valid Workday URL exclusion lost native monitor admission", err, ruleErr)
+	}
+	if err := ValidateNativeBoard(profileBoardID, c); err != nil {
+		t.Fatal("valid Workday URL exclusion failed complete native admission", err)
+	}
+	for _, tc := range []struct {
+		url  string
+		keep bool
+	}{
+		{"https://melcoresorts.wd3.myworkdayjobs.com/career/job/Driver_REQ11520", false},
+		{"https://melcoresorts.wd3.myworkdayjobs.com/career/job/Host_REQ15020?source=site", false},
+		{"https://melcoresorts.wd3.myworkdayjobs.com/career/job/Manager_REQ15142", true},
+	} {
+		keep, err := rules.FilterURL(tc.url)
+		if err != nil || keep != tc.keep {
+			t.Fatalf("Workday URL exclusion for %s: keep=%t err=%v", tc.url, keep, err)
+		}
+	}
+	c["metadata"] = `{"company":"melcoresorts","wd_instance":"wd3","site":"career","scraper_type":"workday","url_filter":{"exclude":"_REQ15020$"}}`
+	changed, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || changed.EffectiveConfigSHA256 == profile.EffectiveConfigSHA256 || changed.Endpoint != profile.Endpoint {
+		t.Fatal("Workday URL exclusion escaped immutable binding or changed fetch authority", err)
+	}
+	for _, metadata := range []string{
+		`{"company":"melcoresorts","wd_instance":"wd3","site":"career","scraper_type":"workday","url_filter":{"exclude":"["}}`,
+		`{"company":"melcoresorts","wd_instance":"wd3","site":"career","scraper_type":"workday","unrelated_option":true}`,
+	} {
+		c["metadata"] = metadata
+		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+			t.Fatal("invalid Workday metadata admitted", metadata)
+		}
+	}
+}

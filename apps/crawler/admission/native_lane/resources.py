@@ -7,7 +7,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from admission.lightpanda_b0.controller import _cpu_usage, _integer
+from admission.native_lane.support import _cpu_usage, _integer
 
 # Same public catalogue snapshot as the four-node October 30 production read.
 # Prices are net compute EUR/hour. The benchmark runs on one architecture;

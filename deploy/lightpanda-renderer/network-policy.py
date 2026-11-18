@@ -10,11 +10,13 @@ import json
 import os
 import re
 import shlex
+import stat
 import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Any, NoReturn, cast
 
 INVENTORY_PATH = Path("/etc/jobseek-lightpanda-network/inventory.json")
@@ -24,6 +26,7 @@ CONTAINER = "jobseek-lightpanda-renderer"
 INTERNAL_NETWORK = "jobseek-lightpanda-renderer"
 EGRESS_NETWORK = "jobseek-lightpanda-egress"
 QUARANTINE_MAX_SCANS = 5
+SWAP_HELPER_SHA256 = "a163ef7d744dde9a266729321fe1d5bea6bb868f89263bf03402df7f21c1f677"
 
 V4_FORWARD = "JSLP4-FWD"
 V4_EGRESS = "JSLP4-EGRESS"
@@ -444,7 +447,9 @@ def audit_container_port_bindings(
     return exact_renderer_claim
 
 
-def create_networks(inventory: Inventory) -> tuple[dict[str, Any], dict[str, Any], set[str]]:
+def create_networks(
+    inventory: Inventory,
+) -> tuple[dict[str, Any], dict[str, Any], set[str]]:
     created: set[str] = set()
     internal = network_by_name(INTERNAL_NETWORK)
     if internal is None:
@@ -597,14 +602,32 @@ def policy_rules(inventory: Inventory, internal_bridge: str) -> dict[str, dict[s
                     V4_INGRESS,
                 ),
                 ("-o", inventory.egress_bridge, *drop),
-                ("-s", f"{inventory.internal_address}/32", "-i", internal_bridge, *drop),
+                (
+                    "-s",
+                    f"{inventory.internal_address}/32",
+                    "-i",
+                    internal_bridge,
+                    *drop,
+                ),
                 ("-i", internal_bridge, *drop),
                 ("-o", internal_bridge, *drop),
                 ("-j", "RETURN"),
             ],
             V4_HOST: [
-                ("-s", f"{inventory.egress_address}/32", "-i", inventory.egress_bridge, *drop),
-                ("-s", f"{inventory.internal_address}/32", "-i", internal_bridge, *drop),
+                (
+                    "-s",
+                    f"{inventory.egress_address}/32",
+                    "-i",
+                    inventory.egress_bridge,
+                    *drop,
+                ),
+                (
+                    "-s",
+                    f"{inventory.internal_address}/32",
+                    "-i",
+                    internal_bridge,
+                    *drop,
+                ),
                 (
                     "-s",
                     inventory.crawler_private,
@@ -635,8 +658,20 @@ def policy_rules(inventory: Inventory, internal_bridge: str) -> dict[str, dict[s
                 ("-j", "RETURN"),
             ],
             V4_OUTPUT: [
-                ("-d", f"{inventory.egress_address}/32", "-o", inventory.egress_bridge, *drop),
-                ("-d", f"{inventory.internal_address}/32", "-o", internal_bridge, *drop),
+                (
+                    "-d",
+                    f"{inventory.egress_address}/32",
+                    "-o",
+                    inventory.egress_bridge,
+                    *drop,
+                ),
+                (
+                    "-d",
+                    f"{inventory.internal_address}/32",
+                    "-o",
+                    internal_bridge,
+                    *drop,
+                ),
                 (
                     "-d",
                     inventory.host_private,
@@ -1193,7 +1228,15 @@ def verify_container(inventory: Inventory, attestation: dict[str, object]) -> No
         ),
     )
     ipv6_routes = run(
-        ["docker", "exec", "--user", "10001:10001", CONTAINER, "cat", "/proc/net/ipv6_route"]
+        [
+            "docker",
+            "exec",
+            "--user",
+            "10001:10001",
+            CONTAINER,
+            "cat",
+            "/proc/net/ipv6_route",
+        ]
     ).stdout.splitlines()
     if any(
         len(line.split()) >= 10
@@ -1310,6 +1353,37 @@ def bootstrap_policy(inventory: Inventory) -> dict[str, object]:
     return payload
 
 
+def enforce_candidate_zero_swap(container_id: str, release_id: str) -> dict[str, Any]:
+    # The policy digest binds this exact helper. Never execute a deploy-owned
+    # staging path as root, or load bytes again after verifying their digest.
+    path = Path(__file__).resolve().with_name("repair-swap.py")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        metadata = os.fstat(fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != 0
+            or metadata.st_gid != 0
+            or stat.S_IMODE(metadata.st_mode) != 0o555
+            or metadata.st_nlink != 1
+            or not 0 < metadata.st_size <= 65536
+        ):
+            fail("candidate swap helper metadata drifted")
+        data = os.read(fd, 65537)
+        if len(data) != metadata.st_size or hashlib.sha256(data).hexdigest() != SWAP_HELPER_SHA256:
+            fail("candidate swap helper digest drifted")
+    finally:
+        os.close(fd)
+    module = ModuleType("renderer_candidate_swap")
+    module.__file__ = str(path)
+    sys.modules[module.__name__] = module
+    try:
+        exec(compile(data, str(path), "exec"), module.__dict__)  # noqa: S102 -- root-owned, digest-bound bytes
+        return module.enforce_candidate_zero_swap(release_id, container_id)
+    finally:
+        sys.modules.pop(module.__name__, None)
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser()
     result.add_argument("--inventory", type=Path, default=INVENTORY_PATH)
@@ -1323,12 +1397,15 @@ def parser() -> argparse.ArgumentParser:
             "verify-running",
             "verify-ready",
             "verify-running-ready",
+            "enforce-candidate-zero-swap",
             "verify-empty",
             "quarantine",
         ),
     )
     result.add_argument("expected_policy_sha256", nargs="?")
     result.add_argument("expected_inventory_sha256", nargs="?")
+    result.add_argument("candidate_container_id", nargs="?")
+    result.add_argument("candidate_release_id", nargs="?")
     return result
 
 
@@ -1339,7 +1416,15 @@ def execute_guarded_command(args: argparse.Namespace) -> None:
             "verify-attested",
             "verify-ready",
             "verify-running-ready",
+            "enforce-candidate-zero-swap",
         }
+        candidate_id = getattr(args, "candidate_container_id", None)
+        candidate_release = getattr(args, "candidate_release_id", None)
+        if args.command == "enforce-candidate-zero-swap":
+            if not candidate_id or not candidate_release:
+                fail("exact candidate identity is required")
+        elif candidate_id is not None or candidate_release is not None:
+            fail("candidate identity is accepted only for swap enforcement")
         if expects_release_binding:
             if args.expected_policy_sha256 is None or args.expected_inventory_sha256 is None:
                 fail("deployment policy digests are required")
@@ -1351,14 +1436,27 @@ def execute_guarded_command(args: argparse.Namespace) -> None:
             payload = ensure_policy_unchecked(inventory)
         else:
             payload = verify_policy(inventory)
-            if args.command in {"verify-attested", "verify-ready", "verify-running-ready"}:
+            if args.command in {
+                "verify-attested",
+                "verify-ready",
+                "verify-running-ready",
+                "enforce-candidate-zero-swap",
+            }:
                 verify_bootstrap_marker(
                     args.inventory,
                     cast(str, args.expected_policy_sha256),
                     cast(str, args.expected_inventory_sha256),
                 )
-            if args.command in {"verify-running", "verify-running-ready"}:
+            if args.command in {
+                "verify-running",
+                "verify-running-ready",
+                "enforce-candidate-zero-swap",
+            }:
                 verify_container(inventory, payload)
+                if args.command == "enforce-candidate-zero-swap":
+                    payload["candidateSwap"] = enforce_candidate_zero_swap(
+                        cast(str, candidate_id), cast(str, candidate_release)
+                    )
             elif args.command in {"verify-ready", "verify-empty"}:
                 require_networks_stably_empty(INTERNAL_NETWORK, EGRESS_NETWORK)
         print(json.dumps(payload, sort_keys=True, separators=(",", ":")))

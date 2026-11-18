@@ -97,8 +97,8 @@ def parse_args() -> argparse.Namespace:
     sub = parser.add_subparsers(dest="command", required=True)
 
     # Production subcommands
-    sub.add_parser("run", help="Worker instance (all non-browser profiles)")
-    sub.add_parser("run-browser", help="Browser instance (browser profiles only)")
+    sub.add_parser("run", help="Native Go worker (HTTP and Lightpanda profiles)")
+    sub.add_parser("run-browser", help="Compatibility alias for the combined native Go worker")
 
     export_p = sub.add_parser(
         "export",
@@ -780,6 +780,14 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+    if args.command in {"run", "run-browser"}:
+        os.execvp("go-ordinary-worker", ["go-ordinary-worker"])
+    if args.command == "export":
+        os.environ["EXPORT_BATCH_LIMIT"] = str(args.batch_size)
+        os.environ["EXPORT_INTERVAL"] = str(args.interval)
+        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--run"])
+    if args.command == "drain":
+        os.execvp("go-r2-drain", ["go-r2-drain"])
     if args.command == "redis-capacity":
         command = ["go-typesense-exporter", "--redis-capacity", args.action]
         if args.action == "prune":
@@ -871,46 +879,7 @@ async def run() -> None:
             loop.add_signal_handler(sig, shutdown_event.set)
 
     try:
-        if args.command == "run":
-            start_metrics_server(settings.metrics_port)
-            local_pool = await create_local_pool()
-            http = create_http_client()
-            try:
-                from src.workers.pipeline import run_pipeline
-
-                await run_pipeline(local_pool, http, shutdown_event, browser=False)
-            finally:
-                await http.aclose()
-
-        elif args.command == "run-browser":
-            start_metrics_server(settings.metrics_port)
-            local_pool = await create_local_pool()
-            http = create_http_client()
-            try:
-                from src.workers.pipeline import run_pipeline
-
-                await run_pipeline(local_pool, http, shutdown_event, browser=True)
-            finally:
-                await http.aclose()
-
-        elif args.command == "export":
-            start_metrics_server(settings.metrics_port)
-            # Apply CLI overrides to settings
-            settings.export_batch_limit = args.batch_size
-            settings.export_interval = args.interval
-            local_pool = await create_local_pool()
-            from src.exporter import run_exporter
-
-            await run_exporter(local_pool, None, shutdown_event)
-
-        elif args.command == "drain":
-            start_metrics_server(settings.metrics_port)
-            local_pool = await create_local_pool()
-            from src.workers.r2_drain import r2_drain_loop
-
-            await r2_drain_loop(local_pool, shutdown_event)
-
-        elif args.command == "proxy-audit":
+        if args.command == "proxy-audit":
             from src.proxy_audit import ProxyAuditError, audit_webshare
 
             try:

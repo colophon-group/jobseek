@@ -19,6 +19,17 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--verify-private-paths" {
+		if len(os.Args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: --verify-private-paths")
+			os.Exit(1)
+		}
+		if err := runVerifyPrivatePaths(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) >= 2 && os.Args[1] == "--export-source-coverage" {
 		if err := runSourceCoverageExport(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -291,7 +302,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--refresh-currency-rates [--dry-run]|--repair-location-taxonomy-source|--reap-leases|--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--sync-taxonomies [--rename-input]|--snapshot-taxonomy-names|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--verify-private-paths|--refresh-currency-rates [--dry-run]|--repair-location-taxonomy-source|--reap-leases|--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--sync-taxonomies [--rename-input]|--snapshot-taxonomy-names|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

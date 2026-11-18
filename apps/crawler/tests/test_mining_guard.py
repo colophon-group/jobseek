@@ -26,15 +26,3 @@ async def test_corpus_db_outage_does_not_authorize_mining(monkeypatch):
     monkeypatch.setattr("src.db.close_all_pools", AsyncMock())
     with pytest.raises(MiningGuardError, match="eligibility unavailable"):
         await _assert_current([str(uuid4())])
-
-
-async def test_prepared_enrichment_rechecks_before_provider_submission():
-    from src.core.enrich.batch import submit_batch
-    from src.core.enrich.providers import BatchRequest
-
-    pool, provider = AsyncMock(), AsyncMock()
-    pool.fetchval.return_value = True
-    request = BatchRequest(custom_id=str(uuid4()), system_prompt="system", user_content="retained")
-    with pytest.raises(RuntimeError, match="TDM reservation"):
-        await submit_batch(pool, provider, [request], [request.custom_id])
-    provider.submit_batch.assert_not_awaited()

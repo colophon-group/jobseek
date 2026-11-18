@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 import asyncpg
 
-from src.exporter import PostingSchema, TaxonomyMaps, _build_typesense_docs
+from src.typesense_projection import PostingSchema, TaxonomyMaps, _build_typesense_docs
 
 
 async def compare() -> None:

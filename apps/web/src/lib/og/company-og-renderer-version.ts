@@ -6,7 +6,6 @@ const COMPANY_OG_HASH_VERSION = "company-og-v3";
 
 const COMPANY_OG_HASH_INPUTS = [
   "src/lib/og/company-og-card.tsx",
-  "src/lib/og/render-company-og.tsx",
   "public/fonts/JetBrainsMono-Bold.ttf",
 ];
 

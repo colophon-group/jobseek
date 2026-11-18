@@ -8,19 +8,22 @@ Commands below assume `apps/crawler` as the working directory.
 Redis-orchestrated workers writing to local Postgres, with CDC export to
 Typesense:
 
-1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
-2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; the
-   production CLI advances only the `typesense:job_posting` cursor
-4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
-5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
-   Postgres first, then updates Redis and Typesense
+1. **Native worker** (`go/ordinary-worker/`) — HTTP/API and Lightpanda execution.
+2. **Queue authority** (`go/ordinary-queue/`) — claims, leases, canonical persistence and scheduling.
+3. **Exporter** (`go/typesense-exporter/`) — local PostgreSQL CDC to Typesense.
+4. **R2 drain** (`go/r2-drain/`) — description upload with durable claims and retry.
+5. **Renderer** (`../lightpanda/`) — independent production Lightpanda service.
+6. **Offline tools** (`src/core/`, workspace and labeller) — Python extraction, parity and control.
 
-See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
-See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
-See [source coverage](source-coverage.md) for the private weekly Hiring Wire evidence export.
+See the [current migration checkpoint](../27-go-lightpanda-continuation-plan.md)
+for installed identities and verification scope.
 
 ## Key Files
+
+The Python tree below serves offline workspace/labeller tooling and retained
+parity fixtures. Production processing and maintenance are the Go modules above;
+the `crawler` compatibility CLI delegates supported native commands to them.
+
 
 ```
 src/
@@ -57,9 +60,6 @@ src/
 │   ├── salary_extract.py  # Heuristic salary parsing from HTML
 │   ├── monitor.py         # monitor_one, monitor_one_stream dispatchers
 │   └── scrape.py          # scrape_one dispatcher
-├── workers/
-│   ├── pipeline.py        # Discovery coroutines, claim from Redis, dispatch
-│   └── r2_drain.py        # Producer-consumer: descriptions -> R2
 ├── processing/
 │   ├── board.py           # Streaming monitor processing, timestamp gone detection
 │   ├── scrape.py          # Single-job scraping, fallback chain
@@ -71,10 +71,9 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # Commit-safe Typesense CDC
+├── typesense_projection.py # Offline canonical projection/parity helpers
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
 ├── sync.py                # CSV -> local Postgres, then Redis + Typesense
-├── bootstrap.py           # Non-executable rollback helpers for the retired mirror
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
 ├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)
@@ -165,8 +164,8 @@ ws reject --issue <N> --reason <key> --message "..."
 ws reject --reason <key> --message "..."  # Uses active workspace's issue
 
 # Run crawler workers
-uv run crawler run                     # HTTP worker (claims from simple queues)
-uv run crawler run-browser             # Browser worker (claims from browser queues)
+uv run crawler run                     # Exec native Go worker (HTTP and Lightpanda)
+uv run crawler run-browser             # Alias for the same combined Go worker
 uv run crawler export                  # Typesense CDC
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
@@ -698,18 +697,15 @@ docker exec deploy-redis-1 redis-cli INFO persistence | tr -d '\r' \
 docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
 ```
 
-### Current Container Layout (metrics ports)
+### Current Container Layout
 
-| Container | Image | Metrics Port | CPU | Memory |
-|-----------|-------|-------------|-----|--------|
-| worker-1 | crawler-slim | 9095 | 1 | 1GB |
-| worker-2 | crawler-slim | 9096 | 1 | 1GB |
-| worker-3 | crawler-slim | 9097 | 1 | 1GB |
-| browser-1 | crawler-full | 9098 | 3 | 6GB |
-| exporter | crawler-slim | 9093 | — | — |
-| drain | crawler-slim | 9094 | — | — |
-| alloy | grafana/alloy | 12346 | 0.5 | 512MB (256MiB Go soft limit) |
-| redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
+Production processing uses `ordinary-go`, `lease-reaper`, `exporter` and `drain`,
+with Redis and Alloy. The `worker-1` service is a Go-only one-off maintenance
+carrier. Python/Chromium worker images are retired. Use the authoritative
+[`docker-compose.yml`](../../apps/crawler/docker-compose.yml) for resources and
+metrics ports and the [migration checkpoint](../27-go-lightpanda-continuation-plan.md)
+for installed release verification; do not infer the live topology from old
+container names.
 
 ### Querying Metrics
 
