@@ -78,6 +78,48 @@ Watchlist preview caveat: company selection and `salcur` are website prefill. Th
 
 `jobseek://taxonomies/{type}` resources provide English seniority, occupation, technology and industry data; the `list_taxonomies` tool accepts a response locale. Job descriptions, personal watchlist reads, application tracking, billing and Narrowed results are website workflows, not additional MCP tools. Ghost-analysis tools and anonymous watchlist discovery are retired. The legacy `GET /api/v1/watchlists` compatibility endpoint returns non-cacheable `410 Gone` through 31 October 2026.
 
+## Research employers with Parallel Search MCP
+
+Pair a Job Seek shortlist with current information about the employers before
+applying or preparing for an interview. [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+adds web search and page fetching to the same MCP client. Anonymous search uses
+Fast mode and needs no Parallel account or API key; free access has lower rate
+limits than authenticated access.
+
+After the Job Seek [hosted setup](#hosted-setup), add the optional research server
+in Claude Code:
+
+```bash
+claude mcp add --transport http parallel-search https://search.parallel.ai/mcp
+```
+
+Run `/mcp` in Claude Code and confirm both `jobseek` and `parallel-search` are
+connected. Keep any existing Job Seek configuration; the servers provide
+separate tools and do not require changes to the crawler or Job Seek API.
+
+Try a prompt like:
+
+> Find up to three senior backend roles in Zurich using Job Seek. Resolve the
+> location and seniority first, then inspect promising postings with
+> `get_job_detail`. For each employer, use Parallel `web_search` to find its
+> engineering blog and recent product announcements. Use `web_fetch` to read
+> relevant pages. Return a table with the job link returned by Job Seek, employer,
+> a sourced interview talking point, and a question I could ask the team.
+> Include source URLs and publication dates when available, and mark anything
+> you could not verify.
+
+Use Job Seek for available roles and posting metadata; use Parallel for wider
+employer context. Prefer the employer's own pages for product and engineering
+claims, and check that each source refers to the same employer. Keep research
+separate from the job's stated requirements: a company
+blog post does not establish a role's salary, work mode, or hiring status.
+If a page cannot be fetched, retain the link and mark the information unverified.
+Share only public employer names and URLs with the research server, without
+sending a CV, application notes, or other personal information.
+
+To follow a company afterward, use Job Seek's `search_companies` and
+`create_watchlist_link`, then open the link and sign in on the website to save it.
+
 ## Feedback API
 
 The tools share `POST /api/v1/feedback`. A bounded JSON submission has `kind: "bug" | "feature" | "feedback"` plus that tool's fields. Optional `affectedTool` uses a registered tool name. Feedback is stored with the server version, consumer category and server timestamp; request IPs are used only for rate limiting and are not stored in feedback. The body is limited to 16 KiB and fields have individual length limits.
