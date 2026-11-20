@@ -5999,6 +5999,7 @@ pulumi,pulumi-greenhouse,https://job-boards.greenhouse.io/pulumicorporation,gree
 puma,puma-careers,https://puma.wd502.myworkdayjobs.com/jobs_at_puma,workday,"{""company"": ""puma"", ""wd_instance"": ""wd502"", ""site"": ""jobs_at_puma"", ""all_sites"": false}",workday,
 puma,puma-careers-stichd,https://puma.wd502.myworkdayjobs.com/Work_at_stichd,workday,"{""company"": ""puma"", ""wd_instance"": ""wd502"", ""site"": ""Work_at_stichd"", ""all_sites"": false}",workday,
 pump-co,pump-co-greenhouse,https://job-boards.greenhouse.io/pumpcareers,greenhouse,"{""token"": ""pumpcareers""}",skip,
+purdue,purdue-careers,https://careers.purdue.edu/,rss,"{""preset"": ""successfactors""}",skip,
 pure,pure-ashby,https://jobs.ashbyhq.com/pure,ashby,"{""token"": ""pure""}",skip,
 pvh,pvh-calvin-klein-brasil,https://calvinkleinbrasil.pandape.infojobs.com.br/Vacancies,dom,"{""render"": true, ""resource_policy"": ""none"", ""link_selector"": ""a[href*='/Detail']"", ""require_jsonld_jobposting"": true}",json-ld,
 pvh,pvh-careers,https://pvh.wd1.myworkdayjobs.com/pvh_careers,workday,"{""company"": ""pvh"", ""wd_instance"": ""wd1"", ""site"": ""PVH_Careers""}",workday,
