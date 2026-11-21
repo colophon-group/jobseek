@@ -3570,6 +3570,8 @@ highmark-health,highmark-health-careers,https://highmarkhealth.wd1.myworkdayjobs
 highnote,highnote-greenhouse,https://job-boards.greenhouse.io/highnote,greenhouse,"{""token"": ""highnote""}",skip,
 hightouch,hightouch-greenhouse,https://job-boards.greenhouse.io/hightouch,greenhouse,"{""token"": ""hightouch""}",skip,
 highview-power,highview-power-workable,https://apply.workable.com/highview-power/,workable,"{""token"": ""highview-power""}",workable,
+hii,hii-careers,https://careers.huntingtoningalls.com/,rss,"{""preset"": ""successfactors""}",skip,
+hii,hii-mission-technologies,https://jobs.hii-tsd.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.hii-tsd.com/googlefeed.xml""}",skip,
 hiive,hiive-ashby,https://jobs.ashbyhq.com/hiive,ashby,"{""token"": ""hiive""}",skip,
 hike-medical,hike-medical-ashby,https://jobs.ashbyhq.com/hike-medical,ashby,"{""token"": ""hike-medical""}",skip,
 hill-house-home,hill-house-home-greenhouse,https://job-boards.greenhouse.io/hillhousehome,greenhouse,"{""token"": ""hillhousehome""}",skip,
