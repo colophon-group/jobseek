@@ -5687,6 +5687,8 @@ pearl,pearl-greenhouse,https://job-boards.greenhouse.io/justanswer,greenhouse,"{
 pearlhealth,pearlhealth-ashby,https://jobs.ashbyhq.com/pearlhealth,ashby,"{""token"": ""pearlhealth""}",skip,
 pecan,pecan-careers,https://www.pecan.ai/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/career-job/""}",dom,"{""steps"": [{""tag"": ""p"", ""field"": ""metadata.test"", ""from"": 0}]}"
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
+peets,peets-careers,https://peets.wd12.myworkdayjobs.com/peets,workday,"{""company"": ""peets"", ""wd_instance"": ""wd12"", ""site"": ""Peets"", ""all_sites"": false}",workday,
+peets,peets-careers-cn,https://izhaopin.peets.cn/social-recruitment/peets/102421/,mokahr,"{""org_id"": ""peets"", ""site_id"": 102421, ""partitions"": [{""board_url"": ""https://app.mokahr.com/campus-recruitment/peets/118888/"", ""site_id"": 118888}]}",mokahr,"{""enrich"": [""description""]}"
 peloton,peloton-greenhouse,https://job-boards.greenhouse.io/peloton,greenhouse,"{""token"": ""peloton""}",skip,
 pendo,pendo-greenhouse,https://job-boards.greenhouse.io/pendo,greenhouse,"{""token"": ""pendo""}",skip,
 penn-entertainment,penn-entertainment-careers,https://careersapply-pennentertainment.icims.com/,icims,,json-ld,
