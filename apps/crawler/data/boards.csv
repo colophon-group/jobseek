@@ -5937,6 +5937,7 @@ prime-healthcare,prime-healthcare-careers,https://careers-primehealthcare.icims.
 primeintellect,primeintellect-ashby,https://jobs.ashbyhq.com/primeintellect,ashby,"{""token"": ""primeintellect""}",skip,
 primer,primer-ashby,https://jobs.ashbyhq.com/primer,ashby,"{""token"": ""primer""}",skip,
 prior-labs,prior-labs-ashby,https://jobs.ashbyhq.com/prior-labs,ashby,"{""token"": ""prior-labs""}",skip,
+priority-management,priority-management-careers,https://www.paycomonline.net/v4/ats/web.php/portal/b3ac7611080c8bfa4349b9c9a759f80b/career-page,paycom,,paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
 prisma,prisma-recruitee,https://prisma.recruitee.com,recruitee,"{""token"": ""prisma""}",skip,
 prisma-health,prisma-health-careers,https://prismahealth.wd5.myworkdayjobs.com/prismahealthcorporate,workday,,workday,
 prisma-health,prisma-health-providers,https://prismahealth.wd5.myworkdayjobs.com/PrismaHealthProviders,workday,,workday,
