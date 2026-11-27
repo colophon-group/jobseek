@@ -6902,6 +6902,8 @@ spaulding-ridge,spaulding-ridge-greenhouse,https://job-boards.greenhouse.io/spau
 spc-group,spc-group-careers,https://spc.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""spc""}",skip,
 speakeasy,speakeasy-ashby,https://jobs.ashbyhq.com/speakeasy,ashby,"{""token"": ""speakeasy""}",skip,
 specitec,specitec-careers,https://careers.specitec.com/jobs,rss,"{""preset"": ""teamtailor""}",skip,
+specs,specs-careers,https://www.paycomonline.net/v4/ats/web.php/portal/77164ab11c98cfd58419562775a60505/career-page,paycom,,paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
+specs,specs-careers-lees,https://recruiting.paylocity.com/recruiting/jobs/All/37b05c36-19aa-4153-8282-7bf0a8cd6761/FItzjack-LLC,paylocity,,paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 specterops,specterops-greenhouse,https://job-boards.greenhouse.io/specterops,greenhouse,"{""token"": ""specterops""}",skip,
 spector-ai,spector-ai-ashby,https://jobs.ashbyhq.com/spector-ai,ashby,"{""token"": ""spector-ai""}",skip,
 speechify,speechify-greenhouse,https://job-boards.greenhouse.io/speechify,greenhouse,"{""token"": ""speechify""}",skip,
